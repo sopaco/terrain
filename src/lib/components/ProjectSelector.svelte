@@ -6,7 +6,6 @@
     selectedSlug: string | null;
     open: boolean;
     addBusy?: boolean;
-    taskLabel?: string | null;
     ontoggle: () => void;
     onselect: (project: ProjectSummary) => void;
     onadd: () => void;
@@ -18,7 +17,6 @@
     selectedSlug,
     open,
     addBusy = false,
-    taskLabel = null,
     ontoggle,
     onselect,
     onadd,
@@ -63,11 +61,6 @@
     <span class="min-w-0 flex-1 truncate font-medium">
       {selected?.name ?? "Select project"}
     </span>
-    {#if taskLabel}
-      <span class="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200" title={taskLabel}>
-        …
-      </span>
-    {/if}
     <span class="shrink-0 text-white/40">{open ? "▴" : "▾"}</span>
   </button>
 

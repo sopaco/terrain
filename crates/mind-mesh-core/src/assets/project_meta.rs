@@ -431,7 +431,13 @@ pub fn persist_meta_inputs(
     std::fs::create_dir_all(&agent_dir)?;
 
     let md_path = agent_dir.join("meta-inputs.md");
-    std::fs::write(&md_path, format_meta_bundle_markdown(bundle))?;
+    let md_body = format_meta_bundle_markdown(bundle);
+    let write_md = std::fs::read_to_string(&md_path)
+        .ok()
+        .is_none_or(|existing| existing != md_body);
+    if write_md {
+        std::fs::write(&md_path, &md_body)?;
+    }
 
     let manifest = MetaInputsManifest {
         collected_at: chrono::Utc::now().to_rfc3339(),

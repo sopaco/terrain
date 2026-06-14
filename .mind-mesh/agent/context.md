@@ -7,20 +7,95 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
 
 ## 项目概览
 
-MindMesh 是一个深网式工程知识助手（Ask mode），旨在为工程领域提供结构化的深度知识问答与代码理解能力。项目采用混合技术栈（Rust + Node.js），核心能力包括知识检索、上下文构建、智能体协作、技能编排和代码解释。### 核心能力- **知识检索**：全文搜索技术文档（接口、路由、模块）- **上下文构建**：多层级（Macro/Meso/Micro）知识分层与提取- **智能体协作**：支持多个预定义智能体（Skills）协同工作- **代码理解**：从代码包（Repomix）中提取符号、结构、实现细节- **SDD 工作流**：软件设计文档生成自动化流程- **Litho 文档**：代码到文档的自动化生成### 系统组成- **mind-mesh-core** (Rust): 核心知识引擎，处理检索、上下文、索引- **mind-mesh-agent** (Rust): 智能体框架，处理技能编排与执行- **mind-mesh-cli** (Rust): 命令行工具- **RTK** (Node.js): 运行时工具库- **前端** (Svelte + TypeScript): Web UI- **Tauri** (Rust): 桌面应用打包层- **第三方** (Tauri): Tauri 框架与 cookie 库---
+MindMesh 是一款工程环境管理平台，旨在为 AI 编码助手（如 OpenCode）提供自动化项目知识注入。系统接收 Git 仓库源码，自动扫描并分析 C4 模型上下文，生成 AI 友好的结构化知识资产（`agent/context.md`）和代码映射（`agent/repomesh.md`），以及人类可读的 Litho 文档。核心能力包括源码解析、RAG 检索增强及 C4 架构自动生成。**依赖项**：Tauri (桌面), Rust, Node.js, Mermaid, OpenCode (协议)。
 
-## 架构设计### 三层知识架构**Macro 层 (预加载)**- 项目概览：MindMesh 功能定位- 架构设计：核心分层与模块组织- 模块地图：关键模块职责划分- Section Index：快速定位章节**Meso 层 (按需读取)**- 核心流程：知识检索、上下文构建、智能体调度- 技术选型：Rust/Node 分工，设计决策- 系统边界：模块间交互与权限控制- 代码映射索引：源文件到语义的映射**Micro 层 (代码级)**- 符号解析：函数、类型、属性- 代码切片：按行或范围读取实现### 模块职责划分#### 知识检索层| 模块 | 职责 ||------|------|| `search` | 全文搜索接口与路由 || `query` | 查询优化与过滤 || `source` | 文档来源索引 || `paths` | 代码路径与文件映射 |#### 上下文管理层| 模块 | 职责 ||------|------|| `agent_context` | 上下文分层与更新 || `context_layers` | Macro/Meso/Micro层级 || `pack_read` | Repomix 读取与缓存 || `repomix` | Repomix 数据解析 |#### 智能体框架| 模块 | 职责 ||------|------|| `agent` | 智能体生命周期管理 || `skill` | 技能加载与调度 || `compat_tool` | 工具兼容性适配 || `env_optimize` | 环境参数优化 |#### 内容生成| 模块 | 职责 ||------|------|| `doc` | 文档生成引擎 || `sdd` | SDD工作流执行 || `citations` | 引用管理与验证 || `render` | 渲染输出 |#### 项目配置| 模块 | 职责 ||------|------|| `project` | 项目元数据与索引 || `registry` | 技能/智能体注册 || `assets` | 环境与上下文资产 |---
+## 架构设计
 
-## 模块地图### 核心引擎模块 (mind-mesh-core)| 模块 | 路径 | 职责 ||------|------|------|| `assets::env::agents_md` | `crates/mind-mesh-core/src/assets/env/agents_md.rs` | 智能体配置解析 || `assets::context_layers` | `crates/mind-mesh-core/src/assets/context_layers.rs` | 知识分层结构 || `assets::repomix` | `crates/mind-mesh-core/src/assets/repomix.rs` | Repomix包元数据解析 || `assets::pack_read` | `crates/mind-mesh-core/src/assets/pack_read.rs` | 代码包读取与缓存 || `ingest::git` | `crates/mind-mesh-core/src/ingest/git.rs` | Git 仓库解析 || `ingest::openapi` | `crates/mind-mesh-core/src/ingest/openapi.rs` | OpenAPI 文档解析 || `search` | `crates/mind-mesh-core/src/search.rs` | 全文搜索引擎 || `doc` | `crates/mind-mesh-core/src/doc.rs` | 文档生成器 |### 智能体框架模块 (mind-mesh-agent)| 模块 | 路径 | 职责 ||------|------|------|| `agent::builder` | `crates/mind-mesh-agent/src/builder.rs` | 智能体构建器 || `skill::agent-architecture` | `preset_skills/agent-architecture-skill/` | 架构设计技能 || `skill::agent-context` | `preset_skills/agent-context-skill/` | 上下文生成技能 || `compat_tool` | `crates/mind-mesh-agent/src/compat_tool.rs` | 工具兼容适配 || `throttle` | `crates/mind-mesh-agent/src/throttle.rs` | 调用限流控制 |### 前端模块| 模块 | 路径 | 职责 ||------|------|------|| `components::AskBar` | `src/lib/components/AskBar.svelte` | 问答输入面板 || `components::DeepWikiPanel` | `src/lib/components/DeepWikiPanel.svelte` | 知识库主面板 || `api.ts` | `src/lib/api.ts` | 后端接口定义 || `assistantSteps` | `src/lib/assistantSteps.ts` | 智能体执行步骤 |---
+### 容器 (Containers)
 
-## 核心流程### 知识检索流程```用户查询 → search_knowledge(query) → 索引匹配 → 结果聚合 → 返回引用```- 搜索范围：技术文档（interfaces/routes/modules）- 索引来源：structured docs (interfaces/, routes/, modules/)- 输出：引用片段 + 文件路径 + 行号### 上下文构建流程```项目选择 → read_agent_context(section) → 分层提取 (Macro/Meso/Micro) → 构建上下文包```- Macro 层：预加载的项目概览与架构- Meso 层：按需读取指定章节（核心流程、技术选型等）- Micro 层：通过 grep_agent_pack 搜索 → read_agent_pack_file 获取代码### 智能体调度流程```用户请求 → 解析意图 → 调度技能 → 执行技能 → 聚合输出```- 技能来源：preset_skills 目录 + env-catalog/skills- 执行环境：通过 env_optimize 优化参数- 限流控制：throttle 模块控制调用频率### 代码解析流程```项目路径 → read_agent_pack_meta → grep_agent_pack(pattern) → read_agent_pack_file(slice)```- 元数据：一次性读取 pack metadata- 符号搜索：使用特定 regex 模式搜索- 代码读取：仅读取目标文件的关键切片（≤150行）### 文档生成流程```代码源 → litho-documents-skill → 四阶段生成 → 输出文档```- Phase 1：预处理（目录结构、元数据提取）- Phase 2：研究（语义分析、依赖关系）- Phase 3：组合（文档结构组装）- Phase 4：输出（Markdown 格式化）---
+| 容器 | 作用 | 技术栈 |
+| :--- | :--- | :--- |
+| **CLI** | 命令行入口，调用 Agent 或 TUI | `crates/mind-mesh-cli` |
+| **Desktop App** | 桌面 GUI，提供可视化交互 | `src-tauri` (Rust) + `src` (Svelte) |
+| **Core Lib** | 项目分析、知识构建核心引擎 | `crates/mind-mesh-core` |
+| **Agent Orchestrator** | 负责上下文生成与 ACP 协议通信 | `crates/mind-mesh-agent` |
+| **RTK Packager** | 负责 `agent/repomix.md` 生成 | `packages/rtk` |
 
-## 技术选型### 语言分工| 层级 | 技术 | 理由 ||------|------|------|| 核心引擎 | Rust | 高性能、内存安全、并发优势 || 前端 | TypeScript + Svelte | 快速开发、响应式 UI || 运行时 | Node.js (RTK) | JavaScript 生态兼容性 || 桌面打包 | Tauri (Rust) | 原生应用体验、小体积 |### 架构决策| 决策点 | 选择 | 依据 ||--------|------|------|| 知识分层 | Macro/Meso/Micro三层 | 平衡性能与灵活性 || 代码解析 | 分层读取策略 | 避免冗余、按需加载 || 智能体模型 | 技能（Skill）封装 | 模块化、可复用 || 文档生成 | Litho 工作流 | 标准化、自动化 |### 核心工具| 工具 | 类型 | 职责 ||------|------|------|| `search_knowledge` | API | 文档搜索 || `read_agent_context` | Meso | 上下文读取 || `grep_agent_pack` | Micro | 代码搜索 || `read_agent_pack_file` | Micro | 代码读取 || `litho-documents-skill` | Skill | 文档生成 |---
+### 系统组件 (Layers)
 
-## 系统边界### 知识边界- **文档边界**：仅限 structured docs (interfaces/, routes/, modules/)- **代码边界**：仅限 agent/repomix.md- **架构边界**：通过 agent/context.md 预加载### 智能体边界| 智能体 | 职责边界 | 输入 | 输出 ||--------|----------|------|------|| `agent-architecture-skill` | 架构设计生成 | 项目结构 | agent/context.md || `agent-context-skill` | 上下文构建 | 用户请求 + 项目 | 上下文包 || `mind-mesh-knowledge-skill` | 知识问答 | 用户查询 | 检索结果 + 引用 || `repomix-context-skill` | Repomix 读取 | 项目路径 | 元数据/代码 |### 模块边界- **核心引擎**：不提供具体业务功能，仅提供检索与处理- **智能体框架**：无状态，依赖核心引擎与技能- **前端**：仅负责 UI 交互，不处理业务逻辑- **Tauri 层**：负责桌面原生桥接### 数据边界- **本地数据**：项目元数据、本地文档索引- **外部数据**：Git仓库、第三方库- **缓存数据**：Repomix 包、搜索结果---
+| 组件 | 层级 | 职责 |
+| :--- | :--- | :--- |
+| **Human Interface** | UI | Svelte 组件面板（项目选择、流程监控）。 |
+| **System Entry** | API | 暴露 CLI 与 Tauri 接口供用户操作。 |
+| **Workflow Engine** | Bus | 协调 Litho 生成、DeepWiki 问答及 SDD 流程。 |
+| **Core Logic** | Logic | 解析 Git 结构、RAG 查询 LLM、构建 Mermaid 图。 |
+| **Output Gen** | Writer | 编写 Markdown 文件至 `.mind-mesh` 目录。 |
 
-## 代码映射索引### 核心引擎 (crates/mind-mesh-core)| 路径 | 说明 ||------|------|| `src/assets/mod.rs` | 资产模块入口 || `src/assets/repomix.rs` | Repomix 包解析 || `src/assets/context_layers.rs` | 上下文分层 || `src/ingest/mod.rs` | 内容注入入口 || `src/search.rs` | 搜索引擎 || `src/doc.rs` | 文档生成器 || `src/project.rs` | 项目管理 || `src/registry.rs` | 注册表管理 |### 智能体框架 (crates/mind-mesh-agent)| 路径 | 说明 ||------|------|| `src/lib.rs` | 智能体库入口 || `src/builder.rs` | 智能体构建器 || `src/agent_context.rs` | 上下文管理 || `src/compat_tool.rs` | 工具兼容 || `src/skill/` | 技能目录（通过 SKILL.md 描述） |### 前端 (src/)| 路径 | 说明 ||------|------|| `src/lib/api.ts` | 后端接口定义 || `src/lib/assistantSteps.ts` | 智能体步骤 || `src/App.svelte` | 主应用组件 || `src/lib/components/` | UI 组件集合 |### 智能体技能 (preset_skills/)| 路径 | 说明 ||------|------|| `agent-architecture-skill/SKILL.md` | 架构设计技能定义 || `agent-context-skill/SKILL.md` | 上下文生成技能定义 || `litho-documents-skill/` | 文档生成技能目录 |---
+## 模块地图
+
+| 模块 | 职责 | 主路径 |
+| :--- | :--- | :--- |
+| **MindMesh Agent** | Agent 状态管理、ACP 协议实现、上下文生成 | `crates/mind-mesh-agent/src/agent_context.rs` |
+| **MindMesh Core** | RAG 引擎、环境解析 (`agents-md`/`env-catalog`)、知识检索 | `crates/mind-mesh-core/src/assets/env/catalg.rs` |
+| **MindMesh CLI** | 命令行参数处理、子进程执行入口 | `crates/mind-mesh-cli/src/main.rs` |
+| **Rtk Package** | Repomix 打包逻辑，生成微视代码文档 | `packages/rtk/scripts/install.js` |
+| **Sdd Workflow** | 生成 SDD (软件设计文档) 的 Agent 工作流 | `preset_skills/sdd-workflow-skill` |
+| **Env Catalog** | 结构化定义 Agent 环境与 Skill 注册表 | `env-catalog/catalog.json` |
+| **Litho Generator** | 人类友好文档生成流水线 | `preset_skills/litho-documents-skill` |
+| **Tauri App** | 桌面应用逻辑，窗口管理，后端通信 | `src-tauri/src/main.rs` |
+
+## 核心流程
+
+1. **初始化与注册**：用户选择项目 → CLI/TUI 启动 → 扫描 `Cargo.toml`/`package.json` → 注册到 `env-catalog` 并生成基础项目元数据。
+2. **知识构建流水线**：
+   - **Agent 侧**：`MindMesh Agent` 启动 Agent，通过 ACP 调用 `Core` 接口查询 Git 元数据与依赖。
+   - **环境加载**：`Core` 读取 `env-catalog` 中定义的 `mind-mesh-knowledge-skill` 等内置环境片段注入上下文。
+   - **深度分析**：`Core` 调用 LLM 分析代码结构，生成 C4 图、模块职责描述。
+   - **资产输出**：写入 `agent/context.md` (结构化) 与 `human/` 目录 (Litho 文档)。
+3. **DeepWiki 问答**：用户提问 → `Ask` 模块通过 RAG 在 `agent/context.md` 与 `human/` 文档中检索 → LLM 综合推理 → 返回答案。
+
+## 技术选型
+
+| 类型 | 选型 | 说明 |
+| :--- | :--- | :--- |
+| **语言** | Rust, TypeScript, Svelte | 高并发核心逻辑 (Rust) + 快速 UI (Svelte/TS)。 |
+| **UI 框架** | Svelte, Tauri | 桌面端无插件 UI，轻量级打包。 |
+| **知识引擎** | Mermaid | 渲染 C4 架构图。 |
+| **包管理** | Cargo, npm, Bun | Rust 与 Node 生态混合管理。 |
+| **协议** | ACP (Agent Communication Protocol) | 定义 Agent 与 MindMesh 通信标准。 |
+| **文档标准** | Litho Markdown | 内部文档格式，支持 Mermaid 与结构化数据。 |
+| **搜索** | Full-text / RAG | 基于 `agent/context.md` 的结构化检索 + LLM 推理。 |
+
+## 系统边界
+
+| 边界对象 | 类型 | 交互说明 |
+| :--- | :--- | :--- |
+| **Git Repo** | 输入源 | 读取 `src/`, `crates/`, `.git` 元数据，提供项目上下文。 |
+| **LLM Service** | 外部服务 | 接收思维链提示，返回 C4 图代码、模块描述、文档内容。 |
+| **Agent Platform** | 外部服务 | 宿主 `MindMesh Agent`，接收 ACP 请求并执行。 |
+| **OpenCode** | 外部服务 | 接收 `repomix.md` 中的知识库，进行代码填空与纠错。 |
+| **File System** | 存储 | `.mind-mesh/` 目录用于持久化生成的知识资产与缓存。 |
+| **Third-party Libs** | 依赖库 | `tauri`, `cookie`, `repomix` 二进制文件等。 |
 
 ## 代码映射索引
 
-（精简版）### Micro 层路径索引（按职责分组）#### 文档搜索相关```interfaces/: → src/routes/routes/: → src/routes/modules/: → src/modules/```#### 上下文读取路径```agent/context.md → read_agent_context(project="…", section="…")agent/repomix.md → read_agent_pack_file(project="…", file_path="…")```#### 代码搜索示例```fn
+| 概念 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| **Agent Root** | `crates/mind-mesh-agent/src/lib.rs` | Agent 模块入口，定义 ACP 服务 trait。 |
+| **Context Gen** | `crates/mind-mesh-agent/src/context_generator.rs` | 生成 `agent/context.md` 的编排逻辑。 |
+| **Env Logic** | `crates/mind-mesh-core/src/assets/env/mod.rs` | 环境加载入口，聚合 `agents-md` 与 `skills`。 |
+| **Search Logic** | `crates/mind-mesh-core/src/search.rs` | 执行 RAG 搜索与向量匹配逻辑。 |
+| **Core Lib Root** | `crates/mind-mesh-core/src/lib.rs` | 核心库公开接口定义。 |
+| **CLI Main** | `crates/mind-mesh-cli/src/main.rs` | 命令行工具入口，解析参数并启动 Worker。 |
+| **Desktop Entrypoint**| `src-tauri/src/main.rs` | Tauri 应用主入口，初始化窗口与插件。 |
+| **Svelte App Root** | `src/App.svelte` | 应用根 ballots组件，编排各面板组件。 |
+| **API Routes** | `src/lib/api.ts` | 定义前后端通信 API 端点。 |
+| **Meta Definition** | `preset_skills/agent-architecture-skill/mind-mesh-meta.example.json` | Agent 技能对 `agent/context.md` 的构造规则。 |
+| **Skills Catalog** | `env-catalog/skills/catalog.json` | 技能注册表，定义 Skill 元数据与输入输出。 |
+| **Human Doc Root** | `human/` | 静态与动态生成的 Litho 文档目录。 |
+| **Repomix** | `agent/repomix.md` | `agent-pack` 产生的微视图代码文档。 |
+| **Tauri Config** | `src-tauri/tauri.conf.json` | Tauri 窗口与插件配置，定义 `allow` 能力。 |
+
+---
+
+*Generated by `agent-architecture-skill` for `mind-mesh` project.*```

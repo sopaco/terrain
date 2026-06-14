@@ -254,7 +254,13 @@
 
   const lithoProgressParts = $derived(parseProgressLabel(lithoProgress));
 
-  const showStatusBar = $derived(statusKind !== "idle" || statusMessage !== "就绪");
+  const showTaskProgressBar = $derived(
+    Boolean(selectedProject && (lithoProgress || (initBusy && initProgress))),
+  );
+
+  const showStatusBar = $derived(
+    !showTaskProgressBar && (statusKind !== "idle" || statusMessage !== "就绪"),
+  );
 
   function openArchitectureDoc() {
     if (!projectOverview?.agent_context.path || !selectedProject) return;
@@ -278,7 +284,6 @@
     initBusy = true;
     initProgress = "正在扫描仓库…";
     const targetSlug = slug ?? null;
-    setStatus("正在初始化项目知识库…", "progress", targetSlug ?? repoPath);
     if (targetSlug) {
       selectedProject = targetSlug;
       selectedRepoPath = repoPath;
@@ -319,6 +324,7 @@
       setStatus("Select a project with a linked repository first.", "error");
       return;
     }
+    if (agentContextBusy) return;
     if (!llmStatus?.ready) {
         setStatus("请先在设置中配置 LLM。", "error");
       return;
@@ -441,7 +447,6 @@
       lithoBusy: true,
       lithoProgress: `正在生成 ${TERMS.humanKnowledge}（Litho）…`,
     });
-    setStatus(`正在生成 ${TERMS.humanKnowledge}…`, "progress", slug);
     try {
       await runLithoGeneration(selectedRepoPath, slug);
     } catch (e) {
@@ -563,9 +568,6 @@
         (ev) => {
           const { project_slug, message } = ev.payload;
           initProgress = message;
-          if (selectedProject === project_slug || initBusy) {
-            setStatus(message, "progress", project_slug);
-          }
           if (ev.payload.stage === "human_docs") {
             setProjectTask(project_slug, { lithoBusy: true, lithoProgress: message });
           } else if (ev.payload.stage === "scan") {
@@ -581,9 +583,6 @@
           const { project_slug, stage, message } = ev.payload;
           const label = `[${stage}] ${message}`;
           setProjectTask(project_slug, { lithoProgress: label });
-          if (selectedProject === project_slug) {
-            setStatus(label, "progress", project_slug);
-          }
         },
       );
       unlistenDone = await listen<{
@@ -631,7 +630,6 @@
         selectedSlug={selectedProject}
         open={projectPickerOpen}
         addBusy={initBusy}
-        taskLabel={lithoBusy ? lithoProgress || "处理中" : repackBusy ? "重建索引中…" : initBusy ? initProgress ?? "初始化中…" : null}
         ontoggle={() => (projectPickerOpen = !projectPickerOpen)}
         onselect={selectProject}
         onadd={addProject}
@@ -675,7 +673,7 @@
     </div>
   </header>
 
-  {#if selectedProject && (lithoProgress || (initBusy && initProgress))}
+  {#if showTaskProgressBar && selectedProject}
     <TaskProgressBar
       projectSlug={selectedProject}
       stage={initBusy ? "初始化" : lithoProgressParts.stage}

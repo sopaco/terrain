@@ -82,7 +82,13 @@ pub fn build_agent_context_prompt(
         .unwrap_or_default();
 
     let output_path = paths.agent_context_main(project_slug).display().to_string();
-    let skill_dir = default_agent_arch_skill_dir().display().to_string();
+    let skill_dir = default_agent_arch_skill_dir();
+    let skill_dir_display = skill_dir.display().to_string();
+    let skill_excerpt = std::fs::read_to_string(skill_dir.join("SKILL.md"))
+        .unwrap_or_default()
+        .chars()
+        .take(6000)
+        .collect::<String>();
 
     let directory_structure = pack_meta
         .as_ref()
@@ -109,11 +115,14 @@ pub fn build_agent_context_prompt(
 
     Ok(format!(
         "Generate an Agent-facing architecture context document for project \"{project_slug}\".\n\n\
-         Skill directory (read SKILL.md): {skill_dir}\n\
          Output file (write with absolute path): {output_path}\n\
          Repository: {repo_path}\n\n\
+         ## Agent architecture skill (preloaded — do NOT call read_doc on skill files)\n\
+         Skill directory: {skill_dir_display}\n\n\
+         {skill_excerpt}\n\n\
          ## Requirements (macro layer — no code细节)\n\
          - NO function bodies, NO large code blocks, NO pasted grep output\n\
+         - Do NOT use read_doc on preset_skills/ or SKILL.md — skill text is above\n\
          - Focus: architecture, modules, core flows, tech choices, system boundaries\n\
          - **Structured entries (模块/接口/边界)**: synthesize from Developer meta below + repomix discovery — not from fixed directory rules\n\
          - Module ↔ path mappings as **compact tables** (≤12 rows per table)\n\
@@ -136,7 +145,8 @@ pub fn build_agent_context_prompt(
          Return ONLY the final markdown document in your reply. \
          Do not include reasoning, thinking, or commentary outside the document.\n",
         project_slug = project_slug,
-        skill_dir = skill_dir,
+        skill_dir_display = skill_dir_display,
+        skill_excerpt = skill_excerpt,
         output_path = output_path,
         repo_path = repo_path,
         index_body = index.body,
