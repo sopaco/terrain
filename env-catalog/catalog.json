@@ -21,7 +21,7 @@
     {
       "id": "skill-codegraph",
       "kind": "skill",
-      "label": "Codegraph Skill",
+      "label": "CodeGraph Skill",
       "description": "通过 CLI 查询符号关系与影响面",
       "skill_dir": "codegraph-skill",
       "depends_on": ["tool-codegraph", "skill-mind-mesh-knowledge"]
@@ -46,7 +46,7 @@
     {
       "id": "tool-codegraph",
       "kind": "tool",
-      "label": "Codegraph CLI",
+      "label": "CodeGraph CLI",
       "description": "安装 @colbymchenry/codegraph 并初始化项目索引",
       "package": "@colbymchenry/codegraph",
       "check": ["bunx", "codegraph", "status"],

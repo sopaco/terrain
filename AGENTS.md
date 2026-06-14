@@ -50,7 +50,7 @@ Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分�
 |------|------|------|
 | MindMesh 知识 | 加载 `mind-mesh-knowledge-skill` | 架构、私域知识 |
 | Repomix | 见 `repomix-context-skill`；`rtk grep` 搜索 pack | 源码片段 |
-| Codegraph | `bunx codegraph query/callers/callees/impact` | 符号关系、影响分析 |
+| CodeGraph | `bunx codegraph query/callers/callees/impact` | 符号关系、影响分析 |
 | RTK | **`rtk <cmd>`** 前缀所有冗长 shell 命令 | git、test、build、lint、docker |
 
 ### RTK 要点（必读 `rtk-skill`）

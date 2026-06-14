@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use super::agents_md::agents_md_ready;
-use super::catalog::{load_catalog, resolve_skill_source, env_catalog_root, IntegrationDef, rtk_package_path};
+use super::catalog::{
+    env_catalog_root, load_catalog, resolve_skill_source, rtk_package_path, IntegrationDef,
+};
 use crate::error::Result;
 
 #[derive(Debug, Clone, Serialize)]
@@ -153,9 +155,9 @@ fn dependencies_met(
     selected: &std::collections::HashSet<String>,
     integrated: &std::collections::HashMap<String, bool>,
 ) -> bool {
-    def.depends_on.iter().all(|d| {
-        selected.contains(d) || integrated.get(d) == Some(&true)
-    })
+    def.depends_on
+        .iter()
+        .all(|d| selected.contains(d) || integrated.get(d) == Some(&true))
 }
 
 pub(crate) fn dependencies_satisfied(
@@ -265,7 +267,7 @@ fn rtk_available(repo: &Path) -> bool {
         || local_bin_succeeds(repo, "rtk", &["gain"])
 }
 
-/// Codegraph CLI on PATH or project-local via bunx / node_modules.
+/// CodeGraph CLI on PATH or project-local via bunx / node_modules.
 fn codegraph_available(repo: &Path) -> bool {
     command_succeeds("codegraph", &["status"], repo)
         || command_succeeds("bunx", &["codegraph", "status"], repo)
@@ -296,14 +298,20 @@ pub fn gitignore_has_patterns(repo: &Path, patterns: &[String]) -> bool {
     let Ok(content) = std::fs::read_to_string(&path) else {
         return false;
     };
-    patterns.iter().all(|p| content.lines().any(|l| l.trim() == p))
+    patterns
+        .iter()
+        .all(|p| content.lines().any(|l| l.trim() == p))
 }
 
 pub(crate) fn skill_source_path(def: &IntegrationDef) -> PathBuf {
     resolve_skill_source(&env_catalog_root(), def)
 }
 
-pub(crate) fn substitute_install_args(_repo: &Path, _def: &IntegrationDef, args: &[String]) -> Vec<String> {
+pub(crate) fn substitute_install_args(
+    _repo: &Path,
+    _def: &IntegrationDef,
+    args: &[String],
+) -> Vec<String> {
     args.iter()
         .map(|a| {
             if a == "@mind-mesh/rtk" {

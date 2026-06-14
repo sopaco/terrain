@@ -1,12 +1,12 @@
 ---
 name: codegraph-skill
-description: Use when a coding agent needs symbol relationships, callers, callees, or change impact. Guides Codegraph CLI usage (not MCP).
+description: Use when a coding agent needs symbol relationships, callers, callees, or change impact. Guides CodeGraph CLI usage (not MCP).
 version: 1.1.0
 ---
 
-# Codegraph Skill
+# CodeGraph Skill
 
-[Codegraph](https://colbymchenry.github.io/codegraph/) provides a pre-indexed **AST code graph** for this project.
+[CodeGraph](https://colbymchenry.github.io/codegraph/) provides a pre-indexed **AST code graph** for this project.
 
 MindMesh uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
 
@@ -50,7 +50,7 @@ Always run via `bunx codegraph …` (or `codegraph` on PATH):
 
 ## When to use vs other skills
 
-| Use Codegraph | Use instead |
+| Use CodeGraph | Use instead |
 |---------------|-------------|
 | Symbol lookup, call chains | Architecture → `context.md` |
 | Impact before refactor | Business rules → `knowledge/` |
@@ -60,7 +60,7 @@ Always run via `bunx codegraph …` (or `codegraph` on PATH):
 ## Do not
 
 - Run `codegraph install` (MindMesh manages AGENTS.md)
-- Blind `grep` the whole repo to re-verify Codegraph AST results
+- Blind `grep` the whole repo to re-verify CodeGraph AST results
 - Chain `query` + manual file reads when `impact` answers the question
 
 ## Staleness

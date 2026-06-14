@@ -37,7 +37,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: TERMS.agentEnv,
-    description: `为 Cursor 等 Coding Agent 集成 Skills、Codegraph、RTK 与 AGENTS.md，与「${TERMS.humanKnowledge}」生成相互独立。`,
+    description: `为 Cursor 等 Coding Agent 集成 Skills、CodeGraph、RTK 与 AGENTS.md，与「${TERMS.humanKnowledge}」生成相互独立。`,
   },
   {
     term: "结构化索引",
