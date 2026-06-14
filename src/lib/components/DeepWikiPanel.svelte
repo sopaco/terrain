@@ -371,7 +371,7 @@
     if (knowledgeDoc) {
       try {
         const docPath =
-          c.path.startsWith("/") || c.path.startsWith("projects/")
+          c.path.startsWith("/") || c.path.includes(".mind-mesh/")
             ? c.path
             : projectSlug
               ? resolveKnowledgeDocPath(projectSlug, c.path)

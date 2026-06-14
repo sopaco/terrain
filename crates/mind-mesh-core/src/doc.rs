@@ -59,18 +59,27 @@ fn infer_frontmatter(path: &Path, body: &str) -> DocFrontmatter {
 }
 
 fn infer_project_slug(path: &Path) -> String {
-    let parts: Vec<_> = path
-        .components()
-        .filter_map(|c| c.as_os_str().to_str())
-        .collect();
-    for (i, part) in parts.iter().enumerate() {
-        if *part == "projects" {
-            if let Some(slug) = parts.get(i + 1) {
-                return (*slug).to_string();
+    if let Some(repo) = repo_parent_of_mind_mesh(path) {
+        let repo_s = repo.display().to_string();
+        if let Ok(entries) = crate::registry::load_registry() {
+            if let Some(entry) = entries.iter().find(|e| e.repo_path == repo_s) {
+                return entry.slug.clone();
             }
+        }
+        if let Some(name) = repo.file_name().and_then(|s| s.to_str()) {
+            return name.to_string();
         }
     }
     "unknown".into()
+}
+
+fn repo_parent_of_mind_mesh(path: &Path) -> Option<std::path::PathBuf> {
+    for ancestor in path.ancestors() {
+        if ancestor.file_name().and_then(|s| s.to_str()) == Some(".mind-mesh") {
+            return ancestor.parent().map(std::path::Path::to_path_buf);
+        }
+    }
+    None
 }
 
 fn extract_markdown_title(body: &str) -> Option<String> {

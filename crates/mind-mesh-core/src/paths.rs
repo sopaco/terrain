@@ -1,76 +1,93 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::error::{CoreError, Result};
 use crate::registry;
 use crate::schema::DocType;
 
-/// Root layout for the Markdown knowledge base.
-#[derive(Debug, Clone)]
+/// Registry-backed resolver for per-repository knowledge at `{repo}/.mind-mesh/`.
+#[derive(Debug, Clone, Default)]
 pub struct KnowledgePaths {
-    root: PathBuf,
+    /// When set, CLI and workspace tools default to this repository.
+    workspace_repo: Option<PathBuf>,
 }
 
 impl KnowledgePaths {
-    pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn default_home() -> Self {
-        Self::new(dirs_home().join(".mind-mesh/knowledge"))
+    pub fn with_workspace_repo(repo: impl Into<PathBuf>) -> Self {
+        Self {
+            workspace_repo: Some(repo.into()),
+        }
     }
 
-    pub fn root(&self) -> &Path {
-        &self.root
+    /// Knowledge root inside a repository (`.mind-mesh/`).
+    pub fn for_repo(repo_path: impl AsRef<Path>) -> Self {
+        Self::with_workspace_repo(repo_path.as_ref().to_path_buf())
     }
 
-    pub fn projects_dir(&self) -> PathBuf {
-        self.root.join("projects")
+    pub fn workspace_repo(&self) -> Option<&Path> {
+        self.workspace_repo.as_deref()
     }
 
-    pub fn meta_dir(&self) -> PathBuf {
-        self.root.join(".meta")
+    /// `{workspace_repo}/.mind-mesh` when a workspace repo is set.
+    pub fn workspace_knowledge_root(&self) -> Option<PathBuf> {
+        self.workspace_repo
+            .as_ref()
+            .map(|repo| registry::knowledge_root_for_repo(repo))
+    }
+
+    /// Resolve workspace repo from `MIND_MESH_REPO_PATH` or the nearest Git root from cwd.
+    pub fn resolve_workspace_repo() -> Option<PathBuf> {
+        if let Ok(path) = std::env::var("MIND_MESH_REPO_PATH") {
+            let p = PathBuf::from(path);
+            if p.is_dir() {
+                return Some(p);
+            }
+        }
+        let start = std::env::current_dir().ok()?;
+        find_git_repo_root(&start)
+    }
+
+    /// Build paths scoped to the current workspace repository when discoverable.
+    pub fn from_workspace() -> Self {
+        Self::resolve_workspace_repo()
+            .map(Self::with_workspace_repo)
+            .unwrap_or_default()
+    }
+
+    /// Knowledge root for a registered project slug (`{repo}/.mind-mesh/`).
+    pub fn try_project_dir(&self, project_slug: &str) -> Result<PathBuf> {
+        registry::knowledge_root_for_slug(project_slug).ok_or_else(|| {
+            CoreError::ProjectNotFound(format!(
+                "project '{project_slug}' is not registered; add the repository first"
+            ))
+        })
+    }
+
+    pub fn project_dir(&self, project_slug: &str) -> PathBuf {
+        self.try_project_dir(project_slug)
+            .unwrap_or_else(|e| panic!("{e}"))
+    }
+
+    /// All registered project knowledge roots that have an index file.
+    pub fn indexed_project_roots(&self) -> HashMap<String, PathBuf> {
+        registry::indexed_project_roots().unwrap_or_default()
     }
 
     /// `~/.mind-mesh/debug` — scratch files for inspecting model output.
-    pub fn debug_dir(&self) -> PathBuf {
-        self.root
-            .parent()
-            .map(|parent| parent.join("debug"))
-            .unwrap_or_else(|| self.root.join(".debug"))
+    pub fn debug_dir() -> PathBuf {
+        dirs_home().join(".mind-mesh").join("debug")
     }
 
     pub fn write_debug_file(&self, name: &str, content: &str) {
-        let dir = self.debug_dir();
+        let dir = Self::debug_dir();
         if std::fs::create_dir_all(&dir).is_err() {
             return;
         }
         let _ = std::fs::write(dir.join(name), content);
-    }
-
-    pub fn project_dir(&self, project_slug: &str) -> PathBuf {
-        registry::knowledge_root_for_slug(project_slug)
-            .unwrap_or_else(|| self.projects_dir().join(project_slug))
-    }
-
-    /// All indexed project knowledge roots: registry repos first, then legacy global dirs.
-    pub fn indexed_project_roots(&self) -> HashMap<String, PathBuf> {
-        let mut roots = registry::indexed_project_roots().unwrap_or_default();
-        if let Ok(entries) = std::fs::read_dir(self.projects_dir()) {
-            for entry in entries.flatten() {
-                if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                    continue;
-                }
-                let slug = entry.file_name().to_string_lossy().into_owned();
-                if roots.contains_key(&slug) {
-                    continue;
-                }
-                let index = self.projects_dir().join(&slug).join("index.md");
-                if index.is_file() {
-                    roots.insert(slug, entry.path());
-                }
-            }
-        }
-        roots
     }
 
     pub fn project_index(&self, project_slug: &str) -> PathBuf {
@@ -86,15 +103,7 @@ impl KnowledgePaths {
     }
 
     pub fn sync_meta_path(&self, project_slug: &str) -> PathBuf {
-        let local = self.project_dir(project_slug).join(".meta/sync.json");
-        if local.is_file() {
-            return local;
-        }
-        let legacy = self.meta_dir().join(format!("{project_slug}-sync.json"));
-        if legacy.is_file() {
-            return legacy;
-        }
-        local
+        self.project_dir(project_slug).join(".meta/sync.json")
     }
 
     /// Human-facing Litho docs (`1.概述.md`, `2.架构.md`, …).
@@ -147,9 +156,20 @@ impl KnowledgePaths {
     }
 
     pub fn ensure_layout(&self) -> std::io::Result<()> {
-        std::fs::create_dir_all(self.projects_dir())?;
-        std::fs::create_dir_all(self.meta_dir())?;
+        let registry_dir = registry::registry_dir();
+        std::fs::create_dir_all(&registry_dir)?;
+        std::fs::create_dir_all(Self::debug_dir())?;
         Ok(())
+    }
+
+    /// Knowledge root for Ask/ACP env vars — prefers an explicit project slug.
+    pub fn knowledge_root_for(&self, project_slug: Option<&str>) -> Option<PathBuf> {
+        if let Some(slug) = project_slug {
+            if let Ok(root) = self.try_project_dir(slug) {
+                return Some(root);
+            }
+        }
+        self.workspace_knowledge_root()
     }
 
     pub fn ensure_project_layout(&self, project_slug: &str) -> std::io::Result<()> {
@@ -165,11 +185,19 @@ impl KnowledgePaths {
         std::fs::create_dir_all(base.join("env"))?;
         Ok(())
     }
+}
 
-    /// Knowledge root inside a repository (`.mind-mesh/`).
-    pub fn for_repo(repo_path: impl AsRef<Path>) -> Self {
-        Self::new(registry::knowledge_root_for_repo(repo_path.as_ref()))
+fn find_git_repo_root(start: &Path) -> Option<PathBuf> {
+    let mut cur = start.to_path_buf();
+    loop {
+        if cur.join(".git").exists() {
+            return Some(cur);
+        }
+        if !cur.pop() {
+            break;
+        }
     }
+    None
 }
 
 fn dirs_home() -> PathBuf {

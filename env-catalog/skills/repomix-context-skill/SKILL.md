@@ -30,7 +30,7 @@ Read **architecture first** via `mind-mesh-knowledge-skill` → `.mind-mesh/agen
    rtk read .mind-mesh/agent/repomix.md -l aggressive   # scan structure first if huge
    ```
    Then read the specific `### file` block (line range), ≤150 lines per read.
-4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run MindMesh **Pack Context** / scan
+4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run MindMesh **重建源码索引** / scan
 
 ## Repomix section format
 
@@ -67,7 +67,7 @@ If `repomix.md` is missing:
 
 ```bash
 mind-mesh assets pack-agent <repo-path>
-# or MindMesh UI: Pack Context
+# or from repo root in MindMesh UI: 重建源码索引
 ```
 
 ## Related skills

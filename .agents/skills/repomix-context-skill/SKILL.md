@@ -6,7 +6,7 @@ version: 1.2.0
 
 # Repomix Context Skill
 
-MindMesh stores a **local repomix index** at `.mind-mesh/agent/repomix.md` (gitignored, fast to regenerate).
+MindMesh stores a **local repomix index** at `.mind-mesh/agent/repomix.md` inside the repository (gitignored, fast to regenerate).
 
 Read **architecture first** via `mind-mesh-knowledge-skill` → `.mind-mesh/agent/context.md`.
 
@@ -25,12 +25,8 @@ Read **architecture first** via `mind-mesh-knowledge-skill` → `.mind-mesh/agen
    rtk grep "### src/lib/api.ts" .mind-mesh/agent/repomix.md
    ```
    Or agent Grep limited to that path with tight patterns.
-3. **Read slices** — extract matching `### path/to/file` sections only:
-   ```bash
-   rtk read .mind-mesh/agent/repomix.md -l aggressive   # scan structure first if huge
-   ```
-   Then read the specific `### file` block (line range), ≤150 lines per read.
-4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run MindMesh **Pack Context** / scan
+3. **Read slices** — extract matching `### path/to/file` sections only (≤150 lines per read).
+4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run MindMesh **重建源码索引** / scan
 
 ## Repomix section format
 
@@ -66,8 +62,8 @@ Grep for `### relative/path` to jump to a file.
 If `repomix.md` is missing:
 
 ```bash
-mind-mesh assets pack-agent <repo-path>
-# or MindMesh UI: Pack Context
+mind-mesh assets pack-agent .
+# or from repo root in MindMesh UI: 重建源码索引
 ```
 
 ## Related skills

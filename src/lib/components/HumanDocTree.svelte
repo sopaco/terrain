@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { HumanDocEntry } from "../types";
+  import { generateLabel, TERMS } from "../terminology";
 
   interface Props {
     docs: HumanDocEntry[];
@@ -21,9 +22,9 @@
   };
 
   const SECTION_LABELS: Record<string, string> = {
-    human: "Human",
-    agent: "Agent",
-    structured: "结构化",
+    human: TERMS.humanKnowledge,
+    agent: TERMS.agentKnowledge,
+    structured: "结构化索引",
   };
 
   const FOLDER_LABELS: Record<string, string> = {
@@ -287,14 +288,14 @@
 <div class="flex min-h-0 flex-1 flex-col">
   <div class="border-b border-white/10 px-3 py-2.5">
     <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold text-white/70">Documentation</span>
+      <span class="text-xs font-semibold text-white/70">文档目录</span>
       {#if loading}
         <span class="inline-flex items-center gap-1.5 text-[10px] text-sky-300/90">
           <span class="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent"></span>
           Loading
         </span>
       {:else}
-        <span class="text-[10px] text-white/30">{docs.length} docs</span>
+        <span class="text-[10px] text-white/30">{docs.length} 篇</span>
       {/if}
     </div>
   </div>
@@ -323,7 +324,7 @@
       </div>
     {:else if !loading}
       <p class="px-2 py-4 text-xs leading-relaxed text-white/35">
-        No human docs yet. Use <span class="text-white/55">Generate Docs</span> in the toolbar.
+        尚无{TERMS.humanKnowledge}。请在工具栏点击 <span class="text-white/55">{generateLabel(TERMS.humanKnowledge, false)}</span>。
       </p>
     {/if}
   </div>

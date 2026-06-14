@@ -730,7 +730,10 @@ impl ChatEngine {
         );
         env.insert(
             "MIND_MESH_KNOWLEDGE_ROOT".into(),
-            self.paths.root().display().to_string(),
+            self.paths
+                .knowledge_root_for(project)
+                .map(|p| p.display().to_string())
+                .unwrap_or_default(),
         );
         if let Some(slug) = project {
             env.insert("MIND_MESH_PROJECT_SLUG".into(), slug.to_string());
@@ -838,7 +841,10 @@ fn build_ask_acp_prompt(
 ) -> Result<String> {
     let skill_dir = default_ask_acp_skill_dir();
     let skill_dir_s = skill_dir.display().to_string();
-    let knowledge_root = paths.root().display().to_string();
+    let knowledge_root = paths
+        .knowledge_root_for(project)
+        .map(|p| p.display().to_string())
+        .unwrap_or_default();
     let base = build_ask_prompt(query, project, paths)?;
 
     Ok(format!(

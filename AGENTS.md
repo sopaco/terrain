@@ -3,26 +3,28 @@
 This file guides AI coding agents working in this repository.
 
 
-<!-- mind-mesh:begin env-overview v1 -->
+<!-- mind-mesh:begin env-overview v3 -->
 ## AI 工程环境（MindMesh）
 
 本仓库由 MindMesh 配置了 AI 工程环境。Coding Agent 请遵循以下约定：
 
-- **知识资产**位于 `.mind-mesh/`（架构上下文、私域知识、源码索引摘要）
+- **知识资产**位于本仓库 **`.mind-mesh/`**（Agent 友好的知识资产、人类友好的知识库、私域知识、源码索引；可随 Git 协作）
+- **项目登记**在本地 `~/.mind-mesh/registry.json`（仅记录仓库路径，不含知识正文）
 - **Skills** 位于 `.agents/skills/`（由 MindMesh 注入，可按需重新集成）
 - **工作流**：先读知识 → 再查关系 → 最后读源码；shell 输出优先走 RTK
 <!-- mind-mesh:end env-overview -->
 
-<!-- mind-mesh:begin knowledge-guide v1 -->
+<!-- mind-mesh:begin knowledge-guide v3 -->
 ## MindMesh 知识资产
 
-Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分层策略查询 `.mind-mesh/`。
+Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分层策略查询 **`.mind-mesh/`**（仓库内路径，非全局目录）。
 
 | 层级 | 路径 | 何时使用 |
 |------|------|----------|
-| 架构 | `.mind-mesh/agent/context.md` | 模块划分、核心流程、系统边界 |
+| Agent 友好 | `.mind-mesh/agent/context.md` | 模块划分、核心流程、系统边界 |
 | 私域 | `.mind-mesh/knowledge/` | 业务术语、内部框架/API/脚手架 |
-| 源码 | repomix（见 `repomix-context-skill`） | 实现细节、跨文件符号（本地索引，不入库） |
+| 人类友好 | `.mind-mesh/human/` | Litho 人类友好的知识库（可选参考） |
+| 源码 | `.mind-mesh/agent/repomix.md`（见 `repomix-context-skill`） | 实现细节（本地索引，不入库） |
 | 关系 | codegraph CLI（见 `codegraph-skill`） | 调用链、依赖关系、影响分析 |
 
 **原则**：先宏观后微观；优先读已生成文档，再 grep 源码索引。

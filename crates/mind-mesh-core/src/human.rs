@@ -106,7 +106,7 @@ fn list_agent_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<Vec<Hum
     let candidates = [
         (
             paths.agent_context_main(project_slug),
-            "架构上下文".to_string(),
+            "Agent 友好的知识资产".to_string(),
             "agent/context.md",
         ),
         (

@@ -182,20 +182,45 @@ fn score_match(query: &str, full: &str, body: &str, project: &str) -> u32 {
 #[cfg(test)]
 mod read_doc_tests {
     use super::*;
+    use crate::registry::registry_test_lock;
     use crate::schema::{DocFrontmatter, DocType};
     use crate::write_doc;
 
+    struct RegistryTestGuard {
+        _lock: std::sync::MutexGuard<'static, ()>,
+        _registry_dir: tempfile::TempDir,
+    }
+
+    fn test_setup(slug: &str) -> (KnowledgePaths, String, RegistryTestGuard) {
+        let lock = registry_test_lock();
+        let registry_dir = tempfile::tempdir().unwrap();
+        let registry_file = registry_dir.path().join("registry.json");
+        unsafe {
+            std::env::set_var("MIND_MESH_REGISTRY_FILE", &registry_file);
+        }
+        let repo = registry_dir.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        (
+            paths,
+            slug.to_string(),
+            RegistryTestGuard {
+                _lock: lock,
+                _registry_dir: registry_dir,
+            },
+        )
+    }
+
     #[test]
     fn resolves_project_relative_human_doc() {
-        let dir = tempfile::tempdir().unwrap();
-        let paths = KnowledgePaths::new(dir.path());
-        let slug = "read-doc-test-proj";
-        let human_dir = paths.human_docs_dir(slug);
-        std::fs::create_dir_all(&human_dir).unwrap();
+        let (paths, slug, _guard) = test_setup("read-doc-test-proj");
+        let human_dir = paths.human_docs_dir(&slug);
         let doc_path = human_dir.join("1.概述.md");
         let fm = DocFrontmatter {
             doc_type: DocType::Human,
-            project: slug.into(),
+            project: slug.clone(),
             title: Some("概述".into()),
             source: None,
             refs: vec![],
@@ -205,16 +230,8 @@ mod read_doc_tests {
         };
         write_doc(&doc_path, &fm, "# 概述\n\nHello").unwrap();
 
-        let doc = read_doc_at_in_project(&paths, "human/1.概述.md", Some(slug)).unwrap();
+        let doc = read_doc_at_in_project(&paths, "human/1.概述.md", Some(&slug)).unwrap();
         assert!(doc.body.contains("Hello"));
-
-        let doc2 = read_doc_at_in_project(
-            &paths,
-            &format!("projects/{slug}/human/1.概述.md"),
-            None,
-        )
-        .unwrap();
-        assert!(doc2.body.contains("Hello"));
     }
 }
 
@@ -241,7 +258,7 @@ pub fn read_doc_at(paths: &KnowledgePaths, rel_or_abs: &str) -> Result<crate::do
     read_doc_at_in_project(paths, rel_or_abs, None)
 }
 
-/// Resolve a knowledge document path against registry-backed project roots and legacy layout.
+/// Resolve a knowledge document path against registry-backed project roots.
 pub fn read_doc_at_in_project(
     paths: &KnowledgePaths,
     rel_or_abs: &str,
@@ -271,16 +288,15 @@ pub fn read_doc_at_in_project(
     }
 
     let rel = trimmed.trim_start_matches("./").trim_start_matches('/');
-    push(paths.root().join(rel), &mut candidates);
 
-    if let Some(rest) = rel.strip_prefix("projects/") {
-        if let Some((slug, doc_rel)) = rest.split_once('/') {
-            push(paths.project_dir(slug).join(doc_rel), &mut candidates);
+    if let Some(slug) = project_slug {
+        if let Ok(root) = paths.try_project_dir(slug) {
+            push(root.join(rel), &mut candidates);
         }
     }
 
-    if let Some(slug) = project_slug {
-        push(paths.project_dir(slug).join(rel), &mut candidates);
+    if let Some(root) = paths.workspace_knowledge_root() {
+        push(root.join(rel), &mut candidates);
     }
 
     for (_slug, root) in paths.indexed_project_roots() {

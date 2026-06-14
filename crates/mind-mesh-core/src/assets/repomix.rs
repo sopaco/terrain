@@ -12,10 +12,10 @@ use crate::schema::{AgentPackMeta, AssetGenerator};
 pub const AGENT_PACK_STRATEGY: &str = "architecture-context";
 
 const AGENT_CONTEXT_HEADER: &str = "\
-MindMesh Agent Source Pack (repomix-rs / architecture-context)
+MindMesh Agent Source Pack (repomix-core / architecture-context)
 Purpose: Indexed snapshot of project source code for Ask-mode retrieval.
 Use grep_agent_pack and read_agent_pack_file on demand — never load this entire file into LLM context.
-Auto-packed on first Ask when missing; use Pack Context in the UI to refresh after large codebase changes.
+Auto-packed on first Ask when missing; use 重建源码索引 in the MindMesh UI to refresh after large codebase changes.
 ";
 
 /// Paths excluded from agent context to reduce noise and refresh cost.

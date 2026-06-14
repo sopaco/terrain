@@ -16,9 +16,9 @@ use mind_mesh_core::{
 #[derive(Parser)]
 #[command(name = "mind-mesh", about = "MindMesh knowledge base CLI")]
 struct Cli {
-    /// Knowledge base root (default: ~/.mind-mesh/knowledge or MIND_MESH_KNOWLEDGE_ROOT)
+    /// Repository path (default: current Git workspace or MIND_MESH_REPO_PATH)
     #[arg(long, global = true)]
-    knowledge_root: Option<PathBuf>,
+    repo_path: Option<PathBuf>,
 
     #[command(subcommand)]
     command: Commands,
@@ -30,7 +30,8 @@ enum Commands {
     List,
     /// Scan a local Git repository into Markdown knowledge docs
     Scan {
-        repo_path: PathBuf,
+        /// Repository path (default: current Git workspace)
+        repo_path: Option<PathBuf>,
         #[arg(long)]
         slug: Option<String>,
     },
@@ -119,7 +120,7 @@ enum ToolsCommands {
 
 #[derive(Subcommand)]
 enum AssetCommands {
-    /// Pack agent context with repomix-core → projects/{slug}/agent/repomix.md
+    /// Pack agent context with repomix-core → {repo}/.mind-mesh/agent/repomix.md
     PackAgent {
         repo_path: PathBuf,
         #[arg(long)]
@@ -186,18 +187,21 @@ enum AssetCommands {
 enum EnvCommands {
     /// Show integration status for a repository
     Status {
-        repo_path: PathBuf,
+        /// Repository path (default: current Git workspace)
+        repo_path: Option<PathBuf>,
     },
     /// Preview integration plan
     Plan {
-        repo_path: PathBuf,
+        /// Repository path (default: current Git workspace)
+        repo_path: Option<PathBuf>,
         /// Integration IDs (default: all non-optional + unintegrated)
         #[arg(long, value_delimiter = ',')]
         ids: Option<Vec<String>>,
     },
     /// Apply selected integrations
     Apply {
-        repo_path: PathBuf,
+        /// Repository path (default: current Git workspace)
+        repo_path: Option<PathBuf>,
         /// Integration IDs to apply (default: all)
         #[arg(long, value_delimiter = ',')]
         ids: Option<Vec<String>>,
@@ -205,15 +209,25 @@ enum EnvCommands {
 }
 
 fn paths(cli: &Cli) -> KnowledgePaths {
-    cli.knowledge_root
-        .clone()
-        .map(KnowledgePaths::new)
-        .or_else(|| {
-            std::env::var("MIND_MESH_KNOWLEDGE_ROOT")
-                .ok()
-                .map(KnowledgePaths::new)
-        })
-        .unwrap_or_else(KnowledgePaths::default_home)
+    if let Some(repo) = cli.repo_path.clone() {
+        return KnowledgePaths::with_workspace_repo(repo);
+    }
+    KnowledgePaths::from_workspace()
+}
+
+fn workspace_project_slug(paths: &KnowledgePaths) -> Option<String> {
+    let repo = paths.workspace_repo()?;
+    Some(slug_from(
+        &repo.to_path_buf(),
+        None,
+    ))
+}
+
+fn require_repo_path(global: Option<PathBuf>, explicit: Option<PathBuf>) -> Result<PathBuf> {
+    explicit
+        .or(global)
+        .or_else(KnowledgePaths::resolve_workspace_repo)
+        .context("repository path is required; pass a path, --repo-path, or run inside a Git workspace")
 }
 
 fn slug_from(repo_path: &PathBuf, slug: Option<String>) -> String {
@@ -242,6 +256,7 @@ async fn main() -> Result<()> {
     mind_mesh_agent::load_dotenv();
     let cli = Cli::parse();
     let paths = paths(&cli);
+    let cli_repo = cli.repo_path.clone();
     paths.ensure_layout().context("create knowledge layout")?;
 
     match cli.command {
@@ -250,6 +265,7 @@ async fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&projects)?);
         }
         Commands::Scan { repo_path, slug } => {
+            let repo_path = require_repo_path(cli_repo.clone(), repo_path)?;
             let report = ProjectScanner::new(paths)
                 .scan_repo(&repo_path.display().to_string(), slug.as_deref())
                 .await?;
@@ -260,6 +276,7 @@ async fn main() -> Result<()> {
             project,
             limit,
         } => {
+            let project = project.or_else(|| workspace_project_slug(&paths));
             let hits = KnowledgeSearch::new(&paths).search(
                 &query,
                 SearchOptions {
@@ -439,7 +456,7 @@ async fn main() -> Result<()> {
             AssetCommands::RepairContext { slug, repo_path } => {
                 let repo_hint = repo_path.as_ref().map(|p| p.display().to_string());
                 let repo = resolve_project_repo_path(&paths, &slug, repo_hint.as_deref())?;
-                let raw_path = paths.debug_dir().join("last-agent-context-raw.md");
+                let raw_path = KnowledgePaths::debug_dir().join("last-agent-context-raw.md");
                 let raw = std::fs::read_to_string(&raw_path)
                     .with_context(|| format!("read {}", raw_path.display()))?;
                 let meta = write_agent_context(&paths, &slug, &repo, &raw)?;
@@ -448,10 +465,12 @@ async fn main() -> Result<()> {
         },
         Commands::Env { command } => match command {
             EnvCommands::Status { repo_path } => {
+                let repo_path = require_repo_path(cli_repo.clone(), repo_path)?;
                 let status = get_env_status(&repo_path)?;
                 println!("{}", serde_json::to_string_pretty(&status)?);
             }
             EnvCommands::Plan { repo_path, ids } => {
+                let repo_path = require_repo_path(cli_repo.clone(), repo_path)?;
                 let selected = match ids {
                     Some(v) if !v.is_empty() => v,
                     _ => default_env_ids(&repo_path)?,
@@ -460,6 +479,7 @@ async fn main() -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&plan)?);
             }
             EnvCommands::Apply { repo_path, ids } => {
+                let repo_path = require_repo_path(cli_repo.clone(), repo_path)?;
                 let selected = match ids {
                     Some(v) if !v.is_empty() => v,
                     _ => default_env_ids(&repo_path)?,

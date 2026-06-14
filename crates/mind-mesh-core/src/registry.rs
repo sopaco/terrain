@@ -13,6 +13,13 @@ use crate::error::{CoreError, Result};
 
 const REGISTRY_FILE: &str = "registry.json";
 
+/// Serialize registry env mutation in unit/integration tests.
+pub fn registry_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    use std::sync::Mutex;
+    static LOCK: Mutex<()> = Mutex::new(());
+    LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistryEntry {
     pub slug: String,
@@ -25,8 +32,15 @@ struct RegistryFile {
     projects: Vec<RegistryEntry>,
 }
 
+pub fn registry_dir() -> PathBuf {
+    dirs_home().join(".mind-mesh")
+}
+
 fn registry_path() -> PathBuf {
-    dirs_home().join(".mind-mesh").join(REGISTRY_FILE)
+    if let Ok(path) = std::env::var("MIND_MESH_REGISTRY_FILE") {
+        return PathBuf::from(path);
+    }
+    registry_dir().join(REGISTRY_FILE)
 }
 
 fn dirs_home() -> PathBuf {

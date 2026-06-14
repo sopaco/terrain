@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { getEnvStatus, planEnvIntegration, runEnvIntegration } from "../api";
   import type { EnvIntegrationStatus, EnvPlan, EnvStatus } from "../types";
+  import { TERMS } from "../terminology";
 
   interface Props {
     repoPath: string | null;
@@ -124,7 +125,7 @@
     if (!repoPath || selected.size === 0) return;
     applying = true;
     progressMessage = "准备集成…";
-    onStatus?.("正在集成 AI 工程环境…", "progress");
+    onStatus?.("正在集成 Agent 友好的工程环境…", "progress");
     try {
       const result = await runEnvIntegration(repoPath, [...selected]);
       if (result.errors.length > 0) {
@@ -170,7 +171,7 @@
 
 <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
   <header>
-    <h2 class="text-lg font-semibold text-white/90">AI 工程环境集成</h2>
+    <h2 class="text-lg font-semibold text-white/90">{TERMS.agentEnv}</h2>
     <p class="mt-1 text-sm text-white/50">
       为 Coding Agent（Claude Code、Cursor 等）配置 Skills、工具链与 AGENTS.md。
       知识资产使用仓库内 <code class="text-white/70">.mind-mesh/</code>，由 MindMesh 生成。
@@ -183,7 +184,7 @@
   {#if !repoPath}
     <p class="text-sm text-white/45">请先选择已索引的项目。</p>
   {:else if loading}
-    <p class="text-sm text-white/45">正在检测工程环境…</p>
+    <p class="text-sm text-white/45">正在检测集成状态…</p>
   {:else if status}
     <div class="flex flex-wrap items-center gap-2">
       <button

@@ -42,7 +42,7 @@ adk-tool = "1.0.0"
 
 mind-mesh-core = { path = "crates/mind-mesh-core" }
 mind-mesh-agent = { path = "crates/mind-mesh-agent" }
-repomix-core = { path = "../repomix-rs/crates/core" }
+repomix-core = "2.0"
 
 [patch.crates-io]
 # Vendored fixes for blanket `From` impl conflicts with `time` 0.3.48 (Rust 1.88+).

@@ -107,7 +107,7 @@ async fn prompt_agent_with_doc_poll(
                         on_progress(LithoProgress {
                             stage: "done".into(),
                             message: format!(
-                                "已检测到 {count} 篇 Human 文档，Agent 会话超时已结束等待"
+                                "已检测到 {count} 篇人类友好的知识库文档，Agent 会话超时已结束等待"
                             ),
                         });
                         return Ok(String::new());
@@ -151,7 +151,7 @@ pub async fn run_litho_generation(
     if human_doc_count > 0 {
         on_progress(LithoProgress {
             stage: "done".into(),
-            message: format!("Human docs already exist ({human_doc_count} file(s))"),
+            message: format!("人类友好的知识库已存在（{human_doc_count} 篇）"),
         });
         return Ok(LithoGenerationResult {
             plan: job.plan,
@@ -172,14 +172,14 @@ pub async fn run_litho_generation(
             composition_prompt,
             human_dir.clone(),
             "composing",
-            "正在将研究结果整理为 Human 文档…".into(),
+            "正在将研究结果整理为人类友好的知识库…".into(),
             &mut on_progress,
         )
         .await?
     } else {
         on_progress(LithoProgress {
             stage: "generating".into(),
-            message: "Agent 正在分析仓库并生成 Human 文档…".into(),
+            message: "Agent 正在分析仓库并生成人类友好的知识库…".into(),
         });
 
         let prompt = build_litho_generation_prompt(&job.plan);
@@ -188,7 +188,7 @@ pub async fn run_litho_generation(
             prompt,
             human_dir.clone(),
             "generating",
-            "Agent 正在分析仓库并生成 Human 文档…".into(),
+            "Agent 正在分析仓库并生成人类友好的知识库…".into(),
             &mut on_progress,
         )
         .await?
@@ -208,7 +208,7 @@ pub async fn run_litho_generation(
             composition_prompt,
             human_dir.clone(),
             "composing",
-            "正在将研究结果整理为 Human 文档…".into(),
+            "正在将研究结果整理为人类友好的知识库…".into(),
             &mut on_progress,
         )
         .await?;

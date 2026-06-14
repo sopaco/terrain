@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Top-level document kinds stored under `knowledge/projects/{slug}/`.
+/// Top-level document kinds stored under `{repo}/.mind-mesh/`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DocType {

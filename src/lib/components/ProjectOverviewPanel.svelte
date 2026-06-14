@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ProjectOverview, StaleProjectSummary } from "../types";
+  import { generateLabel, TERMS } from "../terminology";
 
   interface Props {
     overview: ProjectOverview | null;
@@ -64,8 +65,8 @@
   const initHint = $derived.by(() => {
     if (llmReady && acpOk) return null;
     const parts: string[] = [];
-    if (!llmReady) parts.push("LLM（Agent 上下文）");
-    if (!acpOk) parts.push("ACP（Human 文档）");
+    if (!llmReady) parts.push(`LLM（${TERMS.agentKnowledge}）`);
+    if (!acpOk) parts.push(`ACP（${TERMS.humanKnowledge}）`);
     return `部分步骤需要配置：${parts.join("、")}，可在设置中完成后再试`;
   });
 
@@ -96,7 +97,7 @@
   }
 </script>
 
-{#snippet initButton(repoPath: string, slug?: string, label = "初始化项目知识库")}
+{#snippet initButton(repoPath: string, slug?: string, label = "添加并初始化")}
   <button
     type="button"
     class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
@@ -107,7 +108,7 @@
   </button>
 {/snippet}
 
-{#snippet initBanner(repoPath: string, slug?: string, title: string, detail: string)}
+{#snippet initBanner(repoPath: string, title: string, detail: string, slug?: string)}
   <div class="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
@@ -232,7 +233,7 @@
       <div class="w-full max-w-lg rounded-2xl border border-white/10 bg-white/[0.03] p-8">
         <p class="text-xl font-semibold text-white/85">欢迎使用 MindMesh</p>
         <p class="mt-2 text-sm text-white/45">
-          添加本地仓库后，将自动索引并生成知识资产，可在本页一览状态并进入知识库阅读。
+          添加本地仓库后将自动完成索引与知识资产生成，可在本页查看状态并进入知识库阅读。
         </p>
       </div>
 
@@ -245,8 +246,8 @@
             {@render initBanner(
               stale.repo_path,
               stale.slug,
-              stale.slug,
               "仓库 `.mind-mesh` 已缺失或损坏，可一键重新扫描并生成知识资产。",
+              stale.slug,
             )}
           {/each}
         </div>
@@ -261,16 +262,16 @@
       {#if needsAssetInit && overview.repo_path}
         {@render initBanner(
           overview.repo_path,
-          overview.slug,
           "部分知识资产尚未就绪",
-          `当前 ${readyCount}/${overview.asset_health.length} 项知识资产就绪。可一键完成扫描索引、Repack、Agent 上下文与 Human 文档。`,
+          `当前 ${readyCount}/${overview.asset_health.length} 项就绪。可一键完成扫描、源码索引、${TERMS.agentKnowledge} 与 ${TERMS.humanKnowledge}。`,
+          overview.slug,
         )}
       {/if}
       {#if needsEnvSetup && onOpenEnv}
         <div class="rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-5 py-4">
-          <p class="text-sm font-medium text-violet-100/90">AI 工程环境尚未配置</p>
+          <p class="text-sm font-medium text-violet-100/90">Agent 友好的工程环境尚未配置</p>
           <p class="mt-1 text-xs text-white/45">
-            为 Coding Agent 集成 Skills、工具链与 AGENTS.md（与知识资产生成无关）。
+            为 Coding Agent 集成 Skills、工具链与 AGENTS.md（与「{TERMS.humanKnowledge}」生成无关）。
             当前 {overview.agent_env.summary}。
           </p>
           <button
@@ -278,7 +279,7 @@
             class="mt-3 rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium hover:bg-violet-500"
             onclick={onOpenEnv}
           >
-            前往工程环境 →
+            前往 Agent 友好的工程环境 →
           </button>
         </div>
       {/if}
@@ -334,7 +335,7 @@
             <span class="text-[10px] text-white/30">就绪</span>
           </div>
           <div class="flex flex-col gap-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-white/35">工程环境</span>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-white/35">Agent 友好的工程环境</span>
             <span
               class={`text-sm font-medium ${overview.agent_env.ready ? "text-emerald-200/90" : "text-violet-200/80"}`}
             >
@@ -352,8 +353,8 @@
         <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">快速进入</h3>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {@render navCard({
-            title: "Agent 架构上下文",
-            subtitle: "模块地图、核心流程与技术选型，供 Ask 使用",
+            title: TERMS.agentKnowledge,
+            subtitle: "模块地图、核心流程与技术选型，供 Agent 与问答使用",
             ready: overview.agent_context.ready,
             meta: overview.agent_context.ready
               ? `${overview.agent_context.section_count} 个章节`
@@ -361,12 +362,12 @@
             icon: "🧭",
             onClick: onOpenArchitectureDoc,
             onGenerate: onGenerateAgentContext,
-            generateLabel: agentContextBusy ? "生成中…" : "生成 Agent 上下文",
+            generateLabel: generateLabel(TERMS.agentKnowledge, agentContextBusy),
             regenerateLabel: agentContextBusy ? "生成中…" : "重新生成",
             generateDisabled: agentContextBusy || !llmReady,
           })}
           {@render navCard({
-            title: "Human 项目概述",
+            title: TERMS.humanKnowledge,
             subtitle: "Litho C4 文档，从 1.概述 开始阅读",
             ready: overview.litho.has_human_docs,
             meta: overview.litho.has_human_docs
@@ -375,11 +376,11 @@
             icon: "📘",
             onClick: onOpenHumanOverview,
             onGenerate: onGenerateHuman,
-            generateLabel: lithoBusy ? "生成中…" : "Generate Docs",
+            generateLabel: generateLabel(TERMS.humanKnowledge, lithoBusy),
             generateDisabled: lithoBusy || !acpOk,
           })}
           {@render navCard({
-            title: "AI 工程环境",
+            title: TERMS.agentEnv,
             subtitle: "Skills、工具链与 AGENTS.md，供 Coding Agent 使用",
             ready: overview.agent_env.ready,
             meta: overview.agent_env.ready
@@ -404,7 +405,7 @@
             class="text-xs text-indigo-300/90 hover:text-indigo-200"
             onclick={onOpenKnowledge}
           >
-            进入知识库 →
+            进入{TERMS.knowledgeTab} →
           </button>
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
@@ -450,7 +451,7 @@
                       disabled={lithoBusy || !acpOk}
                       onclick={onGenerateHuman}
                     >
-                      {lithoBusy ? "生成中…" : "Generate Docs"}
+                      {generateLabel(TERMS.humanKnowledge, lithoBusy)}
                     </button>
                   {/if}
                 {:else if asset.track === "agent_context"}
@@ -474,7 +475,7 @@
                         ? "生成中…"
                         : asset.ready
                           ? "重新生成"
-                          : "生成上下文"}
+                          : generateLabel(TERMS.agentKnowledge, false)}
                     </button>
                   {/if}
                 {:else if asset.track === "agent_pack" && onRepack}

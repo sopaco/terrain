@@ -1,21 +1,27 @@
 ---
 name: mind-mesh-ask-skill
 description: ACP-mode Ask — query MindMesh knowledge via mind-mesh CLI instead of native tools.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # MindMesh Ask (ACP mode)
 
 When MindMesh Ask runs in **ACP mode**, you do not have built-in function tools. Use the **`mind-mesh tools`** CLI to access the same knowledge layers.
 
-Environment variables (set by MindMesh):
+## Storage model
+
+Each project's knowledge lives at **`{repo}/.mind-mesh/`** (versioned with the repository). The desktop app keeps a local registry at `~/.mind-mesh/registry.json` — only repo pointers, not knowledge files.
+
+## Environment variables (set by MindMesh)
 
 | Variable | Purpose |
 |----------|---------|
-| `MIND_MESH_KNOWLEDGE_ROOT` | Knowledge base root |
+| `MIND_MESH_KNOWLEDGE_ROOT` | Current project's `.mind-mesh/` directory (absolute path) |
 | `MIND_MESH_PROJECT_SLUG` | Current project slug |
-| `MIND_MESH_REPO_PATH` | Repository path (citations only) |
-| `MIND_MESH_ASK_SKILL` | This skill directory |
+| `MIND_MESH_REPO_PATH` | Repository root (for citations) |
+| `MIND_MESH_ASK_SKILL` | Ask skill directory |
+
+CLI without MindMesh UI: run inside a Git workspace, or pass `--repo-path` / set `MIND_MESH_REPO_PATH`.
 
 ## Three layers (same as native Ask)
 
@@ -29,9 +35,12 @@ Environment variables (set by MindMesh):
 
 ## CLI reference
 
-All commands output JSON to stdout. Run from any directory; pass `--knowledge-root` only if `MIND_MESH_KNOWLEDGE_ROOT` is unset.
+All commands output JSON to stdout.
 
 ```bash
+# From repository root (auto-detects workspace), or:
+# mind-mesh --repo-path /path/to/repo tools ...
+
 # List indexed projects
 mind-mesh tools list-projects
 
@@ -48,7 +57,7 @@ mind-mesh tools read-pack-file --project {slug} --file src/main.rs --start-line 
 mind-mesh tools read-context --project {slug}
 mind-mesh tools read-context --project {slug} --section "核心流程"
 
-# Human / structured docs
+# Human / structured docs (paths relative to .mind-mesh/)
 mind-mesh tools search --query "authentication" --project {slug}
 mind-mesh tools read-doc --project {slug} --path human/1.概述.md
 ```

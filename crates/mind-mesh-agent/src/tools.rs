@@ -387,7 +387,7 @@ pub fn read_doc_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
             "read_doc",
             "Read a Litho or structured knowledge Markdown document. \
              Use absolute paths from search_knowledge hits, or project-relative paths like \
-             `human/1.概述.md`, `agent/context.md`, or `projects/{slug}/human/….md`. \
+             `human/1.概述.md` or `agent/context.md` (paths relative to `.mind-mesh/`). \
              Pass `project` when the path is ambiguous.",
             move |_ctx, args| {
                 let paths = paths.clone();

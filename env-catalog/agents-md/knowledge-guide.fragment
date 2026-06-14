@@ -1,12 +1,13 @@
 ## MindMesh 知识资产
 
-Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分层策略查询 `.mind-mesh/`。
+Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分层策略查询 **`.mind-mesh/`**（仓库内路径，非全局目录）。
 
 | 层级 | 路径 | 何时使用 |
 |------|------|----------|
-| 架构 | `.mind-mesh/agent/context.md` | 模块划分、核心流程、系统边界 |
+| Agent 友好 | `.mind-mesh/agent/context.md` | 模块划分、核心流程、系统边界 |
 | 私域 | `.mind-mesh/knowledge/` | 业务术语、内部框架/API/脚手架 |
-| 源码 | repomix（见 `repomix-context-skill`） | 实现细节、跨文件符号（本地索引，不入库） |
+| 人类友好 | `.mind-mesh/human/` | Litho 人类友好的知识库（可选参考） |
+| 源码 | `.mind-mesh/agent/repomix.md`（见 `repomix-context-skill`） | 实现细节（本地索引，不入库） |
 | 关系 | codegraph CLI（见 `codegraph-skill`） | 调用链、依赖关系、影响分析 |
 
 **原则**：先宏观后微观；优先读已生成文档，再 grep 源码索引。

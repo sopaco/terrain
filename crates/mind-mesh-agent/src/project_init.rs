@@ -68,7 +68,7 @@ pub async fn run_project_initialization(
         if llm_status(model_config).ready {
             on_progress(ProjectInitProgress {
                 stage: "agent_context".into(),
-                message: "正在生成 Agent 架构上下文…".into(),
+                message: "正在生成 Agent 友好的知识资产…".into(),
             });
             if !mind_mesh_core::agent_pack_ready(paths, &project_slug) {
                 pack_agent_assets(paths, &project_slug, repo_path).await?;
@@ -77,7 +77,7 @@ pub async fn run_project_initialization(
             run_agent_context_generation(paths, engine, &project_slug, repo_path).await?;
             agent_context_generated = true;
         } else {
-            notes.push("Agent 架构上下文：请先在设置中配置 LLM".into());
+            notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
         }
     }
 
@@ -89,14 +89,14 @@ pub async fn run_project_initialization(
         if acp_available(acp) {
             on_progress(ProjectInitProgress {
                 stage: "human_docs".into(),
-                message: "正在生成 Human 文档（Litho）…".into(),
+                message: "正在生成人类友好的知识库（Litho）…".into(),
             });
             let result =
                 run_litho_generation(paths, &project_slug, repo_path, acp, &on_litho_progress)
                     .await?;
             human_doc_count = result.human_doc_count;
         } else {
-            notes.push("Human 文档：请先在设置中配置 ACP 代理".into());
+            notes.push("人类友好的知识库：请先在设置中配置 ACP 代理".into());
         }
     }
 

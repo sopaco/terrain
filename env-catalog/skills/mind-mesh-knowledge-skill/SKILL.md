@@ -6,7 +6,7 @@ version: 1.1.0
 
 # MindMesh Knowledge Skill
 
-MindMesh stores **AI knowledge assets** under `.mind-mesh/` in this repository.
+MindMesh stores **AI knowledge assets** under **`.mind-mesh/`** in this repository (not a global `~/.mind-mesh/knowledge` directory). The desktop app registry at `~/.mind-mesh/registry.json` only maps slugs → repo paths.
 
 Load **`rtk-skill`** when you need to run shell commands during investigation (git, grep repomix file, tests).
 

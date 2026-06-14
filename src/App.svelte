@@ -11,6 +11,7 @@
   import ProjectOverviewPanel from "./lib/components/ProjectOverviewPanel.svelte";
   import ProjectSelector from "./lib/components/ProjectSelector.svelte";
   import SddWorkflowPanel from "./lib/components/SddWorkflowPanel.svelte";
+  import HelpPanel from "./lib/components/HelpPanel.svelte";
   import SettingsPanel from "./lib/components/SettingsPanel.svelte";
   import StatusBanner from "./lib/components/StatusBanner.svelte";
   import TaskProgressBar from "./lib/components/TaskProgressBar.svelte";
@@ -29,9 +30,9 @@
     readDocument,
     runAgentContextGeneration,
     runLithoGeneration,
-    scanProject,
     searchKnowledge,
   } from "./lib/api";
+  import { generateLabel, TERMS } from "./lib/terminology";
   import { resolveSourceCitation } from "./lib/resolveSource";
   import { isKnowledgeMarkdownPath, resolveKnowledgeDocPath } from "./lib/knowledgeDoc";
   import type {
@@ -75,6 +76,7 @@
 
   let projectPickerOpen = $state(false);
   let settingsOpen = $state(false);
+  let helpOpen = $state(false);
   let deepWikiOpen = $state(false);
   let deepWikiInitialQuestion = $state<string | null>(null);
   let activeTab = $state<AppTab>("overview");
@@ -85,8 +87,7 @@
   let initProgress = $state<string | null>(null);
 
   let docLoading = $state(false);
-  let scanBusy = $state(false);
-  let statusMessage = $state("Ready");
+  let statusMessage = $state("就绪");
   let statusKind = $state<StatusKind>("idle");
   let statusDetail = $state<string | null>(null);
 
@@ -132,20 +133,34 @@
     deepWikiSources = { ...deepWikiSources, [slug]: slice };
   }
 
-  async function refresh() {
-    setStatus("Refreshing projects…", "loading");
+  async function refreshKnowledgeRoot(slug?: string | null) {
+    const target = slug ?? selectedProject;
+    if (!target) {
+      knowledgeRoot = "";
+      return;
+    }
     try {
-      [projects, staleProjects, knowledgeRoot, acpOk, llmStatus] = await Promise.all([
+      knowledgeRoot = await getKnowledgeRoot(target);
+    } catch {
+      knowledgeRoot = "";
+    }
+  }
+
+  async function refresh() {
+    setStatus("正在刷新项目列表…", "loading");
+    try {
+      [projects, staleProjects, acpOk, llmStatus] = await Promise.all([
         listProjects(),
         listStaleProjects(),
-        getKnowledgeRoot(),
         checkAcp(),
         checkLlm(),
       ]);
       if (!selectedProject && projects.length > 0) {
         await selectProject(projects[0]);
+      } else {
+        await refreshKnowledgeRoot();
       }
-      setStatus(`Indexed ${projects.length} project(s)`, "success");
+      setStatus(`已索引 ${projects.length} 个项目`, "success");
     } catch (e) {
       setStatus(String(e), "error");
     }
@@ -175,37 +190,16 @@
 
   async function addProject() {
     projectPickerOpen = false;
+    if (initBusy) return;
     let picked: string | null;
     try {
       picked = await open({ directory: true, multiple: false });
     } catch (e) {
-      setStatus(`Folder picker failed: ${e}`, "error");
+      setStatus(`选择文件夹失败：${e}`, "error");
       return;
     }
     if (!picked || Array.isArray(picked)) return;
-
-    scanBusy = true;
-    setStatus("Scanning repository…", "progress", picked);
-    try {
-      const report = await scanProject(picked);
-      selectedProject = report.project_slug;
-      selectedRepoPath = picked;
-      setProjectTask(report.project_slug, { repackBusy: true, lithoBusy: false, lithoProgress: "" });
-      const packInfo = report.agent_pack
-        ? ` — agent pack ${report.agent_pack.total_tokens} tokens`
-        : "";
-      setStatus(`Indexed ${report.project_slug}${packInfo}`, "success");
-      await refresh();
-      await loadHumanDocs(report.project_slug);
-      await loadProjectOverview(report.project_slug);
-    } catch (e) {
-      setStatus(String(e), "error");
-    } finally {
-      scanBusy = false;
-      if (selectedProject) {
-        setProjectTask(selectedProject, { repackBusy: false });
-      }
-    }
+    await triggerProjectInitialization(picked);
   }
 
   async function selectProject(project: ProjectSummary) {
@@ -227,8 +221,12 @@
         selectedRepoPath = null;
       }
     }
-    setStatus(`Project: ${project.name}`, "idle", project.slug);
-    await Promise.all([loadHumanDocs(project.slug), loadProjectOverview(project.slug)]);
+    setStatus(`项目：${project.name}`, "idle", project.slug);
+    await Promise.all([
+      loadHumanDocs(project.slug),
+      loadProjectOverview(project.slug),
+      refreshKnowledgeRoot(project.slug),
+    ]);
   }
 
   async function openFolderPath(path: string) {
@@ -256,7 +254,7 @@
 
   const lithoProgressParts = $derived(parseProgressLabel(lithoProgress));
 
-  const showStatusBar = $derived(statusKind !== "idle" || statusMessage !== "Ready");
+  const showStatusBar = $derived(statusKind !== "idle" || statusMessage !== "就绪");
 
   function openArchitectureDoc() {
     if (!projectOverview?.agent_context.path || !selectedProject) return;
@@ -292,7 +290,7 @@
       selectedRepoPath = result.repo_path;
       const note = result.notes.length ? ` · ${result.notes.join("；")}` : "";
       setStatus(
-        `初始化完成：索引 ${result.scan_files_written} 项，Human 文档 ${result.human_doc_count} 篇${note}`,
+        `初始化完成：索引 ${result.scan_files_written} 项，${TERMS.humanKnowledge} ${result.human_doc_count} 篇${note}`,
         result.notes.length ? "idle" : "success",
         result.project_slug,
       );
@@ -300,6 +298,7 @@
       await Promise.all([
         loadHumanDocs(result.project_slug),
         loadProjectOverview(result.project_slug),
+        refreshKnowledgeRoot(result.project_slug),
       ]);
     } catch (e) {
       setStatus(String(e), "error");
@@ -320,7 +319,7 @@
       return;
     }
     if (!llmStatus?.ready) {
-      setStatus("Configure LLM in Settings first.", "error");
+        setStatus("请先在设置中配置 LLM。", "error");
       return;
     }
     const slug = selectedProject;
@@ -347,7 +346,7 @@
         activeTab = "knowledge";
         await openHumanDoc(overview);
       } else {
-        setStatus("尚未生成 1.概述.md，请先在知识资产中 Generate Docs", "error");
+        setStatus(`尚未生成 1.概述.md，请先生成 ${TERMS.humanKnowledge}`, "error");
         activeTab = "knowledge";
       }
     })();
@@ -370,7 +369,7 @@
           await openHumanDoc(target);
         } else {
           setStatus(
-            "尚无结构化条目：在仓库根目录添加 mind-mesh-meta.json，然后生成 Agent 上下文",
+            "尚无结构化条目：在仓库根目录添加 mind-mesh-meta.json，然后生成 Agent 友好的知识资产",
             "error",
           );
         }
@@ -412,11 +411,11 @@
   async function packAgentForSelected() {
     if (!selectedRepoPath || !selectedProject) return;
     setProjectTask(selectedProject, { repackBusy: true });
-    setStatus("Repacking agent source", "progress", selectedProject);
+    setStatus("正在重建源码索引…", "progress", selectedProject);
     try {
       const pack = await packAgentAssets(selectedRepoPath, selectedProject);
       setStatus(
-        `Repacked: ${pack.total_files} files, ${pack.total_tokens} tokens`,
+        `索引已更新：${pack.total_files} 个文件，约 ${pack.total_tokens} tokens`,
         "success",
       );
       if (selectedProject) await loadProjectOverview(selectedProject);
@@ -439,9 +438,9 @@
     const slug = selectedProject;
     setProjectTask(slug, {
       lithoBusy: true,
-      lithoProgress: "Starting Litho generation via OpenCode ACP…",
+      lithoProgress: `正在生成 ${TERMS.humanKnowledge}（Litho）…`,
     });
-    setStatus("Starting Litho generation…", "progress", slug);
+    setStatus(`正在生成 ${TERMS.humanKnowledge}…`, "progress", slug);
     try {
       await runLithoGeneration(selectedRepoPath, slug);
     } catch (e) {
@@ -461,7 +460,7 @@
     if (knowledgeDoc) {
       try {
         const docPath =
-          c.path.startsWith("/") || c.path.startsWith("projects/")
+          c.path.startsWith("/") || c.path.includes(".mind-mesh/")
             ? c.path
             : resolveKnowledgeDocPath(selectedProject, c.path);
         const doc = await readDocument(docPath);
@@ -594,8 +593,8 @@
           const count = result.human_doc_count;
           const msg =
             count === 0
-              ? `Litho finished for ${project_slug} but no human docs were written.`
-              : `Human docs ready for ${project_slug} (${count} files)`;
+              ? `Litho 已完成，但未写入 ${TERMS.humanKnowledge}（${project_slug}）`
+              : `${TERMS.humanKnowledge} 已就绪（${project_slug}，${count} 篇）`;
           if (selectedProject === project_slug) {
             setStatus(msg, count === 0 ? "error" : "success");
             await loadHumanDocs(project_slug);
@@ -625,8 +624,8 @@
         {projects}
         selectedSlug={selectedProject}
         open={projectPickerOpen}
-        {scanBusy}
-        taskLabel={lithoBusy ? lithoProgress || "Working" : repackBusy ? "Repacking…" : null}
+        addBusy={initBusy}
+        taskLabel={lithoBusy ? lithoProgress || "处理中" : repackBusy ? "重建索引中…" : initBusy ? initProgress ?? "初始化中…" : null}
         ontoggle={() => (projectPickerOpen = !projectPickerOpen)}
         onselect={selectProject}
         onadd={addProject}
@@ -649,6 +648,15 @@
       {#if showStatusBar}
         <StatusBanner message={statusMessage} kind={statusKind} detail={statusDetail} />
       {/if}
+      <button
+        type="button"
+        class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
+        title="术语说明"
+        aria-label="术语说明"
+        onclick={() => (helpOpen = true)}
+      >
+        ？
+      </button>
       <button
         type="button"
         class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
@@ -716,7 +724,7 @@
         <input
           id="search-input"
           class="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
-          placeholder="搜索知识库… (⌘K)"
+          placeholder={`搜索${TERMS.knowledgeTab}… (⌘K)`}
           bind:value={query}
         />
         <button
@@ -735,16 +743,16 @@
               disabled={repackBusy || lithoBusy || !selectedRepoPath}
               onclick={packAgentForSelected}
             >
-              {repackBusy ? "Repacking…" : "Repack"}
+              {repackBusy ? "重建中…" : "重建源码索引"}
             </button>
             <button
               type="button"
               class="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs hover:bg-white/5 disabled:opacity-50"
               disabled={repackBusy || lithoBusy || !selectedRepoPath || !acpOk}
               onclick={triggerHumanGeneration}
-              title={!acpOk ? "ACP agent not available" : undefined}
+              title={!acpOk ? "请先在设置中配置 ACP 代理" : undefined}
             >
-              {lithoBusy ? "Generating…" : "Generate Docs"}
+              {generateLabel(TERMS.humanKnowledge, lithoBusy)}
             </button>
           </div>
         {/if}
@@ -759,7 +767,9 @@
             onselect={openHumanDoc}
           />
           <div class="mt-auto border-t border-white/10 px-3 py-2 text-[10px] text-white/35">
-            <div class="truncate" title={knowledgeRoot}>📁 {knowledgeRoot || "—"}</div>
+            <div class="truncate" title={knowledgeRoot || selectedRepoPath || "—"}>
+              📁 {knowledgeRoot || (selectedRepoPath ? `${selectedRepoPath}/.mind-mesh` : "—")}
+            </div>
             <div class="mt-1">ACP {acpOk ? "✓" : "✗"} · LLM {llmStatus?.ready ? "✓" : "✗"}</div>
           </div>
         </aside>
@@ -805,17 +815,17 @@
                 <p class="text-lg text-white/60">
                   {selectedProject ? "从左侧目录选择文档" : "添加或选择项目以浏览知识资产"}
                 </p>
-                <p class="text-sm">阅读文档后，可在底部 Ask 栏打开 DeepWiki 问答。</p>
+                <p class="text-sm">阅读文档后，可在底部问答栏就当前项目提问。</p>
               </div>
             {/if}
           </div>
 
           <AskBar
             disabled={!selectedProject}
-            disabledReason={!selectedProject ? "Select a project first." : null}
+            disabledReason={!selectedProject ? "请先选择项目" : null}
             placeholder={activeDoc
-              ? `Ask about “${activeHumanPath?.split("/").pop() ?? "this document"}”…`
-              : "Ask about this project…"}
+              ? `就「${activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
+              : "就当前项目提问…"}
             onask={(q) => openDeepWiki(q)}
           />
         </main>
@@ -843,6 +853,8 @@
   }}
   onopenDoc={openDocPath}
 />
+
+<HelpPanel open={helpOpen} onclose={() => (helpOpen = false)} />
 
 <SettingsPanel
   open={settingsOpen}

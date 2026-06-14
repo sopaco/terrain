@@ -21,7 +21,8 @@ pub use acp::{
     default_ask_acp_skill_dir, resolve_acp_settings,
 };
 pub use builder::{
-    AgentConfig, build_agent, knowledge_root_from_env, opencode_available, validate_repo_path,
+    knowledge_paths_from_env, knowledge_root_from_env, AgentConfig, build_agent,
+    opencode_available, validate_repo_path,
 };
 pub use context_generator::AgentContextGenerator;
 pub use agent_assets::{ensure_agent_assets, AgentAssetsEnsureReport};

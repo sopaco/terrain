@@ -1,3 +1,7 @@
+mod common;
+
+use common::TestKnowledgeSetup;
+use mind_mesh_core::registry::registry_test_lock;
 use mind_mesh_core::{
     KnowledgePaths, KnowledgeSearch, SearchOptions, parse_markdown, parse_markdown_at, read_doc,
     write_doc,
@@ -6,7 +10,7 @@ use mind_mesh_core::schema::{DocFrontmatter, DocType};
 
 #[test]
 fn parse_bare_human_markdown_without_frontmatter() {
-    let path = std::path::Path::new("/data/knowledge/projects/repomix-rs/human/1.概述.md");
+    let path = std::path::Path::new("/workspace/repomix-rs/.mind-mesh/human/1.概述.md");
     let content = "# 项目概述\n\nRepomix is a tool.";
     let (fm, body) = parse_markdown_at(content, Some(path)).unwrap();
     assert_eq!(fm.doc_type, DocType::Human);
@@ -46,9 +50,17 @@ Pong.
 
 #[test]
 fn search_finds_demo_document() {
-    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../examples/knowledge");
-    let paths = KnowledgePaths::new(&root);
+    let repo = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/fixtures/demo-api");
+    let _lock = registry_test_lock();
+    let registry_dir = tempfile::tempdir().unwrap();
+    let registry_file = registry_dir.path().join("registry.json");
+    unsafe {
+        std::env::set_var("MIND_MESH_REGISTRY_FILE", &registry_file);
+    }
+    mind_mesh_core::register_project("demo-api", &repo.display().to_string()).unwrap();
+    let paths = KnowledgePaths::new();
+    let _registry_guard = registry_dir;
 
     let hits = KnowledgeSearch::new(&paths)
         .search(
@@ -67,9 +79,10 @@ fn search_finds_demo_document() {
 
 #[test]
 fn write_and_read_doc() {
-    let dir = tempfile::tempdir().unwrap();
-    let paths = KnowledgePaths::new(dir.path());
-    paths.ensure_project_layout("test-proj").unwrap();
+    let setup = TestKnowledgeSetup::new("test-proj");
+    let paths = setup.paths.clone();
+    let slug = setup.slug.clone();
+    let _guard = setup;
 
     let fm = DocFrontmatter {
         doc_type: DocType::Module,
@@ -82,7 +95,7 @@ fn write_and_read_doc() {
         extra: Default::default(),
     };
     let body = "# core\n\nCore module.";
-    let path = paths.doc_path("test-proj", DocType::Module, "core");
+    let path = paths.doc_path(&slug, DocType::Module, "core");
     write_doc(&path, &fm, body).unwrap();
 
     let doc = read_doc(&path).unwrap();

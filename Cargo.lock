@@ -3960,6 +3960,8 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 [[package]]
 name = "repomix-config"
 version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab74b58e843898be3fefa014495b542bf8583368505bdc086a079c4d01c51bf"
 dependencies = [
  "anyhow",
  "dirs 5.0.1",
@@ -3974,6 +3976,8 @@ dependencies = [
 [[package]]
 name = "repomix-core"
 version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d243b31aabf3aaa6f4b15a031ef3af9e3ad6de03b20fbc09db74f70fffdaf2"
 dependencies = [
  "anyhow",
  "arboard",
@@ -4012,6 +4016,8 @@ dependencies = [
 [[package]]
 name = "repomix-shared"
 version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "000f02111b28d80e759c0f1a23751c9842b7fe7589211a9a02ba74aa18613d18"
 dependencies = [
  "anyhow",
  "arboard",
@@ -5252,7 +5258,7 @@ dependencies = [
  "serde_with",
  "swift-rs",
  "thiserror 2.0.18",
- "toml 0.9.12+spec-1.1.0",
+ "toml 1.1.2+spec-1.1.0",
  "url",
  "urlpattern",
  "uuid",

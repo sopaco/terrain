@@ -2,9 +2,10 @@ use mind_mesh_agent::{ChatEngine, load_dotenv, resolve_model_config};
 use mind_mesh_core::KnowledgePaths;
 
 #[tokio::test]
+#[ignore = "requires local LLM and indexed repomix-rs project"]
 async fn ask_smoke() {
     load_dotenv();
-    let paths = KnowledgePaths::default_home();
+    let paths = KnowledgePaths::from_workspace();
     let config = resolve_model_config();
     let engine = ChatEngine::new(paths, config).expect("engine");
     let result = engine

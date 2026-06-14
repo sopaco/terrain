@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AppTab } from "../types";
+  import { TERMS } from "../terminology";
 
   interface Props {
     active: AppTab;
@@ -11,8 +12,8 @@
 
   const tabs: { id: AppTab; label: string }[] = [
     { id: "overview", label: "项目概览" },
-    { id: "knowledge", label: "知识资产" },
-    { id: "env", label: "工程环境" },
+    { id: "knowledge", label: TERMS.knowledgeTab },
+    { id: "env", label: TERMS.agentEnv },
     { id: "sdd", label: "SDD 工作流" },
   ];
 </script>

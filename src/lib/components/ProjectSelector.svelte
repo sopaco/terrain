@@ -5,7 +5,7 @@
     projects: ProjectSummary[];
     selectedSlug: string | null;
     open: boolean;
-    scanBusy?: boolean;
+    addBusy?: boolean;
     taskLabel?: string | null;
     ontoggle: () => void;
     onselect: (project: ProjectSummary) => void;
@@ -17,7 +17,7 @@
     projects,
     selectedSlug,
     open,
-    scanBusy = false,
+    addBusy = false,
     taskLabel = null,
     ontoggle,
     onselect,
@@ -119,17 +119,17 @@
             {/if}
           </li>
         {:else}
-          <li class="px-3 py-4 text-sm text-white/40">No projects yet.</li>
+          <li class="px-3 py-4 text-sm text-white/40">尚无项目，请添加仓库。</li>
         {/each}
       </ul>
       <div class="border-t border-white/10 p-2">
         <button
           type="button"
           class="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-          disabled={scanBusy}
+          disabled={addBusy}
           onclick={onadd}
         >
-          {scanBusy ? "Adding repository…" : "+ Add repository"}
+          {addBusy ? "正在添加并初始化…" : "+ 添加并初始化仓库"}
         </button>
       </div>
     </div>

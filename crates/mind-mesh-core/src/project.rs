@@ -145,7 +145,7 @@ fn build_asset_health(
     vec![
         AssetTrackHealth {
             track: "human".into(),
-            label: "Human 文档".into(),
+            label: "人类友好的知识库".into(),
             ready: litho.has_human_docs,
             summary: if litho.has_human_docs {
                 format!("{} 篇 Litho 文档", litho.human_doc_count)
@@ -160,7 +160,7 @@ fn build_asset_health(
         },
         AssetTrackHealth {
             track: "agent_context".into(),
-            label: "Agent 架构上下文".into(),
+            label: "Agent 友好的知识资产".into(),
             ready: agent_ctx.ready,
             summary: if agent_ctx.ready {
                 format!("{} 个章节", agent_ctx.section_count)

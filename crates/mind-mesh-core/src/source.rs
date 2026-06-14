@@ -131,10 +131,10 @@ fn normalize_doc_ref(file_path: &str) -> String {
 }
 
 fn knowledge_doc_relative_candidates(project_slug: &str, file_path: &str) -> Vec<String> {
-    let p = normalize_doc_ref(file_path);
+    let p = project_relative_knowledge_path(project_slug, file_path);
     let mut out = Vec::new();
     let mut push = |value: String| {
-        if !out.iter().any(|existing| existing == &value) {
+        if !value.is_empty() && !out.iter().any(|existing| existing == &value) {
             out.push(value);
         }
     };
@@ -143,22 +143,20 @@ fn knowledge_doc_relative_candidates(project_slug: &str, file_path: &str) -> Vec
     if p == "context.md" {
         push("agent/context.md".into());
     }
-    if !p.starts_with(&format!("projects/{project_slug}/")) {
-        push(format!("projects/{project_slug}/{p}"));
-        if p == "context.md" {
-            push(format!("projects/{project_slug}/agent/context.md"));
-        }
-    }
     out
 }
 
-fn project_relative_knowledge_path(project_slug: &str, file_path: &str) -> String {
+fn project_relative_knowledge_path(_project_slug: &str, file_path: &str) -> String {
     let p = normalize_doc_ref(file_path);
     if p == "context.md" {
         return "agent/context.md".into();
     }
-    if let Some(rest) = p.strip_prefix(&format!("projects/{project_slug}/")) {
+    if let Some(rest) = p.strip_prefix(".mind-mesh/") {
         return rest.to_string();
+    }
+    // Legacy citation prefix (pre–repo-local layout)
+    if let Some(idx) = p.find("/.mind-mesh/") {
+        return p[idx + "/.mind-mesh/".len()..].to_string();
     }
     p
 }
@@ -350,6 +348,7 @@ pub fn resolve_source_citation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::registry::{self, registry_test_lock};
 
     #[test]
     fn reads_line_range() {
@@ -368,41 +367,67 @@ mod tests {
         assert_eq!(slice.content, "line2\nline3");
     }
 
+    struct RegistryTestGuard {
+        _lock: std::sync::MutexGuard<'static, ()>,
+        _registry_dir: tempfile::TempDir,
+    }
+
+    fn test_setup(slug: &str) -> (KnowledgePaths, String, std::path::PathBuf, RegistryTestGuard) {
+        let lock = registry_test_lock();
+        let registry_dir = tempfile::tempdir().unwrap();
+        let registry_file = registry_dir.path().join("registry.json");
+        unsafe {
+            std::env::set_var("MIND_MESH_REGISTRY_FILE", &registry_file);
+        }
+        let repo = registry_dir.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        (
+            paths,
+            slug.to_string(),
+            repo,
+            RegistryTestGuard {
+                _lock: lock,
+                _registry_dir: registry_dir,
+            },
+        )
+    }
+
+    fn write_repo_file(repo: &std::path::Path, rel: &str, content: &str) {
+        let path = repo.join(rel);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(path, content).unwrap();
+    }
+
     #[test]
     fn resolves_bare_context_md_from_agent_docs() {
-        let dir = tempfile::tempdir().unwrap();
-        let paths = KnowledgePaths::new(dir.path());
-        let slug = "unit-test-context-md";
-        let agent_dir = paths.agent_pack_dir(slug);
-        std::fs::create_dir_all(&agent_dir).unwrap();
+        let (paths, slug, _, _guard) = test_setup("unit-test-context-md");
         std::fs::write(
-            paths.agent_context_main(slug),
+            paths.agent_context_main(&slug),
             "---\ntitle: Context\n---\n\n# Architecture\n",
         )
         .unwrap();
 
-        let slice = resolve_source_citation(&paths, slug, None, "context.md", 0, 0).unwrap();
+        let slice = resolve_source_citation(&paths, &slug, None, "context.md", 0, 0).unwrap();
         assert_eq!(slice.file_path, "agent/context.md");
         assert!(slice.content.contains("# Architecture"));
     }
 
     #[test]
     fn prefers_live_repo_over_agent_pack() {
-        let dir = tempfile::tempdir().unwrap();
-        let paths = KnowledgePaths::new(dir.path());
-        let slug = "live-repo-priority";
-        let repo = dir.path().join("repo");
-        let agent_dir = paths.agent_pack_dir(slug);
-        std::fs::create_dir_all(&agent_dir).unwrap();
-        std::fs::create_dir_all(repo.join("src")).unwrap();
-        std::fs::write(repo.join("src/lib.rs"), "live repo line\n").unwrap();
+        let (paths, slug, repo, _guard) = test_setup("live-repo-priority");
+        write_repo_file(&repo, "src/lib.rs", "live repo line\n");
         std::fs::write(
-            paths.agent_pack_main(slug),
+            paths.agent_pack_main(&slug),
             "# Repomix\n\n## Files\n\n### src/lib.rs (1 lines)\n\n```rust\n1: pack line\n```\n",
         )
         .unwrap();
         std::fs::write(
-            paths.agent_pack_meta(slug),
+            paths.agent_pack_meta(&slug),
             format!(
                 r#"{{"repo_path":"{}","synced_at":"now","total_files":1,"total_tokens":1,"pack_strategy":"test","top_files_by_tokens":[]}}"#,
                 repo.display()
@@ -412,7 +437,7 @@ mod tests {
 
         let slice = resolve_source_citation(
             &paths,
-            slug,
+            &slug,
             Some(repo.to_str().unwrap()),
             "src/lib.rs",
             0,
@@ -425,20 +450,14 @@ mod tests {
 
     #[test]
     fn falls_back_to_agent_pack_when_live_file_missing() {
-        let dir = tempfile::tempdir().unwrap();
-        let paths = KnowledgePaths::new(dir.path());
-        let slug = "no-pack-fallback";
-        let repo = dir.path().join("repo");
-        let agent_dir = paths.agent_pack_dir(slug);
-        std::fs::create_dir_all(&agent_dir).unwrap();
-        std::fs::create_dir_all(&repo).unwrap();
+        let (paths, slug, repo, _guard) = test_setup("no-pack-fallback");
         std::fs::write(
-            paths.agent_pack_main(slug),
+            paths.agent_pack_main(&slug),
             "# Repomix\n\n## Files\n\n### src/missing.rs (1 lines)\n\n```rust\n1: pack only\n```\n",
         )
         .unwrap();
         std::fs::write(
-            paths.agent_pack_meta(slug),
+            paths.agent_pack_meta(&slug),
             format!(
                 r#"{{"repo_path":"{}","synced_at":"now","total_files":1,"total_tokens":1,"pack_strategy":"test","top_files_by_tokens":[]}}"#,
                 repo.display()
@@ -448,7 +467,7 @@ mod tests {
 
         let slice = resolve_source_citation(
             &paths,
-            slug,
+            &slug,
             Some(repo.to_str().unwrap()),
             "src/missing.rs",
             0,
@@ -460,43 +479,32 @@ mod tests {
 
     #[test]
     fn resolves_repo_from_index_frontmatter_when_hint_missing() {
-        let dir = tempfile::tempdir().unwrap();
-        let paths = KnowledgePaths::new(dir.path());
-        let slug = "index-frontmatter-repo";
-        let repo = dir.path().join("repo");
-        std::fs::create_dir_all(paths.project_dir(slug)).unwrap();
-        std::fs::create_dir_all(repo.join("src")).unwrap();
-        std::fs::write(repo.join("src/main.rs"), "fn main() {}\n").unwrap();
+        let (paths, slug, repo, _guard) = test_setup("index-frontmatter-repo");
+        write_repo_file(&repo, "src/main.rs", "fn main() {}\n");
         std::fs::write(
-            paths.project_index(slug),
+            paths.project_index(&slug),
             format!(
-                "---\ntype: project\ntitle: Test\nproject: {slug}\nsource: {repo}\n---\n\n# Project\n",
-                repo = repo.display()
+                "---\ntype: project\ntitle: Test\nproject: {slug}\nsource: {}\n---\n\n# Project\n",
+                repo.display()
             ),
         )
         .unwrap();
 
-        let slice = resolve_source_citation(&paths, slug, None, "src/main.rs", 0, 0).unwrap();
+        let slice = resolve_source_citation(&paths, &slug, None, "src/main.rs", 0, 0).unwrap();
         assert!(slice.content.contains("fn main()"));
     }
 
     #[test]
     fn resolves_pack_alias_to_live_file() {
-        let dir = tempfile::tempdir().unwrap();
-        let paths = KnowledgePaths::new(dir.path());
-        let slug = "pack-alias-live";
-        let repo = dir.path().join("repo");
-        let agent_dir = paths.agent_pack_dir(slug);
-        std::fs::create_dir_all(&agent_dir).unwrap();
-        std::fs::create_dir_all(repo.join("src")).unwrap();
-        std::fs::write(repo.join("src/lib.rs"), "live via alias\n").unwrap();
+        let (paths, slug, repo, _guard) = test_setup("pack-alias-live");
+        write_repo_file(&repo, "src/lib.rs", "live via alias\n");
         std::fs::write(
-            paths.agent_pack_main(slug),
+            paths.agent_pack_main(&slug),
             "# Repomix\n\n## Files\n\n### src/lib.rs (1 lines)\n\n```rust\n1: pack line\n```\n",
         )
         .unwrap();
         std::fs::write(
-            paths.agent_pack_meta(slug),
+            paths.agent_pack_meta(&slug),
             format!(
                 r#"{{"repo_path":"{}","synced_at":"now","total_files":1,"total_tokens":1,"pack_strategy":"test","top_files_by_tokens":[]}}"#,
                 repo.display()
@@ -506,7 +514,7 @@ mod tests {
 
         let slice = resolve_source_citation(
             &paths,
-            slug,
+            &slug,
             Some(repo.to_str().unwrap()),
             "lib.rs",
             0,
@@ -530,8 +538,9 @@ mod tests {
     }
 
     #[test]
-    fn resolves_live_repo_from_default_home() {
-        let paths = KnowledgePaths::default_home();
+    #[ignore = "requires repomix-rs registered in local ~/.mind-mesh/registry.json"]
+    fn resolves_live_repo_from_registered_project() {
+        let paths = KnowledgePaths::new();
         if !paths.agent_pack_meta("repomix-rs").is_file() {
             return;
         }

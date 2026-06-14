@@ -1,6 +1,6 @@
 use mind_mesh_agent::{
     acp_available, acp_spawn_command, env_plan_for_repo, env_status_for_repo,
-    knowledge_root_from_env, llm_status, load_model_settings, prepare_litho_generation,
+    knowledge_paths_from_env, llm_status, load_model_settings, prepare_litho_generation,
     resolve_acp_settings, run_agent_context_generation, run_env_integration,
     run_litho_generation, run_project_initialization, run_sdd_phase, validate_repo_path,
     AcpSettings, ChatEngine, AgentContextGenerationResult, ChatPhase, ChatReply, ChatTokenUsage,
@@ -84,9 +84,25 @@ struct SddDonePayload {
     result: SddPhaseResult,
 }
 
+pub fn init_paths() -> KnowledgePaths {
+    let paths = knowledge_paths_from_env();
+    let _ = paths.ensure_layout();
+    paths
+}
+
 #[tauri::command]
-pub fn get_knowledge_root(state: State<'_, AppState>) -> String {
-    state.paths.root().display().to_string()
+pub fn get_knowledge_root(
+    state: State<'_, AppState>,
+    project_slug: Option<String>,
+) -> Result<String, String> {
+    if let Some(slug) = project_slug.filter(|s| !s.trim().is_empty()) {
+        return state
+            .paths
+            .try_project_dir(&slug)
+            .map(|p| p.display().to_string())
+            .map_err(|e| e.to_string());
+    }
+    Ok(String::new())
 }
 
 #[tauri::command]
@@ -203,11 +219,6 @@ pub fn copy_text_to_clipboard(text: String) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard.set_text(text).map_err(|e| e.to_string())?;
     Ok(())
-}
-
-#[tauri::command]
-pub fn default_knowledge_root() -> String {
-    knowledge_root_from_env().root().display().to_string()
 }
 
 #[tauri::command]
@@ -793,12 +804,6 @@ fn fallback_search_reply(
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0),
     }
-}
-
-pub fn init_paths() -> KnowledgePaths {
-    let paths = knowledge_root_from_env();
-    let _ = paths.ensure_layout();
-    paths
 }
 
 fn slugify_repo(repo_path: &str) -> String {

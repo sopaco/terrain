@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { getSddStatus, readDocument, runSddPhase } from "../api";
   import type { SddPhase, SddPhaseInfo, SddStatus } from "../types";
+  import { TERMS } from "../terminology";
   import MarkdownViewer from "./MarkdownViewer.svelte";
 
   interface Props {
@@ -25,7 +26,7 @@
 
   const phaseDescriptions: Record<SddPhase, string> = {
     requirements: "交互式澄清需求、用户故事与验收标准，产出结构化需求文档。",
-    tech_design: "结合 Human 文档与 Agent 上下文，输出可实施的技术方案。",
+    tech_design: `结合 ${TERMS.humanKnowledge} 与 ${TERMS.agentKnowledge}，输出可实施的技术方案。`,
     code_gen: "委派 OpenCode 按技术方案在仓库中实现代码（需 OpenCode）。",
     code_review: "对照需求与方案，对实现进行智能 Code Review。",
   };

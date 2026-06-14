@@ -114,7 +114,10 @@ export const searchKnowledge = (query: string, project?: string) =>
 export const readDocument = (path: string) =>
   invoke<KnowledgeDoc>("read_document", { path });
 
-export const getKnowledgeRoot = () => invoke<string>("get_knowledge_root");
+export const getKnowledgeRoot = (projectSlug?: string) =>
+  invoke<string>("get_knowledge_root", {
+    projectSlug: projectSlug || null,
+  });
 
 export const checkAcp = () => invoke<boolean>("check_acp");
 

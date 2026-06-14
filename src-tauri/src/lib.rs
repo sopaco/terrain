@@ -83,7 +83,6 @@ pub fn run() {
             commands::save_model_settings_cmd,
             commands::copy_image_to_clipboard,
             commands::copy_text_to_clipboard,
-            commands::default_knowledge_root,
             commands::pack_agent_assets_cmd,
             commands::plan_litho_cmd,
             commands::plan_assets_cmd,
