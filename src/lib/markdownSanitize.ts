@@ -39,11 +39,33 @@ export function extractMarkdownBody(text: string): string {
   return trimmed;
 }
 
+/** Fix headings, lists, fences, and tables run together on one line. */
+export function repairInlineSectionHeadings(text: string): string {
+  let out = text;
+  out = out.replace(/([。；;：:.!?])\s*(## )/g, "$1\n\n$2");
+  out = out.replace(/([\u4e00-\u9fff\w`\)])\s*(## )/g, "$1\n\n$2");
+  out = out.replace(/([^\n\r#])(#{2,6} )/g, "$1\n\n$2");
+  out = out.replace(/([^\n\r])(#{3,6} )/g, "$1\n\n$2");
+  out = out.replace(/(#{1,6} [^\n]+[\u4e00-\u9fff])([A-Za-z])/g, "$1\n\n$2");
+  out = out.replace(/([^\n\r`])(```[\w]+)/g, "$1\n\n$2");
+  out = out.replace(/([^\n\r`])(```)(?=[^\w\n\r])/g, "$1\n\n$2");
+  out = out.replace(/```(#{1,6} )/g, "```\n\n$1");
+  out = out.replace(/([^\n\d])(\d+\.\s+\*\*)/g, "$1\n\n$2");
+  out = out.replace(/\|\|/g, "|\n|");
+  out = out.replace(/(```[\w]+)([^\n\r\w])/g, "$1\n$2");
+  out = out.replace(/(#{1,6} [^\n]+?\))([^\n#\s\d-])/g, "$1\n\n$2");
+  out = out.replace(/([：:])(\| )/g, "$1\n\n$2");
+  out = out.replace(/(#{1,6} [^\n]+?)(-\s*`)/g, "$1\n\n$2");
+  out = out.replace(/([^\n\r])(-\s*`)/g, "$1\n\n$2");
+  return out;
+}
+
 /** Re-insert markdown structure when providers stream a single flattened line. */
 export function repairFlattenedMarkdown(text: string): string {
-  if ((text.match(/\n/g) ?? []).length >= 3) return text;
+  const layout = repairInlineSectionHeadings(text);
+  if ((layout.match(/\n/g) ?? []).length >= 3) return layout;
 
-  let out = text;
+  let out = layout;
   out = out.replace(/\*\^([^^*]+)\^\*/g, "*$1*");
   out = out.replace(/\^([^^*]+)\^/g, "*$1*");
   out = out.replace(/(### [^*]+?)(\*\*[^*]+：[^*]*\*\*)/g, "$1\n\n$2");

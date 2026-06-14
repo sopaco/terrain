@@ -161,7 +161,7 @@ pub fn build_context_overview(body: &str, max_chars: usize) -> ContextOverview {
     } else {
         format!(
             "Meso layer — call read_agent_context(section=\"<heading>\") for:\n{}\n\
-Micro layer — grep_agent_pack → read_agent_pack_file for source code (≤150 lines per call).",
+Micro layer — grep_agent_pack → read_agent_pack_file for source code (use grep file_line; ≤150 lines per call).",
             on_demand.join("\n")
         )
     };

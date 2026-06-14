@@ -110,11 +110,27 @@ describe("markdown pipeline", () => {
     expect(html).not.toContain("<pre><code");
   });
 
+  test("repairs flattened llm provider ask markdown", () => {
+    const input =
+      "说明如下：## 核心依赖与协议MindMesh **不直接实现** 客户端：1. **One**2. **Two**特性```toml\nkey = 1\n```## 总结Done。";
+    const out = prepareMarkdownForRender(input);
+    expect(out).toContain("\n\n## 核心依赖与协议");
+    expect(out).toContain("\n\nMindMesh");
+    expect(out).toContain("\n\n1. **One**");
+    expect(out).toContain("\n\n2. **Two**");
+    expect(out).toContain("\n\n```toml");
+    expect(out).toContain("\n\n## 总结");
+    const html = marked.parse(out, { async: false }) as string;
+    expect(html).toContain("<h2>核心依赖与协议</h2>");
+    expect(html).toContain("<li>");
+  });
+
   test("repairs flattened lm studio style markdown", async () => {
     const raw = await Bun.file("/Users/bjsttlp485/.mind-mesh/debug/last-ask-raw.md").text();
     const repaired = repairFlattenedMarkdown(raw);
     expect(repaired.split("\n").length).toBeGreaterThan(5);
     const html = marked.parse(prepareMarkdownForRender(raw), { async: false }) as string;
-    expect(html).toContain("<h3>");
+    expect(html).toMatch(/<h[23]>/);
+    expect(html).toContain("<li>");
   });
 });

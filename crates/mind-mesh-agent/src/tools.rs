@@ -5,7 +5,7 @@ use adk_tool::FunctionTool;
 use mind_mesh_core::{
     agent_context_ready, agent_pack_ready, build_context_overview, extract_context_section,
     split_context_sections, AgentPackMeta, KnowledgePaths, KnowledgeSearch, SearchOptions,
-    grep_file, list_human_docs, read_agent_pack_file, read_json,
+    grep_repomix_pack, list_human_docs, read_agent_pack_file, read_json,
     AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 use schemars::JsonSchema;
@@ -14,7 +14,8 @@ use serde_json::json;
 
 use crate::context_generator::AgentContextGenerator;
 use crate::tool_session_cache::{
-    duplicate_call_response, get_cached, store_cached, truncate_with_notice,
+    context_call_fingerprint, duplicate_call_response, get_cached, pack_file_call_fingerprint,
+    store_cached, truncate_with_notice,
 };
 
 const MAX_PACK_META_TREE_CHARS: usize = 2_500;
@@ -82,15 +83,25 @@ pub fn read_agent_context_tool(
                     })?;
 
                     let session_id = ctx.session_id().to_string();
-                    let fingerprint = format!(
-                        "{}:{}",
-                        params.project,
-                        params.section.as_deref().unwrap_or("")
-                    );
-                    if get_cached(&session_id, "read_agent_context", &fingerprint).is_some() {
-                        return Ok(duplicate_call_response(
-                            "read_agent_context",
-                            &fingerprint,
+                    let fingerprint =
+                        context_call_fingerprint(&params.project, params.section.as_deref());
+                    if let Some(cached) =
+                        get_cached(&session_id, "read_agent_context", &fingerprint)
+                    {
+                        return Ok(duplicate_call_response(cached));
+                    }
+
+                    let section_query = params
+                        .section
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|s| !s.is_empty());
+                    if section_query.is_none() && agent_context_ready(&paths, &params.project) {
+                        return Err(adk_core::AdkError::tool(
+                            "Macro overview is already preloaded in the user message. \
+                             Do not call read_agent_context without section. \
+                             For a specific heading use section=\"核心流程\" (etc.). \
+                             For code use grep_agent_pack → read_agent_pack_file.",
                         ));
                     }
 
@@ -111,7 +122,7 @@ pub fn read_agent_context_tool(
 
                     let sections = split_context_sections(&doc.body);
                     let (body, mode, section_title) =
-                        if let Some(ref query) = params.section.filter(|s| !s.trim().is_empty()) {
+                        if let Some(query) = section_query {
                             let section = extract_context_section(&sections, query).ok_or_else(|| {
                                 adk_core::AdkError::tool(format!(
                                     "section not found: {query}. Available: {}",
@@ -222,11 +233,10 @@ pub fn read_agent_pack_meta_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
 
                     let session_id = ctx.session_id().to_string();
                     let fingerprint = params.project.clone();
-                    if get_cached(&session_id, "read_agent_pack_meta", &fingerprint).is_some() {
-                        return Ok(duplicate_call_response(
-                            "read_agent_pack_meta",
-                            &fingerprint,
-                        ));
+                    if let Some(cached) =
+                        get_cached(&session_id, "read_agent_pack_meta", &fingerprint)
+                    {
+                        return Ok(duplicate_call_response(cached));
                     }
 
                     let meta_path = paths.agent_pack_meta(&params.project);
@@ -266,8 +276,9 @@ pub fn grep_agent_pack_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
     Arc::new(
         FunctionTool::new(
             "grep_agent_pack",
-            "Regex search in agent/repomix.md. Use a specific pattern; refine it instead of repeating \
-             the same grep. Identical pattern+project returns cached hits.",
+            "Regex search in agent/repomix.md. Each hit includes file_path and file_line (source line \
+             within the pack slice). Use file_line for read_agent_pack_file — NOT line_number (repomix.md \
+             position). Identical pattern+project returns cached hits.",
             move |ctx, args| {
                 let paths = paths.clone();
                 async move {
@@ -282,13 +293,21 @@ pub fn grep_agent_pack_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
 
                     let session_id = ctx.session_id().to_string();
                     let fingerprint = format!("{}:{}", params.project, params.pattern);
-                    if get_cached(&session_id, "grep_agent_pack", &fingerprint).is_some() {
-                        return Ok(duplicate_call_response("grep_agent_pack", &fingerprint));
+                    if let Some(cached) =
+                        get_cached(&session_id, "grep_agent_pack", &fingerprint)
+                    {
+                        return Ok(duplicate_call_response(cached));
                     }
 
                     let pack = paths.agent_pack_main(&params.project);
-                    let hits = grep_file(
-                        &pack,
+                    let pack_text = std::fs::read_to_string(&pack).map_err(|e| {
+                        map_core_err(mind_mesh_core::CoreError::InvalidDoc(format!(
+                            "cannot read {}: {e}",
+                            pack.display()
+                        )))
+                    })?;
+                    let hits = grep_repomix_pack(
+                        &pack_text,
                         &params.pattern,
                         params.context.unwrap_or(2),
                         params.limit.unwrap_or(20),
@@ -342,8 +361,11 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
     Arc::new(
         FunctionTool::new(
             "read_agent_pack_file",
-            "Read a source file from agent/repomix.md (Repomix pack). Optional start_line/end_line for a slice. This is the primary way to read project source code in Ask mode.",
-            move |_ctx, args| {
+            "Read a source file slice from agent/repomix.md. Use file_line from grep_agent_pack hits \
+             for start_line/end_line (≤150 lines). Do NOT use grep line_number or context.md repo line \
+             numbers — the pack may contain a folded/truncated slice. Omit line args to read the full \
+             packed section. Identical args return cached content.",
+            move |ctx, args| {
                 let paths = paths.clone();
                 async move {
                     let params: ReadPackFileArgs = serde_json::from_value(args).map_err(|e| {
@@ -359,6 +381,20 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                     let end_line = params
                         .end_line
                         .unwrap_or_else(|| start_line.saturating_add(DEFAULT_PACK_FILE_LINES - 1));
+
+                    let session_id = ctx.session_id().to_string();
+                    let fingerprint = pack_file_call_fingerprint(
+                        &params.project,
+                        &params.file_path,
+                        start_line,
+                        end_line,
+                    );
+                    if let Some(cached) =
+                        get_cached(&session_id, "read_agent_pack_file", &fingerprint)
+                    {
+                        return Ok(duplicate_call_response(cached));
+                    }
+
                     let slice = read_agent_pack_file(
                         &pack,
                         &params.file_path,
@@ -366,13 +402,29 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                         Some(end_line),
                     )
                     .map_err(map_core_err)?;
-                    Ok(truncate_tool_json(
-                        json!({
-                            "file": slice,
-                            "pack_path": pack.display().to_string(),
-                        }),
-                        MAX_TOOL_JSON_CHARS,
-                    ))
+                    let mut response = json!({
+                        "file": slice,
+                        "pack_path": pack.display().to_string(),
+                    });
+                    if slice.range_clamped {
+                        response["hint"] = json!(format!(
+                            "Requested lines {:?}-{:?} but pack section has {} lines (may be folded/truncated). \
+                             Returned lines {}-{}. Use grep_agent_pack file_line values or omit line range.",
+                            slice.requested_start_line,
+                            slice.requested_end_line,
+                            slice.total_lines,
+                            slice.start_line,
+                            slice.end_line,
+                        ));
+                    }
+                    let response = truncate_tool_json(response, MAX_TOOL_JSON_CHARS);
+                    store_cached(
+                        &session_id,
+                        "read_agent_pack_file",
+                        &fingerprint,
+                        response.clone(),
+                    );
+                    Ok(response)
                 }
             },
         )
@@ -446,7 +498,18 @@ pub fn read_doc_ask_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                             if agent_context_ready(&paths, slug) {
                                 return Err(adk_core::AdkError::tool(
                                     "human/ Litho docs are disabled in Ask mode when agent/context.md \
-                                     exists. Call read_agent_context first, then grep_agent_pack for code.",
+                                     exists. Call read_agent_context(section=\"…\") for architecture, \
+                                     grep_agent_pack for code.",
+                                ));
+                            }
+                        }
+                    }
+                    if path_lower.ends_with("agent/context.md") || path_lower == "agent/context.md" {
+                        if let Some(slug) = params.project.as_deref() {
+                            if agent_context_ready(&paths, slug) {
+                                return Err(adk_core::AdkError::tool(
+                                    "agent/context.md overview is preloaded in Ask mode. \
+                                     Use read_agent_context(section=\"…\") for one section, not read_doc.",
                                 ));
                             }
                         }
@@ -525,8 +588,8 @@ struct ReadPackFileArgs {
     project: String,
     /// File path relative to repository root (as in repomix pack headers)
     file_path: String,
-    /// Optional 1-based start line within the file
+    /// 1-based start line within the packed file slice (from grep file_line, not repomix line_number)
     start_line: Option<u32>,
-    /// Optional 1-based end line within the file (inclusive)
+    /// 1-based end line within the packed file slice (inclusive)
     end_line: Option<u32>,
 }

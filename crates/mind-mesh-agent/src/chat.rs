@@ -947,7 +947,7 @@ Call read_agent_context (no section) once to load or auto-generate context.md.\n
 
     sections.push(format!(
         "## Source code (micro layer)\n\
-grep_agent_pack → read_agent_pack_file (≤150 lines, pass start_line/end_line). \
+grep_agent_pack → read_agent_pack_file (≤150 lines; use grep file_line, not line_number). \
 Do not read the live repository.\n\n\
 ## User question\n{query}"
     ));

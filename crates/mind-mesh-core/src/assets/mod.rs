@@ -39,7 +39,7 @@ pub use project_meta::{
     CollectedMetaInput, MetaInputSpec, MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile,
     META_FILENAME,
 };
-pub use query::{grep_file, grep_text, GrepMatch};
+pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
 pub use sdd::{
     build_sdd_llm_prompt, build_sdd_phase_prompt, default_sdd_skill_dir, get_sdd_status,
     plan_sdd_workflow, resolve_sdd_skill_dir, sdd_phase_output_path,

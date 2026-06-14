@@ -63,12 +63,13 @@ Answer most architecture questions from this alone.
 系统边界, 代码映射索引. Only when macro preload is insufficient. Never reload overview.
 
 **Micro** (`grep_agent_pack` → `read_agent_pack_file`): Implementation, symbols, line-level code. \
-Always pass start_line/end_line (≤150 lines). This is the only way to read source.
+Use grep `file_line` (not `line_number`) for read_agent_pack_file ranges (≤150 lines). \
+Pack slices may be folded — omit line range to read the full packed section.
 
 TOOL BUDGET:
 | Tool | Layer | Limit |
 |------|-------|-------|
-| read_agent_context | Meso | Once per distinct section; omit section only if macro missing |
+| read_agent_context | Meso | Once per distinct section; never call without section when macro is preloaded |
 | read_agent_pack_meta | — | Only if pack metadata absent from user message |
 | grep_agent_pack | Micro | Vary pattern; no duplicate grep |
 | read_agent_pack_file | Micro | Targeted slices |

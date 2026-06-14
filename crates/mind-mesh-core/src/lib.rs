@@ -18,7 +18,7 @@ pub use assets::{
     build_generation_plan, build_litho_composition_prompt, build_litho_generation_prompt,
     build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, default_agent_arch_skill_dir,
     default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
-    extract_context_section, get_env_status, get_sdd_status, grep_file, grep_text,
+    extract_context_section, get_env_status, get_sdd_status, grep_file, grep_repomix_pack, grep_text,
     has_litho_research_artifacts, litho_human_complete, litho_human_complete_with_research,
     litho_research_ready, apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready, meta_inputs_status,
     plan_env_integration, plan_litho_generation, plan_sdd_workflow, patch_agents_md,

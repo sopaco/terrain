@@ -21,22 +21,36 @@ export function startNewTextStep(steps: AssistantStep[]): AssistantStep[] {
   return [...steps, { kind: "text", content: "" }];
 }
 
+function assignedToolCount(steps: AssistantStep[]): number {
+  return steps.reduce(
+    (count, step) => count + (step.kind === "tools" ? step.toolCalls.length : 0),
+    0,
+  );
+}
+
+/** Sync streaming tool events into per-batch steps (backend emits cumulative calls). */
 export function syncStepTools(steps: AssistantStep[], calls: ToolCallRecord[]): AssistantStep[] {
   if (calls.length === 0) return steps;
+
   const next = [...steps];
+  const alreadyAssigned = assignedToolCount(next);
+  const pending = calls.slice(alreadyAssigned);
   const last = next[next.length - 1];
-  const running = calls.some((c) => c.status === "running");
 
   if (last?.kind === "tools") {
-    const batchDone = last.toolCalls.every((c) => c.status !== "running");
-    if (batchDone && running) {
-      next.push({ kind: "tools", toolCalls: calls });
+    const batchStart = alreadyAssigned - last.toolCalls.length;
+    const currentBatch = calls.slice(batchStart, alreadyAssigned);
+
+    if (pending.length > 0) {
+      next[next.length - 1] = { kind: "tools", toolCalls: currentBatch };
+      next.push({ kind: "tools", toolCalls: pending });
     } else {
-      next[next.length - 1] = { kind: "tools", toolCalls: calls };
+      next[next.length - 1] = { kind: "tools", toolCalls: currentBatch };
     }
-  } else {
-    next.push({ kind: "tools", toolCalls: calls });
+  } else if (pending.length > 0) {
+    next.push({ kind: "tools", toolCalls: pending });
   }
+
   return next;
 }
 

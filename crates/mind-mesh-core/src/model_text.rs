@@ -71,11 +71,75 @@ static LONE_CARET_EMPHASIS_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Break inline `##` headings glued to prior sentences (common with local models).
 static INLINE_H2_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([。；;:.!?])\s*(## )").expect("inline h2 break regex")
+    Regex::new(r"([。；;：:.!?])\s*(## )").expect("inline h2 break regex")
 });
 
 static INLINE_H2_AFTER_WORD_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"([\x{4e00}-\x{9fff}a-zA-Z0-9`\)])\s*(## )").expect("inline h2 after word regex")
+});
+
+/// Break inline `###`–`######` headings glued to prior text on the same line.
+static INLINE_SUBHEADING_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([^\n\r])(#{3,6} )").expect("inline subheading break regex")
+});
+
+/// Break any `##`–`######` heading not already at line start (LLM flattened output).
+static INLINE_HEADING_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([^\n\r#])(#{2,6} )").expect("inline heading break regex")
+});
+
+/// Heading title glued to body text (e.g. `## 标题MindMesh **bold**`).
+static HEADING_GLUE_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(#{1,6} [^\n]+[\x{4e00}-\x{9fff}])([A-Za-z])").expect("heading glue body regex")
+});
+
+/// Fenced code block glued to prior prose.
+static INLINE_FENCE_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([^\n\r`])(```[\w]+)").expect("inline fence break regex")
+});
+
+static INLINE_BARE_FENCE_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([^\n\r`])(```)([^\w\n\r])").expect("inline bare fence break regex")
+});
+
+/// Fenced code block immediately followed by a heading.
+static FENCE_BEFORE_HEADING_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"```(#{1,6} )").expect("fence before heading regex")
+});
+
+/// Numbered list item glued to prior sentence (`…标准2. **Item**`).
+static GLUED_NUMBERED_LIST_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([^\n\d])(\d+\.\s+\*\*)").expect("glued numbered list regex")
+});
+
+/// Table rows glued together (`| a | b || c | d |`).
+static GLUED_TABLE_ROW_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\|\|").expect("glued table row regex")
+});
+
+/// Newline after fenced-code language tag (` ```toml# ...`).
+static FENCE_LANG_NEWLINE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(```[\w]+)([^\n\r\w])").expect("fence lang newline regex")
+});
+
+/// Body text glued after a heading that ends with `)`.
+static HEADING_PAREN_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(#{1,6} [^\n]+?\))([^\n#\s\d\-])").expect("heading paren body regex")
+});
+
+/// Markdown table starting on the same line as prose.
+static TABLE_AFTER_COLON_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([：:])(\| )").expect("table after colon regex")
+});
+
+/// Unordered list glued to prior heading text on the same line.
+static HEADING_LIST_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(#{1,6} [^\n]+?)(-\s*`)").expect("heading list break regex")
+});
+
+/// Unordered list item glued to prior inline text (`Provider- \`code\``).
+static GLUED_UNORDERED_LIST_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([^\n\r])(-\s*`)").expect("glued unordered list regex")
 });
 
 static PROMOTE_REQUIRED_H3_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -192,10 +256,46 @@ pub fn extract_markdown_body(text: &str) -> String {
     text.to_string()
 }
 
-/// Fix `##` / `###` headings run together with prior text on one line.
+/// Fix headings, lists, fences, and tables run together on one line.
+/// Always applied — local LLM providers often return zero newlines.
 pub fn repair_inline_section_headings(text: &str) -> String {
     let mut out = INLINE_H2_BREAK_RE.replace_all(text, "$1\n\n$2").into_owned();
     out = INLINE_H2_AFTER_WORD_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = INLINE_HEADING_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = INLINE_SUBHEADING_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = HEADING_GLUE_BODY_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = INLINE_FENCE_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = INLINE_BARE_FENCE_BREAK_RE
+        .replace_all(&out, "$1\n\n$2$3")
+        .into_owned();
+    out = FENCE_BEFORE_HEADING_RE
+        .replace_all(&out, "```\n\n$1")
+        .into_owned();
+    out = GLUED_NUMBERED_LIST_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = GLUED_TABLE_ROW_RE.replace_all(&out, "|\n|").into_owned();
+    out = FENCE_LANG_NEWLINE_RE.replace_all(&out, "$1\n$2").into_owned();
+    out = HEADING_PAREN_BODY_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = TABLE_AFTER_COLON_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = HEADING_LIST_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = GLUED_UNORDERED_LIST_RE
         .replace_all(&out, "$1\n\n$2")
         .into_owned();
     out = break_before_known_sections(&out);
@@ -206,11 +306,12 @@ pub fn repair_inline_section_headings(text: &str) -> String {
 
 /// Re-insert markdown structure when providers stream a single flattened line.
 pub fn repair_flattened_markdown(text: &str) -> String {
-    if text.chars().filter(|c| *c == '\n').count() >= 3 {
-        return text.to_string();
+    let layout = repair_inline_section_headings(text);
+    if layout.chars().filter(|c| *c == '\n').count() >= 3 {
+        return layout;
     }
 
-    let mut out = text.to_string();
+    let mut out = layout;
     out = CARET_EMPHASIS_RE.replace_all(&out, "*$1*").into_owned();
     out = LONE_CARET_EMPHASIS_RE.replace_all(&out, "*$1*").into_owned();
     out = HEADING_BREAK_RE.replace_all(&out, "$1\n\n$2").into_owned();
@@ -246,8 +347,7 @@ pub fn repair_flattened_markdown(text: &str) -> String {
 pub fn prepare_chat_markdown(text: &str) -> String {
     let stripped = strip_model_reasoning(text);
     let unwrapped = unwrap_markdown_fence(&stripped);
-    let inline = repair_inline_section_headings(&unwrapped);
-    repair_flattened_markdown(&inline)
+    repair_flattened_markdown(&unwrapped)
 }
 
 /// Full cleanup for persisted or displayed model markdown output.
@@ -315,6 +415,41 @@ mod tests {
             "{open}planning{close}\n\n```markdown\n## 项目概览\n\nHello\n```"
         );
         assert_eq!(prepare_model_markdown(&input), "## 项目概览\n\nHello");
+    }
+
+    #[test]
+    fn repairs_real_flattened_ask_sample() {
+        let path = std::path::Path::new(env!("HOME"))
+            .join(".mind-mesh/debug/last-ask-raw.md");
+        if !path.exists() {
+            return;
+        }
+        let raw = std::fs::read_to_string(&path).expect("read debug ask sample");
+        if raw.chars().filter(|c| *c == '\n').count() > 2 {
+            return;
+        }
+        let out = prepare_chat_markdown(&raw);
+        assert!(
+            out.chars().filter(|c| *c == '\n').count() >= 20,
+            "expected repaired newlines, got {} chars in:\n{}",
+            out.chars().filter(|c| *c == '\n').count(),
+            &out[..out.len().min(400)]
+        );
+        assert!(out.contains("\n\n## 核心依赖与协议"));
+        assert!(out.contains("\n\n1. **ACP"));
+        assert!(out.contains("```toml\n"));
+    }
+
+    #[test]
+    fn repairs_flattened_llm_provider_ask_markdown() {
+        let input = "说明如下：## 核心依赖与协议MindMesh **不直接实现** 客户端：1. **One**2. **Two**特性```toml\nkey = 1\n```## 总结Done。";
+        let out = prepare_chat_markdown(input);
+        assert!(out.contains("\n\n## 核心依赖与协议"), "missing h2 break: {out}");
+        assert!(out.contains("\n\nMindMesh"), "missing heading/body break: {out}");
+        assert!(out.contains("\n\n1. **One**"), "missing list break: {out}");
+        assert!(out.contains("\n\n2. **Two**"), "missing list item break: {out}");
+        assert!(out.contains("\n\n```toml"), "missing fence break: {out}");
+        assert!(out.contains("\n\n## 总结"), "missing trailing heading break: {out}");
     }
 
     #[test]

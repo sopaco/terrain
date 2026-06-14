@@ -17,6 +17,19 @@ pub struct AgentPackFileContent {
     /// 1-based end line within the source file (inclusive).
     pub end_line: u32,
     pub total_lines: u32,
+    /// True when the requested range was adjusted to fit the pack slice.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub range_clamped: bool,
+    /// Original requested start when clamped.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requested_start_line: Option<u32>,
+    /// Original requested end when clamped.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requested_end_line: Option<u32>,
+}
+
+fn is_false(v: &bool) -> bool {
+    !*v
 }
 
 fn normalize_path(path: &str) -> String {
@@ -144,31 +157,69 @@ pub fn read_agent_pack_file_from_text(
         .collect();
 
     let total_lines = numbered.len() as u32;
-    let start = start_line.unwrap_or(1).max(1);
-    let end = end_line.unwrap_or(total_lines).min(total_lines);
-    if start > end || (total_lines > 0 && start > total_lines) {
+    let requested_start = start_line.unwrap_or(1).max(1);
+    let requested_end = end_line.unwrap_or(total_lines.max(1));
+    let mut start = requested_start;
+    let mut end = requested_end;
+    let mut range_clamped = false;
+
+    if total_lines == 0 {
+        return Ok(AgentPackFileContent {
+            file_path: file_path.to_string(),
+            matched_path,
+            content: String::new(),
+            start_line: 0,
+            end_line: 0,
+            total_lines: 0,
+            range_clamped: false,
+            requested_start_line: None,
+            requested_end_line: None,
+        });
+    }
+
+    if start > total_lines {
+        start = 1;
+        end = total_lines;
+        range_clamped = true;
+    } else {
+        end = end.min(total_lines);
+        if end < start {
+            end = start.min(total_lines);
+            range_clamped = true;
+        }
+        range_clamped |= requested_start != start || requested_end != end;
+    }
+
+    if start > end {
         return Err(CoreError::InvalidDoc(format!(
-            "invalid line range {start}-{end} for {matched_path} ({total_lines} lines in pack)"
+            "invalid line range {requested_start}-{requested_end} for {matched_path} ({total_lines} lines in pack)"
         )));
     }
 
-    let slice: Vec<String> = if total_lines == 0 {
-        Vec::new()
-    } else {
-        numbered
-            .iter()
-            .filter(|(n, _)| *n >= start && *n <= end)
-            .map(|(_, body)| body.clone())
-            .collect()
-    };
+    let slice: Vec<String> = numbered
+        .iter()
+        .filter(|(n, _)| *n >= start && *n <= end)
+        .map(|(_, body)| body.clone())
+        .collect();
 
     Ok(AgentPackFileContent {
         file_path: file_path.to_string(),
         matched_path,
         content: slice.join("\n"),
-        start_line: if total_lines == 0 { 0 } else { start },
-        end_line: if total_lines == 0 { 0 } else { end },
+        start_line: start,
+        end_line: end,
         total_lines,
+        range_clamped,
+        requested_start_line: if range_clamped {
+            Some(requested_start)
+        } else {
+            None
+        },
+        requested_end_line: if range_clamped {
+            Some(requested_end)
+        } else {
+            None
+        },
     })
 }
 
@@ -215,5 +266,15 @@ mod tests {
         assert_eq!(got.start_line, 2);
         assert_eq!(got.end_line, 2);
         assert!(got.content.contains("println!"));
+    }
+
+    #[test]
+    fn clamps_out_of_range_line_request() {
+        let got = read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", Some(190), Some(260)).unwrap();
+        assert_eq!(got.total_lines, 3);
+        assert!(got.range_clamped);
+        assert_eq!(got.start_line, 1);
+        assert_eq!(got.end_line, 3);
+        assert!(got.content.contains("fn main()"));
     }
 }
