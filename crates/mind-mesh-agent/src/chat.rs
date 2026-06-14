@@ -9,9 +9,10 @@ use anyhow::{Context, Result};
 use futures::StreamExt;
 use mind_mesh_core::{
     AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS, AgentPackMeta, KnowledgePaths, KnowledgeSearch,
-    SearchOptions, SourceCitation, agent_pack_ready, build_context_overview,
-    extract_source_citations, merge_citations, prepare_chat_markdown, read_agent_context_status,
-    read_json, resolve_project_repo_path,
+    SearchOptions, SourceCitation, agent_pack_ready, build_context_overview, compute_freshness,
+    extract_source_citations, format_freshness_trust_block, merge_citations, prepare_chat_markdown,
+    read_agent_context_status, read_freshness_ledger, read_json, resolve_project_repo_path,
+    MACRO_PRELOAD_THRESHOLD,
 };
 use serde::Serialize;
 
@@ -870,15 +871,38 @@ fn build_ask_prompt(query: &str, project: Option<&str>, paths: &KnowledgePaths) 
     let repo_path = resolve_project_repo_path(paths, slug, None).unwrap_or_default();
     let pack_meta = read_json::<AgentPackMeta>(paths.agent_pack_meta(slug)).ok();
 
+    let freshness = if !repo_path.is_empty() {
+        compute_freshness(paths, slug, &repo_path).ok().or_else(|| {
+            read_freshness_ledger(paths, slug).map(|l| l.summary)
+        })
+    } else {
+        None
+    };
+
+    let macro_preload = freshness
+        .as_ref()
+        .map(|f| f.macro_preload_allowed)
+        .unwrap_or(true);
+
+    let macro_rule = if macro_preload {
+        "• Macro: architecture overview preloaded below (do NOT call read_agent_context without section)"
+    } else {
+        "• Macro: architecture context is STALE — do NOT trust any preloaded overview; use grep_agent_pack to verify"
+    };
+
     let mut sections = vec![format!(
         "Current project slug: {slug}\n\
 Repository path (citations / UI only): {repo_path}\n\n\
 TOOL RULES — three layers:\n\
-• Macro: architecture overview preloaded below (do NOT call read_agent_context without section)\n\
+{macro_rule}\n\
 • Meso: read_agent_context(section=\"…\") for a specific heading when needed\n\
 • Micro: grep_agent_pack → read_agent_pack_file for source code\n\
 Do NOT call read_agent_pack_meta when pack metadata is preloaded."
     )];
+
+    if let Some(ref fresh) = freshness {
+        sections.push(format_freshness_trust_block(fresh));
+    }
 
     if agent_pack_ready(paths, slug) {
         if let Some(meta) = pack_meta.as_ref() {
@@ -891,12 +915,17 @@ Do NOT call read_agent_pack_meta when pack metadata is preloaded."
                 .join("\n");
             let (dir_preview, dir_truncated) =
                 truncate_with_notice(&meta.directory_structure, ASK_INJECT_DIR_TREE_MAX_CHARS);
+            let baseline = meta
+                .baseline_git_head
+                .as_deref()
+                .unwrap_or("(not recorded)");
             sections.push(format!(
                 "## Preloaded repomix pack metadata (do NOT call read_agent_pack_meta)\n\
-synced_at: {}\nfiles: {}\ntokens: {}\nstrategy: {}\n\n\
+synced_at: {}\nbaseline_git_head: {}\nfiles: {}\ntokens: {}\nstrategy: {}\n\n\
 Top files by tokens:\n{}\n\n\
 Directory tree (preview{}):\n{}\n",
                 meta.synced_at,
+                baseline,
                 meta.total_files,
                 meta.total_tokens,
                 meta.pack_strategy,
@@ -918,7 +947,7 @@ Assets will be auto-generated; you may call read_agent_context once if needed.\n
     }
 
     let ctx = read_agent_context_status(paths, slug);
-    if ctx.ready {
+    if ctx.ready && macro_preload {
         let context_path = paths.agent_context_main(slug);
         let body = mind_mesh_core::read_doc(&context_path)
             .map(|d| d.body)
@@ -936,6 +965,12 @@ Total stored: {} chars in {} sections{}. Do NOT re-fetch overview.\n\n\
                 ""
             },
             overview.macro_markdown,
+        ));
+    } else if ctx.ready {
+        sections.push(format!(
+            "## Architecture context: STALE (score < {MACRO_PRELOAD_THRESHOLD})\n\
+Macro overview withheld due to low freshness. Use read_agent_context(section=\"…\") \
+only after grep_agent_pack verification, or tell the user to run 快速保鲜 in MindMesh.\n"
         ));
     } else {
         sections.push(

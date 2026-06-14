@@ -36,6 +36,16 @@ export const GLOSSARY: GlossaryEntry[] = [
     description: `基于当前项目 ${TERMS.knowledgeTab} 与源码索引的 DeepWiki 式对话，可引用文档片段与代码行号。`,
   },
   {
+    term: "快速保鲜",
+    description:
+      "扫描 + 重建源码索引 + 重新生成 Agent 友好的知识资产（跳过 Litho）。代码变更后用于降低过期知识对 Agent 的误导。",
+  },
+  {
+    term: "知识新鲜度",
+    description:
+      "对比 Git HEAD 与知识资产生成时的 baseline 提交，计算 0–100 分。低于 50 分时 Ask 不会预加载可能过期的架构概览。",
+  },
+  {
     term: TERMS.agentEnv,
     description: `为 Cursor 等 Coding Agent 集成 Skills、CodeGraph、RTK 与 AGENTS.md，与「${TERMS.humanKnowledge}」生成相互独立。`,
   },

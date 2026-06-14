@@ -221,6 +221,34 @@ export interface AssetTrackHealth {
   ready: boolean;
   summary: string;
   detail: string;
+  freshness_score?: number;
+  stale?: boolean;
+  stale_reason?: string;
+}
+
+export interface FreshnessSummary {
+  overall_score: number;
+  overall_stale: boolean;
+  commits_since_baseline: number;
+  changed_files_count: number;
+  current_git_head?: string;
+  working_tree_dirty: boolean;
+  is_git_repo: boolean;
+  last_computed_at: string;
+  stale_reason?: string;
+  agent_pack_score: number;
+  agent_context_score: number;
+  human_docs_score: number;
+  macro_preload_allowed: boolean;
+}
+
+export interface QuickRefreshResult {
+  project_slug: string;
+  scan_files_written: number;
+  pack_tokens?: number;
+  agent_context_regenerated: boolean;
+  notes: string[];
+  freshness: FreshnessSummary;
 }
 
 export interface AgentEnvStatus {
@@ -273,6 +301,7 @@ export interface ProjectOverview {
   structure_preview?: string;
   overview_excerpt?: string;
   architecture_excerpt?: string;
+  freshness?: FreshnessSummary;
 }
 
 export type SddPhase = "requirements" | "tech_design" | "code_gen" | "code_review";

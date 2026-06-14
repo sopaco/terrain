@@ -2,6 +2,7 @@ use std::path::Path;
 
 use crate::doc::{read_doc, read_json};
 use crate::error::{CoreError, Result};
+use crate::freshness::compute_freshness;
 use crate::assets::{
     count_markdown_in_dir, has_litho_research_artifacts, litho_human_complete_with_research,
 };
@@ -74,6 +75,18 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
 
     let agent_env = build_agent_env_status(&repo_path);
 
+    let freshness = if !repo_path.is_empty() {
+        compute_freshness(paths, project_slug, &repo_path).ok()
+    } else {
+        None
+    };
+
+    let asset_health = if let Some(ref fresh) = freshness {
+        apply_freshness_to_asset_health(asset_health, fresh)
+    } else {
+        asset_health
+    };
+
     Ok(ProjectOverview {
         slug: project_slug.to_string(),
         name,
@@ -90,6 +103,7 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
         structure_preview,
         overview_excerpt,
         architecture_excerpt,
+        freshness,
     })
 }
 
@@ -167,6 +181,9 @@ fn build_asset_health(
             } else {
                 "适合新人阅读与 DeepWiki".into()
             },
+            freshness_score: None,
+            stale: None,
+            stale_reason: None,
         },
         AssetTrackHealth {
             track: "agent_context".into(),
@@ -178,6 +195,9 @@ fn build_asset_health(
                 "未生成".into()
             },
             detail: "架构/模块/流程，无代码细节".into(),
+            freshness_score: None,
+            stale: None,
+            stale_reason: None,
         },
         AssetTrackHealth {
             track: "agent_pack".into(),
@@ -187,6 +207,9 @@ fn build_asset_health(
                 .map(|p| format!("{} tokens · {} 文件", p.total_tokens, p.total_files))
                 .unwrap_or_else(|| "未打包".into()),
             detail: "repomix 压缩签名，按需 grep".into(),
+            freshness_score: None,
+            stale: None,
+            stale_reason: None,
         },
         AssetTrackHealth {
             track: "structured".into(),
@@ -205,8 +228,43 @@ fn build_asset_health(
                 "未配置".into()
             },
             detail: "开发者 mind-mesh-meta.json + OpenAPI 采集".into(),
+            freshness_score: None,
+            stale: None,
+            stale_reason: None,
         },
     ]
+}
+
+fn apply_freshness_to_asset_health(
+    mut health: Vec<crate::schema::AssetTrackHealth>,
+    fresh: &crate::schema::FreshnessSummary,
+) -> Vec<crate::schema::AssetTrackHealth> {
+    for item in &mut health {
+        let (score, stale, reason) = match item.track.as_str() {
+            "agent_pack" => (
+                fresh.agent_pack_score,
+                fresh.agent_pack_score < crate::freshness::FRESH_THRESHOLD,
+                fresh.stale_reason.clone(),
+            ),
+            "agent_context" => (
+                fresh.agent_context_score,
+                fresh.agent_context_score < crate::freshness::FRESH_THRESHOLD,
+                fresh.stale_reason.clone(),
+            ),
+            "human" => (
+                fresh.human_docs_score,
+                fresh.human_docs_score < crate::freshness::FRESH_THRESHOLD,
+                fresh.stale_reason.clone(),
+            ),
+            _ => continue,
+        };
+        item.freshness_score = Some(score);
+        item.stale = Some(stale);
+        if stale {
+            item.stale_reason = reason;
+        }
+    }
+    health
 }
 
 fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {

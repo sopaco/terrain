@@ -155,6 +155,9 @@ pub struct AgentPackMeta {
     pub top_files_by_tokens: Vec<TokenHeavyFile>,
     pub directory_structure: String,
     pub synced_at: String,
+    /// Git HEAD at pack time — used for freshness drift detection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline_git_head: Option<String>,
 }
 
 /// Plan for Agent + Litho skill to generate human-facing docs.
@@ -240,6 +243,9 @@ pub struct AgentContextMeta {
     pub generated_at: String,
     pub section_count: usize,
     pub char_count: usize,
+    /// Git HEAD when context was generated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline_git_head: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -269,6 +275,78 @@ pub struct AssetTrackHealth {
     pub ready: bool,
     pub summary: String,
     pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub freshness_score: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stale: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stale_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreshnessSummary {
+    pub overall_score: u8,
+    pub overall_stale: bool,
+    pub commits_since_baseline: u32,
+    pub changed_files_count: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_git_head: Option<String>,
+    pub working_tree_dirty: bool,
+    pub is_git_repo: bool,
+    pub last_computed_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stale_reason: Option<String>,
+    pub agent_pack_score: u8,
+    pub agent_context_score: u8,
+    pub human_docs_score: u8,
+    pub macro_preload_allowed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreshnessBaseline {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git_head: Option<String>,
+    pub git_head_at: String,
+    pub dirty: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetFreshness {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub synced_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_git_head: Option<String>,
+    pub stale: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stale_reason: Option<String>,
+    pub freshness_score: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreshnessAssets {
+    pub agent_pack: AssetFreshness,
+    pub agent_context: AssetFreshness,
+    pub human_docs: AssetFreshness,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreshnessDrift {
+    pub commits_since_baseline: u32,
+    pub changed_files_since_baseline: u32,
+    pub sample_changed_files: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreshnessLedger {
+    pub version: u32,
+    pub project: String,
+    pub repo_path: String,
+    pub baseline: FreshnessBaseline,
+    pub assets: FreshnessAssets,
+    pub drift: FreshnessDrift,
+    pub summary: FreshnessSummary,
+    pub last_computed_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -293,6 +371,8 @@ pub struct ProjectOverview {
     pub overview_excerpt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub architecture_excerpt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub freshness: Option<FreshnessSummary>,
 }
 
 /// SDD standardized workflow phases.

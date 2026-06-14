@@ -2,6 +2,7 @@ pub mod assets;
 pub mod citations;
 pub mod doc;
 pub mod error;
+pub mod freshness;
 pub mod human;
 pub mod ingest;
 pub mod model_text;
@@ -35,6 +36,10 @@ pub use assets::{pack_agent_assets, AgentPackReport};
 pub use citations::{extract_source_citations, merge_citations};
 pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_doc, render_markdown, write_doc};
 pub use error::{CoreError, Result};
+pub use freshness::{
+    compute_freshness, format_freshness_trust_block, git_snapshot, read_freshness_ledger,
+    write_freshness_ledger, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
+};
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
 pub use ingest::{ProjectScanner, ScanReport};
 pub use model_text::{
@@ -46,7 +51,8 @@ pub use project::{get_project_overview, resolve_project_repo_path};
 pub use registry::{knowledge_root_for_repo, list_stale_registry_projects, register_project, StaleProjectSummary};
 pub use schema::{
     AgentContextMeta, AgentContextStatus, AgentEnvStatus, AgentPackMeta, AssetGenerator, AssetTrack,
-    AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, HumanDocEntry,
+    AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, FreshnessSummary,
+    HumanDocEntry,
     InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, RouteMeta, SddPhase,
     SddPhaseInfo, SddPhaseResult, SddPlan, SddStatus, SourceCitation, SourceSlice, SyncMeta,
     TokenHeavyFile,

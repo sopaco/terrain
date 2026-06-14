@@ -31,6 +31,7 @@
     readDocument,
     runAgentContextGeneration,
     runLithoGeneration,
+    runQuickRefresh,
     searchKnowledge,
   } from "./lib/api";
   import { generateLabel, TERMS } from "./lib/terminology";
@@ -84,6 +85,7 @@
   let projectOverview = $state<ProjectOverview | null>(null);
   let overviewLoading = $state(false);
   let agentContextBusy = $state(false);
+  let quickRefreshBusy = $state(false);
   let initBusy = $state(false);
   let initProgress = $state<string | null>(null);
 
@@ -324,6 +326,31 @@
       } else if (selectedProject) {
         setProjectTask(selectedProject, { repackBusy: false, lithoBusy: false, lithoProgress: "" });
       }
+    }
+  }
+
+  async function triggerQuickRefresh() {
+    if (!selectedRepoPath || !selectedProject) {
+      setStatus("Select a project with a linked repository first.", "error");
+      return;
+    }
+    if (quickRefreshBusy) return;
+    const slug = selectedProject;
+    quickRefreshBusy = true;
+    setStatus("正在快速保鲜（扫描 + 索引 + Agent 知识资产）…", "progress", slug);
+    try {
+      const result = await runQuickRefresh(selectedRepoPath, slug);
+      const note = result.notes.length ? ` · ${result.notes.join("；")}` : "";
+      setStatus(
+        `保鲜完成：新鲜度 ${result.freshness.overall_score}/100${note}`,
+        result.freshness.overall_stale ? "idle" : "success",
+        slug,
+      );
+      await loadProjectOverview(slug);
+    } catch (e) {
+      setStatus(String(e), "error");
+    } finally {
+      quickRefreshBusy = false;
     }
   }
 
@@ -687,6 +714,8 @@
       onOpenArchitectureDoc={projectOverview?.agent_context.ready ? openArchitectureDoc : undefined}
       onOpenHumanOverview={projectOverview?.litho.has_human_docs ? openOverviewHumanDoc : undefined}
       onOpenStructured={openStructuredDocs}
+      quickRefreshBusy={quickRefreshBusy}
+      onQuickRefresh={triggerQuickRefresh}
     />
   {:else if activeTab === "sdd"}
     <SddWorkflowPanel

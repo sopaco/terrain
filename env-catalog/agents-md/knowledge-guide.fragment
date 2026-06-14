@@ -11,3 +11,11 @@ Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分�
 | 关系 | codegraph CLI（见 `codegraph-skill`） | 调用链、依赖关系、影响分析 |
 
 **原则**：先宏观后微观；优先读已生成文档，再 grep 源码索引。
+
+## 知识保鲜（必读）
+
+1. 回答架构/模块问题前，读取 `.mind-mesh/.meta/freshness.json`（或 `freshness` 工具输出）
+2. `freshness_score < 70` 时：不得仅凭 `agent/context.md` 下结论，须用 `grep repomix` 或 `codegraph` 交叉验证
+3. `freshness_score < 50` 时：宏观架构上下文不可信，以 repomix 源码切片为准
+4. 发现矛盾时的优先级：**repomix 源码 > codegraph > agent/context.md > human/**
+5. `knowledge/` 私域文档视为人为维护；若 `refs` 指向的源码路径已删除，应降权处理

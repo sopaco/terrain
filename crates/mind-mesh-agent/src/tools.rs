@@ -3,10 +3,10 @@ use std::sync::Arc;
 use adk_core::{ErrorComponent, Tool};
 use adk_tool::FunctionTool;
 use mind_mesh_core::{
-    agent_context_ready, agent_pack_ready, build_context_overview, extract_context_section,
-    split_context_sections, AgentPackMeta, KnowledgePaths, KnowledgeSearch, SearchOptions,
-    grep_repomix_pack, list_human_docs, read_agent_pack_file, read_json,
-    AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
+    agent_context_ready, agent_pack_ready, build_context_overview, compute_freshness,
+    extract_context_section, split_context_sections, AgentPackMeta, FRESH_THRESHOLD,
+    KnowledgePaths, KnowledgeSearch, SearchOptions, grep_repomix_pack, list_human_docs,
+    read_agent_pack_file, read_json, resolve_project_repo_path, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -147,6 +147,18 @@ pub fn read_agent_context_tool(
 
                     let truncated = body.contains("...[truncated");
 
+                    let freshness_warning = resolve_project_repo_path(&paths, &params.project, None)
+                        .ok()
+                        .and_then(|repo| compute_freshness(&paths, &params.project, &repo).ok())
+                        .filter(|f| f.agent_context_score < FRESH_THRESHOLD)
+                        .map(|f| {
+                            format!(
+                                "freshness_score={}/100; commits_since_baseline={}; \
+                                 verify architecture claims with grep_agent_pack",
+                                f.agent_context_score, f.commits_since_baseline
+                            )
+                        });
+
                     let response = json!({
                         "path": doc.path,
                         "mode": mode,
@@ -155,6 +167,7 @@ pub fn read_agent_context_tool(
                         "truncated": truncated,
                         "auto_packed": !was_pack_ready && report.packed,
                         "auto_generated": !was_context_ready && report.context_generated,
+                        "freshness_warning": freshness_warning,
                     });
                     store_cached(
                         &session_id,

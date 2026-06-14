@@ -15,6 +15,7 @@ Load **`rtk-skill`** when you need to run shell commands during investigation (g
 1. **Architecture** — `.mind-mesh/agent/context.md`
    - Module map, core flows, system boundaries, tech stack
    - Check `.mind-mesh/agent/context-meta.json` or `meta.json` for freshness
+   - Check `.mind-mesh/.meta/freshness.json` for drift score before trusting architecture context
    - Read directly (short); no RTK needed
 
 2. **Private domain** — `.mind-mesh/knowledge/**/*.md`

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "project": "mind-mesh",
+  "repo_path": "/Users/bjsttlp485/Workspace/SAW/mind-mesh",
+  "baseline": {
+    "git_head": "676c810912bec28e965b94a30fb8f65182db397d",
+    "git_head_at": "2026-06-14T23:49:56.857856+00:00",
+    "dirty": true
+  },
+  "assets": {
+    "agent_pack": {
+      "path": "agent/repomix.md",
+      "synced_at": "2026-06-14T11:38:03.281619+00:00",
+      "stale": false,
+      "freshness_score": 95
+    },
+    "agent_context": {
+      "path": "agent/context.md",
+      "synced_at": "2026-06-14T23:49:54.624785+00:00",
+      "baseline_git_head": "676c810912bec28e965b94a30fb8f65182db397d",
+      "stale": true,
+      "stale_reason": "asset_not_ready",
+      "freshness_score": 0
+    },
+    "human_docs": {
+      "path": "human/",
+      "synced_at": "2026-06-14T11:38:03.282491+00:00",
+      "stale": false,
+      "freshness_score": 95
+    }
+  },
+  "drift": {
+    "commits_since_baseline": 0,
+    "changed_files_since_baseline": 0,
+    "sample_changed_files": []
+  },
+  "summary": {
+    "overall_score": 95,
+    "overall_stale": false,
+    "commits_since_baseline": 0,
+    "changed_files_count": 0,
+    "current_git_head": "676c810",
+    "working_tree_dirty": true,
+    "is_git_repo": true,
+    "last_computed_at": "2026-06-14T23:49:56.857856+00:00",
+    "agent_pack_score": 95,
+    "agent_context_score": 0,
+    "human_docs_score": 95,
+    "macro_preload_allowed": false
+  },
+  "last_computed_at": "2026-06-14T23:49:56.857856+00:00"
+}

@@ -6,6 +6,7 @@ import type {
   EnvApplyResult,
   EnvPlan,
   EnvStatus,
+  FreshnessSummary,
   HumanDocEntry,
   KnowledgeDoc,
   LithoGenerationJob,
@@ -15,6 +16,7 @@ import type {
   ProjectInitResult,
   ProjectOverview,
   ProjectSummary,
+  QuickRefreshResult,
   ScanReport,
   SddPhase,
   SddPhaseResult,
@@ -128,6 +130,18 @@ export const getAcpSpawnCommand = () => invoke<string>("acp_spawn_command_cmd");
 
 export const getProjectOverview = (projectSlug: string) =>
   invoke<ProjectOverview>("get_project_overview_cmd", { projectSlug });
+
+export const computeFreshness = (projectSlug: string, repoPath?: string) =>
+  invoke<FreshnessSummary>("compute_freshness_cmd", {
+    projectSlug,
+    repoPath: repoPath || null,
+  });
+
+export const runQuickRefresh = (repoPath: string, projectSlug?: string) =>
+  invoke<QuickRefreshResult>("run_quick_refresh_cmd", {
+    repoPath,
+    projectSlug: projectSlug || null,
+  });
 
 export const getSddStatus = (projectSlug: string) =>
   invoke<SddStatus>("get_sdd_status_cmd", { projectSlug });

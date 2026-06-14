@@ -25,6 +25,8 @@
     onOpenArchitectureDoc?: () => void;
     onOpenHumanOverview?: () => void;
     onOpenStructured?: () => void;
+    quickRefreshBusy?: boolean;
+    onQuickRefresh?: () => void;
   }
 
   let {
@@ -50,6 +52,8 @@
     onOpenArchitectureDoc,
     onOpenHumanOverview,
     onOpenStructured,
+    quickRefreshBusy = false,
+    onQuickRefresh,
   }: Props = $props();
 
   const readyCount = $derived(
@@ -73,6 +77,24 @@
   const knowledgePath = $derived(
     overview?.repo_path ? `${overview.repo_path}/.mind-mesh` : null,
   );
+
+  const freshness = $derived(overview?.freshness ?? null);
+
+  function freshnessTone(score: number): string {
+    if (score >= 80) return "text-emerald-200";
+    if (score >= 50) return "text-amber-200";
+    return "text-rose-200";
+  }
+
+  function freshnessBadgeClass(score: number, stale?: boolean): string {
+    if (!stale && score >= 80) {
+      return "bg-emerald-500/15 text-emerald-200";
+    }
+    if (score >= 50) {
+      return "bg-amber-500/15 text-amber-200";
+    }
+    return "bg-rose-500/15 text-rose-200";
+  }
 
   function formatSyncedAt(value?: string): string {
     if (!value) return "—";
@@ -259,6 +281,40 @@
     </div>
   {:else}
     <div class="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
+      {#if freshness?.overall_stale && overview.repo_path}
+        <div class="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-4">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-rose-100/95">知识可能已过期</p>
+              <p class="mt-1 text-xs leading-relaxed text-white/50">
+                新鲜度 {freshness.overall_score}/100
+                {#if freshness.commits_since_baseline > 0}
+                  · 落后 {freshness.commits_since_baseline} 个提交
+                {/if}
+                {#if freshness.changed_files_count > 0}
+                  · {freshness.changed_files_count} 个文件已变更
+                {/if}
+                {#if freshness.working_tree_dirty}
+                  · 工作区有未提交修改
+                {/if}
+              </p>
+              <p class="mt-2 text-[11px] text-rose-200/70">
+                过期架构知识可能误导 Agent 问答。建议运行「快速保鲜」更新源码索引与 Agent 知识资产（跳过 Litho）。
+              </p>
+            </div>
+            {#if onQuickRefresh}
+              <button
+                type="button"
+                class="shrink-0 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium hover:bg-rose-500 disabled:opacity-50"
+                disabled={quickRefreshBusy || initBusy}
+                onclick={onQuickRefresh}
+              >
+                {quickRefreshBusy ? "保鲜中…" : "快速保鲜"}
+              </button>
+            {/if}
+          </div>
+        </div>
+      {/if}
       {#if needsAssetInit && overview.repo_path}
         {@render initBanner(
           overview.repo_path,
@@ -333,6 +389,25 @@
               {readyCount} / {overview.asset_health.length}
             </span>
             <span class="text-[10px] text-white/30">就绪</span>
+          </div>
+          <div class="flex flex-col gap-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-white/35">知识新鲜度</span>
+            {#if freshness}
+              <span class={`text-sm font-medium ${freshnessTone(freshness.overall_score)}`}>
+                {freshness.overall_score}/100
+              </span>
+              <span class="text-[10px] text-white/30">
+                {#if freshness.current_git_head}
+                  HEAD {freshness.current_git_head}
+                {:else if !freshness.is_git_repo}
+                  非 Git 仓库
+                {:else}
+                  —
+                {/if}
+              </span>
+            {:else}
+              <span class="text-sm text-white/45">—</span>
+            {/if}
           </div>
           <div class="flex flex-col gap-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
             <span class="text-[10px] font-semibold uppercase tracking-wider text-white/35">Agent 友好的工程环境</span>
@@ -428,15 +503,24 @@
                     {asset.summary}
                   </p>
                 </div>
-                <span
-                  class={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    asset.ready
-                      ? "bg-emerald-500/15 text-emerald-200"
-                      : "bg-amber-500/10 text-amber-200/90"
-                  }`}
-                >
-                  {asset.ready ? "就绪" : "待生成"}
-                </span>
+                <div class="flex shrink-0 flex-col items-end gap-1">
+                  {#if asset.freshness_score != null}
+                    <span
+                      class={`rounded-full px-2 py-0.5 text-[10px] font-medium ${freshnessBadgeClass(asset.freshness_score, asset.stale)}`}
+                    >
+                      新鲜度 {asset.freshness_score}
+                    </span>
+                  {/if}
+                  <span
+                    class={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      asset.ready
+                        ? "bg-emerald-500/15 text-emerald-200"
+                        : "bg-amber-500/10 text-amber-200/90"
+                    }`}
+                  >
+                    {asset.ready ? "就绪" : "待生成"}
+                  </span>
+                </div>
               </div>
               <div class="mt-2 flex flex-wrap gap-3">
                 {#if asset.track === "human"}

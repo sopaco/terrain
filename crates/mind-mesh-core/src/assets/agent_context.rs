@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
+use crate::freshness::git_snapshot;
 
 use crate::assets::project_meta::{
     collect_project_meta, format_meta_bundle_for_prompt, persist_meta_inputs,
@@ -206,6 +207,7 @@ pub fn write_agent_context(
         generated_at: Utc::now().to_rfc3339(),
         section_count: body.matches("\n## ").count(),
         char_count: body.len(),
+        baseline_git_head: git_snapshot(repo_path).head,
     };
     crate::doc::write_json(paths.agent_context_meta(project_slug), &meta)?;
     Ok(meta)

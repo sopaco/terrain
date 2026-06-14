@@ -106,6 +106,10 @@ impl KnowledgePaths {
         self.project_dir(project_slug).join(".meta/sync.json")
     }
 
+    pub fn freshness_meta_path(&self, project_slug: &str) -> PathBuf {
+        self.project_dir(project_slug).join(".meta/freshness.json")
+    }
+
     /// Human-facing Litho docs (`1.概述.md`, `2.架构.md`, …).
     pub fn human_docs_dir(&self, project_slug: &str) -> PathBuf {
         self.project_dir(project_slug).join("human")

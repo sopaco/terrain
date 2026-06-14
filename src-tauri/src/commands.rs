@@ -10,13 +10,13 @@ use mind_mesh_agent::{
 };
 use std::sync::Arc;
 use mind_mesh_core::{
-    extract_source_citations, get_project_overview, get_sdd_status, list_stale_registry_projects,
-    merge_citations, AgentPackReport, AssetGenerationPlan, EnvApplyProgress, EnvApplyResult,
-    EnvPlan, EnvStatus, HumanDocEntry, KnowledgeDoc, KnowledgePaths, KnowledgeSearch, LithoPlan,
-    ProjectOverview, ProjectScanner, ProjectSummary, ScanReport, SearchHit, SearchOptions,
-    SddPhase, SddPhaseResult, SddStatus, SourceCitation, SourceSlice, StaleProjectSummary,
-    build_generation_plan, list_human_docs, pack_agent_assets, plan_litho_generation, read_doc_at,
-    read_source_slice, resolve_source_citation,
+    compute_freshness, extract_source_citations, get_project_overview, get_sdd_status,
+    list_stale_registry_projects, merge_citations, AgentPackReport, AssetGenerationPlan,
+    EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus, FreshnessSummary, HumanDocEntry,
+    KnowledgeDoc, KnowledgePaths, KnowledgeSearch, LithoPlan, ProjectOverview, ProjectScanner,
+    ProjectSummary, ScanReport, SearchHit, SearchOptions, SddPhase, SddPhaseResult, SddStatus,
+    SourceCitation, SourceSlice, StaleProjectSummary, build_generation_plan, list_human_docs,
+    pack_agent_assets, plan_litho_generation, read_doc_at, read_source_slice, resolve_source_citation,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -229,9 +229,82 @@ pub async fn pack_agent_assets_cmd(
 ) -> Result<AgentPackReport, String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
-    pack_agent_assets(&state.paths, &slug, &repo_path)
+    let report = pack_agent_assets(&state.paths, &slug, &repo_path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let _ = compute_freshness(&state.paths, &slug, &repo_path);
+    Ok(report)
+}
+
+#[derive(serde::Serialize)]
+pub struct QuickRefreshResult {
+    pub project_slug: String,
+    pub scan_files_written: usize,
+    pub pack_tokens: Option<usize>,
+    pub agent_context_regenerated: bool,
+    pub notes: Vec<String>,
+    pub freshness: FreshnessSummary,
+}
+
+#[tauri::command]
+pub fn compute_freshness_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+    repo_path: Option<String>,
+) -> Result<FreshnessSummary, String> {
+    let repo = repo_path
+        .filter(|r| !r.is_empty())
+        .or_else(|| mind_mesh_core::resolve_project_repo_path(&state.paths, &project_slug, None).ok())
+        .ok_or_else(|| "repository path required".to_string())?;
+    compute_freshness(&state.paths, &project_slug, &repo).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn run_quick_refresh_cmd(
+    state: State<'_, AppState>,
+    repo_path: String,
+    project_slug: Option<String>,
+) -> Result<QuickRefreshResult, String> {
+    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
+    let paths = state.paths.clone();
+    let mut notes = Vec::new();
+
+    let scanner = ProjectScanner::new(paths.clone());
+    let scan = scanner
+        .scan_repo(&repo_path, Some(&slug))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let pack = pack_agent_assets(&paths, &slug, &repo_path)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut agent_context_regenerated = false;
+    if llm_status(&state.get_model_config()).ready {
+        let engine = Arc::new(
+            ChatEngine::new_native(paths.clone(), state.get_model_config())
+                .map_err(|e| e.to_string())?,
+        );
+        match run_agent_context_generation(&paths, engine, &slug, &repo_path).await {
+            Ok(_) => agent_context_regenerated = true,
+            Err(e) => notes.push(format!("Agent context: {e}")),
+        }
+    } else {
+        notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
+    }
+
+    let freshness =
+        compute_freshness(&paths, &slug, &repo_path).map_err(|e| e.to_string())?;
+
+    Ok(QuickRefreshResult {
+        project_slug: slug,
+        scan_files_written: scan.files_written,
+        pack_tokens: Some(pack.total_tokens),
+        agent_context_regenerated,
+        notes,
+        freshness,
+    })
 }
 
 #[tauri::command]

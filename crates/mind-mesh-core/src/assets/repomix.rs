@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use chrono::Utc;
+use crate::freshness::git_snapshot;
 use repomix_core::{OutputStyle, PackOptions, RepomixConfig, pack_with_options};
 
 use crate::doc::write_json;
@@ -101,6 +102,8 @@ pub async fn pack_agent_assets(
         std::fs::write(&output_path, &content)?;
     }
 
+    let baseline_git_head = git_snapshot(repo_path).head;
+
     let meta = AgentPackMeta {
         project: project_slug.to_string(),
         repo_path: repo_path.to_string(),
@@ -118,6 +121,7 @@ pub async fn pack_agent_assets(
             .collect(),
         directory_structure: result.directory_structure,
         synced_at: Utc::now().to_rfc3339(),
+        baseline_git_head,
     };
     write_json(&meta_path, &meta)?;
 
