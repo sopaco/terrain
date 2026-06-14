@@ -13,6 +13,8 @@
     repoPath?: string | null;
     compact?: boolean;
     allowMermaid?: boolean;
+    /** Precomputed heading ids (document order) for in-page anchor navigation. */
+    headingIds?: string[];
     onSourceClick?: (citation: SourceCitation) => void;
   }
 
@@ -21,6 +23,7 @@
     repoPath = null,
     compact = false,
     allowMermaid = true,
+    headingIds = [],
     onSourceClick,
   }: Props = $props();
 
@@ -42,23 +45,40 @@
 
   const preparedBody = $derived(prepareMarkdownForRender(body));
 
-  const renderer = new marked.Renderer();
-  renderer.code = ({ text, lang }) => {
-    if (lang === "mermaid") {
-      if (!allowMermaid) {
-        return `<div class="mermaid-pending"><span class="mermaid-pending-label">Diagram (loading)</span><pre><code>${escapeHtml(text)}</code></pre></div>`;
+  function createRenderer() {
+    let headingIndex = 0;
+    const renderer = new marked.Renderer();
+    renderer.code = ({ text, lang }) => {
+      if (lang === "mermaid") {
+        if (!allowMermaid) {
+          return `<div class="mermaid-pending"><span class="mermaid-pending-label">Diagram (loading)</span><pre><code>${escapeHtml(text)}</code></pre></div>`;
+        }
+        return `<div class="mermaid-wrap" data-mermaid-source="${encodeURIComponent(text)}"></div>`;
       }
-      return `<div class="mermaid-wrap" data-mermaid-source="${encodeURIComponent(text)}"></div>`;
+      const language = lang ? ` class="language-${lang}"` : "";
+      return `<pre><code${language}>${escapeHtml(text)}</code></pre>`;
+    };
+    if (headingIds.length > 0) {
+      renderer.heading = ({ text, depth }) => {
+        const id = headingIds[headingIndex];
+        headingIndex += 1;
+        if (id) {
+          return `<h${depth} id="${escapeHtml(id)}">${text}</h${depth}>`;
+        }
+        return `<h${depth}>${text}</h${depth}>`;
+      };
     }
-    const language = lang ? ` class="language-${lang}"` : "";
-    return `<pre><code${language}>${escapeHtml(text)}</code></pre>`;
-  };
-
-  marked.setOptions({ renderer, breaks: true, gfm: true });
+    return renderer;
+  }
 
   const html = $derived(
     linkifySourcesInHtml(
-      marked.parse(preparedBody, { async: false }) as string,
+      marked.parse(preparedBody, {
+        async: false,
+        breaks: true,
+        gfm: true,
+        renderer: createRenderer(),
+      }) as string,
       linkifySources,
     ),
   );

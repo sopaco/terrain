@@ -7,7 +7,7 @@
   import HumanDocTree from "./lib/components/HumanDocTree.svelte";
   import EnvIntegratePanel from "./lib/components/EnvIntegratePanel.svelte";
   import MainNavTabs from "./lib/components/MainNavTabs.svelte";
-  import MarkdownViewer from "./lib/components/MarkdownViewer.svelte";
+  import KnowledgeArticle from "./lib/components/KnowledgeArticle.svelte";
   import ProjectOverviewPanel from "./lib/components/ProjectOverviewPanel.svelte";
   import ProjectSelector from "./lib/components/ProjectSelector.svelte";
   import SddWorkflowPanel from "./lib/components/SddWorkflowPanel.svelte";
@@ -775,24 +775,21 @@
         </aside>
 
         <main class="flex min-w-0 flex-1 flex-col">
-          <div class="flex-1 overflow-y-auto">
-            {#if docLoading}
-              <div class="flex h-full flex-col items-center justify-center gap-3 text-sm text-white/40">
-                <span class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent"></span>
-                <span>Loading document…</span>
-              </div>
-            {:else if activeDoc}
-              <article class="px-8 py-8">
-                <div class="mb-3 flex items-center gap-2 text-xs text-white/40">
-                  <span class="truncate" title={activeDoc.path}>{activeDoc.path}</span>
-                </div>
-                <MarkdownViewer
-                  body={activeDoc.body}
-                  repoPath={selectedRepoPath}
-                  onSourceClick={openSourceCitation}
-                />
-              </article>
-            {:else if hits.length > 0}
+          {#if docLoading}
+            <div class="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-white/40">
+              <span class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent"></span>
+              <span>Loading document…</span>
+            </div>
+          {:else if activeDoc}
+            <KnowledgeArticle
+              body={activeDoc.body}
+              path={activeDoc.path}
+              repoPath={selectedRepoPath}
+              onSourceClick={openSourceCitation}
+            />
+    {:else}
+            <div class="flex-1 overflow-y-auto">
+              {#if hits.length > 0}
               <ul class="p-4">
                 {#each hits as hit}
                   <li>
@@ -810,15 +807,16 @@
                   </li>
                 {/each}
               </ul>
-            {:else}
-              <div class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-white/40">
-                <p class="text-lg text-white/60">
-                  {selectedProject ? "从左侧目录选择文档" : "添加或选择项目以浏览知识资产"}
-                </p>
-                <p class="text-sm">阅读文档后，可在底部问答栏就当前项目提问。</p>
-              </div>
-            {/if}
-          </div>
+              {:else}
+                <div class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-white/40">
+                  <p class="text-lg text-white/60">
+                    {selectedProject ? "从左侧目录选择文档" : "添加或选择项目以浏览知识资产"}
+                  </p>
+                  <p class="text-sm">阅读文档后，可在底部问答栏就当前项目提问。</p>
+                </div>
+              {/if}
+            </div>
+          {/if}
 
           <AskBar
             disabled={!selectedProject}
