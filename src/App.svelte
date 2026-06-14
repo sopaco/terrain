@@ -8,6 +8,7 @@
   import EnvIntegratePanel from "./lib/components/EnvIntegratePanel.svelte";
   import MainNavTabs from "./lib/components/MainNavTabs.svelte";
   import KnowledgeArticle from "./lib/components/KnowledgeArticle.svelte";
+  import SourceDrawer from "./lib/components/SourceDrawer.svelte";
   import ProjectOverviewPanel from "./lib/components/ProjectOverviewPanel.svelte";
   import ProjectSelector from "./lib/components/ProjectSelector.svelte";
   import SddWorkflowPanel from "./lib/components/SddWorkflowPanel.svelte";
@@ -33,8 +34,7 @@
     searchKnowledge,
   } from "./lib/api";
   import { generateLabel, TERMS } from "./lib/terminology";
-  import { resolveSourceCitation } from "./lib/resolveSource";
-  import { isKnowledgeMarkdownPath, resolveKnowledgeDocPath } from "./lib/knowledgeDoc";
+  import { citationToSourceSlice } from "./lib/resolveSource";
   import type {
     AppTab,
     ChatMessage,
@@ -73,6 +73,7 @@
   let projectTasks = $state<Record<string, ProjectTaskState>>({});
   let chatSessions = $state<Record<string, ChatMessage[]>>({});
   let deepWikiSources = $state<Record<string, SourceSlice | null>>({});
+  let knowledgeSources = $state<Record<string, SourceSlice | null>>({});
 
   let projectPickerOpen = $state(false);
   let settingsOpen = $state(false);
@@ -105,6 +106,9 @@
   const currentDeepWikiSource = $derived(
     selectedProject ? (deepWikiSources[selectedProject] ?? null) : null,
   );
+  const knowledgeSourceSlice = $derived(
+    selectedProject ? (knowledgeSources[selectedProject] ?? null) : null,
+  );
   const repackBusy = $derived(currentTask.repackBusy);
   const lithoBusy = $derived(currentTask.lithoBusy);
   const lithoProgress = $derived(currentTask.lithoProgress);
@@ -131,6 +135,10 @@
 
   function setDeepWikiSource(slug: string, slice: SourceSlice | null) {
     deepWikiSources = { ...deepWikiSources, [slug]: slice };
+  }
+
+  function setKnowledgeSource(slug: string, slice: SourceSlice | null) {
+    knowledgeSources = { ...knowledgeSources, [slug]: slice };
   }
 
   async function refreshKnowledgeRoot(slug?: string | null) {
@@ -455,46 +463,20 @@
     }
   }
 
-  async function openSourceCitation(c: SourceCitation) {
+  async function openKnowledgeSourceCitation(c: SourceCitation) {
     if (!selectedProject) return;
 
-    const knowledgeDoc =
-      c.kind === "human_doc" ||
-      c.kind === "structured_doc" ||
-      isKnowledgeMarkdownPath(c.path);
-
-    if (knowledgeDoc) {
-      try {
-        const docPath =
-          c.path.startsWith("/") || c.path.includes(".mind-mesh/")
-            ? c.path
-            : resolveKnowledgeDocPath(selectedProject, c.path);
-        const doc = await readDocument(docPath);
-        setDeepWikiSource(selectedProject, {
-          repo_path: c.repo_path ?? selectedRepoPath ?? "",
-          file_path: c.path,
-          start_line: 0,
-          end_line: 0,
-          content: doc.body,
-          format: "markdown",
-        });
-        deepWikiOpen = true;
-        deepWikiInitialQuestion = null;
-      } catch (e) {
-        setStatus(String(e), "error");
-      }
-      return;
-    }
-
     try {
-      const slice = await resolveSourceCitation(selectedProject, c, selectedRepoPath, {
-        fullFile: true,
-      });
-      setDeepWikiSource(selectedProject, { ...slice, format: slice.format ?? "code" });
-      deepWikiOpen = true;
-      deepWikiInitialQuestion = null;
+      const slice = await citationToSourceSlice(
+        selectedProject,
+        c,
+        selectedRepoPath,
+        readDocument,
+      );
+      setKnowledgeSource(selectedProject, slice);
     } catch (e) {
       setStatus(String(e), "error");
+      setKnowledgeSource(selectedProject, null);
     }
   }
 
@@ -789,7 +771,7 @@
               body={activeDoc.body}
               path={activeDoc.path}
               repoPath={selectedRepoPath}
-              onSourceClick={openSourceCitation}
+              onSourceClick={openKnowledgeSourceCitation}
             />
     {:else}
             <div class="flex-1 overflow-y-auto">
@@ -854,6 +836,14 @@
     setDeepWikiSource(selectedProject, slice);
   }}
   onopenDoc={openDocPath}
+/>
+
+<SourceDrawer
+  open={Boolean(knowledgeSourceSlice)}
+  slice={knowledgeSourceSlice}
+  repoPath={selectedRepoPath}
+  onclose={() => selectedProject && setKnowledgeSource(selectedProject, null)}
+  onSourceClick={openKnowledgeSourceCitation}
 />
 
 <HelpPanel open={helpOpen} onclose={() => (helpOpen = false)} />

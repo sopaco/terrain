@@ -177,6 +177,18 @@
   background: rgba(99, 102, 241, 0.35);
 }
 
+.markdown-body .source-ref-inline {
+  display: inline;
+  padding: 0;
+  vertical-align: baseline;
+}
+
+.markdown-body .source-ref-inline code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
 .markdown-body.compact {
   font-size: 0.875rem;
   line-height: 1.7;

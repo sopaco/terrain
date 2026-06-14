@@ -9,8 +9,8 @@
     startNewTextStep,
     syncStepTools,
   } from "../assistantSteps";
-  import { isKnowledgeMarkdownPath, resolveKnowledgeDocPath } from "../knowledgeDoc";
-  import { resolveSourceCitation } from "../resolveSource";
+  import { isKnowledgeMarkdownPath } from "../knowledgeDoc";
+  import { citationToSourceSlice } from "../resolveSource";
   import { shouldSubmitOnEnter } from "../ime";
   import type {
     AssistantStep,
@@ -23,7 +23,7 @@
   } from "../types";
   import { formatTime } from "../timeFormat";
   import MarkdownViewer from "./MarkdownViewer.svelte";
-  import SourceCodeViewer from "./SourceCodeViewer.svelte";
+  import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
 
   type MessageUpdater = ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]);
@@ -363,43 +363,19 @@
   async function openCitation(c: SourceCitation) {
     citationError = null;
 
-    const knowledgeDoc =
-      c.kind === "human_doc" ||
-      c.kind === "structured_doc" ||
-      isKnowledgeMarkdownPath(c.path);
-
-    if (knowledgeDoc) {
-      try {
-        const docPath =
-          c.path.startsWith("/") || c.path.includes(".mind-mesh/")
-            ? c.path
-            : projectSlug
-              ? resolveKnowledgeDocPath(projectSlug, c.path)
-              : c.path;
-        const doc = await readDocument(docPath);
-        onsourcechange({
-          repo_path: c.repo_path ?? repoPath ?? "",
-          file_path: c.path,
-          start_line: 0,
-          end_line: 0,
-          content: doc.body,
-          format: "markdown",
-        });
-      } catch (e) {
-        citationError = String(e);
-        onsourcechange(null);
-      }
-      return;
-    }
-
-    if (!projectSlug) {
+    if (!projectSlug && !isKnowledgeMarkdownPath(c.path)) {
       citationError = "No project selected.";
       return;
     }
 
     try {
-      const slice = await resolveSourceCitation(projectSlug, c, repoPath, { fullFile: true });
-      onsourcechange({ ...slice, format: slice.format ?? "code" });
+      const slice = await citationToSourceSlice(
+        projectSlug ?? "",
+        c,
+        repoPath,
+        readDocument,
+      );
+      onsourcechange(slice);
     } catch (e) {
       citationError = String(e);
       onsourcechange({
@@ -605,47 +581,12 @@
     >
       {#if sourceSlice}
         <div class="flex h-full w-full min-w-[400px] flex-col">
-          <div class="flex items-center justify-between border-b border-white/10 px-3 py-2">
-            <span class="text-xs font-medium uppercase tracking-wide text-white/40">
-              {sourceSlice.format === "markdown" ? "Document" : "Source"}
-            </span>
-            <button
-              type="button"
-              class="text-xs text-white/40 hover:text-white/70"
-              onclick={() => onsourcechange(null)}
-            >
-              Hide
-            </button>
-          </div>
-          <div class="border-b border-white/10 px-3 py-2 text-xs text-white/50">
-            <div class="truncate font-mono" title={sourceSlice.file_path}>{sourceSlice.file_path}</div>
-            {#if sourceSlice.format !== "markdown"}
-              {#if sourceSlice.focus_line}
-                <div class="mt-1">
-                  {sourceSlice.end_line} lines · cited line {sourceSlice.focus_line}
-                </div>
-              {:else if sourceSlice.start_line > 0 && sourceSlice.end_line > 0}
-                <div class="mt-1">Lines {sourceSlice.start_line}–{sourceSlice.end_line}</div>
-              {/if}
-            {/if}
-          </div>
-          {#if sourceSlice.format === "markdown"}
-            <div class="flex-1 overflow-y-auto p-4">
-              <MarkdownViewer
-                body={sourceSlice.content}
-                repoPath={sourceSlice.repo_path || repoPath}
-                compact
-                onSourceClick={openCitation}
-              />
-            </div>
-          {:else}
-            <SourceCodeViewer
-              content={sourceSlice.content}
-              filePath={sourceSlice.file_path}
-              startLine={sourceSlice.start_line}
-              focusLine={sourceSlice.focus_line}
-            />
-          {/if}
+          <SourcePanel
+            slice={sourceSlice}
+            {repoPath}
+            onclose={() => onsourcechange(null)}
+            onSourceClick={openCitation}
+          />
         </div>
       {/if}
     </aside>

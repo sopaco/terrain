@@ -2,9 +2,14 @@
   import mermaid from "mermaid";
   import { marked } from "marked";
   import type { SourceCitation } from "../types";
-  import { citationKindForPath } from "../knowledgeDoc";
   import { escapeHtml, hasCompleteMermaidBlocks } from "../mermaid-utils";
   import { linkifySourcesInHtml, prepareMarkdownForRender } from "../markdownSanitize";
+  import {
+    buildSourceCitation,
+    linkifySourceSegments,
+    parseSourceRef,
+    sourceRefDataAttr,
+  } from "../sourceRef";
   import MermaidLightbox from "./MermaidLightbox.svelte";
   import "../markdown.css";
 
@@ -31,16 +36,14 @@
   let lightboxSvg = $state<string | null>(null);
   let mermaidReady = false;
 
-  const SOURCE_RE =
-    /`?([a-zA-Z0-9_./-]+\.(?:rs|ts|tsx|js|jsx|py|go|java|kt|swift|cs|cpp|c|h|md|yaml|yml|toml|json))(?::(\d+)(?:-(\d+))?)?`?/g;
+  function sourceRefButton(match: string, parsed: ReturnType<typeof parseSourceRef>) {
+    if (!parsed) return match;
+    const data = sourceRefDataAttr(parsed);
+    return `<button type="button" class="source-ref" data-ref="${data}">${escapeHtml(match)}</button>`;
+  }
 
   function linkifySources(text: string): string {
-    return text.replace(SOURCE_RE, (match, path: string, start?: string, end?: string) => {
-      const s = start ? Number(start) : undefined;
-      const e = end ? Number(end) : s;
-      const data = encodeURIComponent(JSON.stringify({ path, start: s, end: e }));
-      return `<button type="button" class="source-ref" data-ref="${data}">${match}</button>`;
-    });
+    return linkifySourceSegments(text, (match, parsed) => sourceRefButton(match, parsed));
   }
 
   const preparedBody = $derived(prepareMarkdownForRender(body));
@@ -57,6 +60,14 @@
       }
       const language = lang ? ` class="language-${lang}"` : "";
       return `<pre><code${language}>${escapeHtml(text)}</code></pre>`;
+    };
+    renderer.codespan = ({ text }) => {
+      const parsed = parseSourceRef(text);
+      if (parsed && onSourceClick) {
+        const data = sourceRefDataAttr(parsed);
+        return `<button type="button" class="source-ref source-ref-inline" data-ref="${data}"><code>${escapeHtml(text)}</code></button>`;
+      }
+      return `<code>${escapeHtml(text)}</code>`;
     };
     if (headingIds.length > 0) {
       renderer.heading = ({ text, depth }) => {
@@ -104,7 +115,7 @@
       const text = node.textContent ?? "";
       if (
         text.includes("Syntax error in text") ||
-        text.includes("mermaid version") && node.id.startsWith("d")
+        (text.includes("mermaid version") && node.id.startsWith("d"))
       ) {
         node.remove();
       }
@@ -156,21 +167,15 @@
     const target = (e.target as HTMLElement).closest(".source-ref") as HTMLElement | null;
     if (!target || !onSourceClick) return;
     e.preventDefault();
+    e.stopPropagation();
     const raw = target.getAttribute("data-ref");
     if (!raw) return;
-    const { path, start, end } = JSON.parse(decodeURIComponent(raw)) as {
+    const parsed = JSON.parse(decodeURIComponent(raw)) as {
       path: string;
       start?: number;
       end?: number;
     };
-    onSourceClick({
-      kind: citationKindForPath(path),
-      title: start ? `${path}:${start}` : path,
-      path,
-      repo_path: repoPath ?? undefined,
-      start_line: start,
-      end_line: end,
-    });
+    onSourceClick(buildSourceCitation(parsed, repoPath));
   }
 </script>
 
