@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "integrations": [
+    {
+      "id": "skill-mind-mesh-knowledge",
+      "kind": "skill",
+      "label": "MindMesh 知识 Skill",
+      "description": "教 Coding Agent 如何使用 .mind-mesh/ 知识资产",
+      "skill_dir": "mind-mesh-knowledge-skill",
+      "required": true,
+      "depends_on": []
+    },
+    {
+      "id": "skill-repomix",
+      "kind": "skill",
+      "label": "Repomix 查询 Skill",
+      "description": "按需 grep 本地 repomix 索引（不入库）",
+      "skill_dir": "repomix-context-skill",
+      "depends_on": ["skill-mind-mesh-knowledge"]
+    },
+    {
+      "id": "skill-codegraph",
+      "kind": "skill",
+      "label": "Codegraph Skill",
+      "description": "通过 CLI 查询符号关系与影响面",
+      "skill_dir": "codegraph-skill",
+      "depends_on": ["tool-codegraph", "skill-mind-mesh-knowledge"]
+    },
+    {
+      "id": "skill-rtk",
+      "kind": "skill",
+      "label": "RTK Token 优化 Skill",
+      "description": "压缩 shell 命令输出，降低 token 消耗",
+      "skill_dir": "rtk-skill",
+      "depends_on": ["tool-rtk"]
+    },
+    {
+      "id": "tool-bun",
+      "kind": "tool",
+      "label": "Bun 运行时",
+      "description": "其它 npm 工具的统一运行时（可选，若已安装则跳过）",
+      "optional": true,
+      "check": ["bun", "--version"],
+      "depends_on": []
+    },
+    {
+      "id": "tool-codegraph",
+      "kind": "tool",
+      "label": "Codegraph CLI",
+      "description": "安装 @colbymchenry/codegraph 并初始化项目索引",
+      "package": "@colbymchenry/codegraph",
+      "check": ["bunx", "codegraph", "status"],
+      "install_steps": [
+        { "cmd": "bun", "args": ["add", "-d", "@colbymchenry/codegraph"] },
+        { "cmd": "bunx", "args": ["codegraph", "init", "-i"] }
+      ],
+      "skip_commands": ["codegraph install"],
+      "depends_on": []
+    },
+    {
+      "id": "tool-rtk",
+      "kind": "tool",
+      "label": "RTK CLI",
+      "description": "Rust Token Killer — 仅安装 binary，不执行 rtk init",
+      "package": "@mind-mesh/rtk",
+      "check": ["bunx", "rtk", "gain"],
+      "install_steps": [
+        { "cmd": "bun", "args": ["add", "-d", "@mind-mesh/rtk"] }
+      ],
+      "skip_commands": ["rtk init", "rtk init -g"],
+      "depends_on": []
+    },
+    {
+      "id": "agents-md",
+      "kind": "agents_md",
+      "label": "AGENTS.md 工作指南",
+      "description": "注入 MindMesh 托管片段，指引 Agent 使用知识 Skill 与工具链",
+      "depends_on": ["skill-mind-mesh-knowledge"]
+    },
+    {
+      "id": "gitignore-repomix",
+      "kind": "gitignore",
+      "label": "忽略 repomix.md",
+      "description": "将 .mind-mesh/agent/repomix.md 加入 .gitignore",
+      "patterns": [".mind-mesh/agent/repomix.md"],
+      "depends_on": []
+    }
+  ],
+  "agents_md_blocks": [
+    {
+      "id": "env-overview",
+      "version": 1,
+      "fragment": "agents-md/env-overview.fragment"
+    },
+    {
+      "id": "knowledge-guide",
+      "version": 1,
+      "fragment": "agents-md/knowledge-guide.fragment"
+    },
+    {
+      "id": "skills",
+      "version": 2,
+      "fragment": "agents-md/skills.fragment"
+    },
+    {
+      "id": "tools",
+      "version": 2,
+      "fragment": "agents-md/tools.fragment"
+    }
+  ]
+}

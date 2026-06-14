@@ -1,0 +1,53 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/mind-mesh-core",
+    "crates/mind-mesh-agent",
+    "crates/mind-mesh-cli",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.94"
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+slug = "0.1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+walkdir = "2"
+futures = "0.3"
+dotenvy = "0.15"
+
+adk-acp = "1.0.0"
+# OpenCode sends `usage_update`; enable until ACP SDK stabilizes it upstream.
+agent-client-protocol = { version = "0.11.1", features = ["unstable_session_usage"] }
+adk-agent = "1.0.0"
+adk-core = "1.0.0"
+adk-model = { version = "1.0.0", default-features = false, features = ["ollama", "openai"] }
+adk-runner = "1.0.0"
+adk-session = "1.0.0"
+adk-tool = "1.0.0"
+
+mind-mesh-core = { path = "crates/mind-mesh-core" }
+mind-mesh-agent = { path = "crates/mind-mesh-agent" }
+repomix-core = { path = "../repomix-rs/crates/core" }
+
+[patch.crates-io]
+# Vendored fixes for blanket `From` impl conflicts with `time` 0.3.48 (Rust 1.88+).
+# Still required on stable; see third-party/README.md.
+cookie = { path = "third-party/cookie" }
+tauri-utils = { path = "third-party/tauri-utils" }
+tauri = { path = "third-party/tauri" }
+

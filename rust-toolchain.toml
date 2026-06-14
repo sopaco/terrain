@@ -1,0 +1,4 @@
+[toolchain]
+# MSRV 1.94 (adk 1.0). Use stable, not 1.88.
+channel = "stable"
+components = ["rustfmt", "clippy"]

@@ -1,0 +1,21 @@
+[package]
+name = "mind-mesh-cli"
+description = "CLI for scanning repos and searching the MindMesh knowledge base"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "mind-mesh"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap = { version = "4", features = ["derive"] }
+mind-mesh-core.workspace = true
+mind-mesh-agent.workspace = true
+dotenvy.workspace = true
+serde_json.workspace = true
+slug.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

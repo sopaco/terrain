@@ -1,0 +1,7 @@
+## AI 工程环境（MindMesh）
+
+本仓库由 MindMesh 配置了 AI 工程环境。Coding Agent 请遵循以下约定：
+
+- **知识资产**位于 `.mind-mesh/`（架构上下文、私域知识、源码索引摘要）
+- **Skills** 位于 `.agents/skills/`（由 MindMesh 注入，可按需重新集成）
+- **工作流**：先读知识 → 再查关系 → 最后读源码；shell 输出优先走 RTK

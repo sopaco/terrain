@@ -1,0 +1,147 @@
+/* IDE-style syntax colors for Source panel (VS Code Dark+ inspired) */
+
+.source-code-viewer {
+  flex: 1;
+  overflow: auto;
+  background: #10131a;
+}
+
+.source-code-viewer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.source-code-viewer tr:hover td.line-code {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.source-code-viewer tr.focus-line td.line-code {
+  background: rgba(99, 102, 241, 0.15);
+  box-shadow: inset 3px 0 0 #818cf8;
+}
+
+.source-code-viewer tr.focus-line td.line-num {
+  color: rgba(199, 210, 254, 0.85);
+}
+
+.source-code-viewer td {
+  vertical-align: top;
+  padding: 0;
+  white-space: pre;
+}
+
+.source-code-viewer td.line-num {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 1%;
+  min-width: 2.75rem;
+  padding: 0 0.75rem 0 0.5rem;
+  text-align: right;
+  user-select: none;
+  color: rgba(255, 255, 255, 0.22);
+  background: #10131a;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.source-code-viewer td.line-code {
+  width: 100%;
+  padding: 0 0.75rem 0 0.5rem;
+  color: #d4d4d4;
+}
+
+.source-code-viewer code.hljs {
+  display: block;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.source-code-viewer .hljs-comment,
+.source-code-viewer .hljs-quote {
+  color: #6a9955;
+  font-style: italic;
+}
+
+.source-code-viewer .hljs-keyword,
+.source-code-viewer .hljs-selector-tag,
+.source-code-viewer .hljs-literal,
+.source-code-viewer .hljs-built_in {
+  color: #569cd6;
+}
+
+.source-code-viewer .hljs-string,
+.source-code-viewer .hljs-regexp,
+.source-code-viewer .hljs-symbol,
+.source-code-viewer .hljs-bullet {
+  color: #ce9178;
+}
+
+.source-code-viewer .hljs-number,
+.source-code-viewer .hljs-meta {
+  color: #b5cea8;
+}
+
+.source-code-viewer .hljs-title,
+.source-code-viewer .hljs-title.function_,
+.source-code-viewer .hljs-function .hljs-title {
+  color: #dcdcaa;
+}
+
+.source-code-viewer .hljs-type,
+.source-code-viewer .hljs-class .hljs-title,
+.source-code-viewer .hljs-title.class_ {
+  color: #4ec9b0;
+}
+
+.source-code-viewer .hljs-variable,
+.source-code-viewer .hljs-params,
+.source-code-viewer .hljs-attribute {
+  color: #9cdcfe;
+}
+
+.source-code-viewer .hljs-tag,
+.source-code-viewer .hljs-name {
+  color: #569cd6;
+}
+
+.source-code-viewer .hljs-attr {
+  color: #9cdcfe;
+}
+
+.source-code-viewer .hljs-selector-class,
+.source-code-viewer .hljs-selector-id {
+  color: #d7ba7d;
+}
+
+.source-code-viewer .hljs-subst {
+  color: #d4d4d4;
+}
+
+.source-code-viewer .hljs-section,
+.source-code-viewer .hljs-emphasis {
+  font-style: italic;
+}
+
+.source-code-viewer .hljs-strong {
+  font-weight: 600;
+}
+
+.source-code-viewer .hljs-link {
+  color: #569cd6;
+  text-decoration: underline;
+}
+
+.source-code-viewer .hljs-addition {
+  color: #b5cea8;
+  background: rgba(78, 201, 176, 0.12);
+}
+
+.source-code-viewer .hljs-deletion {
+  color: #ce9178;
+  background: rgba(206, 145, 120, 0.12);
+}

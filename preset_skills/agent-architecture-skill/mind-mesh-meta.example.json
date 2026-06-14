@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "hints": {
+    "module_roots": ["crates/", "src/", "packages/"],
+    "notes": "Optional free-form hints for the Agent context generator (team conventions, deployment model, etc.)."
+  },
+  "inputs": [
+    {
+      "label": "Architecture modules",
+      "type": "glob",
+      "pattern": "docs/architecture/**/*.md",
+      "optional": true,
+      "max_chars": 3500
+    },
+    {
+      "label": "API boundaries",
+      "type": "file",
+      "path": "docs/api-boundaries.md",
+      "optional": true
+    },
+    {
+      "label": "Domain glossary",
+      "type": "inline",
+      "content": "Order = customer purchase; Shipment = fulfillment unit."
+    }
+  ]
+}
