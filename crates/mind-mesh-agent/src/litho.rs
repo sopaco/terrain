@@ -1,12 +1,19 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use mind_mesh_core::{
-    build_litho_composition_prompt, build_litho_generation_prompt, has_litho_research_artifacts,
+    build_litho_composition_prompt, build_litho_generation_prompt, count_markdown_in_dir,
+    has_litho_research_artifacts, litho_human_complete_with_research, litho_research_ready,
     plan_litho_generation, KnowledgePaths, LithoPlan,
 };
 
 use crate::acp::{acp_spawn_command, build_acp_config};
 use crate::settings::AcpSettings;
+
+const POLL_INTERVAL_SECS: u64 = 3;
+const STABLE_TICKS: u32 = 10;
+const MAX_COMPOSITION_ATTEMPTS: u32 = 3;
+const DEFAULT_WALL_TIMEOUT_SECS: u64 = 45 * 60;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LithoGenerationJob {
@@ -27,6 +34,7 @@ pub struct LithoGenerationResult {
     pub plan: LithoPlan,
     pub response_excerpt: String,
     pub human_doc_count: usize,
+    pub human_docs_complete: bool,
 }
 
 pub fn prepare_litho_generation(
@@ -54,12 +62,41 @@ pub fn prepare_litho_generation(
     }
 }
 
+fn litho_wall_timeout() -> Duration {
+    let secs = std::env::var("MIND_MESH_LITHO_TIMEOUT_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_WALL_TIMEOUT_SECS);
+    Duration::from_secs(secs)
+}
+
+fn human_complete(human_dir: &Path, litho_workspace: &Path) -> bool {
+    litho_human_complete_with_research(human_dir, Some(litho_workspace))
+}
+
+fn build_result(
+    job: LithoGenerationJob,
+    response_excerpt: String,
+    human_dir: &Path,
+    litho_workspace: &Path,
+) -> LithoGenerationResult {
+    let human_doc_count = count_markdown_in_dir(human_dir);
+    LithoGenerationResult {
+        plan: job.plan,
+        response_excerpt,
+        human_doc_count,
+        human_docs_complete: human_complete(human_dir, litho_workspace),
+    }
+}
+
 /// Run Litho document generation via OpenCode ACP.
 #[cfg(feature = "opencode")]
 async fn prompt_agent_with_doc_poll(
     config: adk_acp::AcpAgentConfig,
     prompt: String,
-    human_dir: std::path::PathBuf,
+    human_dir: PathBuf,
+    research_dir: Option<PathBuf>,
+    litho_workspace: PathBuf,
     stage: &str,
     waiting_message: String,
     mut on_progress: impl FnMut(LithoProgress),
@@ -69,58 +106,162 @@ async fn prompt_agent_with_doc_poll(
     let stage_label = stage.to_string();
     let mut agent_handle = tokio::spawn(async move { prompt_agent(&config, &prompt).await });
 
-    let poll_interval = std::time::Duration::from_secs(3);
-    const STABLE_TICKS: u32 = 10;
+    let poll_interval = Duration::from_secs(POLL_INTERVAL_SECS);
+    let wall_timeout = litho_wall_timeout();
+    let started = Instant::now();
 
-    let mut last_count = count_markdown_files(&human_dir);
+    let mut last_human = count_markdown_in_dir(&human_dir);
+    let mut last_research = research_dir
+        .as_ref()
+        .map(count_markdown_in_dir)
+        .unwrap_or(0);
     let mut stable_ticks = 0u32;
 
     loop {
+        if started.elapsed() >= wall_timeout {
+            agent_handle.abort();
+            anyhow::bail!(
+                "Litho ACP session exceeded wall timeout ({}s). \
+                 human docs: {last_human}, research docs: {last_research}",
+                wall_timeout.as_secs()
+            );
+        }
+
         tokio::select! {
             result = &mut agent_handle => {
                 let inner = result.map_err(|e| anyhow::anyhow!("ACP litho task failed: {e}"))?;
                 return inner.map_err(|e| anyhow::anyhow!("ACP litho agent failed: {e}"));
             }
             _ = tokio::time::sleep(poll_interval) => {
-                let count = count_markdown_files(&human_dir);
-                if count > last_count {
-                    last_count = count;
+                let human = count_markdown_in_dir(&human_dir);
+                let research = research_dir
+                    .as_ref()
+                    .map(count_markdown_in_dir)
+                    .unwrap_or(last_research);
+
+                if human > last_human || research > last_research {
+                    last_human = human;
+                    last_research = research;
                     stable_ticks = 0;
+                    let detail = if research_dir.is_some() && research > 0 {
+                        format!("{waiting_message}（human {human} 篇，研究稿 {research} 篇）")
+                    } else {
+                        format!("{waiting_message}（已写入 {human} 篇）")
+                    };
                     on_progress(LithoProgress {
                         stage: stage_label.clone(),
-                        message: format!("{waiting_message}（已写入 {count} 篇）"),
+                        message: detail,
                     });
-                } else if count > 0 {
+                } else if human_complete(&human_dir, &litho_workspace) {
                     stable_ticks += 1;
                     on_progress(LithoProgress {
                         stage: stage_label.clone(),
                         message: format!(
-                            "{waiting_message}（已写入 {count} 篇，等待 Agent 结束…）"
+                            "{waiting_message}（已写入 {human} 篇，等待 Agent 结束…）"
                         ),
                     });
                     if stable_ticks >= STABLE_TICKS {
                         agent_handle.abort();
                         tracing::warn!(
-                            count,
-                            "litho: human docs stopped changing but ACP session did not finish — completing early"
+                            human,
+                            "litho: full human doc set detected but ACP session did not finish — completing early"
                         );
                         on_progress(LithoProgress {
                             stage: "done".into(),
                             message: format!(
-                                "已检测到 {count} 篇人类友好的知识库文档，Agent 会话超时已结束等待"
+                                "已检测到完整的 Litho 文档集（{human} 篇），Agent 会话超时已结束等待"
                             ),
                         });
                         return Ok(String::new());
                     }
                 } else {
+                    stable_ticks = 0;
+                    let detail = if research_dir.is_some() {
+                        format!("{waiting_message}（human {human} 篇，研究稿 {research} 篇）")
+                    } else {
+                        waiting_message.clone()
+                    };
                     on_progress(LithoProgress {
                         stage: stage_label.clone(),
-                        message: waiting_message.clone(),
+                        message: detail,
                     });
                 }
             }
         }
     }
+}
+
+#[cfg(feature = "opencode")]
+async fn run_composition_phase(
+    acp_settings: &AcpSettings,
+    repo_path: &str,
+    job: &LithoGenerationJob,
+    human_dir: PathBuf,
+    litho_workspace: PathBuf,
+    on_progress: &mut impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    on_progress(LithoProgress {
+        stage: "composing".into(),
+        message: "正在将研究结果整理为人类友好的知识库…".into(),
+    });
+    let composition_prompt = build_litho_composition_prompt(&job.plan);
+    prompt_agent_with_doc_poll(
+        litho_acp_config(acp_settings, repo_path, &job.plan),
+        composition_prompt,
+        human_dir,
+        None,
+        litho_workspace,
+        "composing",
+        "正在将研究结果整理为人类友好的知识库…".into(),
+        on_progress,
+    )
+    .await
+}
+
+#[cfg(feature = "opencode")]
+async fn run_composition_with_retries(
+    acp_settings: &AcpSettings,
+    repo_path: &str,
+    job: &LithoGenerationJob,
+    human_dir: PathBuf,
+    litho_workspace: PathBuf,
+    on_progress: &mut impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    let mut last_excerpt = String::new();
+    for attempt in 1..=MAX_COMPOSITION_ATTEMPTS {
+        if attempt > 1 {
+            on_progress(LithoProgress {
+                stage: "composing".into(),
+                message: format!(
+                    "Litho 文档仍不完整，正在重试编排（第 {attempt}/{MAX_COMPOSITION_ATTEMPTS} 次）…"
+                ),
+            });
+        }
+        let response = run_composition_phase(
+            acp_settings,
+            repo_path,
+            job,
+            human_dir.clone(),
+            litho_workspace.clone(),
+            on_progress,
+        )
+        .await?;
+        if !response.is_empty() {
+            last_excerpt = response.chars().take(500).collect();
+        }
+        if human_complete(&human_dir, &litho_workspace) {
+            return Ok(last_excerpt);
+        }
+    }
+    let human_doc_count = count_markdown_in_dir(&human_dir);
+    anyhow::bail!(
+        "Litho composition finished but the human doc set is still incomplete \
+         ({human_doc_count} file(s) under {}). \
+         Research workspace: {}. \
+         Try re-running Litho generation.",
+        human_dir.display(),
+        litho_workspace.display()
+    );
 }
 
 /// Run Litho document generation via OpenCode ACP.
@@ -146,33 +287,26 @@ pub async fn run_litho_generation(
     std::fs::create_dir_all(&job.plan.litho_workspace_dir)?;
 
     let human_dir = paths.human_docs_dir(project_slug);
-    let mut human_doc_count = count_markdown_files(&human_dir);
+    let litho_workspace = PathBuf::from(&job.plan.litho_workspace_dir);
 
-    if human_doc_count > 0 {
+    if human_complete(&human_dir, &litho_workspace) {
+        let human_doc_count = count_markdown_in_dir(&human_dir);
         on_progress(LithoProgress {
             stage: "done".into(),
-            message: format!("人类友好的知识库已存在（{human_doc_count} 篇）"),
+            message: format!("人类友好的知识库已完整（{human_doc_count} 篇）"),
         });
-        return Ok(LithoGenerationResult {
-            plan: job.plan,
-            response_excerpt: String::new(),
-            human_doc_count,
-        });
+        return Ok(build_result(job, String::new(), &human_dir, &litho_workspace));
     }
 
-    let research_ready = has_litho_research_artifacts(&job.plan.litho_workspace_dir);
-    let response = if research_ready {
-        on_progress(LithoProgress {
-            stage: "composing".into(),
-            message: "Research artifacts found — running composition/output phase…".into(),
-        });
-        let composition_prompt = build_litho_composition_prompt(&job.plan);
-        prompt_agent_with_doc_poll(
-            litho_acp_config(acp_settings, repo_path, &job.plan),
-            composition_prompt,
+    let research_ready = litho_research_ready(&litho_workspace);
+
+    let response_excerpt = if research_ready {
+        run_composition_with_retries(
+            acp_settings,
+            repo_path,
+            &job,
             human_dir.clone(),
-            "composing",
-            "正在将研究结果整理为人类友好的知识库…".into(),
+            litho_workspace.clone(),
             &mut on_progress,
         )
         .await?
@@ -183,66 +317,52 @@ pub async fn run_litho_generation(
         });
 
         let prompt = build_litho_generation_prompt(&job.plan);
-        prompt_agent_with_doc_poll(
+        let response = prompt_agent_with_doc_poll(
             litho_acp_config(acp_settings, repo_path, &job.plan),
             prompt,
             human_dir.clone(),
+            Some(litho_workspace.clone()),
+            litho_workspace.clone(),
             "generating",
             "Agent 正在分析仓库并生成人类友好的知识库…".into(),
             &mut on_progress,
         )
-        .await?
+        .await?;
+        let mut excerpt: String = response.chars().take(500).collect();
+
+        if !human_complete(&human_dir, &litho_workspace)
+            && (litho_research_ready(&litho_workspace) || has_litho_research_artifacts(&litho_workspace))
+        {
+            excerpt = run_composition_with_retries(
+                acp_settings,
+                repo_path,
+                &job,
+                human_dir.clone(),
+                litho_workspace.clone(),
+                &mut on_progress,
+            )
+            .await?;
+        }
+        excerpt
     };
 
-    human_doc_count = count_markdown_files(&human_dir);
-
-    if human_doc_count == 0 && !research_ready && has_litho_research_artifacts(&job.plan.litho_workspace_dir) {
-        on_progress(LithoProgress {
-            stage: "composing".into(),
-            message: "Research complete — running composition/output phase…".into(),
-        });
-
-        let composition_prompt = build_litho_composition_prompt(&job.plan);
-        let composition_response = prompt_agent_with_doc_poll(
-            litho_acp_config(acp_settings, repo_path, &job.plan),
-            composition_prompt,
-            human_dir.clone(),
-            "composing",
-            "正在将研究结果整理为人类友好的知识库…".into(),
-            &mut on_progress,
-        )
-        .await?;
-
-        human_doc_count = count_markdown_files(&human_dir);
-        if human_doc_count == 0 {
-            anyhow::bail!(
-                "Litho composition finished but no human docs were written to {}. \
-                 Research artifacts are under {}. Agent response excerpt: {}",
-                human_dir.display(),
-                job.plan.litho_workspace_dir,
-                composition_response.chars().take(300).collect::<String>()
-            );
-        }
-
-        let excerpt: String = composition_response.chars().take(500).collect();
-        on_progress(LithoProgress {
-            stage: "done".into(),
-            message: format!("Generation finished — {human_doc_count} human doc(s) on disk"),
-        });
-
-        return Ok(LithoGenerationResult {
-            plan: job.plan,
-            response_excerpt: excerpt,
-            human_doc_count,
-        });
-    }
-
+    let human_doc_count = count_markdown_in_dir(&human_dir);
     if human_doc_count == 0 {
         anyhow::bail!(
             "Litho generation finished but no human docs were written to {}. \
-             Agent response excerpt: {}",
+             Research artifacts under {}. Agent response excerpt: {}",
             human_dir.display(),
-            response.chars().take(300).collect::<String>()
+            litho_workspace.display(),
+            response_excerpt.chars().take(300).collect::<String>()
+        );
+    }
+
+    if !human_complete(&human_dir, &litho_workspace) {
+        anyhow::bail!(
+            "Litho generation finished but the human doc set is still incomplete \
+             ({human_doc_count} file(s) under {}). Research workspace: {}.",
+            human_dir.display(),
+            litho_workspace.display()
         );
     }
 
@@ -251,13 +371,7 @@ pub async fn run_litho_generation(
         message: format!("Generation finished — {human_doc_count} human doc(s) on disk"),
     });
 
-    let excerpt: String = response.chars().take(500).collect();
-
-    Ok(LithoGenerationResult {
-        plan: job.plan,
-        response_excerpt: excerpt,
-        human_doc_count,
-    })
+    Ok(build_result(job, response_excerpt, &human_dir, &litho_workspace))
 }
 
 #[cfg(feature = "opencode")]
@@ -290,15 +404,4 @@ pub async fn run_litho_generation(
     _on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<LithoGenerationResult> {
     anyhow::bail!("ACP support not enabled (rebuild with opencode feature)")
-}
-
-fn count_markdown_files(dir: &Path) -> usize {
-    if !dir.is_dir() {
-        return 0;
-    }
-    walkdir::WalkDir::new(dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
-        .count()
 }

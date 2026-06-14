@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use mind_mesh_core::{
-    agent_context_ready, list_human_docs, pack_agent_assets, ProjectScanner, ScanReport,
-    KnowledgePaths,
+    agent_context_ready, count_human_docs, litho_human_complete_with_research, pack_agent_assets,
+    ProjectScanner, ScanReport, KnowledgePaths,
 };
 
 use crate::acp_available;
@@ -26,10 +26,46 @@ pub struct ProjectInitResult {
     pub repack_tokens: Option<usize>,
     pub agent_context_generated: bool,
     pub human_doc_count: usize,
+    pub human_docs_complete: bool,
+    pub litho_ran: bool,
     pub notes: Vec<String>,
 }
 
-/// Scan the repo, then generate missing agent context and human docs.
+async fn run_agent_context_if_needed(
+    paths: &KnowledgePaths,
+    model_config: &ModelConfig,
+    project_slug: &str,
+    repo_path: &str,
+    force_refresh: bool,
+    on_progress: &impl Fn(ProjectInitProgress),
+    notes: &mut Vec<String>,
+) -> anyhow::Result<bool> {
+    let needs_context = !agent_context_ready(paths, project_slug) || force_refresh;
+    if !needs_context {
+        return Ok(false);
+    }
+    if !llm_status(model_config).ready {
+        notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
+        return Ok(false);
+    }
+
+    on_progress(ProjectInitProgress {
+        stage: "agent_context".into(),
+        message: if force_refresh && agent_context_ready(paths, project_slug) {
+            "正在根据 Litho 文档刷新 Agent 友好的知识资产…".into()
+        } else {
+            "正在生成 Agent 友好的知识资产…".into()
+        },
+    });
+    if !mind_mesh_core::agent_pack_ready(paths, project_slug) {
+        pack_agent_assets(paths, project_slug, repo_path).await?;
+    }
+    let engine = Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?);
+    run_agent_context_generation(paths, engine, project_slug, repo_path).await?;
+    Ok(true)
+}
+
+/// Scan the repo, then generate missing human docs and agent context.
 pub async fn run_project_initialization(
     paths: &KnowledgePaths,
     model_config: &ModelConfig,
@@ -58,32 +94,14 @@ pub async fn run_project_initialization(
 
     let repack_tokens = agent_pack.as_ref().map(|p| p.total_tokens);
 
-    let needs_context = !agent_context_ready(paths, &project_slug);
-    let needs_human = list_human_docs(paths, &project_slug)
-        .map(|docs| docs.is_empty())
-        .unwrap_or(true);
+    let human_dir = paths.human_docs_dir(&project_slug);
+    let litho_workspace = paths.litho_workspace_dir(&project_slug);
+    let needs_human =
+        !litho_human_complete_with_research(&human_dir, Some(&litho_workspace));
 
-    let mut agent_context_generated = false;
-    if needs_context {
-        if llm_status(model_config).ready {
-            on_progress(ProjectInitProgress {
-                stage: "agent_context".into(),
-                message: "正在生成 Agent 友好的知识资产…".into(),
-            });
-            if !mind_mesh_core::agent_pack_ready(paths, &project_slug) {
-                pack_agent_assets(paths, &project_slug, repo_path).await?;
-            }
-            let engine = Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?);
-            run_agent_context_generation(paths, engine, &project_slug, repo_path).await?;
-            agent_context_generated = true;
-        } else {
-            notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
-        }
-    }
-
-    let mut human_doc_count = list_human_docs(paths, &project_slug)
-        .map(|d| d.len())
-        .unwrap_or(0);
+    let mut human_doc_count = count_human_docs(paths, &project_slug);
+    let mut human_docs_complete = !needs_human;
+    let mut litho_ran = false;
 
     if needs_human {
         if acp_available(acp) {
@@ -95,10 +113,23 @@ pub async fn run_project_initialization(
                 run_litho_generation(paths, &project_slug, repo_path, acp, &on_litho_progress)
                     .await?;
             human_doc_count = result.human_doc_count;
+            human_docs_complete = result.human_docs_complete;
+            litho_ran = true;
         } else {
             notes.push("人类友好的知识库：请先在设置中配置 ACP 代理".into());
         }
     }
+
+    let agent_context_generated = run_agent_context_if_needed(
+        paths,
+        model_config,
+        &project_slug,
+        repo_path,
+        litho_ran,
+        &on_progress,
+        &mut notes,
+    )
+    .await?;
 
     on_progress(ProjectInitProgress {
         stage: "done".into(),
@@ -112,6 +143,8 @@ pub async fn run_project_initialization(
         repack_tokens,
         agent_context_generated,
         human_doc_count,
+        human_docs_complete,
+        litho_ran,
         notes,
     })
 }

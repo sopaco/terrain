@@ -19,10 +19,12 @@ pub use assets::{
     build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, default_agent_arch_skill_dir,
     default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
     extract_context_section, get_env_status, get_sdd_status, grep_file, grep_text,
-    has_litho_research_artifacts, apply_env_integration, collect_knowledge_dir_inputs,
-    meta_inputs_ready, meta_inputs_status, plan_env_integration, plan_litho_generation,
-    plan_sdd_workflow, patch_agents_md, persist_meta_inputs, read_agent_context_status, read_agent_pack_file, resolve_litho_skill_dir,
+    has_litho_research_artifacts, litho_human_complete, litho_human_complete_with_research,
+    litho_research_ready, apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready, meta_inputs_status,
+    plan_env_integration, plan_litho_generation, plan_sdd_workflow, patch_agents_md,
+    persist_meta_inputs, read_agent_context_status, read_agent_pack_file, resolve_litho_skill_dir,
     resolve_sdd_skill_dir, sdd_phase_output_path, split_context_sections, write_agent_context,
+    LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
     EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
     AgentPackFileContent, AssetGenerationPlan, ContextOverview, ContextSection, GrepMatch,
     META_FILENAME, AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS, AGENT_CONTEXT_SAVE_MAX_CHARS,
@@ -33,7 +35,7 @@ pub use assets::{pack_agent_assets, AgentPackReport};
 pub use citations::{extract_source_citations, merge_citations};
 pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_doc, render_markdown, write_doc};
 pub use error::{CoreError, Result};
-pub use human::{list_human_docs, read_human_doc};
+pub use human::{count_human_docs, list_human_docs, read_human_doc};
 pub use ingest::{ProjectScanner, ScanReport};
 pub use model_text::{
     extract_markdown_body, prepare_chat_markdown, prepare_model_markdown, repair_flattened_markdown,

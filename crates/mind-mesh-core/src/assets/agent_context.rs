@@ -19,7 +19,17 @@ pub fn default_agent_arch_skill_dir() -> PathBuf {
 }
 
 pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
-    paths.agent_context_main(project_slug).is_file()
+    let path = paths.agent_context_main(project_slug);
+    if !path.is_file() {
+        return false;
+    }
+    read_doc(&path)
+        .ok()
+        .map(|doc| {
+            let body = doc.body.trim();
+            body.len() >= 500 && body.matches("\n## ").count() >= 4
+        })
+        .unwrap_or(false)
 }
 
 pub fn read_agent_context_status(paths: &KnowledgePaths, project_slug: &str) -> AgentContextStatus {

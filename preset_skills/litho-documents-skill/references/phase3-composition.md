@@ -8,7 +8,7 @@
 4. **语言一致**：使用用户指定的输出语言（默认中文）
 5. **代码引用密度**：每个模块文档必须引用至少 3 个具体文件路径，关键组件表格每行必须有文件路径列
 6. **分章节增量写入**：大型文档分多次写入，避免单次响应过长
-7. **中间产物持久化**：研究报告写入 `.litho-agent/` 临时目录，编排阶段按需读取
+7. **中间产物持久化**：研究报告写入 `MIND_MESH_LITHO_WORKSPACE`（MindMesh 下为 `.mind-mesh/.litho-agent/`），编排阶段按需读取；最终文档写入 `MIND_MESH_HUMAN_OUTPUT_DIR`（`.mind-mesh/human/`）
 8. **跨模块协作叙述**：每个模块文档包含模块在核心业务流程中的角色描述
 9. **叙述性写作风格**：文档必须面向人类阅读友好，而非冷冰冰的 PPT 式结构化文字（见下方详细指南）
 
@@ -167,10 +167,10 @@ Litho 的工作流可以用一个简单的比喻来理解：它就像一条汽�
 Agent 单次对话上下文窗口有限。随着分析深入，早期的研究结果可能因上下文压力被遗忘。
 
 ### 解决方案
-每完成一个研究步骤，将关键发现写入 `.litho-agent/` 临时目录：
+每完成一个研究步骤，将关键发现写入 **`MIND_MESH_LITHO_WORKSPACE`**（MindMesh 下为 `.mind-mesh/.litho-agent/`）：
 
 ```
-.litho-agent/
+{MIND_MESH_LITHO_WORKSPACE}/
 ├── preprocessing.md        ← 阶段一产出
 ├── c1-system-context.md    ← C1 系统上下文
 ├── c2-domain-modules.md    ← C2 领域模块
@@ -184,10 +184,12 @@ Agent 单次对话上下文窗口有限。随着分析深入，早期的研究�
     └── ...
 ```
 
+最终人类文档写入 **`MIND_MESH_HUMAN_OUTPUT_DIR`**（`.mind-mesh/human/`）。
+
 **编排阶段读取方法**：
-- 需要某报告时 → `read_file` 从 `.litho-agent/` 读取
-- 不需要时 → 不读取，节省上下文
-- 最终输出完成后 → 删除 `.litho-agent/`（可选保留供复查）
+- 需要某报告时 → `read_file` 从 `MIND_MESH_LITHO_WORKSPACE` 读取（绝对路径）
+- 编排输出 → `write_to_file` 写入 `MIND_MESH_HUMAN_OUTPUT_DIR`（绝对路径）
+- 最终输出完成后 → 可删除 Litho 工作区（可选保留供复查）
 
 **核心优势**：与 deepwiki-rs 的 Memory 作用域机制等效，但使用文件系统而非内存
 

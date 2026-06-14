@@ -180,6 +180,7 @@ impl KnowledgePaths {
         std::fs::create_dir_all(base.join("routes"))?;
         std::fs::create_dir_all(base.join("events"))?;
         std::fs::create_dir_all(base.join("human"))?;
+        std::fs::create_dir_all(base.join(".litho-agent"))?;
         std::fs::create_dir_all(base.join("agent"))?;
         std::fs::create_dir_all(base.join("knowledge"))?;
         std::fs::create_dir_all(base.join("env"))?;

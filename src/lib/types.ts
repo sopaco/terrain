@@ -17,6 +17,8 @@ export interface ProjectInitResult {
   repack_tokens?: number;
   agent_context_generated: boolean;
   human_doc_count: number;
+  human_docs_complete: boolean;
+  litho_ran: boolean;
   notes: string[];
 }
 
@@ -74,6 +76,7 @@ export interface LithoGenerationResult {
   plan: LithoPlan;
   response_excerpt: string;
   human_doc_count: number;
+  human_docs_complete: boolean;
 }
 
 export interface ProviderProfile {
@@ -200,6 +203,7 @@ export interface DocCounts {
 export interface LithoStatus {
   human_doc_count: number;
   has_human_docs: boolean;
+  human_docs_complete: boolean;
   has_research_artifacts: boolean;
 }
 

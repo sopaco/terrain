@@ -2,9 +2,15 @@ use std::path::Path;
 
 use walkdir::WalkDir;
 
+use crate::assets::count_markdown_in_dir;
 use crate::error::{CoreError, Result};
 use crate::paths::KnowledgePaths;
 use crate::schema::HumanDocEntry;
+
+/// Count Litho human-facing docs under `.mind-mesh/human/` only.
+pub fn count_human_docs(paths: &KnowledgePaths, project_slug: &str) -> usize {
+    count_markdown_in_dir(paths.human_docs_dir(project_slug))
+}
 
 pub fn list_human_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<Vec<HumanDocEntry>> {
     let mut entries = list_human_section(paths, project_slug)?;

@@ -26,8 +26,11 @@ pub use context_layers::{
     AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 pub use litho::{
-    build_litho_composition_prompt, build_litho_generation_prompt, default_litho_skill_dir,
-    has_litho_research_artifacts, plan_litho_generation, resolve_litho_skill_dir,
+    build_litho_composition_prompt, build_litho_generation_prompt, count_deep_exploration_modules,
+    count_litho_research_modules, count_markdown_in_dir, default_litho_skill_dir,
+    has_litho_research_artifacts, litho_human_complete, litho_human_complete_with_research,
+    litho_research_ready, plan_litho_generation, resolve_litho_skill_dir,
+    LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
 };
 pub use pack_read::{agent_pack_ready, read_agent_pack_file, AgentPackFileContent};
 pub use project_meta::{

@@ -369,10 +369,14 @@
           {@render navCard({
             title: TERMS.humanKnowledge,
             subtitle: "Litho C4 文档，从 1.概述 开始阅读",
-            ready: overview.litho.has_human_docs,
-            meta: overview.litho.has_human_docs
+            ready: overview.litho.human_docs_complete,
+            meta: overview.litho.human_docs_complete
               ? `${overview.litho.human_doc_count} 篇文档`
-              : "尚未生成",
+              : overview.litho.has_human_docs
+                ? `${overview.litho.human_doc_count} 篇（未完成）`
+                : overview.litho.has_research_artifacts
+                  ? "研究稿已就绪，待编排"
+                  : "尚未生成",
             icon: "📘",
             onClick: onOpenHumanOverview,
             onGenerate: onGenerateHuman,

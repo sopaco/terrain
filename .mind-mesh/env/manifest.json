@@ -1,0 +1,11 @@
+{
+  "catalog_version": 1,
+  "integrated_at": "2026-06-14T02:59:19.577359+00:00",
+  "applied": [
+    "skill-mind-mesh-knowledge: → .agents/skills/mind-mesh-knowledge-skill",
+    "skill-repomix: → .agents/skills/repomix-context-skill",
+    "skill-codegraph: → .agents/skills/codegraph-skill",
+    "skill-rtk: → .agents/skills/rtk-skill",
+    "agents-md: 已更新 ./AGENTS.md"
+  ]
+}

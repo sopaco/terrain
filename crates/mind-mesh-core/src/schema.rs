@@ -228,6 +228,7 @@ pub struct DocCounts {
 pub struct LithoStatus {
     pub human_doc_count: usize,
     pub has_human_docs: bool,
+    pub human_docs_complete: bool,
     pub has_research_artifacts: bool,
 }
 

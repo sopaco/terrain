@@ -454,17 +454,20 @@ pub async fn initialize_project_cmd(
     .await
     .map_err(|e| e.to_string())?;
 
-    let _ = app.emit(
-        "litho-done",
-        LithoDonePayload {
-            project_slug: result.project_slug.clone(),
-            result: LithoGenerationResult {
-                plan: plan_litho_generation(&paths, &result.project_slug, &result.repo_path),
-                response_excerpt: String::new(),
-                human_doc_count: result.human_doc_count,
+    if result.litho_ran {
+        let _ = app.emit(
+            "litho-done",
+            LithoDonePayload {
+                project_slug: result.project_slug.clone(),
+                result: LithoGenerationResult {
+                    plan: plan_litho_generation(&paths, &result.project_slug, &result.repo_path),
+                    response_excerpt: String::new(),
+                    human_doc_count: result.human_doc_count,
+                    human_docs_complete: result.human_docs_complete,
+                },
             },
-        },
-    );
+        );
+    }
 
     app.emit(
         "project-init-done",

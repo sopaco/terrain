@@ -289,9 +289,10 @@
       selectedProject = result.project_slug;
       selectedRepoPath = result.repo_path;
       const note = result.notes.length ? ` · ${result.notes.join("；")}` : "";
+      const lithoNote = result.litho_ran && !result.human_docs_complete ? " · Litho 文档未完成" : "";
       setStatus(
-        `初始化完成：索引 ${result.scan_files_written} 项，${TERMS.humanKnowledge} ${result.human_doc_count} 篇${note}`,
-        result.notes.length ? "idle" : "success",
+        `初始化完成：索引 ${result.scan_files_written} 项，${TERMS.humanKnowledge} ${result.human_doc_count} 篇${lithoNote}${note}`,
+        result.notes.length || lithoNote ? "idle" : "success",
         result.project_slug,
       );
       await refresh();
@@ -585,18 +586,23 @@
           }
         },
       );
-      unlistenDone = await listen<{ project_slug: string; result: { human_doc_count: number } }>(
+      unlistenDone = await listen<{
+        project_slug: string;
+        result: { human_doc_count: number; human_docs_complete: boolean };
+      }>(
         "litho-done",
         async (ev) => {
           const { project_slug, result } = ev.payload;
           setProjectTask(project_slug, { lithoBusy: false, lithoProgress: "" });
           const count = result.human_doc_count;
-          const msg =
-            count === 0
+          const complete = result.human_docs_complete;
+          const msg = !complete
+            ? count === 0
               ? `Litho 已完成，但未写入 ${TERMS.humanKnowledge}（${project_slug}）`
-              : `${TERMS.humanKnowledge} 已就绪（${project_slug}，${count} 篇）`;
+              : `${TERMS.humanKnowledge} 未完成（${project_slug}，${count} 篇）`
+            : `${TERMS.humanKnowledge} 已就绪（${project_slug}，${count} 篇）`;
           if (selectedProject === project_slug) {
-            setStatus(msg, count === 0 ? "error" : "success");
+            setStatus(msg, complete ? "success" : count === 0 ? "error" : "idle");
             await loadHumanDocs(project_slug);
             await loadProjectOverview(project_slug);
           }

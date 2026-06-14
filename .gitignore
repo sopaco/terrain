@@ -10,9 +10,6 @@ dist/
 # Tauri
 src-tauri/target/
 
-# MindMesh data
-.mind-mesh/
-
 # Env
 .env
 .env.*
@@ -27,3 +24,5 @@ src-tauri/target/
 
 # MindMesh — repomix index (regenerated locally, not versioned)
 .mind-mesh/agent/repomix.md
+
+**/.litho-agent

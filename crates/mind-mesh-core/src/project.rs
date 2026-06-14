@@ -2,7 +2,10 @@ use std::path::Path;
 
 use crate::doc::{read_doc, read_json};
 use crate::error::{CoreError, Result};
-use crate::human::list_human_docs;
+use crate::assets::{
+    count_markdown_in_dir, has_litho_research_artifacts, litho_human_complete_with_research,
+};
+use crate::human::count_human_docs;
 use crate::paths::KnowledgePaths;
 use crate::schema::{AgentPackMeta, DocCounts, LithoStatus, ProjectOverview, SyncMeta};
 
@@ -39,13 +42,14 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
 
     let agent_pack = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)).ok();
     let doc_counts = count_docs(paths, project_slug)?;
-    let human_docs = list_human_docs(paths, project_slug).unwrap_or_default();
+    let human_dir = paths.human_docs_dir(project_slug);
+    let litho_workspace = paths.litho_workspace_dir(project_slug);
+    let human_doc_count = count_human_docs(paths, project_slug);
     let litho = LithoStatus {
-        human_doc_count: human_docs.len(),
-        has_human_docs: !human_docs.is_empty(),
-        has_research_artifacts: crate::assets::has_litho_research_artifacts(
-            paths.litho_workspace_dir(project_slug),
-        ),
+        human_doc_count,
+        has_human_docs: human_doc_count > 0,
+        human_docs_complete: litho_human_complete_with_research(&human_dir, Some(&litho_workspace)),
+        has_research_artifacts: has_litho_research_artifacts(&litho_workspace),
     };
 
     let agent_context = crate::assets::read_agent_context_status(paths, project_slug);
@@ -146,14 +150,20 @@ fn build_asset_health(
         AssetTrackHealth {
             track: "human".into(),
             label: "人类友好的知识库".into(),
-            ready: litho.has_human_docs,
-            summary: if litho.has_human_docs {
+            ready: litho.human_docs_complete,
+            summary: if litho.human_docs_complete {
                 format!("{} 篇 Litho 文档", litho.human_doc_count)
+            } else if litho.has_human_docs {
+                format!("{} 篇（未完成）", litho.human_doc_count)
             } else {
                 "未生成".into()
             },
-            detail: if litho.has_research_artifacts {
-                "有 Litho 研究中间产物".into()
+            detail: if litho.human_docs_complete {
+                "适合新人阅读与 DeepWiki".into()
+            } else if litho.has_research_artifacts {
+                "有 Litho 研究中间产物，编排未完成".into()
+            } else if litho.has_human_docs {
+                "Litho 文档不完整，请重新生成".into()
             } else {
                 "适合新人阅读与 DeepWiki".into()
             },
@@ -293,21 +303,10 @@ fn parse_tech_stack(body: &str) -> Vec<String> {
 
 fn count_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<DocCounts> {
     Ok(DocCounts {
-        human: count_markdown_in_dir(&paths.human_docs_dir(project_slug)),
+        human: count_human_docs(paths, project_slug),
         interfaces: count_markdown_in_dir(&paths.project_dir(project_slug).join("interfaces")),
         routes: count_markdown_in_dir(&paths.project_dir(project_slug).join("routes")),
         modules: count_markdown_in_dir(&paths.project_dir(project_slug).join("modules")),
         events: count_markdown_in_dir(&paths.project_dir(project_slug).join("events")),
     })
-}
-
-fn count_markdown_in_dir(dir: &Path) -> usize {
-    if !dir.is_dir() {
-        return 0;
-    }
-    walkdir::WalkDir::new(dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
-        .count()
 }
