@@ -3,8 +3,8 @@
   "project": "mind-mesh",
   "repo_path": "/Users/bjsttlp485/Workspace/SAW/mind-mesh",
   "baseline": {
-    "git_head": "226f70be409bc7b2303e16de7b2a3f46935d43ee",
-    "git_head_at": "2026-06-15T00:09:01.487502+00:00",
+    "git_head": "12dee52c197a397614c16f12fb295f4f2c699578",
+    "git_head_at": "2026-06-15T01:36:16.320017+00:00",
     "dirty": true
   },
   "assets": {
@@ -13,46 +13,66 @@
       "synced_at": "2026-06-14T23:58:09.945151+00:00",
       "baseline_git_head": "226f70be409bc7b2303e16de7b2a3f46935d43ee",
       "stale": false,
-      "freshness_score": 95
+      "freshness_score": 92
     },
     "agent_context": {
       "path": "agent/context.md",
       "synced_at": "2026-06-15T00:00:30.496552+00:00",
       "baseline_git_head": "226f70be409bc7b2303e16de7b2a3f46935d43ee",
       "stale": false,
-      "freshness_score": 85
+      "freshness_score": 82
     },
     "human_docs": {
       "path": "human/",
       "synced_at": "2026-06-14T11:38:03.282491+00:00",
       "stale": false,
-      "freshness_score": 95
+      "freshness_score": 92
     }
   },
   "drift": {
-    "commits_since_baseline": 0,
-    "changed_files_since_baseline": 0,
-    "sample_changed_files": []
+    "commits_since_baseline": 1,
+    "changed_files_since_baseline": 11,
+    "sample_changed_files": [
+      ".mind-mesh/.meta/freshness.json",
+      ".mind-mesh/agent/context-meta.json",
+      ".mind-mesh/agent/context.md",
+      ".mind-mesh/agent/meta-inputs-manifest.json",
+      ".mind-mesh/agent/meta.json",
+      "crates/mind-mesh-core/src/freshness.rs",
+      "crates/mind-mesh-core/src/lib.rs",
+      "crates/mind-mesh-core/src/schema.rs",
+      "src/lib/components/FreshnessHelpPanel.svelte",
+      "src/lib/components/ProjectOverviewPanel.svelte",
+      "src/lib/types.ts"
+    ]
   },
   "summary": {
-    "overall_score": 85,
+    "overall_score": 82,
     "overall_stale": false,
-    "commits_since_baseline": 0,
-    "changed_files_count": 0,
-    "current_git_head": "226f70b",
+    "commits_since_baseline": 1,
+    "changed_files_count": 11,
+    "current_git_head": "12dee52",
     "working_tree_dirty": true,
     "is_git_repo": true,
-    "last_computed_at": "2026-06-15T00:09:01.487502+00:00",
-    "agent_pack_score": 95,
-    "agent_context_score": 85,
-    "human_docs_score": 95,
+    "last_computed_at": "2026-06-15T01:36:16.320017+00:00",
+    "agent_pack_score": 92,
+    "agent_context_score": 82,
+    "human_docs_score": 92,
     "macro_preload_allowed": true,
     "drift_factors": [
       {
-        "id": "baseline_match",
-        "severity": "info",
-        "title": "与 baseline 提交一致",
-        "detail": "源码索引与 Agent 上下文均基于提交 226f70be409bc7b2303e16de7b2a3f46935d43ee 生成，相对 HEAD 无文件漂移。"
+        "id": "commits_behind",
+        "severity": "medium",
+        "title": "代码已前进 1 个提交",
+        "detail": "知识资产 baseline 为 226f70be409bc7b2303e16de7b2a3f46935d43ee，当前 HEAD 为 12dee52。每多 1 个提交约扣 2 分（上限 40 分）。",
+        "points_lost": 2
+      },
+      {
+        "id": "files_changed",
+        "severity": "medium",
+        "title": "11 个文件相对 baseline 有变更",
+        "detail": "变更文件占索引规模的比例越高，扣分越多（上限 30 分）。下方列出部分路径。",
+        "points_lost": 1
       },
       {
         "id": "dirty_tree",
@@ -65,18 +85,31 @@
         "id": "context_lineage",
         "severity": "info",
         "title": "Agent 上下文受源码索引牵连",
-        "detail": "架构上下文原始分 95/100，按规则不超过源码索引分数的 90%，现为 85/100。",
+        "detail": "架构上下文原始分 92/100，按规则不超过源码索引分数的 90%，现为 82/100。",
         "points_lost": 10
       },
       {
         "id": "overall_driver",
         "severity": "info",
         "title": "总分由 Agent 架构上下文决定",
-        "detail": "综合分取三层最低值：源码索引 95、Agent 上下文 85、人类文档 95。"
+        "detail": "综合分取三层最低值：源码索引 92、Agent 上下文 82、人类文档 92。"
       }
+    ],
+    "sample_changed_files": [
+      ".mind-mesh/.meta/freshness.json",
+      ".mind-mesh/agent/context-meta.json",
+      ".mind-mesh/agent/context.md",
+      ".mind-mesh/agent/meta-inputs-manifest.json",
+      ".mind-mesh/agent/meta.json",
+      "crates/mind-mesh-core/src/freshness.rs",
+      "crates/mind-mesh-core/src/lib.rs",
+      "crates/mind-mesh-core/src/schema.rs",
+      "src/lib/components/FreshnessHelpPanel.svelte",
+      "src/lib/components/ProjectOverviewPanel.svelte",
+      "src/lib/types.ts"
     ],
     "pack_baseline_short": "226f70b",
     "context_baseline_short": "226f70b"
   },
-  "last_computed_at": "2026-06-15T00:09:01.487502+00:00"
+  "last_computed_at": "2026-06-15T01:36:16.320017+00:00"
 }

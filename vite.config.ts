@@ -20,7 +20,13 @@ export default defineConfig({
       : undefined,
     watch: {
       // Knowledge assets and indexes are written by the Rust backend during scans/generation.
-      ignored: ["**/src-tauri/**", "**/.mind-mesh/**", "**/.litho-agent/**"],
+      ignored: [
+        "**/src-tauri/**",
+        "**/.mind-mesh/**",
+        "**/.litho-agent/**",
+        "**/.agents/**",
+        "AGENTS.md",
+      ],
     },
   },
 });
