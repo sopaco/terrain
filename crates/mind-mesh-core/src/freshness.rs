@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use crate::assets::{agent_context_ready, agent_pack_ready};
 use crate::doc::read_json;
 use crate::error::Result;
-use crate::paths::KnowledgePaths;
+use crate::paths::{is_knowledge_output_path, KnowledgePaths};
 use crate::schema::{
     AgentContextMeta, AgentPackMeta, AssetFreshness, FreshnessDriftFactor, FreshnessLedger,
     FreshnessSummary, SyncMeta,
@@ -80,7 +80,7 @@ pub fn git_snapshot(repo_path: &str) -> GitSnapshot {
     let head = git_output(repo, &["rev-parse", "HEAD"]);
     let head_short = git_output(repo, &["rev-parse", "--short", "HEAD"]);
     let dirty = git_output(repo, &["status", "--porcelain"])
-        .map(|s| !s.trim().is_empty())
+        .map(|s| working_tree_dirty_excluding_knowledge(&s))
         .unwrap_or(false);
 
     GitSnapshot {
@@ -115,7 +115,7 @@ pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
     .map(|s| {
         s.lines()
             .map(str::trim)
-            .filter(|l| !l.is_empty())
+            .filter(|l| !l.is_empty() && !is_knowledge_output_path(l))
             .map(str::to_string)
             .collect()
     })
@@ -324,7 +324,7 @@ fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<FreshnessDriftFacto
             id: "dirty_tree".into(),
             severity: "medium".into(),
             title: "工作区有未提交修改".into(),
-            detail: "Git 工作区不干净（含未提交或未暂存文件）。知识资产基于某次提交快照，与磁盘上的未提交改动不一致，扣 5 分。".into(),
+            detail: "Git 工作区在源码路径上有未提交改动（已排除 `.mind-mesh/` 等知识产出目录）。知识资产基于某次提交快照，与磁盘上的未提交源码改动不一致，扣 5 分。".into(),
             points_lost: Some(5),
         });
     }
@@ -623,6 +623,21 @@ pub fn format_freshness_trust_block(summary: &FreshnessSummary) -> String {
     )
 }
 
+fn porcelain_entry_path(line: &str) -> &str {
+    let rest = line.get(3..).unwrap_or(line).trim();
+    rest.split_once(" -> ")
+        .map(|(_, new_path)| new_path.trim())
+        .unwrap_or(rest)
+}
+
+/// True when porcelain output contains changes outside generated knowledge paths.
+fn working_tree_dirty_excluding_knowledge(porcelain: &str) -> bool {
+    porcelain.lines().any(|line| {
+        let path = porcelain_entry_path(line);
+        !path.is_empty() && !is_knowledge_output_path(path)
+    })
+}
+
 fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
     let output = Command::new("git")
         .args(args)
@@ -652,6 +667,21 @@ mod tests {
         let stale = score_asset(25, 50, 100, 10, true);
         assert!(stale < FRESH_THRESHOLD);
         assert!(stale < MACRO_PRELOAD_THRESHOLD);
+    }
+
+    #[test]
+    fn knowledge_output_paths_excluded_from_dirty() {
+        use crate::paths::is_knowledge_output_path;
+
+        assert!(is_knowledge_output_path(".mind-mesh/agent/context.md"));
+        assert!(is_knowledge_output_path(".mind-mesh/.meta/freshness.json"));
+        assert!(!is_knowledge_output_path("crates/mind-mesh-core/src/lib.rs"));
+        assert!(!is_knowledge_output_path("AGENTS.md"));
+
+        let porcelain = " M .mind-mesh/agent/context.md\n M crates/foo.rs\n";
+        assert!(working_tree_dirty_excluding_knowledge(porcelain));
+        let only_knowledge = " M .mind-mesh/human/1.md\n?? .mind-mesh/.meta/sync.json\n";
+        assert!(!working_tree_dirty_excluding_knowledge(only_knowledge));
     }
 
     #[test]

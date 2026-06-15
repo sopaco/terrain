@@ -192,6 +192,21 @@ impl KnowledgePaths {
     }
 }
 
+/// Git/repo paths that are MindMesh-generated knowledge outputs.
+/// Excluded from source-drift signals (dirty tree, baseline file diff).
+pub fn is_knowledge_output_path(path: &str) -> bool {
+    let p = path.trim().trim_start_matches("./");
+    if matches!(p, ".mind-mesh" | ".litho-agent" | ".sdd-agent") {
+        return true;
+    }
+    p.starts_with(".mind-mesh/")
+        || p.contains("/.mind-mesh/")
+        || p.starts_with(".litho-agent/")
+        || p.contains("/.litho-agent/")
+        || p.starts_with(".sdd-agent/")
+        || p.contains("/.sdd-agent/")
+}
+
 fn find_git_repo_root(start: &Path) -> Option<PathBuf> {
     let mut cur = start.to_path_buf();
     loop {

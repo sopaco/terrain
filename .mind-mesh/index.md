@@ -68,10 +68,11 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
   - AGENTS.md
   - vite.config.ts
   - assets/
-    - icon.png
     - banner.png
+    - app-icon.png
   - .codegraph/
     - codegraph.db
+    - daemon.log
     - .gitignore
   - src/
     - main.ts
