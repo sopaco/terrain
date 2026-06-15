@@ -86,13 +86,16 @@ export interface ProviderProfile {
   ollama_host?: string;
 }
 
-export type AskExecution = "native" | "acp";
+export type AgentExecution = "native" | "acp";
+
+/** @deprecated use AgentExecution */
+export type AskExecution = AgentExecution;
 
 export interface AcpSettings {
   binary?: string;
   args?: string;
   command?: string;
-  ask_execution?: AskExecution;
+  agent_execution?: AgentExecution;
   auto_approve?: boolean;
 }
 
@@ -316,7 +319,11 @@ export interface ProjectOverview {
   freshness?: FreshnessSummary;
 }
 
-export type SddPhase = "requirements" | "tech_design" | "code_gen" | "code_review";
+export type SddPhase =
+  | "requirements"
+  | "tech_design"
+  | "code_gen"
+  | "code_review";
 
 export interface SddPhaseInfo {
   phase: SddPhase;

@@ -267,6 +267,7 @@ mod tests {
             base_url: Some("http://localhost:1234/v1".into()),
             ollama_host: None,
             profiles,
+            acp: Default::default(),
         })
         .unwrap();
 

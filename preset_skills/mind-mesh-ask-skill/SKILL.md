@@ -1,12 +1,12 @@
 ---
 name: mind-mesh-ask-skill
-description: ACP-mode Ask — query MindMesh knowledge via mind-mesh CLI instead of native tools.
+description: MindMesh Ask — query knowledge via mind-mesh CLI when Agent execution mode is ACP.
 version: 1.1.0
 ---
 
 # MindMesh Ask (ACP mode)
 
-When MindMesh Ask runs in **ACP mode**, you do not have built-in function tools. Use the **`mind-mesh tools`** CLI to access the same knowledge layers.
+When MindMesh runs in **ACP Agent execution mode**, built-in function tools are unavailable for Ask. Use the **`mind-mesh tools`** CLI to access the same knowledge layers.
 
 ## Storage model
 

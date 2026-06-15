@@ -5,6 +5,7 @@ use mind_mesh_core::{
     KnowledgePaths,
 };
 
+use crate::acp::{execution_uses_acp, resolve_acp_settings};
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::ChatEngine;
 use crate::model::ModelConfig;
@@ -48,8 +49,13 @@ pub async fn generate_agent_context_if_missing(
         project = project_slug,
         "agent context missing — generating automatically"
     );
-    let engine = Arc::new(ChatEngine::new(paths.clone(), model_config.clone())?);
-    run_agent_context_generation(paths, engine, project_slug, repo_path).await?;
+    let acp = resolve_acp_settings();
+    let engine = if execution_uses_acp(&acp) {
+        None
+    } else {
+        Some(Arc::new(ChatEngine::new(paths.clone(), model_config.clone())?))
+    };
+    run_agent_context_generation(paths, engine, &acp, project_slug, repo_path).await?;
     Ok(true)
 }
 

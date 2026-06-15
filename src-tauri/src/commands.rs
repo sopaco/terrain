@@ -1,7 +1,7 @@
 use mind_mesh_agent::{
-    acp_available, acp_spawn_command, env_plan_for_repo, env_status_for_repo,
-    knowledge_paths_from_env, llm_status, load_model_settings, prepare_litho_generation,
-    resolve_acp_settings, run_agent_context_generation, run_env_integration,
+    acp_available, acp_spawn_command, agent_execution_ready, env_plan_for_repo, env_status_for_repo,
+    execution_uses_acp, knowledge_paths_from_env, llm_status, load_model_settings,
+    prepare_litho_generation, resolve_acp_settings, run_agent_context_generation, run_env_integration,
     run_litho_generation, run_project_initialization, run_sdd_phase, validate_repo_path,
     AcpSettings, ChatEngine, AgentContextGenerationResult, ChatPhase, ChatReply, ChatTokenUsage,
     ChatToolCallRecord, LithoGenerationJob, LithoGenerationResult, LithoProgress, ModelSettings,
@@ -281,15 +281,23 @@ pub async fn run_quick_refresh_cmd(
         .map_err(|e| e.to_string())?;
 
     let mut agent_context_regenerated = false;
-    if llm_status(&state.get_model_config()).ready {
-        let engine = Arc::new(
-            ChatEngine::new_native(paths.clone(), state.get_model_config())
-                .map_err(|e| e.to_string())?,
-        );
-        match run_agent_context_generation(&paths, engine, &slug, &repo_path).await {
+    let acp = resolved_acp_settings();
+    let model_config = state.get_model_config();
+    if agent_execution_ready(&acp, &model_config).is_ok() {
+        let engine = if execution_uses_acp(&acp) {
+            None
+        } else {
+            Some(Arc::new(
+                ChatEngine::new_native(paths.clone(), model_config)
+                    .map_err(|e| e.to_string())?,
+            ))
+        };
+        match run_agent_context_generation(&paths, engine, &acp, &slug, &repo_path).await {
             Ok(_) => agent_context_regenerated = true,
             Err(e) => notes.push(format!("Agent context: {e}")),
         }
+    } else if execution_uses_acp(&acp) {
+        notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
     } else {
         notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
     }
@@ -648,7 +656,8 @@ pub async fn run_sdd_phase_cmd(
     let paths = state.paths.clone();
     let input = user_input.unwrap_or_default();
 
-    let engine = if phase == SddPhase::CodeGen {
+    let acp = resolved_acp_settings();
+    let engine = if execution_uses_acp(&acp) || phase == SddPhase::CodeGen {
         None
     } else {
         Some(state.chat_engine().await.map_err(|e| e.to_string())?)
@@ -673,7 +682,7 @@ pub async fn run_sdd_phase_cmd(
         &repo_path,
         phase,
         &input,
-        &resolved_acp_settings(),
+        &acp,
         emit_progress,
     )
     .await
@@ -699,11 +708,17 @@ pub async fn run_agent_context_generation_cmd(
 ) -> Result<AgentContextGenerationResult, String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
-    let engine = Arc::new(
-        ChatEngine::new_native(state.paths.clone(), state.get_model_config())
-            .map_err(|e| e.to_string())?,
-    );
-    run_agent_context_generation(&state.paths, engine, &slug, &repo_path)
+    let acp = resolved_acp_settings();
+    agent_execution_ready(&acp, &state.get_model_config()).map_err(|e| e.to_string())?;
+    let engine = if execution_uses_acp(&acp) {
+        None
+    } else {
+        Some(Arc::new(
+            ChatEngine::new_native(state.paths.clone(), state.get_model_config())
+                .map_err(|e| e.to_string())?,
+        ))
+    };
+    run_agent_context_generation(&state.paths, engine, &acp, &slug, &repo_path)
         .await
         .map_err(|e| e.to_string())
 }

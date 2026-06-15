@@ -56,11 +56,13 @@ export const GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: "ACP",
-    description: `Agent Client Protocol 代理（默认 OpenCode），用于生成 ${TERMS.humanKnowledge} 等需要外部编码 Agent 的任务。`,
+    description:
+      "Agent Client Protocol 代理（默认 OpenCode）。在 Agent 执行模式为 ACP 时，问答、Context 生成、SDD、Litho 等任务均通过外部代理 + CLI + Skill 执行。",
   },
   {
     term: "LLM",
-    description: `大语言模型连接（OpenAI 兼容 / LM Studio / Ollama），用于生成 ${TERMS.agentKnowledge} 与本地问答。`,
+    description:
+      "大语言模型连接（OpenAI 兼容 / LM Studio / Ollama）。在 Agent 执行模式为 Native 时，用于问答、Agent Context 生成与 SDD 文档阶段。",
   },
   {
     term: "SDD 工作流",

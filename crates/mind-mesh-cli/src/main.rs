@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use mind_mesh_agent::{resolve_acp_settings, resolve_model_config, run_agent_context_generation, run_litho_generation, ChatEngine};
+use mind_mesh_agent::{
+    agent_execution_ready, execution_uses_acp, resolve_acp_settings, resolve_model_config,
+    run_agent_context_generation, run_litho_generation, ChatEngine,
+};
 use mind_mesh_core::{
     KnowledgePaths, KnowledgeSearch, ProjectScanner, SearchOptions, apply_env_integration,
     build_context_overview, build_generation_plan, extract_context_section, get_env_status,
@@ -437,9 +440,16 @@ async fn main() -> Result<()> {
                 }
 
                 let model_config = resolve_model_config();
-                let engine = Arc::new(ChatEngine::new_native(paths.clone(), model_config)?);
+                let acp = resolve_acp_settings();
+                agent_execution_ready(&acp, &model_config)
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                let engine = if execution_uses_acp(&acp) {
+                    None
+                } else {
+                    Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config)?))
+                };
                 let result =
-                    run_agent_context_generation(&paths, engine, &slug, &repo).await?;
+                    run_agent_context_generation(&paths, engine, &acp, &slug, &repo).await?;
                 println!("{}", serde_json::to_string_pretty(&result)?);
             }
             AssetCommands::Register { repo_path, slug } => {

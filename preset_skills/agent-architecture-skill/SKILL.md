@@ -67,6 +67,28 @@ Input types: `file` (path relative to repo or meta file), `glob`, `inline`. Each
 - Use `grep_agent_pack` only to discover paths, never paste grep output
 - Prefer tables and bullet lists over prose
 
+## ACP mode (MindMesh)
+
+When MindMesh runs context generation in **ACP mode**, native function tools are unavailable. Use the **`mind-mesh tools`** CLI instead:
+
+```bash
+mind-mesh tools pack-meta --project {slug}
+mind-mesh tools grep-pack --project {slug} --pattern "module_name"
+mind-mesh tools read-pack-file --project {slug} --file src/foo.rs --start-line 1 --end-line 80
+```
+
+See `mind-mesh-ask-skill` for the full CLI reference. Do not read the live repository filesystem.
+
+Environment variables set by MindMesh:
+
+| Variable | Purpose |
+|----------|---------|
+| `MIND_MESH_AGENT_ARCH_SKILL` | This skill directory |
+| `MIND_MESH_AGENT_CONTEXT_OUTPUT` | Write target for `agent/context.md` |
+| `MIND_MESH_KNOWLEDGE_ROOT` | Project `.mind-mesh/` directory |
+| `MIND_MESH_PROJECT_SLUG` | Project slug |
+| `MIND_MESH_REPO_PATH` | Repository root |
+
 ## How Ask consumes this
 
 - **Macro**: 项目概览 + 架构设计 + 模块地图 preloaded in the question

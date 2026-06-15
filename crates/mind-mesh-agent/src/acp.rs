@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::builder::opencode_available;
+use crate::model::{llm_status, ModelConfig};
 use crate::settings::{
-    load_model_settings, AcpSettings, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
+    load_model_settings, AcpSettings, AgentExecution, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
 };
-use mind_mesh_core::resolve_command;
+use mind_mesh_core::{default_agent_arch_skill_dir, resolve_command};
 
 pub fn resolve_acp_settings() -> AcpSettings {
     load_model_settings()
@@ -56,6 +57,36 @@ pub fn default_ask_acp_skill_dir() -> PathBuf {
         return PathBuf::from(path);
     }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills/mind-mesh-ask-skill")
+}
+
+pub fn default_agent_arch_acp_skill_dir() -> PathBuf {
+    default_agent_arch_skill_dir()
+}
+
+/// True when MindMesh should route LLM workloads through the configured ACP agent.
+pub fn execution_uses_acp(settings: &AcpSettings) -> bool {
+    settings.agent_execution == AgentExecution::Acp
+}
+
+/// Whether the active execution mode has its backend configured (ACP on PATH or native LLM ready).
+pub fn agent_execution_ready(settings: &AcpSettings, config: &ModelConfig) -> Result<(), String> {
+    if execution_uses_acp(settings) {
+        if acp_available(settings) {
+            Ok(())
+        } else {
+            Err(format!(
+                "ACP agent not found on PATH: {}",
+                acp_spawn_command(settings)
+            ))
+        }
+    } else {
+        let status = llm_status(config);
+        if status.ready {
+            Ok(())
+        } else {
+            Err(format!("LLM not ready: {}", status.message))
+        }
+    }
 }
 
 #[cfg(feature = "opencode")]

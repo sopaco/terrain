@@ -28,7 +28,7 @@ use crate::agent_assets::{
 use crate::builder::{AgentConfig, build_agent};
 use crate::context_generator::AgentContextGenerator;
 use crate::model::{ModelConfig, build_llm, ensure_llm};
-use crate::settings::{AcpSettings, AskExecution};
+use crate::settings::{AcpSettings, AgentExecution};
 use crate::tool_session_cache::truncate_with_notice;
 
 #[derive(Debug, Clone, Serialize)]
@@ -331,10 +331,10 @@ impl ChatEngine {
         Self::with_settings(paths, model_config, resolve_acp_settings())
     }
 
-    /// Always uses native LLM tools (for agent context generation, SDD LLM phases).
+    /// Force native LLM execution regardless of `agent_execution` setting.
     pub fn new_native(paths: KnowledgePaths, model_config: ModelConfig) -> Result<Self> {
         let mut acp = resolve_acp_settings();
-        acp.ask_execution = AskExecution::Native;
+        acp.agent_execution = AgentExecution::Native;
         Self::with_settings(paths, model_config, acp)
     }
 
@@ -343,7 +343,7 @@ impl ChatEngine {
         model_config: ModelConfig,
         acp_settings: AcpSettings,
     ) -> Result<Self> {
-        let native = if acp_settings.ask_execution == AskExecution::Native {
+        let native = if acp_settings.agent_execution == AgentExecution::Native {
             Some(build_native_backend(&paths, &model_config)?)
         } else {
             #[cfg(feature = "opencode")]
@@ -509,9 +509,7 @@ impl ChatEngine {
         mut on_phase: impl FnMut(ChatPhase),
         mut on_usage: impl FnMut(&ChatTokenUsage),
     ) -> Result<ChatReply> {
-        if self.acp_settings.ask_execution == AskExecution::Acp
-            && !session_id.starts_with("agent-ctx-")
-        {
+        if self.acp_settings.agent_execution == AgentExecution::Acp {
             return self
                 .run_turn_acp(
                     session_id,

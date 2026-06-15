@@ -5,9 +5,9 @@ use mind_mesh_core::{
     KnowledgePaths, SddPhase, SddPhaseResult, SddPlan,
 };
 
-use crate::acp::{acp_spawn_command, build_acp_config};
-use crate::settings::AcpSettings;
+use crate::acp::{acp_spawn_command, build_acp_config, execution_uses_acp};
 use crate::chat::ChatEngine;
+use crate::settings::AcpSettings;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SddProgress {
@@ -53,14 +53,22 @@ pub async fn run_sdd_phase(
         message: format!("Running SDD phase: {}", phase.label()),
     });
 
-    let response = if phase == SddPhase::CodeGen {
+    let response = if execution_uses_acp(acp_settings) || phase == SddPhase::CodeGen {
         run_sdd_acp_phase(&plan, phase, user_input, acp_settings, &mut on_progress).await?
     } else {
         let engine = engine.ok_or_else(|| {
             anyhow::anyhow!("LLM not configured — set up model in Settings first")
         })?;
-        run_sdd_llm_phase(&engine, &plan, project_slug, repo_path, phase, user_input, &mut on_progress)
-            .await?
+        run_sdd_llm_phase(
+            &engine,
+            &plan,
+            project_slug,
+            repo_path,
+            phase,
+            user_input,
+            &mut on_progress,
+        )
+        .await?
     };
 
     let content = if output_path.is_file() {
@@ -137,10 +145,15 @@ async fn run_sdd_acp_phase(
         anyhow::bail!("SDD skill not found at {}", plan.skill_dir);
     }
 
+    let action = if phase == SddPhase::CodeGen {
+        "implementing changes"
+    } else {
+        "drafting the document"
+    };
     on_progress(SddProgress {
         stage: "generating".into(),
         message: format!(
-            "ACP agent ({}) is implementing changes…",
+            "ACP agent ({}) is {action}…",
             acp_spawn_command(acp_settings)
         ),
     });

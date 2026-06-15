@@ -37,7 +37,7 @@
   let acpBinary = $state("opencode");
   let acpArgs = $state("acp");
   let acpCommand = $state("");
-  let askExecution = $state<"native" | "acp">("native");
+  let agentExecution = $state<"native" | "acp">("native");
   let acpTestOk = $state<boolean | null>(null);
 
   const providerOptions = [
@@ -131,7 +131,7 @@
     acpBinary = acp.binary ?? "opencode";
     acpArgs = acp.args ?? "acp";
     acpCommand = acp.command ?? "";
-    askExecution = acp.ask_execution ?? "native";
+    agentExecution = acp.agent_execution ?? "native";
   }
 
   $effect(() => {
@@ -154,7 +154,7 @@
       binary: acpBinary.trim() || undefined,
       args: acpArgs.trim() || undefined,
       command: acpCommand.trim() || undefined,
-      ask_execution: askExecution,
+      agent_execution: agentExecution,
       auto_approve: true,
     };
     return {
@@ -361,15 +361,15 @@
         </label>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-white/55">Ask 执行模式</span>
+          <span class="text-xs font-medium text-white/55">Agent 执行模式</span>
           <select
             class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-            value={askExecution}
+            value={agentExecution}
             onchange={(e) =>
-              (askExecution = (e.currentTarget as HTMLSelectElement).value as "native" | "acp")}
+              (agentExecution = (e.currentTarget as HTMLSelectElement).value as "native" | "acp")}
           >
-            <option value="native">Native — 内置 LLM 工具调用</option>
-            <option value="acp">ACP — 外部代理 + mind-mesh CLI（见 mind-mesh-ask-skill）</option>
+            <option value="native">Native — 内置 LLM（问答、SDD 文档阶段等）</option>
+            <option value="acp">ACP — 外部代理 + CLI + Skill（问答、Context、SDD、Litho 等全场景）</option>
           </select>
         </label>
 

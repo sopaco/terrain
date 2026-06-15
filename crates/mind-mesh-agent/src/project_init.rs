@@ -5,7 +5,7 @@ use mind_mesh_core::{
     ProjectScanner, ScanReport, KnowledgePaths,
 };
 
-use crate::acp_available;
+use crate::acp::{acp_available, execution_uses_acp};
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::ChatEngine;
 use crate::litho::{run_litho_generation, LithoProgress};
@@ -34,6 +34,7 @@ pub struct ProjectInitResult {
 async fn run_agent_context_if_needed(
     paths: &KnowledgePaths,
     model_config: &ModelConfig,
+    acp: &AcpSettings,
     project_slug: &str,
     repo_path: &str,
     force_refresh: bool,
@@ -44,7 +45,12 @@ async fn run_agent_context_if_needed(
     if !needs_context {
         return Ok(false);
     }
-    if !llm_status(model_config).ready {
+    if execution_uses_acp(acp) {
+        if !acp_available(acp) {
+            notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
+            return Ok(false);
+        }
+    } else if !llm_status(model_config).ready {
         notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
         return Ok(false);
     }
@@ -60,8 +66,12 @@ async fn run_agent_context_if_needed(
     if !mind_mesh_core::agent_pack_ready(paths, project_slug) {
         pack_agent_assets(paths, project_slug, repo_path).await?;
     }
-    let engine = Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?);
-    run_agent_context_generation(paths, engine, project_slug, repo_path).await?;
+    let engine = if execution_uses_acp(acp) {
+        None
+    } else {
+        Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?))
+    };
+    run_agent_context_generation(paths, engine, acp, project_slug, repo_path).await?;
     Ok(true)
 }
 
@@ -123,6 +133,7 @@ pub async fn run_project_initialization(
     let agent_context_generated = run_agent_context_if_needed(
         paths,
         model_config,
+        acp,
         &project_slug,
         repo_path,
         litho_ran,

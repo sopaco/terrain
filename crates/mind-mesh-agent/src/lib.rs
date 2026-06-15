@@ -17,8 +17,9 @@ mod tool_session_cache;
 mod tools;
 
 pub use acp::{
-    acp_args, acp_available, acp_binary, acp_spawn_command, build_acp_config,
-    default_ask_acp_skill_dir, resolve_acp_settings,
+    acp_args, acp_available, acp_binary, acp_spawn_command, agent_execution_ready,
+    build_acp_config, default_agent_arch_acp_skill_dir, default_ask_acp_skill_dir,
+    execution_uses_acp, resolve_acp_settings,
 };
 pub use builder::{
     knowledge_paths_from_env, knowledge_root_from_env, AgentConfig, build_agent,
@@ -46,6 +47,6 @@ pub use model::{
 };
 pub use settings::{
     default_profile_for, load_model_settings, model_config_from_settings, model_settings_from_config,
-    save_model_settings, AcpSettings, AskExecution, ModelSettings, ProviderProfile,
+    save_model_settings, AcpSettings, AgentExecution, AskExecution, ModelSettings, ProviderProfile,
     DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
 };

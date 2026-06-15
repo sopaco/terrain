@@ -15,11 +15,14 @@ pub const DEFAULT_ACP_ARGS: &str = "acp";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum AskExecution {
+pub enum AgentExecution {
     #[default]
     Native,
     Acp,
 }
+
+/// Deprecated alias — use [`AgentExecution`].
+pub type AskExecution = AgentExecution;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AcpSettings {
@@ -30,7 +33,7 @@ pub struct AcpSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub command: Option<String>,
     #[serde(default)]
-    pub ask_execution: AskExecution,
+    pub agent_execution: AgentExecution,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_approve: Option<bool>,
 }
@@ -41,7 +44,7 @@ impl Default for AcpSettings {
             binary: None,
             args: None,
             command: None,
-            ask_execution: AskExecution::Native,
+            agent_execution: AgentExecution::Native,
             auto_approve: Some(true),
         }
     }
@@ -155,9 +158,7 @@ pub fn model_config_from_settings(settings: &ModelSettings) -> ModelConfig {
     });
 
     let mut openai_api_key = profile.api_key.clone();
-    if provider == LlmProvider::LmStudio
-        && openai_api_key.as_ref().is_none_or(|k| k.is_empty())
-    {
+    if provider == LlmProvider::LmStudio && openai_api_key.as_ref().is_none_or(|k| k.is_empty()) {
         openai_api_key = Some(DEFAULT_LMSTUDIO_API_KEY.into());
     }
 
@@ -217,11 +218,7 @@ fn normalize_settings(settings: &mut ModelSettings) {
             .or_insert_with(|| default_profile_for(p));
     }
 
-    let active = settings
-        .provider
-        .as_deref()
-        .unwrap_or("openai")
-        .to_string();
+    let active = settings.provider.as_deref().unwrap_or("openai").to_string();
 
     if settings.model.is_some()
         || settings.api_key.is_some()
@@ -234,7 +231,10 @@ fn normalize_settings(settings: &mut ModelSettings) {
             base_url: settings.base_url.clone(),
             ollama_host: settings.ollama_host.clone(),
         };
-        merge_profile(settings.profiles.entry(active.clone()).or_default(), &legacy);
+        merge_profile(
+            settings.profiles.entry(active.clone()).or_default(),
+            &legacy,
+        );
     }
 
     settings.provider = Some(active);
