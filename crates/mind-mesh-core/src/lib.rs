@@ -12,6 +12,7 @@ pub mod registry;
 pub mod render;
 pub mod schema;
 pub mod search;
+pub mod shell_path;
 pub mod source;
 
 pub use assets::{
@@ -60,5 +61,8 @@ pub use schema::{
 };
 pub use search::{
     KnowledgeSearch, ProjectSummary, SearchHit, SearchOptions, read_doc_at, read_doc_at_in_project,
+};
+pub use shell_path::{
+    augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,
 };
 pub use source::{read_source_slice, resolve_source_citation};

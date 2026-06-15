@@ -56,6 +56,7 @@ impl AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    mind_mesh_core::augment_path_from_login_shell();
     mind_mesh_agent::load_dotenv();
 
     tracing_subscriber::fmt()

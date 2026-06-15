@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 use std::sync::Arc;
 
 use adk_agent::LlmAgentBuilder;
@@ -11,7 +10,7 @@ use anyhow::{bail, Context, Result};
 use adk_acp::AcpAgentTool;
 use crate::settings::AcpSettings;
 use crate::acp::{acp_available, acp_spawn_command};
-use mind_mesh_core::KnowledgePaths;
+use mind_mesh_core::{command_on_path, resolve_command, KnowledgePaths};
 
 use crate::context_generator::AgentContextGenerator;
 use crate::throttle::{call_cooldown_from_env, wrap_tool};
@@ -118,16 +117,7 @@ impl Default for AgentConfig {
 }
 
 pub fn opencode_available(command: &str) -> bool {
-    let which_cmd = if cfg!(target_os = "windows") {
-        "where"
-    } else {
-        "which"
-    };
-    Command::new(which_cmd)
-        .arg(command)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    command_on_path(command.trim())
 }
 
 pub fn build_agent(model: Arc<dyn Llm>, config: AgentConfig) -> Result<Arc<dyn Agent>> {
@@ -194,7 +184,7 @@ pub fn build_agent(model: Arc<dyn Llm>, config: AgentConfig) -> Result<Arc<dyn A
                     "ACP agent not found on PATH; agent will run without coding delegation"
                 );
             } else {
-                let spawn = acp_spawn_command(&config.acp_settings);
+                let spawn = resolve_command(&acp_spawn_command(&config.acp_settings));
                 let mut acp_tool = AcpAgentTool::new(spawn)
                     .name("acp_agent")
                     .description(

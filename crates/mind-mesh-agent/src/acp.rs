@@ -5,6 +5,7 @@ use crate::builder::opencode_available;
 use crate::settings::{
     load_model_settings, AcpSettings, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
 };
+use mind_mesh_core::resolve_command;
 
 pub fn resolve_acp_settings() -> AcpSettings {
     load_model_settings()
@@ -65,12 +66,15 @@ pub fn build_acp_config(
 ) -> adk_acp::AcpAgentConfig {
     use adk_acp::AcpAgentConfig;
 
-    let mut config = AcpAgentConfig::new(acp_spawn_command(settings));
+    let mut config = AcpAgentConfig::new(resolve_command(&acp_spawn_command(settings)));
     if settings.auto_approve.unwrap_or(true) {
         config = config.auto_approve(true);
     }
     if let Some(cwd) = working_dir.filter(|p| !p.is_empty()) {
         config = config.working_dir(cwd);
+    }
+    if let Ok(path) = std::env::var("PATH") {
+        config = config.env("PATH", path);
     }
     for (k, v) in extra_env {
         config = config.env(k, v);
