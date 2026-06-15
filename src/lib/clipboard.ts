@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { prepareSvgForExport, svgToPngBlob } from "./mermaid-utils";
 
+export async function copyTextToClipboard(text: string): Promise<void> {
+  await invoke("copy_text_to_clipboard", { text });
+}
+
 export async function copySvgAsImage(svg: string): Promise<"image" | "text"> {
   try {
     const blob = await svgToPngBlob(svg);

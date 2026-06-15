@@ -38,16 +38,32 @@ fn normalize_path(path: &str) -> String {
         .replace('\\', "/")
 }
 
+fn path_suffix_segments_match(requested: &str, header: &str) -> bool {
+    let req: Vec<&str> = requested.split('/').filter(|s| !s.is_empty()).collect();
+    let hdr: Vec<&str> = header.split('/').filter(|s| !s.is_empty()).collect();
+    let max = req.len().min(hdr.len());
+    for len in 1..=max {
+        if req[req.len() - len..] == hdr[hdr.len() - len..] {
+            return true;
+        }
+    }
+    false
+}
+
 fn path_matches(requested: &str, header: &str) -> bool {
     let requested = normalize_path(requested);
     let header = normalize_path(header);
     if requested == header {
         return true;
     }
-    header.ends_with(&format!("/{requested}"))
+    if header.ends_with(&format!("/{requested}"))
         || requested.ends_with(&format!("/{header}"))
         || header.ends_with(&requested)
         || requested.ends_with(&header)
+    {
+        return true;
+    }
+    path_suffix_segments_match(&requested, &header)
 }
 
 fn strip_line_number_prefix(line: &str) -> &str {
@@ -276,5 +292,17 @@ mod tests {
         assert_eq!(got.start_line, 1);
         assert_eq!(got.end_line, 3);
         assert!(got.content.contains("fn main()"));
+    }
+
+    #[test]
+    fn matches_prefixed_pack_path() {
+        let got = read_agent_pack_file_from_text(
+            SAMPLE,
+            "android-au/src/lib.rs",
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(got.matched_path, "src/lib.rs");
     }
 }

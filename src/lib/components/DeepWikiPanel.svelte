@@ -22,6 +22,9 @@
     ToolCallRecord,
   } from "../types";
   import { formatTime } from "../timeFormat";
+  import { assistantMessageMarkdown, assistantStepsMarkdown } from "../assistantMarkdown";
+  import { copyTextToClipboard } from "../clipboard";
+  import CopyMarkdownButton from "./CopyMarkdownButton.svelte";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
@@ -70,6 +73,12 @@
   let citationError = $state<string | null>(null);
   let composing = $state(false);
   let streamPhase = $state<ChatPhase>("thinking");
+  let copyingMarkdownKey = $state<string | null>(null);
+  let copiedMarkdownKey = $state<string | null>(null);
+  let copyToast = $state<{ text: string; ok: boolean } | null>(null);
+
+  let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
+  let copyToastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sourceOpen = $derived(Boolean(sourceSlice));
 
@@ -99,6 +108,40 @@
     if (usage.input_tokens === 0 && usage.output_tokens === 0) return null;
     const suffix = usage.estimated ? " (estimated)" : "";
     return `Tokens — input ${usage.input_tokens.toLocaleString()} · output ${usage.output_tokens.toLocaleString()}${suffix}`;
+  }
+
+  function showCopyToast(text: string, ok = true) {
+    clearTimeout(copyToastTimer);
+    copyToast = { text, ok };
+    copyToastTimer = setTimeout(() => {
+      copyToast = null;
+    }, 2600);
+  }
+
+  function markCopied(key: string) {
+    clearTimeout(copiedResetTimer);
+    copiedMarkdownKey = key;
+    copiedResetTimer = setTimeout(() => {
+      if (copiedMarkdownKey === key) {
+        copiedMarkdownKey = null;
+      }
+    }, 2200);
+  }
+
+  async function copyMarkdown(key: string, markdown: string) {
+    const body = markdown.trim();
+    if (!body || copyingMarkdownKey) return;
+
+    copyingMarkdownKey = key;
+    try {
+      await copyTextToClipboard(body);
+      markCopied(key);
+      showCopyToast("已复制到剪贴板");
+    } catch (e) {
+      showCopyToast(`复制失败：${e}`, false);
+    } finally {
+      copyingMarkdownKey = null;
+    }
   }
 
   const phaseLabel = $derived(
@@ -400,6 +443,23 @@
   }
 </script>
 
+<style>
+  @keyframes copy-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .copy-toast {
+    animation: copy-toast-in 180ms ease-out;
+  }
+</style>
+
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
@@ -412,7 +472,33 @@
     class="fixed inset-y-0 right-0 z-50 flex flex-row-reverse items-stretch"
     aria-label="DeepWiki"
   >
-    <div class="flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-white/10 bg-[#12151c] shadow-2xl">
+    <div class="relative flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-white/10 bg-[#12151c] shadow-2xl">
+    {#if copyToast}
+      <div
+        class="pointer-events-none absolute inset-x-0 top-3 z-[70] flex justify-center px-4"
+        role="status"
+        aria-live="polite"
+      >
+        <div
+          class="copy-toast flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl backdrop-blur-md {copyToast.ok
+            ? 'border-emerald-400/35 bg-emerald-500/20 text-emerald-100'
+            : 'border-red-400/35 bg-red-500/20 text-red-100'}"
+        >
+          {#if copyToast.ok}
+            <svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M3.5 8.5L6.5 11.5L12.5 4.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          {/if}
+          {copyToast.text}
+        </div>
+      </div>
+    {/if}
     <header class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3">
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold">DeepWiki</h2>
@@ -441,7 +527,7 @@
           onscroll={onMessagesScroll}
         >
           <div bind:this={messagesContentEl} class="space-y-4">
-          {#each messages as msg}
+          {#each messages as msg, i (msg.timestamp ?? `msg-${i}`)}
             <div
               class={`rounded-xl px-4 py-3 ${
                 msg.role === "user" ? "bg-indigo-600/25" : "bg-white/[0.04]"
@@ -475,10 +561,22 @@
                   <MarkdownViewer body={msg.content} repoPath={repoPath} compact onSourceClick={openCitation} />
                 {/if}
               {/if}
-              {#if formatUsageLine(msg.usage)}
-                <p class="mt-3 border-t border-white/5 pt-2 text-[10px] text-white/35">
-                  {formatUsageLine(msg.usage)}
-                </p>
+              {#if formatUsageLine(msg.usage) || (msg.role === "assistant" && assistantMessageMarkdown(msg))}
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                  {#if formatUsageLine(msg.usage)}
+                    <p class="text-[10px] text-white/35">{formatUsageLine(msg.usage)}</p>
+                  {:else}
+                    <span></span>
+                  {/if}
+                  {#if msg.role === "assistant" && assistantMessageMarkdown(msg)}
+                    {@const copyKey = `done-${msg.timestamp ?? i}`}
+                    <CopyMarkdownButton
+                      copied={copiedMarkdownKey === copyKey}
+                      copying={copyingMarkdownKey === copyKey}
+                      onclick={() => void copyMarkdown(copyKey, assistantMessageMarkdown(msg))}
+                    />
+                  {/if}
+                </div>
               {/if}
               {#if msg.citations?.length}
                 <div class="mt-4 space-y-1.5 border-t border-white/5 pt-3">
@@ -529,10 +627,21 @@
                   {/if}
                 {/each}
               {/if}
-              {#if streamingUsageLine}
-                <p class="mt-3 border-t border-white/5 pt-2 text-[10px] text-white/35">
-                  {streamingUsageLine}
-                </p>
+              {#if streamingUsageLine || assistantStepsMarkdown(streamSteps)}
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                  {#if streamingUsageLine}
+                    <p class="text-[10px] text-white/35">{streamingUsageLine}</p>
+                  {:else}
+                    <span></span>
+                  {/if}
+                  {#if assistantStepsMarkdown(streamSteps)}
+                    <CopyMarkdownButton
+                      copied={copiedMarkdownKey === "streaming"}
+                      copying={copyingMarkdownKey === "streaming"}
+                      onclick={() => void copyMarkdown("streaming", assistantStepsMarkdown(streamSteps))}
+                    />
+                  {/if}
+                </div>
               {/if}
             </div>
           {:else if messages.length === 0}

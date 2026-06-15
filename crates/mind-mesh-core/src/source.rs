@@ -264,6 +264,47 @@ fn repo_path_candidates(
     }
 }
 
+fn normalize_source_path(path: &str) -> String {
+    path.trim()
+        .trim_start_matches("./")
+        .trim_start_matches('/')
+        .replace('\\', "/")
+}
+
+fn push_unique_path(out: &mut Vec<String>, value: &str) {
+    let normalized = normalize_source_path(value);
+    if !normalized.is_empty() && !out.iter().any(|existing| existing == &normalized) {
+        out.push(normalized);
+    }
+}
+
+/// Alternate paths to try when citations include project prefixes or common typos.
+fn source_path_candidates(project_slug: &str, file_path: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let normalized = normalize_source_path(file_path);
+    push_unique_path(&mut out, &normalized);
+
+    if let Some(rest) = normalized.strip_prefix(&format!("{project_slug}/")) {
+        push_unique_path(&mut out, rest);
+    }
+
+    if let Some(file_name) = Path::new(&normalized).file_name().and_then(|s| s.to_str()) {
+        push_unique_path(&mut out, file_name);
+    }
+
+    for (from, to) in [
+        (".gradle.kt", ".gradle.kts"),
+        (".gradle.kt", ".gradle"),
+        (".gradle.kts", ".gradle"),
+    ] {
+        if let Some(stem) = normalized.strip_suffix(from) {
+            push_unique_path(&mut out, &format!("{stem}{to}"));
+        }
+    }
+
+    out
+}
+
 fn try_live_source_slice(
     repos: &[String],
     file_path: &str,
@@ -276,6 +317,43 @@ fn try_live_source_slice(
         }
     }
     None
+}
+
+fn try_live_source_slice_with_candidates(
+    repos: &[String],
+    candidates: &[String],
+    start_line: u32,
+    end_line: u32,
+) -> Option<SourceSlice> {
+    for path in candidates {
+        if let Some(slice) = try_live_source_slice(repos, path, start_line, end_line) {
+            return Some(slice);
+        }
+    }
+    None
+}
+
+fn try_agent_pack_slice(
+    pack: &Path,
+    candidates: &[String],
+    start_line: u32,
+    end_line: u32,
+) -> Result<crate::assets::AgentPackFileContent> {
+    let start = if start_line == 0 { None } else { Some(start_line) };
+    let end = if end_line == 0 { None } else { Some(end_line) };
+    let mut last_err = None;
+    for path in candidates {
+        match read_agent_pack_file(pack, path, start, end) {
+            Ok(slice) => return Ok(slice),
+            Err(e) => last_err = Some(e),
+        }
+    }
+    Err(last_err.unwrap_or_else(|| {
+        CoreError::InvalidDoc(format!(
+            "file not found in agent pack: {}",
+            candidates.first().cloned().unwrap_or_default()
+        ))
+    }))
 }
 
 fn is_source_code_path(file_path: &str) -> bool {
@@ -307,8 +385,11 @@ pub fn resolve_source_citation(
         }
     }
 
+    let path_candidates = source_path_candidates(project_slug, file_path);
     let repos = repo_path_candidates(paths, project_slug, repo_path);
-    if let Some(slice) = try_live_source_slice(&repos, file_path, start_line, end_line) {
+    if let Some(slice) =
+        try_live_source_slice_with_candidates(&repos, &path_candidates, start_line, end_line)
+    {
         return Ok(slice);
     }
 
@@ -326,12 +407,14 @@ pub fn resolve_source_citation(
         )));
     }
 
-    let start = if start_line == 0 { None } else { Some(start_line) };
-    let end = if end_line == 0 { None } else { Some(end_line) };
-    let pack_file = read_agent_pack_file(&pack, file_path, start, end)?;
+    let pack_file = try_agent_pack_slice(&pack, &path_candidates, start_line, end_line)?;
 
-    if let Some(slice) = try_live_source_slice(&repos, &pack_file.matched_path, start_line, end_line)
-    {
+    if let Some(slice) = try_live_source_slice_with_candidates(
+        &repos,
+        &[pack_file.matched_path.clone()],
+        start_line,
+        end_line,
+    ) {
         return Ok(slice);
     }
 
@@ -523,6 +606,41 @@ mod tests {
         .unwrap();
         assert!(slice.content.contains("live via alias"));
         assert!(!slice.content.contains("pack line"));
+    }
+
+    #[test]
+    fn resolves_prefixed_citation_with_gradle_extension_variant() {
+        let (paths, slug, repo, _guard) = test_setup("gradle-path-variant");
+        write_repo_file(
+            &repo,
+            "au_home/build.gradle.kts",
+            "plugins { id(\"android\") }\n",
+        );
+        std::fs::write(
+            paths.agent_pack_main(&slug),
+            "# Repomix\n\n## Files\n\n### au_home/build.gradle.kts (1 lines)\n\n```kotlin\n1: plugins { id(\"android\") }\n```\n",
+        )
+        .unwrap();
+        std::fs::write(
+            paths.agent_pack_meta(&slug),
+            format!(
+                r#"{{"repo_path":"{}","synced_at":"now","total_files":1,"total_tokens":1,"pack_strategy":"test","top_files_by_tokens":[]}}"#,
+                repo.display()
+            ),
+        )
+        .unwrap();
+
+        let slice = resolve_source_citation(
+            &paths,
+            &slug,
+            Some(repo.to_str().unwrap()),
+            "android-au/au_home/build.gradle.kt",
+            0,
+            0,
+        )
+        .unwrap();
+        assert!(slice.content.contains("plugins"));
+        assert_eq!(slice.file_path, "au_home/build.gradle.kts");
     }
 
     #[test]
