@@ -51,7 +51,8 @@ pub use project::{get_project_overview, resolve_project_repo_path};
 pub use registry::{knowledge_root_for_repo, list_stale_registry_projects, register_project, StaleProjectSummary};
 pub use schema::{
     AgentContextMeta, AgentContextStatus, AgentEnvStatus, AgentPackMeta, AssetGenerator, AssetTrack,
-    AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, FreshnessSummary,
+    AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, FreshnessDriftFactor,
+    FreshnessSummary,
     HumanDocEntry,
     InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, RouteMeta, SddPhase,
     SddPhaseInfo, SddPhaseResult, SddPlan, SddStatus, SourceCitation, SourceSlice, SyncMeta,

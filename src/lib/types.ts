@@ -226,6 +226,14 @@ export interface AssetTrackHealth {
   stale_reason?: string;
 }
 
+export interface FreshnessDriftFactor {
+  id: string;
+  severity: "high" | "medium" | "low" | "info" | string;
+  title: string;
+  detail: string;
+  points_lost?: number;
+}
+
 export interface FreshnessSummary {
   overall_score: number;
   overall_stale: boolean;
@@ -240,6 +248,10 @@ export interface FreshnessSummary {
   agent_context_score: number;
   human_docs_score: number;
   macro_preload_allowed: boolean;
+  drift_factors?: FreshnessDriftFactor[];
+  sample_changed_files?: string[];
+  pack_baseline_short?: string;
+  context_baseline_short?: string;
 }
 
 export interface QuickRefreshResult {

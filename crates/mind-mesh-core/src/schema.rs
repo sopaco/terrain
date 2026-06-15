@@ -284,6 +284,17 @@ pub struct AssetTrackHealth {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreshnessDriftFactor {
+    pub id: String,
+    /// `high` | `medium` | `low` | `info`
+    pub severity: String,
+    pub title: String,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub points_lost: Option<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FreshnessSummary {
     pub overall_score: u8,
     pub overall_stale: bool,
@@ -300,6 +311,14 @@ pub struct FreshnessSummary {
     pub agent_context_score: u8,
     pub human_docs_score: u8,
     pub macro_preload_allowed: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub drift_factors: Vec<FreshnessDriftFactor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sample_changed_files: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pack_baseline_short: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_baseline_short: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

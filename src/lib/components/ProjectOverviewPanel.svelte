@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ProjectOverview, StaleProjectSummary } from "../types";
   import { generateLabel, TERMS } from "../terminology";
+  import FreshnessHelpPanel from "./FreshnessHelpPanel.svelte";
 
   interface Props {
     overview: ProjectOverview | null;
@@ -55,6 +56,8 @@
     quickRefreshBusy = false,
     onQuickRefresh,
   }: Props = $props();
+
+  let freshnessHelpOpen = $state(false);
 
   const readyCount = $derived(
     overview?.asset_health.filter((a) => a.ready).length ?? 0,
@@ -391,14 +394,35 @@
             <span class="text-[10px] text-white/30">就绪</span>
           </div>
           <div class="flex flex-col gap-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-white/35">知识新鲜度</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-white/35">知识新鲜度</span>
+              {#if freshness}
+                <button
+                  type="button"
+                  class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/15 text-[10px] leading-none text-white/45 transition-colors hover:border-indigo-400/50 hover:bg-indigo-500/10 hover:text-indigo-200"
+                  title="了解新鲜度如何计算及本项目的偏离原因"
+                  aria-label="知识新鲜度说明"
+                  onclick={() => (freshnessHelpOpen = true)}
+                >
+                  ?
+                </button>
+              {/if}
+            </div>
             {#if freshness}
-              <span class={`text-sm font-medium ${freshnessTone(freshness.overall_score)}`}>
-                {freshness.overall_score}/100
-              </span>
+              <div class="flex items-baseline gap-1.5">
+                <span class={`text-sm font-medium ${freshnessTone(freshness.overall_score)}`}>
+                  {freshness.overall_score}/100
+                </span>
+                {#if freshness.overall_stale}
+                  <span class="text-[10px] text-amber-200/80">偏低</span>
+                {/if}
+              </div>
               <span class="text-[10px] text-white/30">
                 {#if freshness.current_git_head}
                   HEAD {freshness.current_git_head}
+                  {#if freshness.working_tree_dirty}
+                    · 工作区未提交
+                  {/if}
                 {:else if !freshness.is_git_repo}
                   非 Git 仓库
                 {:else}
@@ -628,3 +652,11 @@
     </div>
   {/if}
 </div>
+
+<FreshnessHelpPanel
+  open={freshnessHelpOpen}
+  freshness={freshness}
+  quickRefreshBusy={quickRefreshBusy}
+  onQuickRefresh={onQuickRefresh}
+  onclose={() => (freshnessHelpOpen = false)}
+/>
