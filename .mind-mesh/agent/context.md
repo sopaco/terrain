@@ -7,75 +7,91 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
 
 ## 项目概览
 
-MindMesh 是面向 AI 编码助手的工程环境管理平台。输入为 Git 仓库源码目录，输出为结构化知识资产（C4 文档 + Agent 上下文 + Repomix）。核心能力：**多模态文档生成**（人类可读 Litho 文档 + Agent 可读结构化数据）与 **即时知识问答**。架构采用三层容器：CLI/桌面层、核心库层、Agent 代理层。主要依赖 Rust、Node.js、Svelte、Tauri 及 LLM 推理接口。
+MindMesh 是一个面向 AI 编码助手的工程环境管理平台。它能自动扫描任意代码仓库，分析项目结构，生成人类可读的 C4 模型架构文档（Mermaid）及结构化的 AI Agent 上下文知识资产（如 `agent/context.md`）。系统通过扫描仓库源码，调用 LLM 进行架构分析，产出项目概览、架构设计、模块地图、核心流程、技术选型和系统边界等知识，同时维护环境集成、技能索引和工具调用追踪，支持 DeepWiki 模式下的即时问答与 SDD 生成。
 
 ## 架构设计
 
-系统划分为三个主要集装箱，通过 IPC 和文件 IO 通信，数据流从 Git 源码流向磁盘知识目录：
+### 系统容器* **用户界面层 (User Interface)
 
-| 容器 | 角色 | 主要路径 | 输入 | 输出 | 技术栈 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `mind-mesh-cli` | CLI 入口 | `crates/mind-mesh-cli/src/main.rs` | 仓库路径 | 知识目录 | Rust |
-| `mind-mesh-core` | 处理核心 | `crates/mind-mesh-core/src/lib.rs` | 解析数据 | 知识对象 | Rust |
-| `mind-mesh-agent` | Agent 接口 | `crates/mind-mesh-agent/src/lib.rs` | Agent 请求 | `agent/` 目录 | Rust |
-| `mind-mesh-ui` | 桌面应用 | `src-tauri/src/main.rs` | 用户指令 | UI 渲染 | Svelte/Tauri |**层依赖关系：**
+**: * **CLI**: `crates/mind-mesh-cli`，命令行入口，负责初始化、扫描和生成知识资产。 * **桌面应用 (Tauri)**: `src-tauri` (Rust 后端) + `src/` (Svelte 前端)，提供可视化界面。* **核心处理层 (Core Processing)**: * **Core Library**: `crates/mind-mesh-core`，业务逻辑核心，负责扫描、注册、打包（Repomix）、文档生成、搜索、问答推理及知识持久化。 * **Agent Layer**: `crates/mind-mesh-agent`，AI Agent 专用适配层，负责 ACP 协议通信、Prompt 组装、上下文生成及 Agent 工具执行。* **基础设施层 (Infrastructure)**: * **LLM Provider**: 外部大语言模型接口（需用户配置 Key）。 * **Git Repository**: 被扫描的代码仓库作为数据源。 * **Local Storage**: `.mind-mesh/` 目录存储生成的知识资产。 * **File System**: 用于读取源码和写入产物。
 
-- `cli` 调用 `core` 和 `ui`
+### 架构依赖* **内部依赖**: `crates/mind-mesh-core` 被 `crates/mind-mesh-cli` 和 `crates/mind-mesh-agent` 调用。* **外部依赖**: `tauri` (桌面框架)
 
-- `core` 包含 `ingest` (数据摄取), `doc` (文档生成), `registry` (对象注册)
+, `svelte` (前端框架), `Rust` (系统语言), `LLM API` (推理引擎)。
 
-- `agent` 实现 ACP 协议，调用 `core` 搜索
+### 主要数据流
+
+```mermaidgraph
+ TD Input[Git 源码目录] --> |fs| RepoRead
+    RepoRead --> |fs| PackRead
+    PackRead --> |LLM| CoreLLM
+    CoreLLM --> |Doc| LithoOutput[人类文档]
+    CoreLLM --> |AgentCxt| AgentOutput[Agent Context]
+    AgentOutput --> |ACP| AICode[AI 编码助手]
+    LithoOutput --> |Search| Ask[DeepWiki 问答]
+```
 
 ## 模块地图
 
-核心能力模块分布（仅包含核心业务模块，排除 UI 和构建工具）：
-
-| 模块 | 职责 | 主要路径 |
-| :--- | :--- | :--- |
-| `env-manager` | 环境状态与目录管理 | `crates/mind-mesh-core/src/assets/env/` |
-| `litho-gen` | Litho 文档多阶段生成 | `crates/mind-mesh-core/src/assets/litho.rs` |
-| `context-gen` | Agent 上下文生成 | `crates/mind-mesh-agent/src/context_generator.rs` |
-| `repomix-pack` | Agent 源码包生成 | `crates/mind-mesh-agent/src/agent_assets.rs` |
-| `query-engine` | 知识搜索与检索 | `crates/mind-mesh-core/src/assets/query.rs` |
-| `sdd-worker` | SDD 工作流执行 | `crates/mind-mesh-core/src/assets/sdd.rs` |
-| `registry` | 项目元数据与注册 | `crates/mind-mesh-core/src/assets/project_meta.rs` |
+| 模块 | 责任 | 主要路径 |
+|---|---|---|
+| `App` | 主界面协调，集成各组件面板 | `src/App.svelte` |
+| `AskBar` | 用户提问输入组件 | `src/lib/components/AskBar.svelte` |
+| `EnvIntegrate` | 扫描/初始化/集成 Git 仓库入口 | `env-catalog/agents-md/env-overview.fragment` |
+| `KnowledgeGuide` | 项目知识与模块浏览 | `env-catalog/agents-md/knowledge-guide.fragment` |
+| `Core::Ingest` | 仓库扫描与初始化 | `crates/mind-mesh-core/src/ingest/git.rs` |
+| `Core::Doc` | Litho 文档生成逻辑 | `crates/mind-mesh-core/src/doc.rs` |
+| `Core::Search` | 知识资产全文检索 | `crates/mind-mesh-core/src/search.rs` |
+| `Core::Query` | LLM 问答推理与响应 | `crates/mind-mesh-core/src/query.rs` |
+| `Core::Citations` | 回答引用的定位与生成 | `crates/mind-mesh-core/src/citations.rs` |
+| `Agent::Context` | Agent 上下文生成与管理 | `crates/mind-mesh-agent/src/agent_context.rs` |
+| `Agent::Tools` | ACP 工具调度与执行 | `crates/mind-mesh-agent/src/tools.rs` |
+| `Agent::Throttle` | LLM 调用限流控制 | `crates/mind-mesh-agent/src/throttle.rs` |
 
 ## 核心流程
 
-1. **项目初始化**：CLI 接收仓库路径 -> `ingest` 扫描代码并注册 Git 历史 -> `agent_assets` 初始化 `agent/` 目录结构 -> 完成初始化（约 1 分钟）。
-
-2. **Litho 生成**：`context_layers` 识别层级结构 -> `litho` 调用 LLM 生成架构 Markdown -> `phaseX` 渲染具体文档 -> 输出至 `assets/litho/`。
-
-3. **DeepWiki 问答**：`query-engine` 解析用户问题 -> `search` 在知识库索引中匹配 -> `doc` 聚合上下文 -> `render` 输出最终 Markdown。
+1.  **仓库初始化与集成**: 用户通过 CLI 或 UI 指定 Git 仓库路径。系统调用 Git CLI 扫描仓库结构，识别 `.mind-mesh/` 目录是否存在。若不存在则自动创建初始化项目结构并注册元数据。
+2.  **项目扫描与打包**: 系统扫描 `crates/`, `src/` 等目录。对源码文件读取部分切片生成 `agent/repomix.md`（含文件路径、行号、内容片段）。根据 `agent/meta-inputs.md` 收集元数据，生成 `agent/meta-inputs.md` 和 `agent/context.md` 基础结构。
+3.  **Litho 文档生成**: 若已集成仓库，调用 LLM 按阶段（预处理->研究->编排->输出）生成人类可读的 Markdown 文档（如 `.mind-mesh/human/` 下文档）。
+4.  **DeepWiki 问答**: 用户提问时，系统在 `.mind-mesh/` 下搜索相关知识文档或 Agent Context。若匹配成功，LLM 利用上下文生成结构化回答，并自动添加代码片段引用（Citations）。
 
 ## 技术选型
 
-- **后端语言**：Rust (高性能并发处理，安全性)
-
-。- **前端框架**：Svelte (桌面端 UI)。- **桌面容器**：Tauri (基于 Webview)。- **知识生成**：LLM API (架构分析，Markdown 生成)。- **文档格式**：Markdown (Litho), `.repomix` (Agent 数据)。
+*   **主要语言**: Rust (业务核心/CLI/Agent), TypeScript/Svelte (前端), Python (Litho 处理脚本 - 可选), JavaScript/TypeScript (Tauri 前端)。
+*   **框架**: Tauri (桌面应用), Svelte (UI 组件), Litho (LLM 对话编排)。
+*   **协议**: ACP (Agent Communication Protocol), Git, HTTP/LLM API。
+*   **数据存储**: 本地文件系统 (`.mind-mesh/`)。
 
 ## 系统边界
 
-- **信任边界**：外部 Git 仓库 -> 本地 `.mind-mesh/` 知识目录。- **网络边界**：无公网依赖，仅使用本地文件系统存储所有知识资产（LLM 调用视为外部依赖）。- **外部接口**：无直接 HTTP API（通过 ACP 协议/CLI 调用）。- **数据流**：Git 二进制/LFS -> 解析 -> 结构化文本/JSON -> 磁盘文件。
+*   **外部系统**:
+    *   **Git**: 读取源码结构 (`git ls-files`, `git log` 等)。
+    *   **LLM API**: 获取架构分析、文档生成、问答推理服务（Key 需用户配置）。
+    *   **AI 编码助手**: 通过 ACP 协议接收查询并返回结构化 JSON 响应。
+*   **信任边界**:
+    *   **本地沙盒**: 仅读取指定目录，不触碰用户其他文件（通过 Tauri capability 限制）。
+    *   **用户数据**: `.mind-mesh/` 下的 `human/` 目录包含本地生成的文档。
 
 ## 代码映射索引
 
-| 概念 | 位置 | 说明 |
-| :--- | :--- | :--- |
-| `ProjectRoot` | `src/` | 源码目录入口 |
-| `KnowledgeDir` | `.mind-mesh/knowledge/` | 知识存储根目录 |
-| `AgentContextDir` | `.mind-mesh/agent/context.md` | Agent 核心上下文 |
-| `RepomixDir` | `.mind-mesh/agent/repomix.md` | 源码切片包 |
-| `LithoAssets` | `.mind-mesh/knowledge/` | 所有 Litho 文档 |
-| `SkillCatalog` | `env-catalog/catalog.json` | 技能注册中心 |
-| `CLIEntry` | `crates/mind-mesh-cli/src/main.rs` | 命令行入口点 |
-| `AgentLib` | `crates/mind-mesh-agent/src/lib.rs` | Agent 能力库入口 |
-| `CoreLib` | `crates/mind-mesh-core/src/lib.rs` | 核心逻辑入口 |
-| `UIEntry` | `src-tauri/src/main.rs` | 桌面应用入口点 |
-| `IngestGit` | `crates/mind-mesh-core/src/ingest/git.rs` | Git 历史解析器 |
-| `SearchService` | `crates/mind-mesh-core/src/assets/query.rs` | 全文检索服务 |
-| `ContextLayer` | `crates/mind-mesh-core/src/assets/context_layers.rs` | 架构分层识别器 |
-| `LithoService` | `crates/mind-mesh-core/src/assets/litho.rs` | Litho 文档渲染器 |
-| `ACPHandler` | `crates/mind-mesh-agent/src/acp.rs` | ACP 协议处理器 |
-| `EnvManager` | `crates/mind-mesh-core/src/assets/env/mod.rs` | 环境状态管理器 |
-| `Registery` | `crates/mind-mesh-core/src/assets/project_meta.rs` | 项目注册表 |```
+| 概念 | 位置 | 备注 |
+|---|---|---|
+| `App` 入口 | `src/App.svelte` | |
+| `EnvIntegratePanel` | `src/lib/components/EnvIntegratePanel.svelte` | 仓库接入入口 |
+| `KnowledgeGuide` | `env-catalog/agents-md/knowledge-guide.fragment` | 模块索引 |
+| `Skills` | `env-catalog/agents-md/skills.fragment` | 技能索引 |
+| `Docs` | `crates/mind-mesh-core/src/doc.rs` | 文档生成入口 |
+| `Ingest` | `crates/mind-mesh-core/src/ingest/` | 扫描入口 |
+| `Repomix` | `crates/mind-mesh-core/src/repomix.rs` | 打包逻辑 |
+| `ContextGenerator` | `crates/mind-mesh-agent/src/context_generator.rs` | Agent 上下文生成 |
+| `LLMThrottle` | `crates/mind-mesh-agent/src/throttle.rs` | 限流控制 |
+| `ToolExecuter` | `crates/mind-mesh-agent/src/tools.rs` | 工具执行 |
+| `Search` | `crates/mind-mesh-core/src/search.rs` | 全文检索 |
+| `Query` | `crates/mind-mesh-core/src/query.rs` | 问答推理 |
+| `Litho::Phase1` | `preset_skills/litho-documents-skill/references/phase1-preprocessing.md` | 预处理逻辑 |
+| `Litho::Phase2` | `preset_skills/litho-documents-skill/references/phase2-research.md` | 研究逻辑 |
+| `Tauri::Core` | `src-tauri/src/commands.rs` | Tauri 命令定义 |
+
+## 知识资产结构 (.mind-mesh/)
+
+* **`.mind-mesh/agents-md/`**: * `env-overview.fragment`: 项目初始化概览 * `knowledge-guide.fragment`: 知识模块索引 * `skills.fragment`: 技能列表 * `tools.fragment`: 工具定义* **`agent/context.md`**: Agent 专用结构化知识文档（按 section 切片）* **`agent/repomix.md`**: 源码打包切片索引* **`human/`**: 人类可读的 Litho 文档（可选）* **`.mind-mesh-meta.json`**: 项目元数据配置（注入上下文）```

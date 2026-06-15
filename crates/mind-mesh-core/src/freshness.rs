@@ -624,7 +624,13 @@ pub fn format_freshness_trust_block(summary: &FreshnessSummary) -> String {
 }
 
 fn porcelain_entry_path(line: &str) -> &str {
-    let rest = line.get(3..).unwrap_or(line).trim();
+    let line = line.trim_end();
+    if line.len() < 3 {
+        return line.trim();
+    }
+    // Porcelain v1: XY<space>PATH — do not trim the line start (status columns matter).
+    let path_start = if line.as_bytes().get(2) == Some(&b' ') { 3 } else { 2 };
+    let rest = line.get(path_start..).unwrap_or(line).trim();
     rest.split_once(" -> ")
         .map(|(_, new_path)| new_path.trim())
         .unwrap_or(rest)
@@ -647,7 +653,9 @@ fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
     if !output.status.success() {
         return None;
     }
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let text = String::from_utf8_lossy(&output.stdout);
+    // trim_end only — trim() would strip the first porcelain status column (leading space).
+    let text = text.trim_end().to_string();
     if text.is_empty() {
         None
     } else {
@@ -682,6 +690,10 @@ mod tests {
         assert!(working_tree_dirty_excluding_knowledge(porcelain));
         let only_knowledge = " M .mind-mesh/human/1.md\n?? .mind-mesh/.meta/sync.json\n";
         assert!(!working_tree_dirty_excluding_knowledge(only_knowledge));
+
+        // Regression: git_output must not trim() porcelain — first line loses leading status space.
+        let corrupted_first_line = "M .mind-mesh/agent/context.md\n";
+        assert!(!working_tree_dirty_excluding_knowledge(corrupted_first_line));
     }
 
     #[test]
