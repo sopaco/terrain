@@ -319,6 +319,11 @@
           <span class="text-xs font-medium text-white/55">Binary（PATH 上的可执行文件）</span>
           <input
             class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            type="text"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck={false}
+            autocomplete="off"
             value={acpBinary}
             oninput={(e) => (acpBinary = (e.currentTarget as HTMLInputElement).value)}
             placeholder="opencode"
@@ -329,6 +334,11 @@
           <span class="text-xs font-medium text-white/55">参数（跟在 binary 后）</span>
           <input
             class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            type="text"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck={false}
+            autocomplete="off"
             value={acpArgs}
             oninput={(e) => (acpArgs = (e.currentTarget as HTMLInputElement).value)}
             placeholder="acp"
@@ -339,6 +349,11 @@
           <span class="text-xs font-medium text-white/55">完整命令覆盖（可选，优先于 binary + args）</span>
           <input
             class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            type="text"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck={false}
+            autocomplete="off"
             value={acpCommand}
             oninput={(e) => (acpCommand = (e.currentTarget as HTMLInputElement).value)}
             placeholder="opencode acp"
