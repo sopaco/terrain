@@ -333,6 +333,13 @@ export interface SddPhaseInfo {
   updated_at?: string;
 }
 
+export interface SddSessionInfo {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface SddStatus {
   project_slug: string;
   skill_ready: boolean;
@@ -340,6 +347,8 @@ export interface SddStatus {
   output_dir: string;
   phases: SddPhaseInfo[];
   current_phase?: SddPhase;
+  active_session_id?: string;
+  sessions: SddSessionInfo[];
 }
 
 export interface SddPhaseResult {

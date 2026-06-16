@@ -443,8 +443,18 @@ impl SddPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SddSessionInfo {
+    pub id: String,
+    pub title: String,
+    pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SddPlan {
     pub project_slug: String,
+    pub session_id: String,
     pub repo_path: String,
     pub skill_dir: String,
     pub sdd_workspace_dir: String,
@@ -473,6 +483,9 @@ pub struct SddStatus {
     pub phases: Vec<SddPhaseInfo>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_phase: Option<SddPhase>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_session_id: Option<String>,
+    pub sessions: Vec<SddSessionInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

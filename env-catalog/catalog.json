@@ -84,6 +84,14 @@
       "description": "将 .mind-mesh/agent/repomix.md 加入 .gitignore",
       "patterns": [".mind-mesh/agent/repomix.md"],
       "depends_on": []
+    },
+    {
+      "id": "gitignore-sdd-agent",
+      "kind": "gitignore",
+      "label": "忽略 SDD 工作区",
+      "description": "将 .mind-mesh/.sdd-agent/ 加入 .gitignore（SDD 产出已迁至本地 ~/.mind-mesh/sdd/）",
+      "patterns": ["**/.sdd-agent"],
+      "depends_on": []
     }
   ],
   "agents_md_blocks": [

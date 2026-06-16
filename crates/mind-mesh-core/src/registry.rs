@@ -99,6 +99,20 @@ pub fn register_project(slug: &str, repo_path: &str) -> Result<()> {
     Ok(())
 }
 
+/// Remove a project from the local registry only (does not delete the repository or `.mind-mesh/`).
+pub fn unregister_project(slug: &str) -> Result<()> {
+    let mut entries = load_registry()?;
+    let before = entries.len();
+    entries.retain(|e| e.slug != slug);
+    if entries.len() == before {
+        return Err(CoreError::InvalidDoc(format!(
+            "project not in registry: {slug}"
+        )));
+    }
+    save_registry(&entries)?;
+    Ok(())
+}
+
 pub fn knowledge_root_for_slug(slug: &str) -> Option<PathBuf> {
     load_registry()
         .ok()?

@@ -9,6 +9,7 @@
     ontoggle: () => void;
     onselect: (project: ProjectSummary) => void;
     onadd: () => void;
+    onremove?: (project: ProjectSummary) => void;
     onopenFolder?: (project: ProjectSummary) => void;
   }
 
@@ -20,6 +21,7 @@
     ontoggle,
     onselect,
     onadd,
+    onremove,
     onopenFolder,
   }: Props = $props();
 
@@ -47,6 +49,17 @@
       window.removeEventListener("scroll", onLayout, true);
     };
   });
+  function confirmRemove(project: ProjectSummary, e: MouseEvent) {
+    e.stopPropagation();
+    if (
+      !confirm(
+        `从列表中移除「${project.name}」？\n\n仅移除 MindMesh 登记，不会删除仓库或 .mind-mesh/ 知识资产。`,
+      )
+    ) {
+      return;
+    }
+    onremove?.(project);
+  }
 </script>
 
 <div class="relative">
@@ -77,7 +90,7 @@
       role="listbox"
     >
       <div class="border-b border-white/10 px-3 py-2 text-xs text-white/40">
-        {projects.length} project{projects.length === 1 ? "" : "s"}
+        {projects.length} 个项目 · 移除仅取消登记
       </div>
       <ul class="max-h-64 overflow-y-auto py-1">
         {#each projects as project}
@@ -98,7 +111,7 @@
               <button
                 type="button"
                 class="shrink-0 rounded px-2 text-white/40 hover:bg-white/5 hover:text-white/80"
-                title="Open repository folder"
+                title="打开仓库目录"
                 aria-label={`Open folder for ${project.name}`}
                 onclick={(e) => {
                   e.stopPropagation();
@@ -107,6 +120,19 @@
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+                </svg>
+              </button>
+            {/if}
+            {#if onremove}
+              <button
+                type="button"
+                class="shrink-0 rounded px-2 text-white/40 hover:bg-red-500/10 hover:text-red-300"
+                title="从列表移除"
+                aria-label={`从列表移除 ${project.name}`}
+                onclick={(e) => confirmRemove(project, e)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
                 </svg>
               </button>
             {/if}

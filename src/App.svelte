@@ -25,6 +25,7 @@
     initializeProject,
     listHumanDocs,
     listProjects,
+    removeProject,
     listStaleProjects,
     openRepoFolder,
     packAgentAssets,
@@ -210,6 +211,26 @@
     }
     if (!picked || Array.isArray(picked)) return;
     await triggerProjectInitialization(picked);
+  }
+
+  async function removeProjectFromList(project: ProjectSummary) {
+    projectPickerOpen = false;
+    try {
+      await removeProject(project.slug);
+      if (selectedProject === project.slug) {
+        selectedProject = null;
+        selectedRepoPath = null;
+        projectOverview = null;
+        activeDoc = null;
+        activeHumanPath = null;
+        humanDocs = [];
+        hits = [];
+      }
+      await refresh();
+      setStatus(`已从列表移除：${project.name}`, "success");
+    } catch (e) {
+      setStatus(String(e), "error");
+    }
   }
 
   async function selectProject(project: ProjectSummary) {
@@ -642,6 +663,7 @@
         ontoggle={() => (projectPickerOpen = !projectPickerOpen)}
         onselect={selectProject}
         onadd={addProject}
+        onremove={removeProjectFromList}
         onopenFolder={openProjectFolder}
       />
 
@@ -690,7 +712,7 @@
     />
   {/if}
 
-  {#if activeTab === "overview"}
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "overview"}>
     <ProjectOverviewPanel
       overview={projectOverview}
       loading={overviewLoading}
@@ -717,7 +739,9 @@
       quickRefreshBusy={quickRefreshBusy}
       onQuickRefresh={triggerQuickRefresh}
     />
-  {:else if activeTab === "sdd"}
+  </div>
+
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "sdd"}>
     <SddWorkflowPanel
       projectSlug={selectedProject}
       repoPath={selectedRepoPath}
@@ -725,7 +749,9 @@
       llmReady={llmStatus?.ready ?? false}
       onStatus={(message, kind) => setStatus(message, kind)}
     />
-  {:else if activeTab === "env"}
+  </div>
+
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "env"}>
     <EnvIntegratePanel
       repoPath={selectedRepoPath}
       onStatus={(message, kind) => setStatus(message, kind)}
@@ -733,8 +759,9 @@
         if (selectedProject) void loadProjectOverview(selectedProject);
       }}
     />
-  {:else}
-    <div class="flex min-h-0 flex-1 flex-col">
+  </div>
+
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "knowledge"}>
       <div class="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#14171c]/80 px-4 py-2">
         <input
           id="search-input"
@@ -843,8 +870,7 @@
           />
         </main>
       </div>
-    </div>
-  {/if}
+  </div>
 </div>
 
 <DeepWikiPanel

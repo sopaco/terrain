@@ -26,3 +26,4 @@ src-tauri/target/
 .mind-mesh/agent/repomix.md
 
 **/.litho-agent
+**/.sdd-agent

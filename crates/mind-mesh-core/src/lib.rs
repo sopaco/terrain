@@ -18,14 +18,17 @@ pub mod source;
 pub use assets::{
     agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
     build_generation_plan, build_litho_composition_prompt, build_litho_generation_prompt,
-    build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, default_agent_arch_skill_dir,
-    default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
-    extract_context_section, get_env_status, get_sdd_status, grep_file, grep_repomix_pack, grep_text,
-    has_litho_research_artifacts, litho_human_complete, litho_human_complete_with_research,
-    litho_research_ready, apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready, meta_inputs_status,
-    plan_env_integration, plan_litho_generation, plan_sdd_workflow, patch_agents_md,
-    persist_meta_inputs, read_agent_context_status, read_agent_pack_file, resolve_litho_skill_dir,
-    resolve_sdd_skill_dir, sdd_phase_output_path, split_context_sections, write_agent_context,
+    build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, create_sdd_session,
+    default_agent_arch_skill_dir, default_litho_skill_dir, default_sdd_skill_dir, delete_sdd_session,
+    discover_meta_files,
+    enforce_context_max_size, extract_context_section, get_active_sdd_session, get_env_status,
+    get_sdd_status, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
+    litho_human_complete, litho_human_complete_with_research, litho_research_ready,
+    apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready,
+    meta_inputs_status, list_sdd_sessions, plan_env_integration, plan_litho_generation,
+    plan_sdd_workflow, patch_agents_md, persist_meta_inputs, read_agent_context_status,
+    read_agent_pack_file, resolve_litho_skill_dir, resolve_sdd_session_id, resolve_sdd_skill_dir,
+    save_sdd_output, sdd_phase_output_path, set_active_sdd_session, split_context_sections, write_agent_context,
     LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
     EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
     AgentPackFileContent, AssetGenerationPlan, ContextOverview, ContextSection, GrepMatch,
@@ -49,14 +52,17 @@ pub use model_text::{
 };
 pub use paths::KnowledgePaths;
 pub use project::{get_project_overview, resolve_project_repo_path};
-pub use registry::{knowledge_root_for_repo, list_stale_registry_projects, register_project, StaleProjectSummary};
+pub use registry::{
+    knowledge_root_for_repo, list_stale_registry_projects, register_project, unregister_project,
+    StaleProjectSummary,
+};
 pub use schema::{
     AgentContextMeta, AgentContextStatus, AgentEnvStatus, AgentPackMeta, AssetGenerator, AssetTrack,
     AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, FreshnessDriftFactor,
     FreshnessSummary,
     HumanDocEntry,
     InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, RouteMeta, SddPhase,
-    SddPhaseInfo, SddPhaseResult, SddPlan, SddStatus, SourceCitation, SourceSlice, SyncMeta,
+    SddPhaseInfo, SddPhaseResult, SddPlan, SddSessionInfo, SddStatus, SourceCitation, SourceSlice, SyncMeta,
     TokenHeavyFile,
 };
 pub use search::{

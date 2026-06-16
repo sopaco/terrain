@@ -5,15 +5,15 @@ description: MindMesh SDD standardized workflow — requirement clarification, t
 
 # SDD Standardized Workflow
 
-Software Design Driven (SDD) workflow for MindMesh. Execute one phase at a time and persist outputs under the SDD output directory.
+Software Design Driven (SDD) workflow for MindMesh. Execute one phase at a time and persist outputs under the local SDD store (`~/.mind-mesh/sdd/{project}/sessions/{id}/outputs/`).
 
 ## Environment
 
 | Variable | Purpose |
 |----------|---------|
 | `MIND_MESH_SDD_SKILL` | This skill directory |
-| `MIND_MESH_SDD_WORKSPACE` | Intermediate workspace (`.sdd-agent/`) |
-| `MIND_MESH_SDD_OUTPUT_DIR` | Phase outputs (`outputs/`) |
+| `MIND_MESH_SDD_WORKSPACE` | Intermediate workspace (local session dir under `~/.mind-mesh/sdd/`) |
+| `MIND_MESH_SDD_OUTPUT_DIR` | Phase outputs (`outputs/`) — **not versioned in Git** |
 | `MIND_MESH_HUMAN_OUTPUT_DIR` | Litho human docs for context |
 
 ## Phases

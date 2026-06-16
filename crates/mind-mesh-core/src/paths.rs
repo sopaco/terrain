@@ -142,14 +142,40 @@ impl KnowledgePaths {
         self.project_dir(project_slug).join(".litho-agent")
     }
 
-    /// SDD workflow workspace (`.sdd-agent/` inside project knowledge).
-    pub fn sdd_workspace_dir(&self, project_slug: &str) -> PathBuf {
+    /// Local SDD root (`~/.mind-mesh/sdd/{slug}/`) — not versioned with the repo.
+    pub fn sdd_local_root(&self, project_slug: &str) -> PathBuf {
+        registry::registry_dir().join("sdd").join(project_slug)
+    }
+
+    pub fn sdd_sessions_dir(&self, project_slug: &str) -> PathBuf {
+        self.sdd_local_root(project_slug).join("sessions")
+    }
+
+    pub fn sdd_active_session_path(&self, project_slug: &str) -> PathBuf {
+        self.sdd_local_root(project_slug).join("active.json")
+    }
+
+    /// SDD workflow workspace for one parallel workstream (local, per session).
+    pub fn sdd_workspace_dir(&self, project_slug: &str, session_id: &str) -> PathBuf {
+        self.sdd_sessions_dir(project_slug).join(session_id)
+    }
+
+    /// SDD phase outputs (`1.requirements.md`, …) for a session.
+    pub fn sdd_output_dir(&self, project_slug: &str, session_id: &str) -> PathBuf {
+        self.sdd_workspace_dir(project_slug, session_id).join("outputs")
+    }
+
+    /// Legacy in-repo SDD path (migrated away; kept for gitignore / drift exclusion).
+    pub fn sdd_legacy_workspace_dir(&self, project_slug: &str) -> PathBuf {
         self.project_dir(project_slug).join(".sdd-agent")
     }
 
-    /// SDD phase outputs (`1.requirements.md`, …).
-    pub fn sdd_output_dir(&self, project_slug: &str) -> PathBuf {
-        self.sdd_workspace_dir(project_slug).join("outputs")
+    /// True when `path` is under the local SDD store (`~/.mind-mesh/sdd/`).
+    pub fn is_sdd_local_path(&self, path: &Path) -> bool {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let root = registry::registry_dir().join("sdd");
+        let root = root.canonicalize().unwrap_or(root);
+        canonical.starts_with(&root)
     }
 
     pub fn preset_skills_root() -> PathBuf {

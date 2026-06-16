@@ -10,13 +10,14 @@ use mind_mesh_agent::{
 };
 use std::sync::Arc;
 use mind_mesh_core::{
-    compute_freshness, extract_source_citations, get_project_overview, get_sdd_status,
-    list_stale_registry_projects, merge_citations, AgentPackReport, AssetGenerationPlan,
-    EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus, FreshnessSummary, HumanDocEntry,
-    KnowledgeDoc, KnowledgePaths, KnowledgeSearch, LithoPlan, ProjectOverview, ProjectScanner,
-    ProjectSummary, ScanReport, SearchHit, SearchOptions, SddPhase, SddPhaseResult, SddStatus,
-    SourceCitation, SourceSlice, StaleProjectSummary, build_generation_plan, list_human_docs,
-    pack_agent_assets, plan_litho_generation, read_doc_at, read_source_slice, resolve_source_citation,
+    compute_freshness, create_sdd_session, extract_source_citations, get_project_overview,
+    get_sdd_status, list_stale_registry_projects, merge_citations, resolve_sdd_session_id,
+    save_sdd_output, set_active_sdd_session, AgentPackReport, AssetGenerationPlan, EnvApplyProgress,
+    EnvApplyResult, EnvPlan, EnvStatus, FreshnessSummary, HumanDocEntry, KnowledgeDoc, KnowledgePaths,
+    KnowledgeSearch, LithoPlan, ProjectOverview, ProjectScanner, ProjectSummary, ScanReport, SearchHit,
+    SearchOptions, SddPhase, SddPhaseResult, SddSessionInfo, SddStatus, SourceCitation, SourceSlice,
+    StaleProjectSummary, build_generation_plan, list_human_docs, pack_agent_assets,
+    plan_litho_generation, read_doc_at, read_source_slice, resolve_source_citation,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -643,17 +644,67 @@ pub fn get_sdd_status_cmd(
 }
 
 #[tauri::command]
+pub fn create_sdd_session_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+    title: String,
+) -> Result<SddSessionInfo, String> {
+    create_sdd_session(&state.paths, &project_slug, &title).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_active_sdd_session_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+    session_id: String,
+) -> Result<SddStatus, String> {
+    set_active_sdd_session(&state.paths, &project_slug, &session_id).map_err(|e| e.to_string())?;
+    Ok(get_sdd_status(&state.paths, &project_slug))
+}
+
+#[tauri::command]
+pub fn delete_sdd_session_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+    session_id: String,
+) -> Result<SddStatus, String> {
+    mind_mesh_core::delete_sdd_session(&state.paths, &project_slug, &session_id)
+        .map_err(|e| e.to_string())?;
+    Ok(get_sdd_status(&state.paths, &project_slug))
+}
+
+#[tauri::command]
+pub fn remove_project_cmd(state: State<'_, AppState>, project_slug: String) -> Result<(), String> {
+    mind_mesh_core::unregister_project(&project_slug).map_err(|e| e.to_string())?;
+    let _ = state;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn save_sdd_output_cmd(
+    state: State<'_, AppState>,
+    output_path: String,
+    content: String,
+) -> Result<(), String> {
+    save_sdd_output(&state.paths, &output_path, &content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn run_sdd_phase_cmd(
     app: AppHandle,
     state: State<'_, AppState>,
     repo_path: String,
     project_slug: Option<String>,
+    session_id: Option<String>,
     phase: SddPhase,
     user_input: Option<String>,
 ) -> Result<SddPhaseResult, String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let paths = state.paths.clone();
+    let session_id = session_id
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| resolve_sdd_session_id(&paths, &slug));
     let input = user_input.unwrap_or_default();
 
     let acp = resolved_acp_settings();
@@ -680,6 +731,7 @@ pub async fn run_sdd_phase_cmd(
         engine,
         &slug,
         &repo_path,
+        &session_id,
         phase,
         &input,
         &acp,

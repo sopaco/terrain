@@ -21,12 +21,13 @@ pub async fn run_sdd_phase(
     engine: Option<Arc<ChatEngine>>,
     project_slug: &str,
     repo_path: &str,
+    session_id: &str,
     phase: SddPhase,
     user_input: &str,
     acp_settings: &AcpSettings,
     mut on_progress: impl FnMut(SddProgress),
 ) -> anyhow::Result<SddPhaseResult> {
-    let plan = plan_sdd_workflow(paths, project_slug, repo_path);
+    let plan = plan_sdd_workflow(paths, project_slug, repo_path, session_id);
     std::fs::create_dir_all(&plan.sdd_workspace_dir)?;
     std::fs::create_dir_all(&plan.sdd_output_dir)?;
 
@@ -71,11 +72,9 @@ pub async fn run_sdd_phase(
         .await?
     };
 
-    let content = if output_path.is_file() {
-        std::fs::read_to_string(&output_path)?
-    } else {
+    let content = {
         std::fs::write(&output_path, &response)?;
-        response.clone()
+        response
     };
 
     if content.trim().is_empty() {
@@ -114,10 +113,10 @@ async fn run_sdd_llm_phase(
     });
 
     let prompt = build_sdd_llm_prompt(plan, phase, user_input);
-    let session_id = format!("sdd-{project_slug}-{}", phase.order());
+    let chat_session_id = format!("sdd-{project_slug}-{}-{}", plan.session_id, phase.order());
     let reply = engine
         .ask(
-            &session_id,
+            &chat_session_id,
             &prompt,
             Some(project_slug),
             Some(repo_path),

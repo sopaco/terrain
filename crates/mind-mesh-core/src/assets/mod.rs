@@ -41,8 +41,10 @@ pub use project_meta::{
 };
 pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
 pub use sdd::{
-    build_sdd_llm_prompt, build_sdd_phase_prompt, default_sdd_skill_dir, get_sdd_status,
-    plan_sdd_workflow, resolve_sdd_skill_dir, sdd_phase_output_path,
+    build_sdd_llm_prompt, build_sdd_phase_prompt, create_sdd_session, default_sdd_skill_dir,
+    delete_sdd_session, get_active_sdd_session, get_sdd_status, list_sdd_sessions, new_session_id,
+    plan_sdd_workflow, resolve_sdd_session_id, resolve_sdd_skill_dir, save_sdd_output,
+    sdd_phase_output_path, set_active_sdd_session,
 };
 
 #[cfg(feature = "repomix")]

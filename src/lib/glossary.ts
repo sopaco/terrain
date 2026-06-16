@@ -67,6 +67,6 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     term: "SDD 工作流",
     description:
-      "软件设计驱动四阶段流程：需求澄清 → 技术设计 → 实现记录 → 代码评审，产出保存在 `.sdd-agent/`。",
+      "软件设计驱动四阶段流程：需求澄清 → 技术设计 → 实现记录 → 代码评审，产出保存在本地 `~/.mind-mesh/sdd/`（不入 Git）。",
   },
 ];

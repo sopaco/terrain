@@ -20,6 +20,7 @@ import type {
   ScanReport,
   SddPhase,
   SddPhaseResult,
+  SddSessionInfo,
   SddStatus,
   SearchHit,
   SourceSlice,
@@ -146,6 +147,21 @@ export const runQuickRefresh = (repoPath: string, projectSlug?: string) =>
 export const getSddStatus = (projectSlug: string) =>
   invoke<SddStatus>("get_sdd_status_cmd", { projectSlug });
 
+export const createSddSession = (projectSlug: string, title: string) =>
+  invoke<SddSessionInfo>("create_sdd_session_cmd", { projectSlug, title });
+
+export const setActiveSddSession = (projectSlug: string, sessionId: string) =>
+  invoke<SddStatus>("set_active_sdd_session_cmd", { projectSlug, sessionId });
+
+export const deleteSddSession = (projectSlug: string, sessionId: string) =>
+  invoke<SddStatus>("delete_sdd_session_cmd", { projectSlug, sessionId });
+
+export const saveSddOutput = (outputPath: string, content: string) =>
+  invoke<void>("save_sdd_output_cmd", { outputPath, content });
+
+export const removeProject = (projectSlug: string) =>
+  invoke<void>("remove_project_cmd", { projectSlug });
+
 export const runAgentContextGeneration = (repoPath: string, projectSlug?: string) =>
   invoke<AgentContextGenerationResult>("run_agent_context_generation_cmd", {
     repoPath,
@@ -157,10 +173,12 @@ export const runSddPhase = (
   phase: SddPhase,
   projectSlug?: string,
   userInput?: string,
+  sessionId?: string,
 ) =>
   invoke<SddPhaseResult>("run_sdd_phase_cmd", {
     repoPath,
     projectSlug: projectSlug || null,
+    sessionId: sessionId || null,
     phase,
     userInput: userInput || null,
   });
