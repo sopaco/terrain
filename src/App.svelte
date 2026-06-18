@@ -959,7 +959,7 @@
             }
             placeholder={activeDoc
               ? `就「${activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
-              : "就当前项目提问… (/clear 清空对话)"}
+              : "就当前项目提问…"}
             onclear={clearChatHistory}
             onask={handleAskInput}
           />

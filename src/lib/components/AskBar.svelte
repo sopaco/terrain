@@ -74,7 +74,7 @@
       <p class="mt-2 text-center text-xs text-white/35">{disabledReason}</p>
     {:else}
       <p class="mt-2 text-center text-[11px] text-white/30">
-        Enter 发送 · Shift+Enter 换行 · /clear 清空对话 · 中文输入法选词后再按 Enter
+        Enter 发送 · Shift+Enter 换行 · 中文输入法选词后再按 Enter
       </p>
     {/if}
   </div>

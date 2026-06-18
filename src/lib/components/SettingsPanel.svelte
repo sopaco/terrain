@@ -34,13 +34,13 @@
   let drafts = $state<Record<ProviderId, ProviderDraft>>(emptyDrafts());
   let saving = $state(false);
   let error = $state<string | null>(null);
-  let statusMessage = $state<string | null>(null);
   let acpBinary = $state("opencode");
   let acpArgs = $state("acp");
   let acpCommand = $state("");
   let agentExecution = $state<AgentExecution>("acp");
   let acpTestOk = $state<boolean | null>(null);
   let llmTestOk = $state<boolean | null>(null);
+  let llmTestDetail = $state<string | null>(null);
 
   const pureAcp = $derived(isPureAcp(agentExecution));
 
@@ -142,7 +142,9 @@
     if (!open) return;
     void (async () => {
       error = null;
-      statusMessage = null;
+      acpTestOk = null;
+      llmTestOk = null;
+      llmTestDetail = null;
       const s = await getModelSettings();
       loadFromSettings(s);
     })();
@@ -176,11 +178,9 @@
     await save(false);
     if (error) return;
     saving = true;
+    error = null;
     try {
       acpTestOk = await checkAcp();
-      statusMessage = acpTestOk
-        ? "ACP 代理已在 PATH 中找到"
-        : "未找到 ACP 代理，请检查 binary / command 设置";
     } catch (e) {
       error = String(e);
       acpTestOk = false;
@@ -192,7 +192,6 @@
   async function save(closeAfter = true) {
     saving = true;
     error = null;
-    statusMessage = null;
     try {
       const status = await saveModelSettings(buildSettings());
       onsaved(status);
@@ -200,7 +199,6 @@
         onclose();
         return;
       }
-      statusMessage = status.ready ? "已保存，LLM 已就绪" : status.message;
     } catch (e) {
       error = String(e);
     } finally {
@@ -212,14 +210,16 @@
     await save(false);
     if (error) return;
     saving = true;
+    error = null;
     try {
       const status = await checkLlm();
       llmTestOk = status.ready;
-      statusMessage = status.ready ? `连接正常：${status.message}` : status.message;
+      llmTestDetail = status.ready ? null : status.message;
       onsaved(status);
     } catch (e) {
       error = String(e);
       llmTestOk = false;
+      llmTestDetail = null;
     } finally {
       saving = false;
     }
@@ -343,9 +343,9 @@
           检测 ACP 代理
         </button>
         {#if acpTestOk === true}
-          <p class="text-[11px] text-emerald-300/80">ACP 代理可用</p>
+          <p class="text-[11px] text-emerald-300/80">检测通过</p>
         {:else if acpTestOk === false}
-          <p class="text-[11px] text-amber-300/80">ACP 代理未检测到</p>
+          <p class="text-[11px] text-amber-300/80">未检测到，请检查 binary 或 command</p>
         {/if}
       </div>
 
@@ -422,9 +422,9 @@
             测试 LLM 连接
           </button>
           {#if llmTestOk === true}
-            <p class="text-[11px] text-emerald-300/80">LLM 连接正常</p>
+            <p class="text-[11px] text-emerald-300/80">连接正常</p>
           {:else if llmTestOk === false}
-            <p class="text-[11px] text-amber-300/80">LLM 连接失败，请检查配置</p>
+            <p class="text-[11px] text-amber-300/80">{llmTestDetail ?? "连接失败，请检查配置"}</p>
           {/if}
         </div>
       {/if}
@@ -436,11 +436,6 @@
 
       {#if error}
         <p class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</p>
-      {/if}
-      {#if statusMessage}
-        <p class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-          {statusMessage}
-        </p>
       {/if}
     </div>
 

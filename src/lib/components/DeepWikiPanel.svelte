@@ -331,14 +331,19 @@
     };
   });
 
+  function clearHistory() {
+    if (busy) return;
+    onmessageschange(() => []);
+    showCopyToast("对话历史已清空");
+  }
+
   async function sendQuestion(q: string) {
     if (!q.trim() || busy || !projectSlug) return;
 
     const slash = parseAskSlashCommand(q);
     if (slash?.type === "clear") {
-      onmessageschange(() => []);
+      clearHistory();
       input = "";
-      showCopyToast("对话历史已清空");
       return;
     }
 
@@ -522,6 +527,14 @@
       {/if}
       <button
         type="button"
+        class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+        disabled={busy || messages.length === 0}
+        onclick={clearHistory}
+      >
+        Clear
+      </button>
+      <button
+        type="button"
         class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5"
         onclick={onclose}
       >
@@ -670,7 +683,7 @@
           <textarea
             class="mb-2 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
             rows="2"
-            placeholder="Ask a follow-up… (/clear 清空历史)"
+            placeholder="Ask a follow-up…"
             bind:value={input}
             onkeydown={onKeydown}
             oncompositionstart={() => (composing = true)}
