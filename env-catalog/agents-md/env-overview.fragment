@@ -5,4 +5,5 @@
 - **知识资产**位于本仓库 **`.mind-mesh/`**（Agent 友好的知识资产、人类友好的知识库、私域知识、源码索引；可随 Git 协作）
 - **项目登记**在本地 `~/.mind-mesh/registry.json`（仅记录仓库路径，不含知识正文）
 - **Skills** 位于 `.agents/skills/`（由 MindMesh 注入，可按需重新集成）
+- **Agent 工具路径**在 `.mind-mesh/env/agent-tools.json`（`rtk` / `codegraph` / `mind-mesh` 的绝对路径）；二进制部署在 `~/.mind-mesh/bin/`
 - **工作流**：先读知识 → 再查关系 → 最后读源码；shell 输出优先走 RTK

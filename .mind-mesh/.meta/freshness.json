@@ -3,9 +3,9 @@
   "project": "mind-mesh",
   "repo_path": "/Users/bjsttlp485/Workspace/SAW/mind-mesh",
   "baseline": {
-    "git_head": "cc088807aa1fb9d00d2bc9be8fca2759ce21eab2",
-    "git_head_at": "2026-06-16T05:46:10.238410+00:00",
-    "dirty": false
+    "git_head": "40eb3e5930fb6b020251f3fbd2fb387d3840e19c",
+    "git_head_at": "2026-06-18T01:42:22.961520+00:00",
+    "dirty": true
   },
   "assets": {
     "agent_pack": {
@@ -13,63 +13,92 @@
       "synced_at": "2026-06-16T04:32:43.736963+00:00",
       "baseline_git_head": "cc088807aa1fb9d00d2bc9be8fca2759ce21eab2",
       "stale": false,
-      "freshness_score": 100
+      "freshness_score": 89
     },
     "agent_context": {
       "path": "agent/context.md",
       "synced_at": "2026-06-16T05:34:15.860616+00:00",
       "baseline_git_head": "cc088807aa1fb9d00d2bc9be8fca2759ce21eab2",
       "stale": false,
-      "freshness_score": 90
+      "freshness_score": 80
     },
     "human_docs": {
       "path": "human/",
       "synced_at": "2026-06-16T04:32:41.824560+00:00",
       "stale": false,
-      "freshness_score": 100
+      "freshness_score": 89
     }
   },
   "drift": {
-    "commits_since_baseline": 0,
-    "changed_files_since_baseline": 0,
-    "sample_changed_files": []
+    "commits_since_baseline": 2,
+    "changed_files_since_baseline": 2,
+    "sample_changed_files": [
+      "README.md",
+      "assets/screenshots/.gitkeep"
+    ]
   },
   "summary": {
-    "overall_score": 90,
+    "overall_score": 80,
     "overall_stale": false,
-    "commits_since_baseline": 0,
-    "changed_files_count": 0,
-    "current_git_head": "cc08880",
-    "working_tree_dirty": false,
+    "commits_since_baseline": 2,
+    "changed_files_count": 2,
+    "current_git_head": "40eb3e5",
+    "working_tree_dirty": true,
     "is_git_repo": true,
-    "last_computed_at": "2026-06-16T05:46:10.238410+00:00",
-    "agent_pack_score": 100,
-    "agent_context_score": 90,
-    "human_docs_score": 100,
+    "last_computed_at": "2026-06-18T01:42:22.961520+00:00",
+    "agent_pack_score": 89,
+    "agent_context_score": 80,
+    "human_docs_score": 89,
     "macro_preload_allowed": true,
     "drift_factors": [
       {
-        "id": "baseline_match",
-        "severity": "info",
-        "title": "与 baseline 提交一致",
-        "detail": "源码索引与 Agent 上下文均基于提交 cc088807aa1fb9d00d2bc9be8fca2759ce21eab2 生成，相对 HEAD 无文件漂移。"
+        "id": "commits_behind",
+        "severity": "medium",
+        "title": "代码已前进 2 个提交",
+        "detail": "知识资产 baseline 为 cc088807aa1fb9d00d2bc9be8fca2759ce21eab2，当前 HEAD 为 40eb3e5。每多 1 个提交约扣 2 分（上限 40 分）。",
+        "points_lost": 4
+      },
+      {
+        "id": "files_changed",
+        "severity": "medium",
+        "title": "2 个文件相对 baseline 有变更",
+        "detail": "变更文件占索引规模的比例越高，扣分越多（上限 30 分）。下方列出部分路径。",
+        "points_lost": 0
+      },
+      {
+        "id": "pack_age",
+        "severity": "low",
+        "title": "源码索引已生成 1 天",
+        "detail": "距上次 Repomix 打包越久，额外扣分越多（每天约 2 分，上限 20 分）。",
+        "points_lost": 2
+      },
+      {
+        "id": "dirty_tree",
+        "severity": "medium",
+        "title": "工作区有未提交修改",
+        "detail": "Git 工作区在源码路径上有未提交改动（已排除 `.mind-mesh/` 等知识产出目录）。知识资产基于某次提交快照，与磁盘上的未提交源码改动不一致，扣 5 分。",
+        "points_lost": 5
       },
       {
         "id": "context_lineage",
         "severity": "info",
         "title": "Agent 上下文受源码索引牵连",
-        "detail": "架构上下文原始分 100/100，按规则不超过源码索引分数的 90%，现为 90/100。",
-        "points_lost": 10
+        "detail": "架构上下文原始分 89/100，按规则不超过源码索引分数的 90%，现为 80/100。",
+        "points_lost": 9
       },
       {
         "id": "overall_driver",
         "severity": "info",
         "title": "总分由 Agent 架构上下文决定",
-        "detail": "综合分取三层最低值：源码索引 100、Agent 上下文 90、人类文档 100。"
+        "detail": "综合分取三层最低值：源码索引 89、Agent 上下文 80、人类文档 89。"
       }
+    ],
+    "sample_changed_files": [
+      "README.md",
+      "assets/screenshots/.gitkeep"
     ],
     "pack_baseline_short": "cc08880",
     "context_baseline_short": "cc08880"
   },
-  "last_computed_at": "2026-06-16T05:46:10.238410+00:00"
+  "last_computed_at": "2026-06-18T01:42:22.961520+00:00"
 }

@@ -16,8 +16,9 @@ pub use agent_context::{
 };
 pub use env::{
     agents_md_ready, apply_env_integration, env_catalog_root, get_env_status, load_catalog,
-    patch_agents_md, plan_env_integration, EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus,
-    EnvPlan, EnvPlanStep, EnvStatus,
+    invalidate_env_status_cache, invalidate_env_status_cache_for_repo, patch_agents_md,
+    plan_env_integration, summarize_agent_env_light, EnvApplyProgress, EnvApplyResult,
+    EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
 };
 pub use context_layers::{
     build_context_overview, enforce_context_max_size, extract_context_section,

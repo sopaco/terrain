@@ -362,8 +362,12 @@ export interface EnvIntegrationStatus {
   kind: string;
   label: string;
   description: string;
-  integrated: boolean;
+  pub integrated: boolean;
   optional: boolean;
+  /** MindMesh 安装包内置工具（RTK / CodeGraph 等） */
+  bundled: boolean;
+  /** 内置且可用时锁定勾选，不可取消 */
+  locked: boolean;
   depends_on: string[];
   detail: string;
 }

@@ -9,6 +9,8 @@ dist/
 
 # Tauri
 src-tauri/target/
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
 
 # Env
 .env

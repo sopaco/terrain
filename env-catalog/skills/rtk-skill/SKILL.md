@@ -10,26 +10,32 @@ version: 1.1.0
 
 ## MindMesh setup (this repo)
 
-MindMesh integrates RTK via **AGENTS.md + this skill** — we do **not** run `rtk init` / global hooks.
+MindMesh deploys RTK to **`~/.mind-mesh/bin/rtk`** (symlink). Coding Agents must **not** assume bare `rtk` is on PATH.
 
-**You must prefix commands explicitly:**
+**Before running commands, read paths from:**
 
 ```bash
-rtk <original-command-and-args>
+cat .mind-mesh/env/agent-tools.json
 ```
 
-Resolve binary (try in order):
+Use the `rtk` field as an **absolute path** (or export `RTK="$(jq -r .rtk .mind-mesh/env/agent-tools.json)"`).
 
-1. `rtk` on PATH (common in dev environments)
-2. `bunx rtk` (project-local via `@mind-mesh/rtk`)
-3. `./node_modules/.bin/rtk`
+Example:
+
+```bash
+"$RTK" git status
+# or
+~/.mind-mesh/bin/rtk git status
+```
 
 Verify:
 
 ```bash
-rtk gain          # must print savings stats (not "command not found")
-rtk --version     # must show rtk-ai/rtk, NOT Rust Type Kit from crates.io
+~/.mind-mesh/bin/rtk gain
+~/.mind-mesh/bin/rtk --version
 ```
+
+We do **not** run `rtk init` / global hooks.
 
 ## Golden rule
 

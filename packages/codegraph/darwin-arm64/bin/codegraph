@@ -1,0 +1,14 @@
+#!/bin/sh
+# Resolve symlinks (e.g. the ~/.local/bin/codegraph link install.sh creates) so
+# we find the real bundle dir, not the symlink's location.
+SELF="$0"
+while [ -L "$SELF" ]; do
+  target="$(readlink "$SELF")"
+  case "$target" in
+    /*) SELF="$target" ;;
+    *) SELF="$(dirname "$SELF")/$target" ;;
+  esac
+done
+DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
+# --liftoff-only: avoid the V8 turboshaft WASM Zone OOM (issues #293/#298).
+exec "$DIR/node" --liftoff-only "$DIR/lib/dist/bin/codegraph.js" "$@"

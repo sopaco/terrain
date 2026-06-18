@@ -15,9 +15,15 @@ pub fn env_plan_for_repo(repo_path: &str, selected_ids: &[String]) -> anyhow::Re
 pub async fn run_env_integration(
     repo_path: &str,
     selected_ids: &[String],
+    reinstall_ids: &[String],
     on_progress: impl Fn(EnvApplyProgress),
 ) -> anyhow::Result<EnvApplyResult> {
-    apply_env_integration(Path::new(repo_path), selected_ids, on_progress)
-        .await
-        .map_err(Into::into)
+    apply_env_integration(
+        Path::new(repo_path),
+        selected_ids,
+        reinstall_ids,
+        on_progress,
+    )
+    .await
+    .map_err(Into::into)
 }

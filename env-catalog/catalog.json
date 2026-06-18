@@ -47,27 +47,16 @@
       "id": "tool-codegraph",
       "kind": "tool",
       "label": "CodeGraph CLI",
-      "description": "安装 @colbymchenry/codegraph 并初始化项目索引",
-      "package": "@colbymchenry/codegraph",
-      "check": ["bunx", "codegraph", "status"],
-      "install_steps": [
-        { "cmd": "bun", "args": ["add", "-d", "@colbymchenry/codegraph"] },
-        { "cmd": "bunx", "args": ["codegraph", "init", "-i"] }
-      ],
-      "skip_commands": ["codegraph install"],
+      "description": "MindMesh 内置 — 在目标仓库初始化 .codegraph/ 索引",
+      "bundled": true,
       "depends_on": []
     },
     {
       "id": "tool-rtk",
       "kind": "tool",
       "label": "RTK CLI",
-      "description": "Rust Token Killer — 仅安装 binary，不执行 rtk init",
-      "package": "@mind-mesh/rtk",
-      "check": ["bunx", "rtk", "gain"],
-      "install_steps": [
-        { "cmd": "bun", "args": ["add", "-d", "@mind-mesh/rtk"] }
-      ],
-      "skip_commands": ["rtk init", "rtk init -g"],
+      "description": "MindMesh 内置 — Shell 输出 Token 压缩（无需写入目标仓库）",
+      "bundled": true,
       "depends_on": []
     },
     {

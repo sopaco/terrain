@@ -11,13 +11,14 @@ use mind_mesh_agent::{
 use std::sync::Arc;
 use mind_mesh_core::{
     compute_freshness, create_sdd_session, extract_source_citations, get_project_overview,
-    get_sdd_status, list_stale_registry_projects, merge_citations, resolve_sdd_session_id,
-    save_sdd_output, set_active_sdd_session, AgentPackReport, AssetGenerationPlan, EnvApplyProgress,
-    EnvApplyResult, EnvPlan, EnvStatus, FreshnessSummary, HumanDocEntry, KnowledgeDoc, KnowledgePaths,
-    KnowledgeSearch, LithoPlan, ProjectOverview, ProjectScanner, ProjectSummary, ScanReport, SearchHit,
-    SearchOptions, SddPhase, SddPhaseResult, SddSessionInfo, SddStatus, SourceCitation, SourceSlice,
-    StaleProjectSummary, build_generation_plan, list_human_docs, pack_agent_assets,
-    plan_litho_generation, read_doc_at, read_source_slice, resolve_source_citation,
+    get_sdd_status, list_stale_registry_projects, merge_citations, read_freshness_ledger,
+    resolve_sdd_session_id, save_sdd_output, set_active_sdd_session, AgentPackReport,
+    AssetGenerationPlan, EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus, FreshnessSummary,
+    HumanDocEntry, KnowledgeDoc, KnowledgePaths, KnowledgeSearch, LithoPlan, ProjectOverview,
+    ProjectScanner, ProjectSummary, ScanReport, SearchHit, SearchOptions, SddPhase, SddPhaseResult,
+    SddSessionInfo, SddStatus, SourceCitation, SourceSlice, StaleProjectSummary,
+    build_generation_plan, list_human_docs, pack_agent_assets, plan_litho_generation, read_doc_at,
+    read_source_slice, resolve_source_citation,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -258,6 +259,15 @@ pub fn compute_freshness_cmd(
         .or_else(|| mind_mesh_core::resolve_project_repo_path(&state.paths, &project_slug, None).ok())
         .ok_or_else(|| "repository path required".to_string())?;
     compute_freshness(&state.paths, &project_slug, &repo).map_err(|e| e.to_string())
+}
+
+/// Last persisted freshness ledger (no git recompute) — for instant overview paint.
+#[tauri::command]
+pub fn read_project_freshness_cached_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+) -> Option<FreshnessSummary> {
+    read_freshness_ledger(&state.paths, &project_slug).map(|ledger| ledger.summary)
 }
 
 #[tauri::command]
@@ -596,6 +606,7 @@ pub async fn run_env_integration_cmd(
     app: AppHandle,
     repo_path: String,
     selected_ids: Vec<String>,
+    reinstall_ids: Vec<String>,
 ) -> Result<EnvApplyResult, String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
     let repo = repo_path.clone();
@@ -611,7 +622,7 @@ pub async fn run_env_integration_cmd(
         );
     };
 
-    let result = run_env_integration(&repo_path, &selected_ids, emit)
+    let result = run_env_integration(&repo_path, &selected_ids, &reinstall_ids, emit)
         .await
         .map_err(|e| e.to_string())?;
 

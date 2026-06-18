@@ -27,6 +27,7 @@
     onOpenHumanOverview?: () => void;
     onOpenStructured?: () => void;
     quickRefreshBusy?: boolean;
+    freshnessLoading?: boolean;
     onQuickRefresh?: () => void;
   }
 
@@ -54,6 +55,7 @@
     onOpenHumanOverview,
     onOpenStructured,
     quickRefreshBusy = false,
+    freshnessLoading = false,
     onQuickRefresh,
   }: Props = $props();
 
@@ -408,13 +410,22 @@
                 </button>
               {/if}
             </div>
-            {#if freshness}
+            {#if freshnessLoading && !freshness}
+              <div class="space-y-1.5" role="status" aria-live="polite">
+                <div class="h-4 w-16 animate-pulse rounded bg-white/10"></div>
+                <div class="h-2.5 w-24 animate-pulse rounded bg-white/[0.06]"></div>
+                <p class="text-[10px] text-white/30">正在对比 Git 与知识资产…</p>
+              </div>
+            {:else if freshness}
               <div class="flex items-baseline gap-1.5">
                 <span class={`text-sm font-medium ${freshnessTone(freshness.overall_score)}`}>
                   {freshness.overall_score}/100
                 </span>
                 {#if freshness.overall_stale}
                   <span class="text-[10px] text-amber-200/80">偏低</span>
+                {/if}
+                {#if freshnessLoading}
+                  <span class="text-[10px] text-white/30">更新中…</span>
                 {/if}
               </div>
               <span class="text-[10px] text-white/30">
@@ -429,6 +440,11 @@
                   —
                 {/if}
               </span>
+            {:else if freshnessLoading}
+              <div class="space-y-1.5" role="status" aria-live="polite">
+                <div class="h-4 w-16 animate-pulse rounded bg-white/10"></div>
+                <p class="text-[10px] text-white/30">正在计算新鲜度…</p>
+              </div>
             {:else}
               <span class="text-sm text-white/45">—</span>
             {/if}

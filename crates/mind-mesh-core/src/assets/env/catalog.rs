@@ -40,6 +40,9 @@ pub struct IntegrationDef {
     pub skip_commands: Vec<String>,
     #[serde(default)]
     pub patterns: Vec<String>,
+    /// Provided by MindMesh app bundle; not user-toggleable when available.
+    #[serde(default)]
+    pub bundled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -88,8 +91,4 @@ pub fn resolve_skill_source(catalog_root: &Path, item: &IntegrationDef) -> PathB
 
 pub fn resolve_fragment_path(catalog_root: &Path, fragment: &str) -> PathBuf {
     catalog_root.join(fragment)
-}
-
-pub fn rtk_package_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/rtk")
 }

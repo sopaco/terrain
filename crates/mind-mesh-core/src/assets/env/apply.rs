@@ -6,9 +6,11 @@ use serde::Serialize;
 use super::agents_md::patch_agents_md;
 use super::catalog::load_catalog;
 use super::status::{
-    dependencies_satisfied, get_env_status, gitignore_has_patterns, plan_env_integration,
-    skill_source_path, substitute_install_args, tool_check_passes,
+    dependencies_satisfied, get_env_status, gitignore_has_patterns,
+    invalidate_env_status_cache_for_repo, plan_env_integration, skill_source_path,
+    substitute_install_args, tool_check_passes,
 };
+use crate::bundled_tools::{bundled_codegraph, bundled_rtk, run_bundled_check};
 use crate::error::{CoreError, Result};
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,6 +31,7 @@ pub struct EnvApplyResult {
 pub async fn apply_env_integration(
     repo: &Path,
     selected_ids: &[String],
+    reinstall_ids: &[String],
     on_progress: impl Fn(EnvApplyProgress),
 ) -> Result<EnvApplyResult> {
     let catalog = load_catalog()?;
@@ -36,7 +39,7 @@ pub async fn apply_env_integration(
     let integrated: std::collections::HashMap<_, _> = status
         .items
         .iter()
-        .map(|i| (i.id.clone(), i.integrated))
+        .map(|i| (i.id.clone(), super::status::dependency_ready(i)))
         .collect();
     let plan = plan_env_integration(repo, selected_ids)?;
     let mut applied = Vec::new();
@@ -44,6 +47,21 @@ pub async fn apply_env_integration(
     let mut errors = Vec::new();
 
     let selected: std::collections::HashSet<_> = selected_ids.iter().cloned().collect();
+
+    let needs_agent_deploy = catalog.integrations.iter().any(|def| {
+        def.bundled && selected.contains(&def.id)
+    });
+    if needs_agent_deploy {
+        let force_bundled = reinstall_ids.iter().any(|id| {
+            matches!(id.as_str(), "tool-rtk" | "tool-codegraph")
+        });
+        let opts = crate::agent_tools_deploy::DeployOptions {
+            force: force_bundled,
+        };
+        if let Ok(paths) = crate::agent_tools_deploy::deploy_agent_toolchain_with_options(opts) {
+            let _ = crate::agent_tools_deploy::write_repo_agent_tools_manifest(repo, &paths);
+        }
+    }
 
     for def in &catalog.integrations {
         if !selected.contains(&def.id) {
@@ -83,6 +101,7 @@ pub async fn apply_env_integration(
     ensure_knowledge_dir(repo)?;
 
     let manifest_path = write_manifest(repo, &applied, &catalog.version)?;
+    invalidate_env_status_cache_for_repo(repo);
 
     Ok(EnvApplyResult {
         repo_path: repo.display().to_string(),
@@ -124,7 +143,11 @@ async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result
         ));
     }
 
-    if (def.id == "tool-rtk" || def.id == "tool-codegraph") && tool_check_passes(repo, def) {
+    if def.bundled {
+        return apply_bundled_tool(repo, def).await;
+    }
+
+    if tool_check_passes(repo, def) {
         return Ok(format!("{} 已存在，跳过安装", def.label));
     }
 
@@ -139,6 +162,73 @@ async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result
         messages.push(format!("{} {}", step.cmd, args.join(" ")));
     }
     Ok(messages.join("; "))
+}
+
+async fn apply_bundled_tool(
+    repo: &Path,
+    def: &super::catalog::IntegrationDef,
+) -> Result<String> {
+    let manifest = repo
+        .join(".mind-mesh/env/agent-tools.json")
+        .display()
+        .to_string();
+
+    match def.id.as_str() {
+        "tool-rtk" => {
+            let rtk = bundled_rtk().ok_or_else(|| {
+                CoreError::InvalidDoc("MindMesh 内置 RTK 不可用".into())
+            })?;
+            if !run_bundled_check(&rtk, &["gain"], repo) {
+                return Err(CoreError::InvalidDoc(format!(
+                    "内置 RTK 无法执行: {}",
+                    rtk.display()
+                )));
+            }
+            Ok(format!(
+                "RTK 已部署至 ~/.mind-mesh/bin/rtk（详见 {manifest}）"
+            ))
+        }
+        "tool-codegraph" => {
+            let codegraph = bundled_codegraph().ok_or_else(|| {
+                CoreError::InvalidDoc("MindMesh 内置 CodeGraph 不可用".into())
+            })?;
+            if tool_check_passes(repo, def) {
+                Ok(format!("CodeGraph 索引已就绪（Agent 路径见 {manifest}）"))
+            } else {
+                run_binary(repo, &codegraph, &["init", "-i"]).await?;
+                Ok(format!(
+                    "CodeGraph 已初始化 .codegraph/（Agent 使用 ~/.mind-mesh/bin/codegraph，见 {manifest}）"
+                ))
+            }
+        }
+        _ => Err(CoreError::InvalidDoc(format!("未知内置工具 {}", def.id))),
+    }
+}
+
+async fn run_binary(cwd: &Path, program: &Path, args: &[&str]) -> Result<()> {
+    let output = tokio::process::Command::new(program)
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .await
+        .map_err(|e| {
+            CoreError::InvalidDoc(format!(
+                "failed to run {}: {e}",
+                program.display()
+            ))
+        })?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Err(CoreError::InvalidDoc(format!(
+        "{} {} failed ({}): {stderr}{stdout}",
+        program.display(),
+        args.join(" "),
+        output.status
+    )))
 }
 
 async fn run_command(cwd: &Path, cmd: &str, args: &[String]) -> Result<()> {

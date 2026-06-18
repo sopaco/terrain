@@ -249,7 +249,7 @@ fn default_env_ids(repo_path: &std::path::Path) -> anyhow::Result<Vec<String>> {
     Ok(status
         .items
         .iter()
-        .filter(|i| !i.optional || !i.integrated)
+        .filter(|i| i.locked || !i.integrated)
         .map(|i| i.id.clone())
         .collect())
 }
@@ -257,6 +257,7 @@ fn default_env_ids(repo_path: &std::path::Path) -> anyhow::Result<Vec<String>> {
 #[tokio::main]
 async fn main() -> Result<()> {
     mind_mesh_agent::load_dotenv();
+    mind_mesh_core::ensure_bundled_tools_initialized();
     let cli = Cli::parse();
     let paths = paths(&cli);
     let cli_repo = cli.repo_path.clone();
@@ -497,6 +498,7 @@ async fn main() -> Result<()> {
                 let result = apply_env_integration(
                     &repo_path,
                     &selected,
+                    &[],
                     |p| eprintln!("[{}] {}", p.stage, p.message),
                 )
                 .await?;

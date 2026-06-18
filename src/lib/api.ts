@@ -138,6 +138,9 @@ export const computeFreshness = (projectSlug: string, repoPath?: string) =>
     repoPath: repoPath || null,
   });
 
+export const readProjectFreshnessCached = (projectSlug: string) =>
+  invoke<FreshnessSummary | null>("read_project_freshness_cached_cmd", { projectSlug });
+
 export const runQuickRefresh = (repoPath: string, projectSlug?: string) =>
   invoke<QuickRefreshResult>("run_quick_refresh_cmd", {
     repoPath,
@@ -189,5 +192,9 @@ export const getEnvStatus = (repoPath: string) =>
 export const planEnvIntegration = (repoPath: string, selectedIds: string[]) =>
   invoke<EnvPlan>("plan_env_integration_cmd", { repoPath, selectedIds });
 
-export const runEnvIntegration = (repoPath: string, selectedIds: string[]) =>
-  invoke<EnvApplyResult>("run_env_integration_cmd", { repoPath, selectedIds });
+export const runEnvIntegration = (
+  repoPath: string,
+  selectedIds: string[],
+  reinstallIds: string[] = [],
+) =>
+  invoke<EnvApplyResult>("run_env_integration_cmd", { repoPath, selectedIds, reinstallIds });

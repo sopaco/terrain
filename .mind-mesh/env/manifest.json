@@ -1,7 +1,8 @@
 {
   "catalog_version": 1,
-  "integrated_at": "2026-06-15T01:33:59.207167+00:00",
+  "integrated_at": "2026-06-16T12:07:06.073348+00:00",
   "applied": [
-    "skill-codegraph: → .agents/skills/codegraph-skill"
+    "tool-codegraph: CodeGraph 索引已就绪（Agent 路径见 /Users/bjsttlp485/Workspace/SAW/mind-mesh/.mind-mesh/env/agent-tools.json）",
+    "tool-rtk: RTK 已部署至 ~/.mind-mesh/bin/rtk（详见 /Users/bjsttlp485/Workspace/SAW/mind-mesh/.mind-mesh/env/agent-tools.json）"
   ]
 }

@@ -16,11 +16,10 @@
   let status = $state<EnvStatus | null>(null);
   let plan = $state<EnvPlan | null>(null);
   let loading = $state(false);
+  let loadingHint = $state("正在读取集成清单…");
   let applying = $state(false);
   let progressMessage = $state<string | null>(null);
-  /** IDs selected for install / reinstall (excludes locked integrated items). */
   let selected = $state<Set<string>>(new Set());
-  /** Integrated items explicitly marked for reinstall. */
   let reinstallMarked = $state<Set<string>>(new Set());
 
   const skillItems = $derived(status?.items.filter((i) => i.kind === "skill") ?? []);
@@ -29,22 +28,47 @@
     status?.items.filter((i) => i.kind === "agents_md" || i.kind === "gitignore") ?? [],
   );
 
+  const lockedIds = $derived(new Set(status?.items.filter((i) => i.locked).map((i) => i.id) ?? []));
+
   const applyCount = $derived(selected.size);
 
+  function isBundledLocked(item: EnvIntegrationStatus): boolean {
+    return item.locked && !reinstallMarked.has(item.id);
+  }
+
   function isLockedIntegrated(item: EnvIntegrationStatus): boolean {
-    return item.integrated && !reinstallMarked.has(item.id);
+    return item.integrated && !item.locked && !reinstallMarked.has(item.id);
+  }
+
+  function isCheckboxChecked(item: EnvIntegrationStatus): boolean {
+    if (isBundledLocked(item) || isLockedIntegrated(item)) return true;
+    return selected.has(item.id);
+  }
+
+  function isCheckboxDisabled(item: EnvIntegrationStatus): boolean {
+    if (isBundledLocked(item) || isLockedIntegrated(item)) return true;
+    return dependencyBlocked(item);
+  }
+
+  function canMarkReinstall(item: EnvIntegrationStatus): boolean {
+    return (item.integrated || item.locked) && !reinstallMarked.has(item.id);
   }
 
   function dependencySatisfied(depId: string): boolean {
     const dep = status?.items.find((i) => i.id === depId);
     if (!dep) return false;
+    if (dep.integrated || dep.locked) return true;
     if (dep.integrated && !reinstallMarked.has(depId)) return true;
     return selected.has(depId);
   }
 
   function dependencyBlocked(item: EnvIntegrationStatus): boolean {
-    if (isLockedIntegrated(item)) return false;
+    if (isBundledLocked(item) || isLockedIntegrated(item)) return false;
     return item.depends_on.some((d) => !dependencySatisfied(d));
+  }
+
+  function defaultSelectedIds(items: EnvIntegrationStatus[]): Set<string> {
+    return new Set(items.filter((i) => i.locked || !i.integrated).map((i) => i.id));
   }
 
   async function loadStatus() {
@@ -54,9 +78,11 @@
       return;
     }
     loading = true;
+    loadingHint = "正在检测 Skills 与工具链…";
     try {
       status = await getEnvStatus(repoPath);
-      selected = new Set(status.items.filter((i) => !i.integrated).map((i) => i.id));
+      loadingHint = "正在生成本次集成计划…";
+      selected = defaultSelectedIds(status.items);
       reinstallMarked = new Set();
       await refreshPlan(selected);
     } catch (e) {
@@ -64,6 +90,7 @@
       onStatus?.(String(e), "error");
     } finally {
       loading = false;
+      loadingHint = "正在读取集成清单…";
     }
   }
 
@@ -78,7 +105,9 @@
 
   function toggle(id: string) {
     const item = status?.items.find((i) => i.id === id);
-    if (!item || isLockedIntegrated(item) || dependencyBlocked(item)) return;
+    if (!item || isBundledLocked(item) || isLockedIntegrated(item) || dependencyBlocked(item)) {
+      return;
+    }
 
     const next = new Set(selected);
     const nextReinstall = new Set(reinstallMarked);
@@ -90,6 +119,10 @@
       next.add(id);
     }
 
+    for (const lockedId of lockedIds) {
+      next.add(lockedId);
+    }
+
     selected = next;
     reinstallMarked = nextReinstall;
     void refreshPlan(next);
@@ -97,12 +130,15 @@
 
   function markForReinstall(id: string) {
     const item = status?.items.find((i) => i.id === id);
-    if (!item?.integrated || reinstallMarked.has(id)) return;
+    if (!item || !canMarkReinstall(item)) return;
 
     const next = new Set(selected);
     const nextReinstall = new Set(reinstallMarked);
     next.add(id);
     nextReinstall.add(id);
+    for (const lockedId of lockedIds) {
+      next.add(lockedId);
+    }
     selected = next;
     reinstallMarked = nextReinstall;
     void refreshPlan(next);
@@ -110,13 +146,14 @@
 
   function selectAllPending() {
     if (!status) return;
-    selected = new Set(status.items.filter((i) => !i.integrated).map((i) => i.id));
+    selected = defaultSelectedIds(status.items);
     reinstallMarked = new Set();
     void refreshPlan(selected);
   }
 
   function selectNone() {
-    selected = new Set();
+    if (!status) return;
+    selected = new Set(status.items.filter((i) => i.locked).map((i) => i.id));
     reinstallMarked = new Set();
     void refreshPlan(selected);
   }
@@ -127,7 +164,7 @@
     progressMessage = "准备集成…";
     onStatus?.("正在集成 Agent 友好的工程环境…", "progress");
     try {
-      const result = await runEnvIntegration(repoPath, [...selected]);
+      const result = await runEnvIntegration(repoPath, [...selected], [...reinstallMarked]);
       if (result.errors.length > 0) {
         onStatus?.(`部分失败：${result.errors.join("; ")}`, "error");
       } else {
@@ -184,7 +221,51 @@
   {#if !repoPath}
     <p class="text-sm text-white/45">请先选择已索引的项目。</p>
   {:else if loading}
-    <p class="text-sm text-white/45">正在检测集成状态…</p>
+    <div
+      class="rounded-xl border border-indigo-500/15 bg-indigo-500/[0.04] px-4 py-4"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="flex items-start gap-3">
+        <div
+          class="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-indigo-400/30 border-t-indigo-300"
+        ></div>
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-white/80">正在检测 {TERMS.agentEnv}</p>
+          <p class="mt-1 text-xs text-white/45">{loadingHint}</p>
+          <p class="mt-2 text-[11px] text-white/30">
+            首次打开会扫描 Skills、AGENTS.md 与 CodeGraph 索引，通常很快完成。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {#snippet skeletonSection(title: string, rows: number)}
+      <section>
+        <div class="mb-2 h-3 w-20 animate-pulse rounded bg-white/10"></div>
+        <div class="grid gap-2">
+          {#each Array.from({ length: rows }, (_, i) => i) as i (i)}
+            <div
+              class="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3"
+            >
+              <div class="mt-1 h-4 w-4 shrink-0 animate-pulse rounded bg-white/10"></div>
+              <div class="min-w-0 flex-1 space-y-2">
+                <div class="h-3.5 w-2/5 max-w-[12rem] animate-pulse rounded bg-white/10"></div>
+                <div class="h-2.5 w-full animate-pulse rounded bg-white/[0.06]"></div>
+                <div class="h-2.5 w-4/5 max-w-[20rem] animate-pulse rounded bg-white/[0.05]"></div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/snippet}
+
+    <div class="mt-4 space-y-6 opacity-80">
+      {@render skeletonSection("Skills", 4)}
+      {@render skeletonSection("工具链", 3)}
+      {@render skeletonSection("配置", 3)}
+    </div>
   {:else if status}
     <div class="flex flex-wrap items-center gap-2">
       <button
@@ -199,7 +280,7 @@
         class="rounded-lg border border-white/10 px-3 py-1.5 text-xs hover:bg-white/5"
         onclick={selectNone}
       >
-        清空选择
+        清空可选
       </button>
       <button
         type="button"
@@ -215,39 +296,47 @@
     </div>
 
     {#snippet itemRow(item: EnvIntegrationStatus)}
-      {@const locked = isLockedIntegrated(item)}
+      {@const bundledLocked = isBundledLocked(item)}
+      {@const lockedIntegrated = isLockedIntegrated(item)}
       {@const blocked = dependencyBlocked(item)}
-      {@const checked = locked || selected.has(item.id)}
+      {@const checked = isCheckboxChecked(item)}
+      {@const disabled = isCheckboxDisabled(item)}
       <div
         class={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
-          locked
+          bundledLocked
             ? "border-white/5 bg-white/[0.01]"
-            : item.integrated && reinstallMarked.has(item.id)
-              ? "border-amber-500/25 bg-amber-500/[0.04]"
-              : checked
-                ? "border-indigo-500/20 bg-indigo-500/[0.04]"
-                : "border-white/10 bg-white/[0.02]"
-        } ${blocked && !locked ? "opacity-50" : ""}`}
+            : lockedIntegrated
+              ? "border-white/5 bg-white/[0.01]"
+              : item.integrated && reinstallMarked.has(item.id)
+                ? "border-amber-500/25 bg-amber-500/[0.04]"
+                : checked
+                  ? "border-indigo-500/20 bg-indigo-500/[0.04]"
+                  : "border-white/10 bg-white/[0.02]"
+        } ${blocked && !bundledLocked && !lockedIntegrated ? "opacity-50" : ""}`}
       >
         <input
           type="checkbox"
-          class={`mt-1 shrink-0 ${locked ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
+          class={`mt-1 shrink-0 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
           checked={checked}
-          disabled={locked || blocked}
+          disabled={disabled}
           onchange={() => toggle(item.id)}
         />
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <span
-              class={`text-sm font-medium ${locked ? "text-white/45" : "text-white/85"}`}
+              class={`text-sm font-medium ${disabled && (bundledLocked || lockedIntegrated) ? "text-white/45" : "text-white/85"}`}
             >
               {item.label}
             </span>
-            {#if locked}
+            {#if bundledLocked}
+              <span class="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] text-indigo-200/70">
+                MindMesh 内置
+              </span>
+            {:else if lockedIntegrated}
               <span class="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/35">
                 已集成
               </span>
-            {:else if item.integrated && reinstallMarked.has(item.id)}
+            {:else if reinstallMarked.has(item.id)}
               <span class="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200/90">
                 将重新安装
               </span>
@@ -256,20 +345,20 @@
               <span class="text-[10px] text-white/35">可选</span>
             {/if}
           </div>
-          <p class={`mt-0.5 text-xs ${locked ? "text-white/30" : "text-white/45"}`}>
+          <p class={`mt-0.5 text-xs ${disabled && (bundledLocked || lockedIntegrated) ? "text-white/30" : "text-white/45"}`}>
             {item.description}
           </p>
-          <p class={`mt-1 text-[11px] ${locked ? "text-white/25" : "text-white/35"}`}>
+          <p class={`mt-1 text-[11px] ${disabled && (bundledLocked || lockedIntegrated) ? "text-white/25" : "text-white/35"}`}>
             {item.detail}
           </p>
         </div>
-        {#if locked}
+        {#if canMarkReinstall(item)}
           <button
             type="button"
             class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-white/55 hover:border-white/20 hover:bg-white/5 hover:text-white/75"
             onclick={() => markForReinstall(item.id)}
           >
-            标记为重新安装
+            {item.bundled ? "重新部署内置工具" : "标记为重新安装"}
           </button>
         {/if}
       </div>

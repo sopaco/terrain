@@ -2,13 +2,20 @@ use std::path::Path;
 
 use crate::doc::{read_doc, read_json};
 use crate::error::{CoreError, Result};
-use crate::freshness::compute_freshness;
 use crate::assets::{
     count_markdown_in_dir, has_litho_research_artifacts, litho_human_complete_with_research,
 };
 use crate::human::count_human_docs;
 use crate::paths::KnowledgePaths;
-use crate::schema::{AgentPackMeta, DocCounts, LithoStatus, ProjectOverview, SyncMeta};
+use crate::schema::{AgentPackMeta, DocCounts, FreshnessSummary, LithoStatus, ProjectOverview, SyncMeta};
+
+/// Merge freshness scores into overview asset tracks (for deferred overview loading).
+pub fn merge_overview_freshness(
+    asset_health: Vec<crate::schema::AssetTrackHealth>,
+    freshness: &FreshnessSummary,
+) -> Vec<crate::schema::AssetTrackHealth> {
+    apply_freshness_to_asset_health(asset_health, freshness)
+}
 
 pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Result<ProjectOverview> {
     let index_path = paths.project_index(project_slug);
@@ -75,18 +82,6 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
 
     let agent_env = build_agent_env_status(&repo_path);
 
-    let freshness = if !repo_path.is_empty() {
-        compute_freshness(paths, project_slug, &repo_path).ok()
-    } else {
-        None
-    };
-
-    let asset_health = if let Some(ref fresh) = freshness {
-        apply_freshness_to_asset_health(asset_health, fresh)
-    } else {
-        asset_health
-    };
-
     Ok(ProjectOverview {
         slug: project_slug.to_string(),
         name,
@@ -103,7 +98,7 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
         structure_preview,
         overview_excerpt,
         architecture_excerpt,
-        freshness,
+        freshness: None,
     })
 }
 
@@ -268,7 +263,7 @@ fn apply_freshness_to_asset_health(
 }
 
 fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
-    use crate::assets::get_env_status;
+    use crate::assets::summarize_agent_env_light;
     use crate::schema::AgentEnvStatus;
 
     if repo_path.is_empty() {
@@ -281,36 +276,9 @@ fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
         };
     }
 
-    let knowledge_count =
-        crate::assets::collect_knowledge_dir_inputs(Path::new(repo_path)).len();
-
-    match get_env_status(Path::new(repo_path)) {
-        Ok(s) => {
-            let integrated: std::collections::HashMap<_, _> = s
-                .items
-                .iter()
-                .map(|i| (i.id.as_str(), i.integrated))
-                .collect();
-            let core = integrated.get("skill-mind-mesh-knowledge") == Some(&true)
-                && integrated.get("agents-md") == Some(&true);
-            AgentEnvStatus {
-                ready: core,
-                integrated_count: s.ready_count,
-                total_count: s.total_count,
-                summary: s.summary,
-                detail: format!(
-                    "Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"
-                ),
-            }
-        }
-        Err(_) => AgentEnvStatus {
-            ready: false,
-            integrated_count: 0,
-            total_count: 0,
-            summary: "未检测".into(),
-            detail: "打开工程环境页以配置".into(),
-        },
-    }
+    let repo = Path::new(repo_path);
+    let knowledge_count = crate::assets::collect_knowledge_dir_inputs(repo).len();
+    summarize_agent_env_light(repo, knowledge_count)
 }
 
 fn read_overview_excerpt(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {

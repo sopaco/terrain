@@ -1,3 +1,4 @@
+mod bundled_tools;
 mod commands;
 
 use mind_mesh_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
@@ -69,6 +70,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            bundled_tools::init_app_bundled_tools(app.handle());
+            Ok(())
+        })
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::get_knowledge_root,
@@ -86,6 +91,7 @@ pub fn run() {
             commands::copy_text_to_clipboard,
             commands::pack_agent_assets_cmd,
             commands::compute_freshness_cmd,
+            commands::read_project_freshness_cached_cmd,
             commands::run_quick_refresh_cmd,
             commands::plan_litho_cmd,
             commands::plan_assets_cmd,

@@ -20,11 +20,13 @@
   import {
     checkLlm,
     checkAcp,
+    computeFreshness,
     getKnowledgeRoot,
     getProjectOverview,
     initializeProject,
     listHumanDocs,
     listProjects,
+    readProjectFreshnessCached,
     removeProject,
     listStaleProjects,
     openRepoFolder,
@@ -35,6 +37,7 @@
     runQuickRefresh,
     searchKnowledge,
   } from "./lib/api";
+  import { mergeFreshnessIntoOverview } from "./lib/mergeFreshness";
   import { generateLabel, TERMS } from "./lib/terminology";
   import { citationToSourceSlice } from "./lib/resolveSource";
   import type {
@@ -85,6 +88,7 @@
   let activeTab = $state<AppTab>("overview");
   let projectOverview = $state<ProjectOverview | null>(null);
   let overviewLoading = $state(false);
+  let freshnessLoading = $state(false);
   let agentContextBusy = $state(false);
   let quickRefreshBusy = $state(false);
   let initBusy = $state(false);
@@ -177,10 +181,42 @@
     }
   }
 
-  async function loadProjectOverview(slug: string) {
+  async function loadProjectOverviewFreshness(slug: string, repoPath: string | null | undefined) {
+    if (!repoPath) {
+      freshnessLoading = false;
+      return;
+    }
+    const requestSlug = slug;
+    freshnessLoading = true;
+    try {
+      const cached = await readProjectFreshnessCached(slug);
+      if (cached && selectedProject === requestSlug && projectOverview) {
+        projectOverview = mergeFreshnessIntoOverview(projectOverview, cached);
+      }
+
+      const freshness = await computeFreshness(slug, repoPath);
+      if (selectedProject === requestSlug && projectOverview) {
+        projectOverview = mergeFreshnessIntoOverview(projectOverview, freshness);
+      }
+    } catch {
+      /* keep cached or empty freshness */
+    } finally {
+      if (selectedProject === requestSlug) {
+        freshnessLoading = false;
+      }
+    }
+  }
+
+  async function loadProjectOverview(slug: string, opts?: { skipFreshness?: boolean }) {
     overviewLoading = true;
+    if (!opts?.skipFreshness) {
+      freshnessLoading = false;
+    }
     try {
       projectOverview = await getProjectOverview(slug);
+      if (projectOverview?.repo_path && !opts?.skipFreshness) {
+        void loadProjectOverviewFreshness(slug, projectOverview.repo_path);
+      }
     } catch {
       projectOverview = null;
     } finally {
@@ -367,7 +403,11 @@
         result.freshness.overall_stale ? "idle" : "success",
         slug,
       );
-      await loadProjectOverview(slug);
+      await loadProjectOverview(slug, { skipFreshness: true });
+      if (selectedProject === slug && projectOverview) {
+        projectOverview = mergeFreshnessIntoOverview(projectOverview, result.freshness);
+      }
+      freshnessLoading = false;
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
@@ -737,6 +777,7 @@
       onOpenHumanOverview={projectOverview?.litho.has_human_docs ? openOverviewHumanDoc : undefined}
       onOpenStructured={openStructuredDocs}
       quickRefreshBusy={quickRefreshBusy}
+      freshnessLoading={freshnessLoading}
       onQuickRefresh={triggerQuickRefresh}
     />
   </div>
@@ -751,15 +792,17 @@
     />
   </div>
 
-  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "env"}>
-    <EnvIntegratePanel
-      repoPath={selectedRepoPath}
-      onStatus={(message, kind) => setStatus(message, kind)}
-      onIntegrated={() => {
-        if (selectedProject) void loadProjectOverview(selectedProject);
-      }}
-    />
-  </div>
+  {#if activeTab === "env"}
+    <div class="flex min-h-0 flex-1 flex-col">
+      <EnvIntegratePanel
+        repoPath={selectedRepoPath}
+        onStatus={(message, kind) => setStatus(message, kind)}
+        onIntegrated={() => {
+          if (selectedProject) void loadProjectOverview(selectedProject);
+        }}
+      />
+    </div>
+  {/if}
 
   <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "knowledge"}>
       <div class="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#14171c]/80 px-4 py-2">

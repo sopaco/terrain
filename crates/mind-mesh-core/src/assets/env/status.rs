@@ -1,12 +1,26 @@
+use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use serde::Serialize;
 
 use super::agents_md::agents_md_ready;
 use super::catalog::{
-    env_catalog_root, load_catalog, resolve_skill_source, rtk_package_path, IntegrationDef,
+    env_catalog_root, load_catalog, resolve_skill_source, IntegrationDef,
 };
+use crate::agent_tools_deploy::agent_bin_dir;
+use crate::bundled_tools::{bundled_codegraph, bundled_rtk, run_bundled_check};
 use crate::error::Result;
+use crate::schema::AgentEnvStatus;
+
+struct EnvStatusCacheEntry {
+    fingerprint: u64,
+    status: EnvStatus,
+}
+
+static ENV_STATUS_CACHE: Mutex<Option<HashMap<String, EnvStatusCacheEntry>>> = Mutex::new(None);
 
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvStatus {
@@ -23,9 +37,11 @@ pub struct EnvIntegrationStatus {
     pub kind: String,
     pub label: String,
     pub description: String,
-    pub integrated: bool,
-    pub optional: bool,
-    pub depends_on: Vec<String>,
+  pub integrated: bool,
+  pub optional: bool,
+  pub bundled: bool,
+  pub locked: bool,
+  pub depends_on: Vec<String>,
     pub detail: String,
 }
 
@@ -45,7 +61,74 @@ pub struct EnvPlanStep {
     pub action: String,
 }
 
+/// Drop cached env status (all repos). Call after env apply or global tool deploy.
+pub fn invalidate_env_status_cache() {
+    if let Ok(mut guard) = ENV_STATUS_CACHE.lock() {
+        *guard = None;
+    }
+}
+
+/// Drop cached env status for one repository.
+pub fn invalidate_env_status_cache_for_repo(repo: &Path) {
+    let Ok(key) = env_cache_key(repo) else {
+        return;
+    };
+    if let Ok(mut guard) = ENV_STATUS_CACHE.lock() {
+        if let Some(map) = guard.as_mut() {
+            map.remove(&key);
+        }
+    }
+}
+
+/// Fast env summary for project overview — no CLI subprocesses.
+pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEnvStatus {
+    let catalog = match load_catalog() {
+        Ok(c) => c,
+        Err(_) => {
+            return AgentEnvStatus {
+                ready: false,
+                integrated_count: 0,
+                total_count: 0,
+                summary: "未检测".into(),
+                detail: "打开工程环境页以配置".into(),
+            };
+        }
+    };
+
+    let total = catalog.integrations.len();
+    let ready_count = catalog
+        .integrations
+        .iter()
+        .filter(|def| integration_light_ready(repo, def))
+        .count();
+
+    let core = repo
+        .join(".agents/skills/mind-mesh-knowledge-skill/SKILL.md")
+        .is_file()
+        && agents_md_ready(repo);
+
+    AgentEnvStatus {
+        ready: core,
+        integrated_count: ready_count,
+        total_count: total,
+        summary: format!("{ready_count}/{total} 已集成"),
+        detail: format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
+    }
+}
+
 pub fn get_env_status(repo: &Path) -> Result<EnvStatus> {
+    let key = env_cache_key(repo)?;
+    let fingerprint = env_cache_fingerprint(repo);
+    if let Some(status) = env_cache_get(&key, fingerprint) {
+        return Ok(status);
+    }
+
+    let status = compute_env_status(repo)?;
+    env_cache_put(key, fingerprint, status.clone());
+    Ok(status)
+}
+
+fn compute_env_status(repo: &Path) -> Result<EnvStatus> {
     let catalog = load_catalog()?;
     let items: Vec<_> = catalog
         .integrations
@@ -66,13 +149,98 @@ pub fn get_env_status(repo: &Path) -> Result<EnvStatus> {
     })
 }
 
+fn env_cache_key(repo: &Path) -> Result<String> {
+    Ok(repo
+        .canonicalize()
+        .unwrap_or_else(|_| repo.to_path_buf())
+        .to_string_lossy()
+        .into_owned())
+}
+
+fn env_cache_fingerprint(repo: &Path) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    for path in env_cache_watch_paths(repo) {
+        path.to_string_lossy().hash(&mut hasher);
+        if let Ok(meta) = std::fs::metadata(&path) {
+            meta.len().hash(&mut hasher);
+            meta.modified().ok().hash(&mut hasher);
+        }
+    }
+    hasher.finish()
+}
+
+fn env_cache_watch_paths(repo: &Path) -> Vec<PathBuf> {
+    let bin = agent_bin_dir();
+    vec![
+        repo.join("AGENTS.md"),
+        repo.join(".gitignore"),
+        repo.join(".codegraph/codegraph.db"),
+        repo.join(".mind-mesh/env/manifest.json"),
+        repo.join(".mind-mesh/env/agent-tools.json"),
+        repo.join(".agents/skills/mind-mesh-knowledge-skill/SKILL.md"),
+        repo.join(".agents/skills/codegraph-skill/SKILL.md"),
+        repo.join(".agents/skills/rtk-skill/SKILL.md"),
+        repo.join(".agents/skills/repomix-context-skill/SKILL.md"),
+        bin.join("rtk"),
+        bin.join("codegraph"),
+    ]
+}
+
+fn env_cache_get(key: &str, fingerprint: u64) -> Option<EnvStatus> {
+    let guard = ENV_STATUS_CACHE.lock().ok()?;
+    let map = guard.as_ref()?;
+    let entry = map.get(key)?;
+    if entry.fingerprint == fingerprint {
+        Some(entry.status.clone())
+    } else {
+        None
+    }
+}
+
+fn env_cache_put(key: String, fingerprint: u64, status: EnvStatus) {
+    if let Ok(mut guard) = ENV_STATUS_CACHE.lock() {
+        let map = guard.get_or_insert_with(HashMap::new);
+        map.insert(
+            key,
+            EnvStatusCacheEntry {
+                fingerprint,
+                status,
+            },
+        );
+    }
+}
+
+fn integration_light_ready(repo: &Path, def: &IntegrationDef) -> bool {
+    match def.kind.as_str() {
+        "skill" => repo
+            .join(".agents/skills")
+            .join(skill_target_name(def))
+            .join("SKILL.md")
+            .is_file(),
+        "tool" => match def.id.as_str() {
+            "tool-rtk" => rtk_runtime_ready(),
+            "tool-codegraph" => codegraph_index_ready(repo),
+            "tool-bun" => agent_bin_dir().join("bun").is_file(),
+            _ => false,
+        },
+        "agents_md" => agents_md_ready(repo),
+        "gitignore" => gitignore_has_patterns(repo, &def.patterns),
+        _ => false,
+    }
+}
+
+/// True when the repo has a CodeGraph index on disk (no CLI spawn).
+pub fn codegraph_index_ready(repo: &Path) -> bool {
+    repo.join(".codegraph/codegraph.db").is_file()
+}
+
 pub fn plan_env_integration(repo: &Path, selected_ids: &[String]) -> Result<EnvPlan> {
     let catalog = load_catalog()?;
     let status = get_env_status(repo)?;
     let status_map: std::collections::HashMap<_, _> = status
         .items
         .iter()
-        .map(|i| (i.id.clone(), i.integrated))
+        .map(|i| (i.id.clone(), dependency_ready(i)))
         .collect();
 
     let selected: std::collections::HashSet<_> = selected_ids.iter().cloned().collect();
@@ -87,7 +255,7 @@ pub fn plan_env_integration(repo: &Path, selected_ids: &[String]) -> Result<EnvP
             skipped.push(format!("{}: 依赖未满足", def.id));
             continue;
         }
-        if status_map.get(&def.id) == Some(&true) && def.kind != "agents_md" {
+        if status_map.get(&def.id) == Some(&true) && def.kind != "agents_md" && !def.bundled {
             steps.push(EnvPlanStep {
                 id: def.id.clone(),
                 label: def.label.clone(),
@@ -104,6 +272,10 @@ pub fn plan_env_integration(repo: &Path, selected_ids: &[String]) -> Result<EnvP
                 action: format!("复制 skill → .agents/skills/{}", skill_target_name(def)),
             }),
             "tool" => {
+                if def.bundled {
+                    plan_bundled_tool(repo, def, &mut steps, &mut skipped);
+                    continue;
+                }
                 if def.optional && tool_check_passes(repo, def) {
                     skipped.push(format!("{}: 已安装", def.id));
                     continue;
@@ -160,6 +332,51 @@ fn dependencies_met(
         .all(|d| selected.contains(d) || integrated.get(d) == Some(&true))
 }
 
+pub(crate) fn dependency_ready(item: &EnvIntegrationStatus) -> bool {
+    item.integrated || item.locked
+}
+
+fn bundled_tool_runtime_ready(def: &IntegrationDef) -> bool {
+    if !def.bundled {
+        return false;
+    }
+    match def.id.as_str() {
+        "tool-rtk" => bundled_rtk().is_some(),
+        "tool-codegraph" => bundled_codegraph().is_some(),
+        _ => false,
+    }
+}
+
+fn plan_bundled_tool(
+    repo: &Path,
+    def: &IntegrationDef,
+    steps: &mut Vec<EnvPlanStep>,
+    skipped: &mut Vec<String>,
+) {
+    if !bundled_tool_runtime_ready(def) {
+        skipped.push(format!("{}: MindMesh 内置工具不可用", def.id));
+        return;
+    }
+    match def.id.as_str() {
+        "tool-rtk" => {
+            skipped.push(format!("{}: RTK 由 MindMesh 内置提供", def.id));
+        }
+        "tool-codegraph" => {
+            if tool_check_passes(repo, def) {
+                skipped.push(format!("{}: 仓库索引已就绪", def.id));
+            } else {
+                steps.push(EnvPlanStep {
+                    id: def.id.clone(),
+                    label: def.label.clone(),
+                    kind: def.kind.clone(),
+                    action: "内置 CodeGraph：init -i（写入 .codegraph/）".into(),
+                });
+            }
+        }
+        _ => skipped.push(format!("{}: 未知内置工具", def.id)),
+    }
+}
+
 pub(crate) fn dependencies_satisfied(
     def: &IntegrationDef,
     selected: &std::collections::HashSet<String>,
@@ -183,34 +400,27 @@ fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<EnvIntegration
             )
         }
         "tool" => {
-            let ok = tool_check_passes(repo, def);
+            let locked = bundled_tool_runtime_ready(def);
+            let integrated = match def.id.as_str() {
+                "tool-rtk" if locked => true,
+                _ => tool_check_passes(repo, def),
+            };
             (
-                ok,
-                if ok {
-                    if def.id == "tool-rtk" {
-                        if command_succeeds("rtk", &["gain"], repo) {
-                            "已安装（PATH）".into()
-                        } else {
-                            "已安装（项目本地）".into()
-                        }
-                    } else {
-                        "已安装".into()
-                    }
-                } else if def.id == "tool-bun" {
-                    "可选：bun 未检测到".into()
+                integrated,
+                tool_status_detail(def, repo, integrated, locked),
+            )
+        }
+        "agents_md" => {
+            let ready = agents_md_ready(repo);
+            (
+                ready,
+                if ready {
+                    "AGENTS.md 含 MindMesh 托管片段".into()
                 } else {
-                    "未安装".into()
+                    "未配置".into()
                 },
             )
         }
-        "agents_md" => (
-            agents_md_ready(repo),
-            if agents_md_ready(repo) {
-                "AGENTS.md 含 MindMesh 托管片段".into()
-            } else {
-                "未配置".into()
-            },
-        ),
         "gitignore" => {
             let ok = gitignore_has_patterns(repo, &def.patterns);
             (
@@ -225,6 +435,8 @@ fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<EnvIntegration
         _ => (false, "未知类型".into()),
     };
 
+    let locked = def.bundled && bundled_tool_runtime_ready(def);
+
     Ok(EnvIntegrationStatus {
         id: def.id.clone(),
         kind: def.kind.clone(),
@@ -232,6 +444,8 @@ fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<EnvIntegration
         description: def.description.clone(),
         integrated,
         optional: def.optional,
+        bundled: def.bundled,
+        locked,
         depends_on: def.depends_on.clone(),
         detail,
     })
@@ -244,11 +458,56 @@ fn skill_target_name(def: &IntegrationDef) -> String {
         .unwrap_or_else(|| def.id.clone())
 }
 
+fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool) -> String {
+    if locked {
+        return match def.id.as_str() {
+            "tool-rtk" => "MindMesh 内置 → ~/.mind-mesh/bin/rtk（见 .mind-mesh/env/agent-tools.json）".into(),
+            "tool-codegraph" if ok => {
+                "MindMesh 内置 → ~/.mind-mesh/bin/codegraph（运行时链接至 ~/.mind-mesh/tools/codegraph-runtime）· 仓库索引已就绪".into()
+            }
+            "tool-codegraph" => {
+                "MindMesh 内置 → ~/.mind-mesh/bin/codegraph（运行时链接至 ~/.mind-mesh/tools/codegraph-runtime）· 待初始化 .codegraph/".into()
+            }
+            _ => "MindMesh 内置".into(),
+        };
+    }
+    if !ok {
+        return if def.id == "tool-bun" {
+            "可选：bun 未检测到".into()
+        } else {
+            "未安装".into()
+        };
+    }
+
+    match def.id.as_str() {
+        "tool-rtk" => {
+            if bundled_rtk()
+                .as_ref()
+                .is_some_and(|p| run_bundled_check(p, &["gain"], repo))
+            {
+                "已安装（MindMesh bundled）".into()
+            } else if command_succeeds("rtk", &["gain"], repo) {
+                "已安装（PATH）".into()
+            } else {
+                "已安装（项目本地）".into()
+            }
+        }
+        "tool-codegraph" => {
+            if codegraph_index_ready(repo) {
+                "已安装（MindMesh bundled · 索引就绪）".into()
+            } else {
+                "已安装".into()
+            }
+        }
+        _ => "已安装".into(),
+    }
+}
+
 pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
     match def.id.as_str() {
         "tool-bun" => command_succeeds("bun", &["--version"], repo),
-        "tool-rtk" => rtk_available(repo),
-        "tool-codegraph" => codegraph_available(repo),
+        "tool-rtk" => rtk_runtime_ready(),
+        "tool-codegraph" => codegraph_index_ready(repo),
         _ => {
             if let Some(check) = &def.check {
                 let args: Vec<&str> = check.iter().skip(1).map(String::as_str).collect();
@@ -260,26 +519,11 @@ pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
     }
 }
 
-/// RTK on PATH (global install) or project-local via bunx / node_modules.
-fn rtk_available(repo: &Path) -> bool {
-    command_succeeds("rtk", &["gain"], repo)
-        || command_succeeds("bunx", &["rtk", "gain"], repo)
-        || local_bin_succeeds(repo, "rtk", &["gain"])
-}
-
-/// CodeGraph CLI on PATH or project-local via bunx / node_modules.
-fn codegraph_available(repo: &Path) -> bool {
-    command_succeeds("codegraph", &["status"], repo)
-        || command_succeeds("bunx", &["codegraph", "status"], repo)
-        || local_bin_succeeds(repo, "codegraph", &["status"])
-}
-
-fn local_bin_succeeds(repo: &Path, bin: &str, args: &[&str]) -> bool {
-    let path = repo.join("node_modules/.bin").join(bin);
-    if !path.is_file() {
-        return false;
+fn rtk_runtime_ready() -> bool {
+    if bundled_rtk().is_some() && agent_bin_dir().join("rtk").exists() {
+        return true;
     }
-    command_succeeds(&path.to_string_lossy(), args, repo)
+    agent_bin_dir().join("rtk").is_file()
 }
 
 fn command_succeeds(program: &str, args: &[&str], cwd: &Path) -> bool {
@@ -312,17 +556,7 @@ pub(crate) fn substitute_install_args(
     _def: &IntegrationDef,
     args: &[String],
 ) -> Vec<String> {
-    args.iter()
-        .map(|a| {
-            if a == "@mind-mesh/rtk" {
-                let pkg = rtk_package_path();
-                if pkg.exists() {
-                    return format!("file:{}", pkg.display());
-                }
-            }
-            a.clone()
-        })
-        .collect()
+    args.to_vec()
 }
 
 #[cfg(test)]
@@ -355,5 +589,32 @@ mod tests {
 
         assert!(dependencies_satisfied(skill_cg, &selected, &integrated));
         assert!(dependencies_satisfied(skill_rtk, &selected, &integrated));
+    }
+
+    #[test]
+    fn codegraph_index_ready_checks_db_file() {
+        let dir = std::env::temp_dir().join(format!("mm-cg-index-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(!codegraph_index_ready(&dir));
+        std::fs::create_dir_all(dir.join(".codegraph")).unwrap();
+        assert!(!codegraph_index_ready(&dir));
+        std::fs::write(dir.join(".codegraph/codegraph.db"), b"x").unwrap();
+        assert!(codegraph_index_ready(&dir));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn env_status_cache_reuses_when_fingerprint_unchanged() {
+        let dir = std::env::temp_dir().join(format!("mm-env-cache-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        invalidate_env_status_cache();
+
+        let first = get_env_status(&dir).expect("first status");
+        let second = get_env_status(&dir).expect("cached status");
+        assert_eq!(first.summary, second.summary);
+
+        let _ = std::fs::remove_dir_all(&dir);
+        invalidate_env_status_cache();
     }
 }

@@ -21,7 +21,6 @@
     "mermaid": "^11.15.0"
   },
   "devDependencies": {
-    "@colbymchenry/codegraph": "^1.0.1",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/vite": "^4.1.4",
     "@tauri-apps/cli": "^2",

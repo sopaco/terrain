@@ -12,38 +12,46 @@ MindMesh uses **CLI only** — do not run `codegraph install` (that configures M
 
 ## Prerequisites
 
-```bash
-bunx codegraph status    # must succeed
-```
+MindMesh deploys CodeGraph to **`~/.mind-mesh/bin/codegraph`** (symlink to bundled runtime). The **index** is per-repo under `.codegraph/`.
 
-If not initialized:
+**Read executable paths first:**
 
 ```bash
-bun add -d @colbymchenry/codegraph
-bunx codegraph init -i
+cat .mind-mesh/env/agent-tools.json
 ```
 
-Index lives in `.codegraph/` (regenerate with `bunx codegraph sync` after edits).
+```bash
+# health check (use absolute path from manifest)
+~/.mind-mesh/bin/codegraph status
+```
+
+If the repo has no index yet, run env integration or:
+
+```bash
+~/.mind-mesh/bin/codegraph init -i
+```
+
+Index lives in `.codegraph/` (refresh with `codegraph sync` after edits).
 
 ## CLI commands
 
-Always run via `bunx codegraph …` (or `codegraph` on PATH):
+Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.mind-mesh/bin/codegraph`):
 
 | Intent | Command |
 |--------|---------|
-| Find symbol by name | `bunx codegraph query <name>` |
-| Who calls X | `bunx codegraph callers <symbol>` |
-| What X calls | `bunx codegraph callees <symbol>` |
-| Change blast radius | `bunx codegraph impact <symbol>` |
-| Tests affected by file changes | `bunx codegraph affected <files…>` |
-| Project file tree | `bunx codegraph files` |
-| Index health | `bunx codegraph status` |
-| Refresh after edits | `bunx codegraph sync` |
+| Find symbol by name | `codegraph query <name>` |
+| Who calls X | `codegraph callers <symbol>` |
+| What X calls | `codegraph callees <symbol>` |
+| Change blast radius | `codegraph impact <symbol>` |
+| Tests affected by file changes | `codegraph affected <files…>` |
+| Project file tree | `codegraph files` |
+| Index health | `codegraph status` |
+| Refresh after edits | `codegraph sync` |
 
 ## Recommended workflow
 
 1. Read `.mind-mesh/agent/context.md` (`mind-mesh-knowledge-skill`)
-2. `bunx codegraph query <SymbolName>` to locate definition
+2. `codegraph query <SymbolName>` to locate definition
 3. `callers` / `callees` / `impact` for relationship questions
 4. `repomix-context-skill` for full source text of a specific file
 5. Use **`rtk-skill`** for any follow-up shell commands (tests, git)
@@ -68,5 +76,5 @@ Always run via `bunx codegraph …` (or `codegraph` on PATH):
 If `codegraph status` shows pending files after your edits:
 
 ```bash
-bunx codegraph sync
+codegraph sync
 ```
