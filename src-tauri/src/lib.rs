@@ -102,6 +102,7 @@ pub fn run() {
             commands::generate_human_docs_cmd,
             commands::run_litho_generation_cmd,
             commands::get_project_overview_cmd,
+            commands::save_project_remark_cmd,
             commands::get_sdd_status_cmd,
             commands::create_sdd_session_cmd,
             commands::set_active_sdd_session_cmd,

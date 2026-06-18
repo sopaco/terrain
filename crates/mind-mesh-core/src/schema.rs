@@ -392,6 +392,9 @@ pub struct ProjectOverview {
     pub architecture_excerpt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub freshness: Option<FreshnessSummary>,
+    /// Human-editable remark from `.mind-mesh/project-note.md`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_remark: Option<String>,
 }
 
 /// SDD standardized workflow phases.

@@ -36,6 +36,7 @@
     runAgentContextGeneration,
     runLithoGeneration,
     runQuickRefresh,
+    saveProjectRemark,
     searchKnowledge,
   } from "./lib/api";
   import { mergeFreshnessIntoOverview } from "./lib/mergeFreshness";
@@ -218,16 +219,16 @@
 
   async function loadProjectOverview(slug: string, opts?: { skipFreshness?: boolean }) {
     overviewLoading = true;
-    if (!opts?.skipFreshness) {
-      freshnessLoading = false;
-    }
     try {
       projectOverview = await getProjectOverview(slug);
       if (projectOverview?.repo_path && !opts?.skipFreshness) {
         void loadProjectOverviewFreshness(slug, projectOverview.repo_path);
+      } else {
+        freshnessLoading = false;
       }
     } catch {
       projectOverview = null;
+      freshnessLoading = false;
     } finally {
       overviewLoading = false;
     }
@@ -807,8 +808,8 @@
       {initProgress}
       {staleProjects}
       onOpenKnowledge={() => (activeTab = "knowledge")}
-      onOpenSdd={() => (activeTab = "sdd")}
       onOpenEnv={() => (activeTab = "env")}
+      onOpenSettings={() => (settingsOpen = true)}
       onOpenAsk={() => openDeepWiki()}
       onGenerateHuman={triggerHumanGeneration}
       onGenerateAgentContext={triggerAgentContextGeneration}
@@ -821,6 +822,15 @@
       quickRefreshBusy={quickRefreshBusy}
       freshnessLoading={freshnessLoading}
       onQuickRefresh={triggerQuickRefresh}
+      onSaveProjectRemark={async (remark) => {
+        if (!selectedProject) return;
+        const prevFreshness = projectOverview?.freshness;
+        const updated = await saveProjectRemark(selectedProject, remark);
+        projectOverview =
+          prevFreshness && !updated.freshness
+            ? mergeFreshnessIntoOverview(updated, prevFreshness)
+            : updated;
+      }}
     />
   </div>
 

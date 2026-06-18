@@ -3,8 +3,8 @@
   "project": "mind-mesh",
   "repo_path": "/Users/bjsttlp485/Workspace/SAW/mind-mesh",
   "baseline": {
-    "git_head": "40eb3e5930fb6b020251f3fbd2fb387d3840e19c",
-    "git_head_at": "2026-06-18T01:42:22.961520+00:00",
+    "git_head": "61348ee506dad878aa4df819f8a6893c8144801d",
+    "git_head_at": "2026-06-18T06:23:02.104101+00:00",
     "dirty": true
   },
   "assets": {
@@ -12,65 +12,79 @@
       "path": "agent/repomix.md",
       "synced_at": "2026-06-16T04:32:43.736963+00:00",
       "baseline_git_head": "cc088807aa1fb9d00d2bc9be8fca2759ce21eab2",
-      "stale": false,
-      "freshness_score": 89
+      "stale": true,
+      "stale_reason": "repo_advanced_5_commits",
+      "freshness_score": 76
     },
     "agent_context": {
       "path": "agent/context.md",
       "synced_at": "2026-06-16T05:34:15.860616+00:00",
       "baseline_git_head": "cc088807aa1fb9d00d2bc9be8fca2759ce21eab2",
-      "stale": false,
-      "freshness_score": 80
+      "stale": true,
+      "stale_reason": "repo_advanced_5_commits",
+      "freshness_score": 68
     },
     "human_docs": {
       "path": "human/",
       "synced_at": "2026-06-16T04:32:41.824560+00:00",
-      "stale": false,
-      "freshness_score": 89
+      "stale": true,
+      "stale_reason": "repo_advanced_5_commits",
+      "freshness_score": 76
     }
   },
   "drift": {
-    "commits_since_baseline": 2,
-    "changed_files_since_baseline": 2,
+    "commits_since_baseline": 5,
+    "changed_files_since_baseline": 58,
     "sample_changed_files": [
+      ".gitignore",
       "README.md",
-      "assets/screenshots/.gitkeep"
+      "assets/screenshots/.gitkeep",
+      "bun.lock",
+      "crates/mind-mesh-agent/src/acp.rs",
+      "crates/mind-mesh-agent/src/agent_assets.rs",
+      "crates/mind-mesh-agent/src/agent_context.rs",
+      "crates/mind-mesh-agent/src/chat.rs",
+      "crates/mind-mesh-agent/src/env_optimize.rs",
+      "crates/mind-mesh-agent/src/lib.rs",
+      "crates/mind-mesh-agent/src/project_init.rs",
+      "crates/mind-mesh-agent/src/sdd.rs"
     ]
   },
   "summary": {
-    "overall_score": 80,
-    "overall_stale": false,
-    "commits_since_baseline": 2,
-    "changed_files_count": 2,
-    "current_git_head": "40eb3e5",
+    "overall_score": 68,
+    "overall_stale": true,
+    "commits_since_baseline": 5,
+    "changed_files_count": 58,
+    "current_git_head": "61348ee",
     "working_tree_dirty": true,
     "is_git_repo": true,
-    "last_computed_at": "2026-06-18T01:42:22.961520+00:00",
-    "agent_pack_score": 89,
-    "agent_context_score": 80,
-    "human_docs_score": 89,
+    "last_computed_at": "2026-06-18T06:23:02.104101+00:00",
+    "stale_reason": "repo_advanced_5_commits",
+    "agent_pack_score": 76,
+    "agent_context_score": 68,
+    "human_docs_score": 76,
     "macro_preload_allowed": true,
     "drift_factors": [
       {
         "id": "commits_behind",
         "severity": "medium",
-        "title": "代码已前进 2 个提交",
-        "detail": "知识资产 baseline 为 cc088807aa1fb9d00d2bc9be8fca2759ce21eab2，当前 HEAD 为 40eb3e5。每多 1 个提交约扣 2 分（上限 40 分）。",
-        "points_lost": 4
+        "title": "代码已前进 5 个提交",
+        "detail": "知识资产 baseline 为 cc088807aa1fb9d00d2bc9be8fca2759ce21eab2，当前 HEAD 为 61348ee。每多 1 个提交约扣 2 分（上限 40 分）。",
+        "points_lost": 10
       },
       {
         "id": "files_changed",
-        "severity": "medium",
-        "title": "2 个文件相对 baseline 有变更",
+        "severity": "high",
+        "title": "58 个文件相对 baseline 有变更",
         "detail": "变更文件占索引规模的比例越高，扣分越多（上限 30 分）。下方列出部分路径。",
-        "points_lost": 0
+        "points_lost": 5
       },
       {
         "id": "pack_age",
         "severity": "low",
-        "title": "源码索引已生成 1 天",
+        "title": "源码索引已生成 2 天",
         "detail": "距上次 Repomix 打包越久，额外扣分越多（每天约 2 分，上限 20 分）。",
-        "points_lost": 2
+        "points_lost": 4
       },
       {
         "id": "dirty_tree",
@@ -83,22 +97,32 @@
         "id": "context_lineage",
         "severity": "info",
         "title": "Agent 上下文受源码索引牵连",
-        "detail": "架构上下文原始分 89/100，按规则不超过源码索引分数的 90%，现为 80/100。",
-        "points_lost": 9
+        "detail": "架构上下文原始分 76/100，按规则不超过源码索引分数的 90%，现为 68/100。",
+        "points_lost": 8
       },
       {
         "id": "overall_driver",
         "severity": "info",
         "title": "总分由 Agent 架构上下文决定",
-        "detail": "综合分取三层最低值：源码索引 89、Agent 上下文 80、人类文档 89。"
+        "detail": "综合分取三层最低值：源码索引 76、Agent 上下文 68、人类文档 76。"
       }
     ],
     "sample_changed_files": [
+      ".gitignore",
       "README.md",
-      "assets/screenshots/.gitkeep"
+      "assets/screenshots/.gitkeep",
+      "bun.lock",
+      "crates/mind-mesh-agent/src/acp.rs",
+      "crates/mind-mesh-agent/src/agent_assets.rs",
+      "crates/mind-mesh-agent/src/agent_context.rs",
+      "crates/mind-mesh-agent/src/chat.rs",
+      "crates/mind-mesh-agent/src/env_optimize.rs",
+      "crates/mind-mesh-agent/src/lib.rs",
+      "crates/mind-mesh-agent/src/project_init.rs",
+      "crates/mind-mesh-agent/src/sdd.rs"
     ],
     "pack_baseline_short": "cc08880",
     "context_baseline_short": "cc08880"
   },
-  "last_computed_at": "2026-06-18T01:42:22.961520+00:00"
+  "last_computed_at": "2026-06-18T06:23:02.104101+00:00"
 }

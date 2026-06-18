@@ -10,6 +10,12 @@ export const TERMS = {
   agentEnv: "Agent 友好的工程环境",
 } as const;
 
+/** Compact labels for dashboard cards and chips */
+export const SHORT_TERMS = {
+  agentKnowledge: "Agent友好知识资产",
+  humanKnowledge: "人类友好的知识库",
+} as const;
+
 export function generateLabel(term: string, busy: boolean): string {
   return busy ? "生成中…" : `生成 ${term}`;
 }

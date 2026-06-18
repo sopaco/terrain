@@ -132,6 +132,9 @@ export const getAcpSpawnCommand = () => invoke<string>("acp_spawn_command_cmd");
 export const getProjectOverview = (projectSlug: string) =>
   invoke<ProjectOverview>("get_project_overview_cmd", { projectSlug });
 
+export const saveProjectRemark = (projectSlug: string, remark: string) =>
+  invoke<ProjectOverview>("save_project_remark_cmd", { projectSlug, remark });
+
 export const computeFreshness = (projectSlug: string, repoPath?: string) =>
   invoke<FreshnessSummary>("compute_freshness_cmd", {
     projectSlug,

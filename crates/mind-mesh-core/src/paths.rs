@@ -110,6 +110,17 @@ impl KnowledgePaths {
         self.project_dir(project_slug).join(".meta/freshness.json")
     }
 
+    /// Human-editable project remark (versioned with the repo).
+    pub fn project_note_path(&self, project_slug: &str) -> PathBuf {
+        self.project_dir(project_slug).join("project-note.md")
+    }
+
+    /// Human-editable project remark when scoped to a workspace repository.
+    pub fn workspace_project_note_path(&self) -> Option<PathBuf> {
+        self.workspace_knowledge_root()
+            .map(|root| root.join("project-note.md"))
+    }
+
     /// Human-facing Litho docs (`1.概述.md`, `2.架构.md`, …).
     pub fn human_docs_dir(&self, project_slug: &str) -> PathBuf {
         self.project_dir(project_slug).join("human")

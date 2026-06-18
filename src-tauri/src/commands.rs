@@ -13,7 +13,7 @@ use std::sync::Arc;
 use mind_mesh_core::{
     compute_freshness, create_sdd_session, extract_source_citations, get_project_overview,
     get_sdd_status, list_stale_registry_projects, merge_citations, read_freshness_ledger,
-    resolve_sdd_session_id, save_sdd_output, set_active_sdd_session, AgentPackReport,
+    resolve_sdd_session_id, save_sdd_output, set_active_sdd_session, write_project_remark, AgentPackReport,
     AssetGenerationPlan, EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus, FreshnessSummary,
     HumanDocEntry, KnowledgeDoc, KnowledgePaths, KnowledgeSearch, LithoPlan, ProjectOverview,
     ProjectScanner, ProjectSummary, ScanReport, SearchHit, SearchOptions, SddPhase, SddPhaseResult,
@@ -644,6 +644,16 @@ pub fn get_project_overview_cmd(
     state: State<'_, AppState>,
     project_slug: String,
 ) -> Result<ProjectOverview, String> {
+    get_project_overview(&state.paths, &project_slug).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_project_remark_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+    remark: String,
+) -> Result<ProjectOverview, String> {
+    write_project_remark(&state.paths, &project_slug, &remark).map_err(|e| e.to_string())?;
     get_project_overview(&state.paths, &project_slug).map_err(|e| e.to_string())
 }
 

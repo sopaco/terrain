@@ -89,23 +89,19 @@
       style="top: {menuTop}px; left: {menuLeft}px;"
       role="listbox"
     >
-      <div class="border-b border-white/10 px-3 py-2 text-xs text-white/40">
-        {projects.length} 个项目 · 移除仅取消登记
-      </div>
       <ul class="max-h-64 overflow-y-auto py-1">
         {#each projects as project}
           <li class="mx-1 flex items-stretch gap-1">
             <button
               type="button"
-              class={`flex min-w-0 flex-1 flex-col rounded px-3 py-2 text-left text-sm hover:bg-white/5 ${
+              class={`flex min-w-0 flex-1 items-center rounded px-3 py-2 text-left text-sm hover:bg-white/5 ${
                 selectedSlug === project.slug ? "bg-indigo-500/15 text-indigo-100" : ""
               }`}
               onclick={() => onselect(project)}
               role="option"
               aria-selected={selectedSlug === project.slug}
             >
-              <span class="font-medium">{project.name}</span>
-              <span class="truncate text-xs text-white/40">{project.slug}</span>
+              <span class="truncate font-medium">{project.name}</span>
             </button>
             {#if project.repo_path && onopenFolder}
               <button

@@ -319,6 +319,7 @@ export interface ProjectOverview {
   structure_preview?: string;
   overview_excerpt?: string;
   architecture_excerpt?: string;
+  project_remark?: string;
   freshness?: FreshnessSummary;
 }
 

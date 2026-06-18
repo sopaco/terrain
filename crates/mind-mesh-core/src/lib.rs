@@ -55,7 +55,7 @@ pub use model_text::{
     strip_model_reasoning, unwrap_markdown_fence,
 };
 pub use paths::KnowledgePaths;
-pub use project::{get_project_overview, merge_overview_freshness, resolve_project_repo_path};
+pub use project::{get_project_overview, merge_overview_freshness, resolve_project_repo_path, write_project_remark};
 pub use registry::{
     knowledge_root_for_repo, list_stale_registry_projects, register_project, unregister_project,
     StaleProjectSummary,

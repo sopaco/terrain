@@ -6,6 +6,7 @@ use crate::assets::{
     count_markdown_in_dir, has_litho_research_artifacts, litho_human_complete_with_research,
 };
 use crate::human::count_human_docs;
+use crate::freshness::read_freshness_ledger;
 use crate::paths::KnowledgePaths;
 use crate::schema::{AgentPackMeta, DocCounts, FreshnessSummary, LithoStatus, ProjectOverview, SyncMeta};
 
@@ -68,7 +69,7 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
             .map(|d| d.body.chars().take(800).collect())
     });
 
-    let asset_health = build_asset_health(
+    let mut asset_health = build_asset_health(
         paths,
         project_slug,
         &doc_counts,
@@ -80,7 +81,13 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
         &repo_path,
     );
 
+    let freshness = read_freshness_ledger(paths, project_slug).map(|ledger| ledger.summary);
+    if let Some(ref summary) = freshness {
+        asset_health = apply_freshness_to_asset_health(asset_health, summary);
+    }
+
     let agent_env = build_agent_env_status(&repo_path);
+    let project_remark = read_project_remark(paths, project_slug);
 
     Ok(ProjectOverview {
         slug: project_slug.to_string(),
@@ -98,8 +105,53 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
         structure_preview,
         overview_excerpt,
         architecture_excerpt,
-        freshness: None,
+        freshness,
+        project_remark,
     })
+}
+
+/// Read human-editable project remark from `.mind-mesh/project-note.md`.
+pub fn read_project_remark(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {
+    let path = paths.project_note_path(project_slug);
+    read_remark_file(&path)
+}
+
+/// Persist project remark to `.mind-mesh/project-note.md` (empty clears the file).
+pub fn write_project_remark(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    remark: &str,
+) -> Result<()> {
+    let path = paths.project_note_path(project_slug);
+    write_remark_file(&path, remark)
+}
+
+fn read_remark_file(path: &Path) -> Option<String> {
+    if !path.is_file() {
+        return None;
+    }
+    let content = std::fs::read_to_string(path).ok()?;
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn write_remark_file(path: &Path, remark: &str) -> Result<()> {
+    let trimmed = remark.trim();
+    if trimmed.is_empty() {
+        if path.is_file() {
+            std::fs::remove_file(path)?;
+        }
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, format!("{trimmed}\n"))?;
+    Ok(())
 }
 
 /// Resolve the repository path for a project slug (registry, pack meta, or index frontmatter).
@@ -335,4 +387,28 @@ fn count_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<DocCounts> {
         modules: count_markdown_in_dir(&paths.project_dir(project_slug).join("modules")),
         events: count_markdown_in_dir(&paths.project_dir(project_slug).join("events")),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn project_remark_roundtrip() {
+        let dir = std::env::temp_dir().join(format!("mm-remark-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("project-note.md");
+
+        assert_eq!(read_remark_file(&path), None);
+        write_remark_file(&path, "  团队内部备注  ").unwrap();
+        assert_eq!(
+            read_remark_file(&path).as_deref(),
+            Some("团队内部备注")
+        );
+        write_remark_file(&path, "").unwrap();
+        assert!(!path.exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
