@@ -30,6 +30,11 @@
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
+  import {
+    handleDismissTransitionEnd,
+    prefersReducedMotion,
+    schedulePresent,
+  } from "../overlayMotion";
 
   type MessageUpdater = ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]);
 
@@ -83,6 +88,72 @@
   let copyToastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sourceOpen = $derived(Boolean(sourceSlice));
+
+  let mounted = $state(false);
+  let presented = $state(false);
+  let showChat = $state(false);
+
+  let sourceRailMounted = $state(false);
+  let sourceRailPresented = $state(false);
+  let showSourcePanel = $state(false);
+  let visibleSourceSlice = $state<SourceSlice | null>(null);
+
+  $effect(() => {
+    if (open) {
+      mounted = true;
+      showChat = true;
+      void schedulePresent((value) => {
+        presented = value;
+      });
+      return;
+    }
+    presented = false;
+    if (prefersReducedMotion()) {
+      showChat = false;
+      mounted = false;
+    }
+  });
+
+  $effect(() => {
+    if (sourceSlice) visibleSourceSlice = sourceSlice;
+  });
+
+  $effect(() => {
+    if (sourceSlice) {
+      sourceRailMounted = true;
+      showSourcePanel = false;
+      void schedulePresent((value) => {
+        sourceRailPresented = value;
+        if (value) showSourcePanel = true;
+      });
+      return;
+    }
+    sourceRailPresented = false;
+    if (prefersReducedMotion()) {
+      showSourcePanel = false;
+      sourceRailMounted = false;
+      visibleSourceSlice = null;
+    }
+  });
+
+  function onDrawerTransitionEnd(e: TransitionEvent) {
+    handleDismissTransitionEnd(e, presented, () => {
+      showChat = false;
+      mounted = false;
+    });
+  }
+
+  function onSourceRailTransitionEnd(e: TransitionEvent) {
+    handleDismissTransitionEnd(e, sourceRailPresented, () => {
+      showSourcePanel = false;
+      sourceRailMounted = false;
+      if (!sourceSlice) visibleSourceSlice = null;
+    });
+  }
+
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape" && open) onclose();
+  }
 
   const streamCtx = { activeRequestId: null as string | null };
 
@@ -475,18 +546,22 @@
   }
 </style>
 
-{#if open}
+{#if mounted}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
-    class="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
+    class="mm-overlay-backdrop fixed inset-0 z-40 bg-black/55"
+    class:is-presented={presented}
     onclick={onclose}
     role="presentation"
   ></div>
 
   <section
-    class="fixed inset-y-0 right-0 z-50 flex flex-row-reverse items-stretch"
+    class="mm-overlay-drawer fixed inset-y-0 right-0 z-50 flex flex-row-reverse items-stretch"
+    class:is-presented={presented}
     aria-label="DeepWiki"
+    ontransitionend={onDrawerTransitionEnd}
   >
+    {#if showChat}
     <div class="relative flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-white/10 bg-[#12151c] shadow-2xl">
     {#if copyToast}
       <div
@@ -702,25 +777,27 @@
         </div>
     </div>
     </div>
+    {/if}
 
-    <aside
-      class={`flex shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#10131a] transition-[width,opacity] duration-300 ease-out ${
-        sourceOpen
-          ? "w-[max(400px,calc(100vw-min(760px,92vw)))] opacity-100"
-          : "w-0 opacity-0 pointer-events-none"
-      }`}
-      aria-hidden={!sourceOpen}
-    >
-      {#if sourceSlice}
-        <div class="flex h-full w-full min-w-[400px] flex-col">
-          <SourcePanel
-            slice={sourceSlice}
-            {repoPath}
-            onclose={() => onsourcechange(null)}
-            onSourceClick={openCitation}
-          />
+    {#if sourceRailMounted && visibleSourceSlice}
+      <aside class="mm-source-rail" aria-hidden={!sourceOpen}>
+        <div
+          class="mm-source-rail-panel flex flex-col bg-[#10131a]"
+          class:is-presented={sourceRailPresented}
+          ontransitionend={onSourceRailTransitionEnd}
+        >
+          {#if showSourcePanel}
+            <SourcePanel
+              slice={visibleSourceSlice}
+              {repoPath}
+              onclose={() => onsourcechange(null)}
+              onSourceClick={openCitation}
+            />
+          {/if}
         </div>
-      {/if}
-    </aside>
+      </aside>
+    {/if}
   </section>
 {/if}
+
+<svelte:window onkeydown={onWindowKeydown} />

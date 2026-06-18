@@ -2,6 +2,7 @@
   import { checkAcp, checkLlm, getModelSettings, saveModelSettings } from "../api";
   import { isPureAcp, normalizeAgentExecution } from "../agentExecution";
   import type { AgentExecution, AcpSettings, LlmStatus, ModelSettings, ProviderProfile } from "../types";
+  import ModalShell from "./ModalShell.svelte";
   import {
     DEFAULT_LMSTUDIO_BASE_URL,
     DEFAULT_LMSTUDIO_MODEL,
@@ -224,23 +225,10 @@
       saving = false;
     }
   }
-
-  function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") onclose();
-  }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-{#if open}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onclick={onclose} role="presentation"></div>
-
-  <section
-    class="fixed left-1/2 top-1/2 z-[51] flex max-h-[min(90vh,720px)] w-[min(560px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#161a22] shadow-2xl"
-    aria-label="Settings"
-  >
-    <header class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+<ModalShell {open} {onclose} dialogClass="max-w-[min(560px,92vw)] bg-[#161a22]">
+  <header class="flex items-center justify-between border-b border-white/10 px-5 py-4">
       <div>
         <h2 class="text-base font-semibold">设置</h2>
         <p class="text-xs text-white/40">ACP 代理与执行模式（保存至 ~/.mind-mesh/settings.json）</p>
@@ -449,5 +437,4 @@
         {saving ? "保存中…" : "保存"}
       </button>
     </footer>
-  </section>
-{/if}
+</ModalShell>

@@ -27,3 +27,68 @@ body {
     cursor: not-allowed;
   }
 }
+
+/* GPU-composited overlay motion (no backdrop-filter — avoids jank during transitions) */
+.mm-overlay-backdrop {
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: opacity;
+}
+
+.mm-overlay-backdrop.is-presented {
+  opacity: 1;
+}
+
+.mm-overlay-drawer {
+  transform: translate3d(100%, 0, 0);
+  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  contain: layout style paint;
+  backface-visibility: hidden;
+}
+
+.mm-overlay-drawer.is-presented {
+  transform: translate3d(0, 0, 0);
+}
+
+.mm-overlay-modal {
+  transform: scale(0.97) translateZ(0);
+  opacity: 0;
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  contain: layout style paint;
+  backface-visibility: hidden;
+}
+
+.mm-overlay-modal.is-presented {
+  transform: scale(1) translateZ(0);
+  opacity: 1;
+}
+
+.mm-source-rail {
+  width: max(400px, calc(100vw - min(760px, 92vw)));
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.mm-source-rail-panel {
+  height: 100%;
+  min-width: max(400px, calc(100vw - min(760px, 92vw)));
+  transform: translate3d(-100%, 0, 0);
+  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  contain: strict;
+  backface-visibility: hidden;
+}
+
+.mm-source-rail-panel.is-presented {
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-overlay-backdrop,
+  .mm-overlay-drawer,
+  .mm-overlay-modal,
+  .mm-source-rail-panel {
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AssetTrackHealth } from "../types";
   import { TERMS } from "../terminology";
+  import ModalShell from "./ModalShell.svelte";
 
   interface AssetAction {
     label: string;
@@ -34,20 +35,13 @@
   }: Props = $props();
 </script>
 
-{#if open}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div
-    class="fixed inset-0 z-[300] bg-black/50 backdrop-blur-sm"
-    onclick={onclose}
-    role="presentation"
-  ></div>
-  <div
-    class="fixed left-1/2 top-1/2 z-[301] flex max-h-[min(85vh,680px)] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1a1e26] shadow-2xl"
-    role="dialog"
-    aria-labelledby="readiness-help-title"
-    aria-modal="true"
-  >
-    <header class="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+<ModalShell
+  {open}
+  {onclose}
+  ariaLabelledby="readiness-help-title"
+  dialogClass="max-w-[min(92vw,560px)] max-h-[min(85vh,680px)]"
+>
+  <header class="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
       <div class="min-w-0">
         <h2 id="readiness-help-title" class="text-base font-semibold text-white/95">知识资产就绪说明</h2>
         <p class="mt-0.5 text-xs text-white/45">
@@ -124,5 +118,4 @@
         {/each}
       </section>
     </div>
-  </div>
-{/if}
+</ModalShell>
