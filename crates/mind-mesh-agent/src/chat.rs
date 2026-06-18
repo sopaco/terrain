@@ -20,7 +20,7 @@ use tokio::time::{Duration, Instant, timeout};
 
 use crate::acp::{
     acp_available, acp_spawn_command, build_acp_config, default_ask_acp_skill_dir,
-    resolve_acp_settings,
+    execution_pure_acp, execution_uses_native_llm, resolve_acp_settings,
 };
 use crate::agent_assets::{
     AgentAssetsEnsureReport, ensure_agent_assets, prepare_agent_assets_for_ask,
@@ -331,10 +331,10 @@ impl ChatEngine {
         Self::with_settings(paths, model_config, resolve_acp_settings())
     }
 
-    /// Force native LLM execution regardless of `agent_execution` setting.
+    /// Force native LLM backend for hybrid workloads (context generation, SDD doc phases).
     pub fn new_native(paths: KnowledgePaths, model_config: ModelConfig) -> Result<Self> {
         let mut acp = resolve_acp_settings();
-        acp.agent_execution = AgentExecution::Native;
+        acp.agent_execution = AgentExecution::AcpNative;
         Self::with_settings(paths, model_config, acp)
     }
 
@@ -343,7 +343,7 @@ impl ChatEngine {
         model_config: ModelConfig,
         acp_settings: AcpSettings,
     ) -> Result<Self> {
-        let native = if acp_settings.agent_execution == AgentExecution::Native {
+        let native = if execution_uses_native_llm(&acp_settings) {
             Some(build_native_backend(&paths, &model_config)?)
         } else {
             #[cfg(feature = "opencode")]
@@ -354,13 +354,13 @@ impl ChatEngine {
                         acp_spawn_command(&acp_settings)
                     );
                 }
-                None
             }
             #[cfg(not(feature = "opencode"))]
             {
                 let _ = (&paths, &model_config);
-                anyhow::bail!("ACP Ask mode requires opencode feature");
+                anyhow::bail!("ACP mode requires opencode feature");
             }
+            None
         };
 
         Ok(Self {
@@ -509,7 +509,8 @@ impl ChatEngine {
         mut on_phase: impl FnMut(ChatPhase),
         mut on_usage: impl FnMut(&ChatTokenUsage),
     ) -> Result<ChatReply> {
-        if self.acp_settings.agent_execution == AgentExecution::Acp {
+        let use_acp = !session_id.starts_with("agent-ctx-") || execution_pure_acp(&self.acp_settings);
+        if use_acp {
             return self
                 .run_turn_acp(
                     session_id,

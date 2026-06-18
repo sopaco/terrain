@@ -5,7 +5,7 @@ use mind_mesh_core::{
     KnowledgePaths, SddPhase, SddPhaseResult, SddPlan,
 };
 
-use crate::acp::{acp_spawn_command, build_acp_config, execution_uses_acp};
+use crate::acp::{acp_spawn_command, build_acp_config, execution_pure_acp};
 use crate::chat::ChatEngine;
 use crate::settings::AcpSettings;
 
@@ -54,7 +54,7 @@ pub async fn run_sdd_phase(
         message: format!("Running SDD phase: {}", phase.label()),
     });
 
-    let response = if execution_uses_acp(acp_settings) || phase == SddPhase::CodeGen {
+    let response = if execution_pure_acp(acp_settings) || phase == SddPhase::CodeGen {
         run_sdd_acp_phase(&plan, phase, user_input, acp_settings, &mut on_progress).await?
     } else {
         let engine = engine.ok_or_else(|| {

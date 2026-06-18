@@ -8,6 +8,7 @@
     loading: boolean;
     acpOk: boolean;
     llmReady: boolean;
+    hybridNativeLlm?: boolean;
     agentContextBusy?: boolean;
     lithoBusy?: boolean;
     repackBusy?: boolean;
@@ -36,6 +37,7 @@
     loading,
     acpOk,
     llmReady,
+    hybridNativeLlm = false,
     agentContextBusy = false,
     lithoBusy = false,
     repackBusy = false,
@@ -72,10 +74,12 @@
   const needsEnvSetup = $derived(overview != null && !overview.agent_env.ready);
 
   const initHint = $derived.by(() => {
-    if (llmReady && acpOk) return null;
+    const needsLlm = hybridNativeLlm && !llmReady;
+    const needsAcp = !acpOk;
+    if (!needsLlm && !needsAcp) return null;
     const parts: string[] = [];
-    if (!llmReady) parts.push(`LLM（${TERMS.agentKnowledge}）`);
-    if (!acpOk) parts.push(`ACP（${TERMS.humanKnowledge}）`);
+    if (needsLlm) parts.push(`LLM（${TERMS.agentKnowledge}）`);
+    if (needsAcp) parts.push(`ACP（${TERMS.humanKnowledge}）`);
     return `部分步骤需要配置：${parts.join("、")}，可在设置中完成后再试`;
   });
 

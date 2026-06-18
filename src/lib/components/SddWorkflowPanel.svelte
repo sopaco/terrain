@@ -20,10 +20,11 @@
     repoPath: string | null;
     acpOk: boolean;
     llmReady: boolean;
+    hybridNativeLlm?: boolean;
     onStatus?: (message: string, kind: "idle" | "loading" | "progress" | "success" | "error") => void;
   }
 
-  let { projectSlug, repoPath, acpOk, llmReady, onStatus }: Props = $props();
+  let { projectSlug, repoPath, acpOk, llmReady, hybridNativeLlm = false, onStatus }: Props = $props();
 
   let status = $state<SddStatus | null>(null);
   let loading = $state(false);
@@ -87,11 +88,16 @@
       onStatus?.("请先新建或选择一个 SDD 需求。", "error");
       return;
     }
-    if (phase === "code_gen" && !acpOk) {
-      onStatus?.("代码生成需要 ACP 代理，请在设置中配置并确保其在 PATH 上。", "error");
+    if (!acpOk && (phase === "code_gen" || !hybridNativeLlm)) {
+      onStatus?.(
+        phase === "code_gen"
+          ? "代码生成需要 ACP 代理，请在设置中配置并确保其在 PATH 上。"
+          : "请先在设置中配置 ACP 代理。",
+        "error",
+      );
       return;
     }
-    if (phase !== "code_gen" && !llmReady) {
+    if (hybridNativeLlm && phase !== "code_gen" && !llmReady) {
       onStatus?.("请先在设置中配置 LLM。", "error");
       return;
     }

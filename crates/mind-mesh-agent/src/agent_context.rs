@@ -8,7 +8,7 @@ use mind_mesh_core::{
 
 use crate::acp::{
     build_acp_config, default_agent_arch_acp_skill_dir, default_ask_acp_skill_dir,
-    execution_uses_acp,
+    execution_pure_acp,
 };
 use crate::chat::ChatEngine;
 use crate::settings::AcpSettings;
@@ -37,7 +37,7 @@ pub async fn run_agent_context_generation(
         pack_agent_assets(paths, project_slug, repo_path).await?;
     }
 
-    let raw_answer = if execution_uses_acp(acp_settings) {
+    let raw_answer = if execution_pure_acp(acp_settings) {
         run_agent_context_acp(paths, acp_settings, project_slug, repo_path).await?
     } else {
         let engine = engine

@@ -86,7 +86,10 @@ export interface ProviderProfile {
   ollama_host?: string;
 }
 
-export type AgentExecution = "native" | "acp";
+export type AgentExecution = "acp" | "acp_native";
+
+/** @deprecated legacy value — maps to `acp_native` on load */
+export type LegacyAgentExecution = "native";
 
 /** @deprecated use AgentExecution */
 export type AskExecution = AgentExecution;

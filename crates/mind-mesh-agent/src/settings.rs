@@ -16,9 +16,12 @@ pub const DEFAULT_ACP_ARGS: &str = "acp";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentExecution {
+    /// Pure ACP — Ask, Litho, SDD, and context generation route through the external agent.
     #[default]
-    Native,
     Acp,
+    /// ACP + native LLM — ACP for Ask/Litho/codegen; native LLM for SDD doc phases and context.
+    #[serde(alias = "native")]
+    AcpNative,
 }
 
 /// Deprecated alias — use [`AgentExecution`].
@@ -44,7 +47,7 @@ impl Default for AcpSettings {
             binary: None,
             args: None,
             command: None,
-            agent_execution: AgentExecution::Native,
+            agent_execution: AgentExecution::Acp,
             auto_approve: Some(true),
         }
     }
@@ -269,4 +272,21 @@ fn dirs_home() -> PathBuf {
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn agent_execution_defaults_to_acp() {
+        assert_eq!(AcpSettings::default().agent_execution, AgentExecution::Acp);
+    }
+
+    #[test]
+    fn agent_execution_deserializes_legacy_native_as_hybrid() {
+        let json = r#"{"agent_execution":"native"}"#;
+        let settings: AcpSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.agent_execution, AgentExecution::AcpNative);
+    }
 }

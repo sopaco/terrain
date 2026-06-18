@@ -22,6 +22,7 @@
     checkAcp,
     computeFreshness,
     getKnowledgeRoot,
+    getModelSettings,
     getProjectOverview,
     initializeProject,
     listHumanDocs,
@@ -38,9 +39,12 @@
     searchKnowledge,
   } from "./lib/api";
   import { mergeFreshnessIntoOverview } from "./lib/mergeFreshness";
+  import { usesNativeLlm, normalizeAgentExecution } from "./lib/agentExecution";
+  import { parseAskSlashCommand } from "./lib/askSlashCommands";
   import { generateLabel, TERMS } from "./lib/terminology";
   import { citationToSourceSlice } from "./lib/resolveSource";
   import type {
+    AgentExecution,
     AppTab,
     ChatMessage,
     HumanDocEntry,
@@ -65,6 +69,9 @@
   let knowledgeRoot = $state("");
   let acpOk = $state(false);
   let llmStatus = $state<LlmStatus | null>(null);
+  let agentExecution = $state<AgentExecution>("acp");
+
+  const hybridNativeLlm = $derived(usesNativeLlm(agentExecution));
 
   let query = $state("");
   let hits = $state<SearchHit[]>([]);
@@ -164,6 +171,8 @@
   async function refresh() {
     setStatus("正在刷新项目列表…", "loading");
     try {
+      const settings = await getModelSettings();
+      agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
       [projects, staleProjects, acpOk, llmStatus] = await Promise.all([
         listProjects(),
         listStaleProjects(),
@@ -421,8 +430,12 @@
       return;
     }
     if (agentContextBusy) return;
-    if (!llmStatus?.ready) {
-        setStatus("请先在设置中配置 LLM。", "error");
+    if (!acpOk) {
+      setStatus("请先在设置中配置 ACP 代理。", "error");
+      return;
+    }
+    if (hybridNativeLlm && !llmStatus?.ready) {
+      setStatus("请先在设置中配置 LLM。", "error");
       return;
     }
     const slug = selectedProject;
@@ -568,9 +581,37 @@
     }
   }
 
+  function clearChatHistory() {
+    if (!selectedProject) return;
+    updateChat(selectedProject, () => []);
+    setStatus("对话历史已清空", "success");
+  }
+
+  function handleAskInput(q: string) {
+    if (!selectedProject) {
+      setStatus("请先选择项目", "error");
+      return;
+    }
+    if (parseAskSlashCommand(q)?.type === "clear") {
+      clearChatHistory();
+      return;
+    }
+    openDeepWiki(q);
+  }
+
   function openDeepWiki(question?: string) {
     if (!selectedProject) {
-      setStatus("Select a project before asking.", "error");
+      setStatus("请先选择项目", "error");
+      return;
+    }
+    if (question && parseAskSlashCommand(question)?.type === "clear") {
+      clearChatHistory();
+      deepWikiOpen = true;
+      deepWikiInitialQuestion = null;
+      return;
+    }
+    if (!acpOk) {
+      setStatus("请先在设置中配置 ACP 代理。", "error");
       return;
     }
     deepWikiInitialQuestion = question ?? null;
@@ -758,6 +799,7 @@
       loading={overviewLoading}
       {acpOk}
       llmReady={llmStatus?.ready ?? false}
+      {hybridNativeLlm}
       {agentContextBusy}
       lithoBusy={lithoBusy}
       repackBusy={repackBusy}
@@ -788,6 +830,7 @@
       repoPath={selectedRepoPath}
       {acpOk}
       llmReady={llmStatus?.ready ?? false}
+      {hybridNativeLlm}
       onStatus={(message, kind) => setStatus(message, kind)}
     />
   </div>
@@ -855,7 +898,9 @@
             <div class="truncate" title={knowledgeRoot || selectedRepoPath || "—"}>
               📁 {knowledgeRoot || (selectedRepoPath ? `${selectedRepoPath}/.mind-mesh` : "—")}
             </div>
-            <div class="mt-1">ACP {acpOk ? "✓" : "✗"} · LLM {llmStatus?.ready ? "✓" : "✗"}</div>
+            <div class="mt-1">
+              ACP {acpOk ? "✓" : "✗"}{#if hybridNativeLlm} · LLM {llmStatus?.ready ? "✓" : "✗"}{/if}
+            </div>
           </div>
         </aside>
 
@@ -904,12 +949,19 @@
           {/if}
 
           <AskBar
-            disabled={!selectedProject}
-            disabledReason={!selectedProject ? "请先选择项目" : null}
+            disabled={!selectedProject || !acpOk}
+            disabledReason={
+              !selectedProject
+                ? "请先选择项目"
+                : !acpOk
+                  ? "请先在设置中配置 ACP 代理"
+                  : null
+            }
             placeholder={activeDoc
               ? `就「${activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
-              : "就当前项目提问…"}
-            onask={(q) => openDeepWiki(q)}
+              : "就当前项目提问… (/clear 清空对话)"}
+            onclear={clearChatHistory}
+            onask={handleAskInput}
           />
         </main>
       </div>
@@ -949,8 +1001,16 @@
 <SettingsPanel
   open={settingsOpen}
   onclose={() => (settingsOpen = false)}
-  onsaved={(status) => {
+  onsaved={async (status) => {
     llmStatus = status;
-    setStatus(status.ready ? "LLM settings saved" : status.message, status.ready ? "success" : "error");
+    try {
+      const settings = await getModelSettings();
+      agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
+    } catch {
+      // keep previous mode
+    }
+    acpOk = await checkAcp();
+    const ok = hybridNativeLlm ? status.ready && acpOk : acpOk;
+    setStatus(ok ? "设置已保存" : "请检查 ACP 与 LLM 配置", ok ? "success" : "error");
   }}
 />

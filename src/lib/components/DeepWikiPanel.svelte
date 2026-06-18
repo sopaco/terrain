@@ -2,6 +2,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
   import { askKnowledge, readDocument } from "../api";
+  import { parseAskSlashCommand } from "../askSlashCommands";
   import {
     appendStepText,
     finalizeAssistantSteps,
@@ -333,6 +334,14 @@
   async function sendQuestion(q: string) {
     if (!q.trim() || busy || !projectSlug) return;
 
+    const slash = parseAskSlashCommand(q);
+    if (slash?.type === "clear") {
+      onmessageschange(() => []);
+      input = "";
+      showCopyToast("对话历史已清空");
+      return;
+    }
+
     const question = q.trim();
     const requestId = crypto.randomUUID();
     const requestRepo = repoPath;
@@ -661,7 +670,7 @@
           <textarea
             class="mb-2 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
             rows="2"
-            placeholder="Ask a follow-up…"
+            placeholder="Ask a follow-up… (/clear 清空历史)"
             bind:value={input}
             onkeydown={onKeydown}
             oncompositionstart={() => (composing = true)}

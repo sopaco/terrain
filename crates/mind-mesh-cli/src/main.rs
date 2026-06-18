@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use mind_mesh_agent::{
-    agent_execution_ready, execution_uses_acp, resolve_acp_settings, resolve_model_config,
+    agent_execution_ready, execution_uses_native_llm, resolve_acp_settings, resolve_model_config,
     run_agent_context_generation, run_litho_generation, ChatEngine,
 };
 use mind_mesh_core::{
@@ -444,10 +444,10 @@ async fn main() -> Result<()> {
                 let acp = resolve_acp_settings();
                 agent_execution_ready(&acp, &model_config)
                     .map_err(|e| anyhow::anyhow!(e))?;
-                let engine = if execution_uses_acp(&acp) {
-                    None
-                } else {
+                let engine = if execution_uses_native_llm(&acp) {
                     Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config)?))
+                } else {
+                    None
                 };
                 let result =
                     run_agent_context_generation(&paths, engine, &acp, &slug, &repo).await?;

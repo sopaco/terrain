@@ -19,7 +19,7 @@ mod tools;
 pub use acp::{
     acp_args, acp_available, acp_binary, acp_spawn_command, agent_execution_ready,
     build_acp_config, default_agent_arch_acp_skill_dir, default_ask_acp_skill_dir,
-    execution_uses_acp, resolve_acp_settings,
+    execution_pure_acp, execution_uses_acp, execution_uses_native_llm, resolve_acp_settings,
 };
 pub use builder::{
     knowledge_paths_from_env, knowledge_root_from_env, AgentConfig, build_agent,

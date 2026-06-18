@@ -1,6 +1,7 @@
 use mind_mesh_agent::{
     acp_available, acp_spawn_command, agent_execution_ready, env_plan_for_repo, env_status_for_repo,
-    execution_uses_acp, knowledge_paths_from_env, llm_status, load_model_settings,
+    execution_pure_acp, execution_uses_native_llm, knowledge_paths_from_env, llm_status,
+    load_model_settings,
     prepare_litho_generation, resolve_acp_settings, run_agent_context_generation, run_env_integration,
     run_litho_generation, run_project_initialization, run_sdd_phase, validate_repo_path,
     AcpSettings, ChatEngine, AgentContextGenerationResult, ChatPhase, ChatReply, ChatTokenUsage,
@@ -295,22 +296,22 @@ pub async fn run_quick_refresh_cmd(
     let acp = resolved_acp_settings();
     let model_config = state.get_model_config();
     if agent_execution_ready(&acp, &model_config).is_ok() {
-        let engine = if execution_uses_acp(&acp) {
-            None
-        } else {
+        let engine = if execution_uses_native_llm(&acp) {
             Some(Arc::new(
                 ChatEngine::new_native(paths.clone(), model_config)
                     .map_err(|e| e.to_string())?,
             ))
+        } else {
+            None
         };
         match run_agent_context_generation(&paths, engine, &acp, &slug, &repo_path).await {
             Ok(_) => agent_context_regenerated = true,
             Err(e) => notes.push(format!("Agent context: {e}")),
         }
-    } else if execution_uses_acp(&acp) {
+    } else if execution_pure_acp(&acp) {
         notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
     } else {
-        notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
+        notes.push("Agent 友好的知识资产：请配置 ACP 代理与 LLM".into());
     }
 
     let freshness =
@@ -719,7 +720,7 @@ pub async fn run_sdd_phase_cmd(
     let input = user_input.unwrap_or_default();
 
     let acp = resolved_acp_settings();
-    let engine = if execution_uses_acp(&acp) || phase == SddPhase::CodeGen {
+    let engine = if execution_pure_acp(&acp) || phase == SddPhase::CodeGen {
         None
     } else {
         Some(state.chat_engine().await.map_err(|e| e.to_string())?)
@@ -773,13 +774,13 @@ pub async fn run_agent_context_generation_cmd(
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let acp = resolved_acp_settings();
     agent_execution_ready(&acp, &state.get_model_config()).map_err(|e| e.to_string())?;
-    let engine = if execution_uses_acp(&acp) {
-        None
-    } else {
+    let engine = if execution_uses_native_llm(&acp) {
         Some(Arc::new(
             ChatEngine::new_native(state.paths.clone(), state.get_model_config())
                 .map_err(|e| e.to_string())?,
         ))
+    } else {
+        None
     };
     run_agent_context_generation(&state.paths, engine, &acp, &slug, &repo_path)
         .await

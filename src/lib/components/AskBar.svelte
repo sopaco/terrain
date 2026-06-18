@@ -1,11 +1,13 @@
 <script lang="ts">
   import { shouldSubmitOnEnter } from "../ime";
+  import { parseAskSlashCommand } from "../askSlashCommands";
 
   interface Props {
     disabled?: boolean;
     disabledReason?: string | null;
     placeholder?: string;
     onask: (question: string) => void;
+    onclear?: () => void;
   }
 
   let {
@@ -13,6 +15,7 @@
     disabledReason = null,
     placeholder = "Ask about this project…",
     onask,
+    onclear,
   }: Props = $props();
 
   let input = $state("");
@@ -22,6 +25,11 @@
     if (composing) return;
     const q = input.trim();
     if (!q || disabled) return;
+    if (parseAskSlashCommand(q)?.type === "clear") {
+      onclear?.();
+      input = "";
+      return;
+    }
     onask(q);
     input = "";
   }
@@ -66,7 +74,7 @@
       <p class="mt-2 text-center text-xs text-white/35">{disabledReason}</p>
     {:else}
       <p class="mt-2 text-center text-[11px] text-white/30">
-        Enter 发送 · Shift+Enter 换行 · 中文输入法选词后再按 Enter
+        Enter 发送 · Shift+Enter 换行 · /clear 清空对话 · 中文输入法选词后再按 Enter
       </p>
     {/if}
   </div>

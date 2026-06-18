@@ -63,29 +63,49 @@ pub fn default_agent_arch_acp_skill_dir() -> PathBuf {
     default_agent_arch_skill_dir()
 }
 
-/// True when MindMesh should route LLM workloads through the configured ACP agent.
+/// True when Ask/Litho/SDD codegen should route through the configured ACP agent.
 pub fn execution_uses_acp(settings: &AcpSettings) -> bool {
+    matches!(
+        settings.agent_execution,
+        AgentExecution::Acp | AgentExecution::AcpNative
+    )
+}
+
+/// Pure ACP — no native LLM workloads (all generation via external agent).
+pub fn execution_pure_acp(settings: &AcpSettings) -> bool {
     settings.agent_execution == AgentExecution::Acp
 }
 
-/// Whether the active execution mode has its backend configured (ACP on PATH or native LLM ready).
+/// Hybrid mode — native LLM supplements ACP for SDD doc phases and agent context.
+pub fn execution_uses_native_llm(settings: &AcpSettings) -> bool {
+    settings.agent_execution == AgentExecution::AcpNative
+}
+
+/// Whether the active execution mode has its backends configured.
 pub fn agent_execution_ready(settings: &AcpSettings, config: &ModelConfig) -> Result<(), String> {
-    if execution_uses_acp(settings) {
-        if acp_available(settings) {
-            Ok(())
-        } else {
-            Err(format!(
-                "ACP agent not found on PATH: {}",
-                acp_spawn_command(settings)
-            ))
-        }
+    let acp_err = if acp_available(settings) {
+        None
     } else {
-        let status = llm_status(config);
-        if status.ready {
-            Ok(())
-        } else {
-            Err(format!("LLM not ready: {}", status.message))
-        }
+        Some(format!(
+            "ACP agent not found on PATH: {}",
+            acp_spawn_command(settings)
+        ))
+    };
+
+    if execution_pure_acp(settings) {
+        return acp_err.map_or(Ok(()), Err);
+    }
+
+    let llm_err = if llm_status(config).ready {
+        None
+    } else {
+        Some(format!("LLM not ready: {}", llm_status(config).message))
+    };
+
+    match (acp_err, llm_err) {
+        (None, None) => Ok(()),
+        (Some(e), _) => Err(e),
+        (_, Some(e)) => Err(e),
     }
 }
 
