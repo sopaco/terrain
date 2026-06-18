@@ -229,11 +229,9 @@
       }
     }
     setStatus(`项目：${item.name}`, "idle", item.slug);
-    await Promise.all([
-      loadHumanDocs(item.slug),
-      loadProjectOverview(item.slug),
-      refreshKnowledgeRoot(item.slug),
-    ]);
+    void loadHumanDocs(item.slug);
+    void loadProjectOverview(item.slug);
+    void refreshKnowledgeRoot(item.slug);
   }
 
   async function openFolderPath(path: string) {

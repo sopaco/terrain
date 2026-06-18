@@ -194,15 +194,15 @@ fn build_asset_health(
     meta_summary: &str,
     repo_path: &str,
 ) -> Vec<crate::schema::AssetTrackHealth> {
-    use crate::assets::discover_meta_files;
+    use crate::assets::has_repo_meta_configured;
     use crate::schema::AssetTrackHealth;
 
     let repo_meta_configured = if !repo_path.is_empty() {
-        !discover_meta_files(Path::new(repo_path)).is_empty()
+        has_repo_meta_configured(Path::new(repo_path))
     } else {
         resolve_project_repo_path(paths, project_slug, None)
             .ok()
-            .map(|repo| !discover_meta_files(Path::new(&repo)).is_empty())
+            .map(|repo| has_repo_meta_configured(Path::new(&repo)))
             .unwrap_or(false)
     };
 

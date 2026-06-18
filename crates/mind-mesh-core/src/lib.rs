@@ -9,6 +9,7 @@ pub mod model_text;
 pub mod paths;
 pub mod project;
 pub mod registry;
+pub mod repo_walk;
 pub mod render;
 pub mod schema;
 pub mod search;

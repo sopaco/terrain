@@ -7,11 +7,11 @@ use std::path::{Path, PathBuf};
 
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use walkdir::WalkDir;
 
 use crate::doc::write_json;
 use crate::error::{CoreError, Result};
 use crate::paths::KnowledgePaths;
+use crate::repo_walk::{discover_repo_walk, is_path_gitignored};
 
 pub const META_FILENAME: &str = "mind-mesh-meta.json";
 const DEFAULT_INPUT_MAX_CHARS: usize = 3_500;
@@ -101,7 +101,12 @@ pub struct MetaInputSourceRef {
     pub truncated: bool,
 }
 
-/// Discover `mind-mesh-meta.json` under the repository (root, `.mind-mesh/`, shallow walk).
+/// Fast check for overview UI — only canonical locations (no repo walk).
+pub fn has_repo_meta_configured(repo: &Path) -> bool {
+    repo.join(META_FILENAME).is_file() || repo.join(".mind-mesh").join(META_FILENAME).is_file()
+}
+
+/// Discover `mind-mesh-meta.json` under the repository (root, `.mind-mesh/`, gitignore-aware walk).
 pub fn discover_meta_files(repo: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
 
@@ -114,41 +119,22 @@ pub fn discover_meta_files(repo: &Path) -> Vec<PathBuf> {
         }
     }
 
-    for entry in WalkDir::new(repo)
-        .max_depth(6)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-    {
+    for entry in discover_repo_walk(repo).filter_map(|e| e.ok()) {
         let path = entry.path();
-        if should_skip_meta_walk(path) {
+        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
             continue;
         }
-        if path.file_name().and_then(|n| n.to_str()) == Some(META_FILENAME) {
-            if !found.iter().any(|p| p == path) {
-                found.push(path.to_path_buf());
-            }
+        if path.file_name().and_then(|n| n.to_str()) != Some(META_FILENAME) {
+            continue;
+        }
+        if !found.iter().any(|p| p == path) {
+            found.push(path.to_path_buf());
         }
     }
 
     found.sort();
     found.dedup();
     found
-}
-
-fn should_skip_meta_walk(path: &Path) -> bool {
-    let parts: Vec<&str> = path
-        .components()
-        .filter_map(|c| c.as_os_str().to_str())
-        .collect();
-    for (i, part) in parts.iter().enumerate() {
-        match *part {
-            ".git" | "node_modules" | "target" | "dist" | "build" => return true,
-            ".mind-mesh" if parts.get(i + 1) == Some(&"knowledge") => return true,
-            _ => {}
-        }
-    }
-    false
 }
 
 /// Auto-scan `.mind-mesh/knowledge/**/*.md` for private domain knowledge.
@@ -281,7 +267,7 @@ fn resolve_input(
                 CoreError::InvalidDoc(format!("invalid glob pattern {pattern}: {e}"))
             })? {
                 let path = entry.map_err(|e| CoreError::InvalidDoc(e.to_string()))?;
-                if !path.is_file() || should_skip_meta_walk(&path) {
+                if !path.is_file() || is_path_gitignored(repo, &path) {
                     continue;
                 }
                 let rel = path

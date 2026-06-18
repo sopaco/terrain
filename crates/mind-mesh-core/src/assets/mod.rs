@@ -36,9 +36,9 @@ pub use litho::{
 pub use pack_read::{agent_pack_ready, read_agent_pack_file, AgentPackFileContent};
 pub use project_meta::{
     collect_knowledge_dir_inputs, collect_project_meta, discover_meta_files,
-    format_meta_bundle_for_prompt, meta_inputs_ready, meta_inputs_status, persist_meta_inputs,
-    CollectedMetaInput, MetaInputSpec, MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile,
-    META_FILENAME,
+    format_meta_bundle_for_prompt, has_repo_meta_configured, meta_inputs_ready,
+    meta_inputs_status, persist_meta_inputs, CollectedMetaInput, MetaInputSpec,
+    MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile, META_FILENAME,
 };
 pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
 pub use sdd::{

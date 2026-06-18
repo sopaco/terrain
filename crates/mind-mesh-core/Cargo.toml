@@ -23,6 +23,7 @@ slug.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["process", "io-util"] }
 walkdir.workspace = true
+ignore.workspace = true
 repomix-core = { workspace = true, optional = true }
 ts-rs = { workspace = true, optional = true }
 

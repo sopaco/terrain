@@ -23,6 +23,7 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
   - Cargo.toml
   - svelte.config.js
   - crates/
+    - mind-mesh-ts-export/
     - mind-mesh-core/
     - mind-mesh-cli/
     - mind-mesh-agent/
@@ -68,6 +69,7 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
     - tauri-utils/
     - cookie/
   - .env.example
+  - bindings/
   - rust-toolchain.toml
   - AGENTS.md
   - vite.config.ts
