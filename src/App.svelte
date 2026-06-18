@@ -42,130 +42,60 @@
   import { mergeFreshnessIntoOverview } from "./lib/mergeFreshness";
   import { usesNativeLlm, normalizeAgentExecution } from "./lib/agentExecution";
   import { parseAskSlashCommand } from "./lib/askSlashCommands";
-  import { generateLabel, TERMS } from "./lib/terminology";
+  import { generateLabel, TERMS, UI_MESSAGES } from "./lib/terminology";
   import { citationToSourceSlice } from "./lib/resolveSource";
+  import { setStatus, status } from "./lib/stores/status.svelte";
+  import {
+    chatSessions,
+    deepWikiSources,
+    knowledgeSources,
+    setDeepWikiSource,
+    setKnowledgeSource,
+    updateChat,
+  } from "./lib/stores/chat.svelte";
+  import {
+    currentTask,
+    project,
+    selectedProjectMeta,
+    setProjectTask,
+  } from "./lib/stores/project.svelte";
   import type {
-    AgentExecution,
-    AppTab,
     ChatMessage,
     HumanDocEntry,
     KnowledgeDoc,
-    LlmStatus,
-    ProjectOverview,
     ProjectSummary,
     SearchHit,
     SourceCitation,
     SourceSlice,
-    StaleProjectSummary,
   } from "./lib/types";
 
-  type ProjectTaskState = {
-    repackBusy: boolean;
-    lithoBusy: boolean;
-    lithoProgress: string;
-  };
+  const hybridNativeLlm = $derived(usesNativeLlm(project.agentExecution));
 
-  let projects = $state<ProjectSummary[]>([]);
-  let staleProjects = $state<StaleProjectSummary[]>([]);
-  let knowledgeRoot = $state("");
-  let acpOk = $state(false);
-  let llmStatus = $state<LlmStatus | null>(null);
-  let agentExecution = $state<AgentExecution>("acp");
-
-  const hybridNativeLlm = $derived(usesNativeLlm(agentExecution));
-
-  let query = $state("");
-  let hits = $state<SearchHit[]>([]);
-  let activeDoc = $state<KnowledgeDoc | null>(null);
-  let selectedProject = $state<string | null>(null);
-  let selectedRepoPath = $state<string | null>(null);
-  let humanDocs = $state<HumanDocEntry[]>([]);
-  let activeHumanPath = $state<string | null>(null);
-  let humanDocsLoading = $state(false);
-
-  let projectTasks = $state<Record<string, ProjectTaskState>>({});
-  let chatSessions = $state<Record<string, ChatMessage[]>>({});
-  let deepWikiSources = $state<Record<string, SourceSlice | null>>({});
-  let knowledgeSources = $state<Record<string, SourceSlice | null>>({});
-
-  let projectPickerOpen = $state(false);
-  let settingsOpen = $state(false);
-  let helpOpen = $state(false);
-  let deepWikiOpen = $state(false);
-  let deepWikiInitialQuestion = $state<string | null>(null);
-  let activeTab = $state<AppTab>("overview");
-  let projectOverview = $state<ProjectOverview | null>(null);
-  let overviewLoading = $state(false);
-  let freshnessLoading = $state(false);
-  let agentContextBusy = $state(false);
-  let quickRefreshBusy = $state(false);
-  let initBusy = $state(false);
-  let initProgress = $state<string | null>(null);
-
-  let docLoading = $state(false);
-  let statusMessage = $state("就绪");
-  let statusKind = $state<StatusKind>("idle");
-  let statusDetail = $state<string | null>(null);
-
-  const selectedProjectMeta = $derived(
-    projects.find((p) => p.slug === selectedProject) ?? null,
-  );
-  const currentTask = $derived(
-    selectedProject
-      ? (projectTasks[selectedProject] ?? { repackBusy: false, lithoBusy: false, lithoProgress: "" })
-      : { repackBusy: false, lithoBusy: false, lithoProgress: "" },
-  );
+  const selectedProjectMetaDerived = $derived(selectedProjectMeta());
+  const currentTaskDerived = $derived(currentTask());
   const currentMessages = $derived(
-    selectedProject ? (chatSessions[selectedProject] ?? []) : [],
+    project.selectedSlug ? (chatSessions[project.selectedSlug] ?? []) : [],
   );
   const currentDeepWikiSource = $derived(
-    selectedProject ? (deepWikiSources[selectedProject] ?? null) : null,
+    project.selectedSlug ? (deepWikiSources[project.selectedSlug] ?? null) : null,
   );
   const knowledgeSourceSlice = $derived(
-    selectedProject ? (knowledgeSources[selectedProject] ?? null) : null,
+    project.selectedSlug ? (knowledgeSources[project.selectedSlug] ?? null) : null,
   );
-  const repackBusy = $derived(currentTask.repackBusy);
-  const lithoBusy = $derived(currentTask.lithoBusy);
-  const lithoProgress = $derived(currentTask.lithoProgress);
-
-  function setStatus(message: string, kind: StatusKind = "idle", detail: string | null = null) {
-    statusMessage = message;
-    statusKind = kind;
-    statusDetail = detail;
-  }
-
-  function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {
-    const prev = projectTasks[slug] ?? { repackBusy: false, lithoBusy: false, lithoProgress: "" };
-    projectTasks = { ...projectTasks, [slug]: { ...prev, ...patch } };
-  }
-
-  function updateChat(
-    slug: string,
-    update: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]),
-  ) {
-    const prev = chatSessions[slug] ?? [];
-    const next = typeof update === "function" ? update(prev) : update;
-    chatSessions = { ...chatSessions, [slug]: next };
-  }
-
-  function setDeepWikiSource(slug: string, slice: SourceSlice | null) {
-    deepWikiSources = { ...deepWikiSources, [slug]: slice };
-  }
-
-  function setKnowledgeSource(slug: string, slice: SourceSlice | null) {
-    knowledgeSources = { ...knowledgeSources, [slug]: slice };
-  }
+  const repackBusy = $derived(currentTaskDerived.repackBusy);
+  const lithoBusy = $derived(currentTaskDerived.lithoBusy);
+  const lithoProgress = $derived(currentTaskDerived.lithoProgress);
 
   async function refreshKnowledgeRoot(slug?: string | null) {
-    const target = slug ?? selectedProject;
+    const target = slug ?? project.selectedSlug;
     if (!target) {
-      knowledgeRoot = "";
+      project.knowledgeRoot = "";
       return;
     }
     try {
-      knowledgeRoot = await getKnowledgeRoot(target);
+      project.knowledgeRoot = await getKnowledgeRoot(target);
     } catch {
-      knowledgeRoot = "";
+      project.knowledgeRoot = "";
     }
   }
 
@@ -173,19 +103,19 @@
     setStatus("正在刷新项目列表…", "loading");
     try {
       const settings = await getModelSettings();
-      agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
-      [projects, staleProjects, acpOk, llmStatus] = await Promise.all([
+      project.agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
+      [project.projects, project.staleProjects, project.acpOk, project.llmStatus] = await Promise.all([
         listProjects(),
         listStaleProjects(),
         checkAcp(),
         checkLlm(),
       ]);
-      if (!selectedProject && projects.length > 0) {
-        await selectProject(projects[0]);
+      if (!project.selectedSlug && project.projects.length > 0) {
+        await selectProject(project.projects[0]);
       } else {
         await refreshKnowledgeRoot();
       }
-      setStatus(`已索引 ${projects.length} 个项目`, "success");
+      setStatus(`已索引 ${project.projects.length} 个项目`, "success");
     } catch (e) {
       setStatus(String(e), "error");
     }
@@ -193,61 +123,61 @@
 
   async function loadProjectOverviewFreshness(slug: string, repoPath: string | null | undefined) {
     if (!repoPath) {
-      freshnessLoading = false;
+      project.freshnessLoading = false;
       return;
     }
     const requestSlug = slug;
-    freshnessLoading = true;
+    project.freshnessLoading = true;
     try {
       const cached = await readProjectFreshnessCached(slug);
-      if (cached && selectedProject === requestSlug && projectOverview) {
-        projectOverview = mergeFreshnessIntoOverview(projectOverview, cached);
+      if (cached && project.selectedSlug === requestSlug && project.projectOverview) {
+        project.projectOverview = mergeFreshnessIntoOverview(project.projectOverview, cached);
       }
 
       const freshness = await computeFreshness(slug, repoPath);
-      if (selectedProject === requestSlug && projectOverview) {
-        projectOverview = mergeFreshnessIntoOverview(projectOverview, freshness);
+      if (project.selectedSlug === requestSlug && project.projectOverview) {
+        project.projectOverview = mergeFreshnessIntoOverview(project.projectOverview, freshness);
       }
     } catch {
       /* keep cached or empty freshness */
     } finally {
-      if (selectedProject === requestSlug) {
-        freshnessLoading = false;
+      if (project.selectedSlug === requestSlug) {
+        project.freshnessLoading = false;
       }
     }
   }
 
   async function loadProjectOverview(slug: string, opts?: { skipFreshness?: boolean }) {
-    overviewLoading = true;
+    project.overviewLoading = true;
     try {
-      projectOverview = await getProjectOverview(slug);
-      if (projectOverview?.repo_path && !opts?.skipFreshness) {
-        void loadProjectOverviewFreshness(slug, projectOverview.repo_path);
+      project.projectOverview = await getProjectOverview(slug);
+      if (project.projectOverview?.repo_path && !opts?.skipFreshness) {
+        void loadProjectOverviewFreshness(slug, project.projectOverview.repo_path);
       } else {
-        freshnessLoading = false;
+        project.freshnessLoading = false;
       }
     } catch {
-      projectOverview = null;
-      freshnessLoading = false;
+      project.projectOverview = null;
+      project.freshnessLoading = false;
     } finally {
-      overviewLoading = false;
+      project.overviewLoading = false;
     }
   }
 
   async function loadHumanDocs(slug: string) {
-    humanDocsLoading = true;
+    project.humanDocsLoading = true;
     try {
-      humanDocs = await listHumanDocs(slug);
+      project.humanDocs = await listHumanDocs(slug);
     } catch {
-      humanDocs = [];
+      project.humanDocs = [];
     } finally {
-      humanDocsLoading = false;
+      project.humanDocsLoading = false;
     }
   }
 
   async function addProject() {
-    projectPickerOpen = false;
-    if (initBusy) return;
+    project.pickerOpen = false;
+    if (project.initBusy) return;
     let picked: string | null;
     try {
       picked = await open({ directory: true, multiple: false });
@@ -259,50 +189,50 @@
     await triggerProjectInitialization(picked);
   }
 
-  async function removeProjectFromList(project: ProjectSummary) {
-    projectPickerOpen = false;
+  async function removeProjectFromList(item: ProjectSummary) {
+    project.pickerOpen = false;
     try {
-      await removeProject(project.slug);
-      if (selectedProject === project.slug) {
-        selectedProject = null;
-        selectedRepoPath = null;
-        projectOverview = null;
-        activeDoc = null;
-        activeHumanPath = null;
-        humanDocs = [];
-        hits = [];
+      await removeProject(item.slug);
+      if (project.selectedSlug === item.slug) {
+        project.selectedSlug = null;
+        project.selectedRepoPath = null;
+        project.projectOverview = null;
+        project.activeDoc = null;
+        project.activeHumanPath = null;
+        project.humanDocs = [];
+        project.hits = [];
       }
       await refresh();
-      setStatus(`已从列表移除：${project.name}`, "success");
+      setStatus(`已从列表移除：${item.name}`, "success");
     } catch (e) {
       setStatus(String(e), "error");
     }
   }
 
-  async function selectProject(project: ProjectSummary) {
-    projectPickerOpen = false;
-    if (selectedProject !== project.slug) {
-      activeDoc = null;
-      activeHumanPath = null;
-      hits = [];
-      deepWikiInitialQuestion = null;
+  async function selectProject(item: ProjectSummary) {
+    project.pickerOpen = false;
+    if (project.selectedSlug !== item.slug) {
+      project.activeDoc = null;
+      project.activeHumanPath = null;
+      project.hits = [];
+      project.deepWikiInitialQuestion = null;
     }
-    selectedProject = project.slug;
-    selectedRepoPath = project.repo_path ?? null;
-    if (!selectedRepoPath) {
+    project.selectedSlug = item.slug;
+    project.selectedRepoPath = item.repo_path ?? null;
+    if (!project.selectedRepoPath) {
       try {
-        const doc = await readDocument(project.path);
+        const doc = await readDocument(item.path);
         const source = doc.frontmatter.source;
-        selectedRepoPath = typeof source === "string" ? source : null;
+        project.selectedRepoPath = typeof source === "string" ? source : null;
       } catch {
-        selectedRepoPath = null;
+        project.selectedRepoPath = null;
       }
     }
-    setStatus(`项目：${project.name}`, "idle", project.slug);
+    setStatus(`项目：${item.name}`, "idle", item.slug);
     await Promise.all([
-      loadHumanDocs(project.slug),
-      loadProjectOverview(project.slug),
-      refreshKnowledgeRoot(project.slug),
+      loadHumanDocs(item.slug),
+      loadProjectOverview(item.slug),
+      refreshKnowledgeRoot(item.slug),
     ]);
   }
 
@@ -310,14 +240,14 @@
     try {
       await openRepoFolder(path);
     } catch (e) {
-      setStatus(`Failed to open folder: ${e}`, "error");
+      setStatus(UI_MESSAGES.openFolderFailed(e), "error");
     }
   }
 
-  async function openProjectFolder(project: ProjectSummary) {
-    const repo = project.repo_path ?? (project.slug === selectedProject ? selectedRepoPath : null);
+  async function openProjectFolder(item: ProjectSummary) {
+    const repo = item.repo_path ?? (item.slug === project.selectedSlug ? project.selectedRepoPath : null);
     if (!repo) {
-      setStatus(`No repository path for ${project.name}`, "error");
+      setStatus(`项目 ${item.name} 未关联仓库路径`, "error");
       return;
     }
     await openFolderPath(repo);
@@ -332,44 +262,46 @@
   const lithoProgressParts = $derived(parseProgressLabel(lithoProgress));
 
   const showTaskProgressBar = $derived(
-    Boolean(selectedProject && (lithoProgress || (initBusy && initProgress))),
+    Boolean(project.selectedSlug && (lithoProgress || (project.initBusy && project.initProgress))),
   );
 
   const showStatusBar = $derived(
-    !showTaskProgressBar && (statusKind !== "idle" || statusMessage !== "就绪"),
+    !showTaskProgressBar && (status.kind !== "idle" || status.message !== "就绪"),
   );
 
   function openArchitectureDoc() {
-    if (!projectOverview?.agent_context.path || !selectedProject) return;
+    const slug = project.selectedSlug;
+    const docPath = project.projectOverview?.agent_context.path;
+    if (!docPath || !slug) return;
     void (async () => {
-      activeTab = "knowledge";
-      docLoading = true;
+      project.activeTab = "knowledge";
+      project.docLoading = true;
       try {
-        await loadHumanDocs(selectedProject);
-        activeDoc = await readDocument(projectOverview.agent_context.path);
-        activeHumanPath = projectOverview.agent_context.path;
+        await loadHumanDocs(slug);
+        project.activeDoc = await readDocument(docPath);
+        project.activeHumanPath = docPath;
       } catch (e) {
         setStatus(String(e), "error");
       } finally {
-        docLoading = false;
+        project.docLoading = false;
       }
     })();
   }
 
   async function triggerProjectInitialization(repoPath: string, slug?: string) {
-    if (initBusy) return;
-    initBusy = true;
-    initProgress = "正在扫描仓库…";
+    if (project.initBusy) return;
+    project.initBusy = true;
+    project.initProgress = "正在扫描仓库…";
     const targetSlug = slug ?? null;
     if (targetSlug) {
-      selectedProject = targetSlug;
-      selectedRepoPath = repoPath;
+      project.selectedSlug = targetSlug;
+      project.selectedRepoPath = repoPath;
       setProjectTask(targetSlug, { repackBusy: true, lithoBusy: false, lithoProgress: "" });
     }
     try {
       const result = await initializeProject(repoPath, slug);
-      selectedProject = result.project_slug;
-      selectedRepoPath = result.repo_path;
+      project.selectedSlug = result.project_slug;
+      project.selectedRepoPath = result.repo_path;
       const note = result.notes.length ? ` · ${result.notes.join("；")}` : "";
       const lithoNote = result.litho_ran && !result.human_docs_complete ? " · Litho 文档未完成" : "";
       setStatus(
@@ -386,27 +318,27 @@
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      initBusy = false;
-      initProgress = null;
+      project.initBusy = false;
+      project.initProgress = null;
       if (targetSlug) {
         setProjectTask(targetSlug, { repackBusy: false, lithoBusy: false, lithoProgress: "" });
-      } else if (selectedProject) {
-        setProjectTask(selectedProject, { repackBusy: false, lithoBusy: false, lithoProgress: "" });
+      } else if (project.selectedSlug) {
+        setProjectTask(project.selectedSlug, { repackBusy: false, lithoBusy: false, lithoProgress: "" });
       }
     }
   }
 
   async function triggerQuickRefresh() {
-    if (!selectedRepoPath || !selectedProject) {
-      setStatus("Select a project with a linked repository first.", "error");
+    if (!project.selectedRepoPath || !project.selectedSlug) {
+      setStatus(UI_MESSAGES.selectProjectWithRepo, "error");
       return;
     }
-    if (quickRefreshBusy) return;
-    const slug = selectedProject;
-    quickRefreshBusy = true;
+    if (project.quickRefreshBusy) return;
+    const slug = project.selectedSlug;
+    project.quickRefreshBusy = true;
     setStatus("正在快速保鲜（扫描 + 索引 + Agent 知识资产）…", "progress", slug);
     try {
-      const result = await runQuickRefresh(selectedRepoPath, slug);
+      const result = await runQuickRefresh(project.selectedRepoPath, slug);
       const note = result.notes.length ? ` · ${result.notes.join("；")}` : "";
       setStatus(
         `保鲜完成：新鲜度 ${result.freshness.overall_score}/100${note}`,
@@ -414,69 +346,70 @@
         slug,
       );
       await loadProjectOverview(slug, { skipFreshness: true });
-      if (selectedProject === slug && projectOverview) {
-        projectOverview = mergeFreshnessIntoOverview(projectOverview, result.freshness);
+      if (project.selectedSlug === slug && project.projectOverview) {
+        project.projectOverview = mergeFreshnessIntoOverview(project.projectOverview, result.freshness);
       }
-      freshnessLoading = false;
+      project.freshnessLoading = false;
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      quickRefreshBusy = false;
+      project.quickRefreshBusy = false;
     }
   }
 
   async function triggerAgentContextGeneration() {
-    if (!selectedRepoPath || !selectedProject) {
-      setStatus("Select a project with a linked repository first.", "error");
+    if (!project.selectedRepoPath || !project.selectedSlug) {
+      setStatus(UI_MESSAGES.selectProjectWithRepo, "error");
       return;
     }
-    if (agentContextBusy) return;
-    if (!acpOk) {
+    if (project.agentContextBusy) return;
+    if (!project.acpOk) {
       setStatus("请先在设置中配置 ACP 代理。", "error");
       return;
     }
-    if (hybridNativeLlm && !llmStatus?.ready) {
+    if (hybridNativeLlm && !project.llmStatus?.ready) {
       setStatus("请先在设置中配置 LLM。", "error");
       return;
     }
-    const slug = selectedProject;
-    agentContextBusy = true;
-    setStatus("Generating Agent architecture context…", "progress", slug);
+    const slug = project.selectedSlug;
+    project.agentContextBusy = true;
+    setStatus(UI_MESSAGES.agentContextGenerating, "progress", slug);
     try {
-      await runAgentContextGeneration(selectedRepoPath, slug);
-      setStatus("Agent context ready", "success");
+      await runAgentContextGeneration(project.selectedRepoPath, slug);
+      setStatus(UI_MESSAGES.agentContextReady, "success");
       await Promise.all([loadProjectOverview(slug), loadHumanDocs(slug)]);
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      agentContextBusy = false;
+      project.agentContextBusy = false;
     }
   }
 
   function openOverviewHumanDoc() {
-    if (!selectedProject) return;
-    const humanDir = projectOverview?.slug ?? selectedProject;
+    if (!project.selectedSlug) return;
+    const humanDir = project.projectOverview?.slug ?? project.selectedSlug;
     void (async () => {
       const docs = await listHumanDocs(humanDir);
       const overview = docs.find((d) => d.relative_path.includes("1.概述"));
       if (overview) {
-        activeTab = "knowledge";
+        project.activeTab = "knowledge";
         await openHumanDoc(overview);
       } else {
         setStatus(`尚未生成 1.概述.md，请先生成 ${TERMS.humanKnowledge}`, "error");
-        activeTab = "knowledge";
+        project.activeTab = "knowledge";
       }
     })();
   }
 
   function openStructuredDocs() {
-    if (!selectedProject) return;
+    const slug = project.selectedSlug;
+    if (!slug) return;
     void (async () => {
-      activeTab = "knowledge";
-      docLoading = true;
+      project.activeTab = "knowledge";
+      project.docLoading = true;
       try {
-        const docs = await listHumanDocs(selectedProject);
-        humanDocs = docs;
+        const docs = await listHumanDocs(slug);
+        project.humanDocs = docs;
         const agentMeta = docs.find(
           (d) => d.section === "agent" && d.relative_path === "agent/meta-inputs.md",
         );
@@ -493,72 +426,72 @@
       } catch (e) {
         setStatus(String(e), "error");
       } finally {
-        docLoading = false;
+        project.docLoading = false;
       }
     })();
   }
 
   async function openHumanDoc(doc: HumanDocEntry) {
-    activeHumanPath = doc.path;
-    docLoading = true;
+    project.activeHumanPath = doc.path;
+    project.docLoading = true;
     setStatus(`Opening ${doc.title}…`, "loading");
     try {
-      activeDoc = await readDocument(doc.path);
+      project.activeDoc = await readDocument(doc.path);
       setStatus(`Viewing ${doc.title}`, "idle");
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      docLoading = false;
+      project.docLoading = false;
     }
   }
 
   async function openDocPath(path: string) {
-    docLoading = true;
+    project.docLoading = true;
     try {
-      activeDoc = await readDocument(path);
-      activeHumanPath = path;
-      deepWikiOpen = false;
+      project.activeDoc = await readDocument(path);
+      project.activeHumanPath = path;
+      project.deepWikiOpen = false;
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      docLoading = false;
+      project.docLoading = false;
     }
   }
 
   async function packAgentForSelected() {
-    if (!selectedRepoPath || !selectedProject) return;
-    setProjectTask(selectedProject, { repackBusy: true });
-    setStatus("正在重建源码索引…", "progress", selectedProject);
+    if (!project.selectedRepoPath || !project.selectedSlug) return;
+    setProjectTask(project.selectedSlug, { repackBusy: true });
+    setStatus("正在重建源码索引…", "progress", project.selectedSlug);
     try {
-      const pack = await packAgentAssets(selectedRepoPath, selectedProject);
+      const pack = await packAgentAssets(project.selectedRepoPath, project.selectedSlug);
       setStatus(
         `索引已更新：${pack.total_files} 个文件，约 ${pack.total_tokens} tokens`,
         "success",
       );
-      if (selectedProject) await loadProjectOverview(selectedProject);
+      if (project.selectedSlug) await loadProjectOverview(project.selectedSlug);
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      if (selectedProject) setProjectTask(selectedProject, { repackBusy: false });
+      if (project.selectedSlug) setProjectTask(project.selectedSlug, { repackBusy: false });
     }
   }
 
   async function triggerHumanGeneration() {
-    if (!selectedRepoPath || !selectedProject) {
-      setStatus("Select a project with a linked repository path first.", "error");
+    if (!project.selectedRepoPath || !project.selectedSlug) {
+      setStatus(UI_MESSAGES.selectProjectWithRepoPath, "error");
       return;
     }
-    if (!acpOk) {
+    if (!project.acpOk) {
       setStatus("ACP 代理未找到。请在设置中配置 ACP binary/command 并确保其在 PATH 上。", "error");
       return;
     }
-    const slug = selectedProject;
+    const slug = project.selectedSlug;
     setProjectTask(slug, {
       lithoBusy: true,
       lithoProgress: `正在生成 ${TERMS.humanKnowledge}（Litho）…`,
     });
     try {
-      await runLithoGeneration(selectedRepoPath, slug);
+      await runLithoGeneration(project.selectedRepoPath, slug);
     } catch (e) {
       setStatus(String(e), "error");
       setProjectTask(slug, { lithoBusy: false, lithoProgress: "" });
@@ -566,30 +499,30 @@
   }
 
   async function openKnowledgeSourceCitation(c: SourceCitation) {
-    if (!selectedProject) return;
+    if (!project.selectedSlug) return;
 
     try {
       const slice = await citationToSourceSlice(
-        selectedProject,
+        project.selectedSlug,
         c,
-        selectedRepoPath,
+        project.selectedRepoPath,
         readDocument,
       );
-      setKnowledgeSource(selectedProject, slice);
+      setKnowledgeSource(project.selectedSlug, slice);
     } catch (e) {
       setStatus(String(e), "error");
-      setKnowledgeSource(selectedProject, null);
+      setKnowledgeSource(project.selectedSlug, null);
     }
   }
 
   function clearChatHistory() {
-    if (!selectedProject) return;
-    updateChat(selectedProject, () => []);
+    if (!project.selectedSlug) return;
+    updateChat(project.selectedSlug, () => []);
     setStatus("对话历史已清空", "success");
   }
 
   function handleAskInput(q: string) {
-    if (!selectedProject) {
+    if (!project.selectedSlug) {
       setStatus("请先选择项目", "error");
       return;
     }
@@ -601,64 +534,64 @@
   }
 
   function openDeepWiki(question?: string) {
-    if (!selectedProject) {
+    if (!project.selectedSlug) {
       setStatus("请先选择项目", "error");
       return;
     }
     if (question && parseAskSlashCommand(question)?.type === "clear") {
       clearChatHistory();
-      deepWikiOpen = true;
-      deepWikiInitialQuestion = null;
+      project.deepWikiOpen = true;
+      project.deepWikiInitialQuestion = null;
       return;
     }
-    if (!acpOk) {
+    if (!project.acpOk) {
       setStatus("请先在设置中配置 ACP 代理。", "error");
       return;
     }
-    deepWikiInitialQuestion = question ?? null;
-    deepWikiOpen = true;
+    project.deepWikiInitialQuestion = question ?? null;
+    project.deepWikiOpen = true;
   }
 
   function closeDeepWiki() {
-    deepWikiOpen = false;
-    deepWikiInitialQuestion = null;
+    project.deepWikiOpen = false;
+    project.deepWikiInitialQuestion = null;
   }
 
   async function runSearch() {
-    const q = query.trim();
+    const q = project.query.trim();
     if (!q) {
-      hits = [];
+      project.hits = [];
       return;
     }
-    docLoading = true;
+    project.docLoading = true;
     setStatus(`Searching for “${q}”…`, "loading");
     try {
-      hits = await searchKnowledge(q, selectedProject ?? undefined);
-      activeDoc = null;
-      setStatus(`${hits.length} result(s)`, hits.length ? "success" : "idle");
+      project.hits = await searchKnowledge(q, project.selectedSlug ?? undefined);
+      project.activeDoc = null;
+      setStatus(`${project.hits.length} result(s)`, project.hits.length ? "success" : "idle");
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      docLoading = false;
+      project.docLoading = false;
     }
   }
 
   async function openHit(hit: SearchHit) {
-    docLoading = true;
+    project.docLoading = true;
     try {
-      activeDoc = await readDocument(hit.path);
-      hits = [];
+      project.activeDoc = await readDocument(hit.path);
+      project.hits = [];
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
-      docLoading = false;
+      project.docLoading = false;
     }
   }
 
   function onKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
-      activeTab = "knowledge";
+      project.activeTab = "knowledge";
       requestAnimationFrame(() => document.getElementById("search-input")?.focus());
     }
     if (e.key === "Enter" && document.activeElement?.id === "search-input") {
@@ -679,7 +612,7 @@
         "project-init-progress",
         (ev) => {
           const { project_slug, message } = ev.payload;
-          initProgress = message;
+          project.initProgress = message;
           if (ev.payload.stage === "human_docs") {
             setProjectTask(project_slug, { lithoBusy: true, lithoProgress: message });
           } else if (ev.payload.stage === "scan") {
@@ -712,7 +645,7 @@
               ? `Litho 已完成，但未写入 ${TERMS.humanKnowledge}（${project_slug}）`
               : `${TERMS.humanKnowledge} 未完成（${project_slug}，${count} 篇）`
             : `${TERMS.humanKnowledge} 已就绪（${project_slug}，${count} 篇）`;
-          if (selectedProject === project_slug) {
+          if (project.selectedSlug === project_slug) {
             setStatus(msg, complete ? "success" : count === 0 ? "error" : "idle");
             await loadHumanDocs(project_slug);
             await loadProjectOverview(project_slug);
@@ -738,11 +671,11 @@
       </div>
 
       <ProjectSelector
-        {projects}
-        selectedSlug={selectedProject}
-        open={projectPickerOpen}
-        addBusy={initBusy}
-        ontoggle={() => (projectPickerOpen = !projectPickerOpen)}
+        projects={project.projects}
+        selectedSlug={project.selectedSlug}
+        open={project.pickerOpen}
+        addBusy={project.initBusy}
+        ontoggle={() => (project.pickerOpen = !project.pickerOpen)}
         onselect={selectProject}
         onadd={addProject}
         onremove={removeProjectFromList}
@@ -750,12 +683,12 @@
       />
 
       <MainNavTabs
-        active={activeTab}
-        disabled={!selectedProject && projects.length === 0}
+        active={project.activeTab}
+        disabled={!project.selectedSlug && project.projects.length === 0}
         onchange={(tab) => {
-          activeTab = tab;
-          if (tab === "knowledge" && !selectedProject && projects.length > 0) {
-            void selectProject(projects[0]);
+          project.activeTab = tab;
+          if (tab === "knowledge" && !project.selectedSlug && project.projects.length > 0) {
+            void selectProject(project.projects[0]);
           }
         }}
       />
@@ -763,14 +696,14 @@
 
     <div class="ml-auto flex shrink-0 items-center gap-2">
       {#if showStatusBar}
-        <StatusBanner message={statusMessage} kind={statusKind} detail={statusDetail} />
+        <StatusBanner message={status.message} kind={status.kind} detail={status.detail} />
       {/if}
       <button
         type="button"
         class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
         title="术语说明"
         aria-label="术语说明"
-        onclick={() => (helpOpen = true)}
+        onclick={() => (project.helpOpen = true)}
       >
         ？
       </button>
@@ -779,54 +712,54 @@
         class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
         title="设置"
         aria-label="Settings"
-        onclick={() => (settingsOpen = true)}
+        onclick={() => (project.settingsOpen = true)}
       >
         ⚙ 设置
       </button>
     </div>
   </header>
 
-  {#if showTaskProgressBar && selectedProject}
+  {#if showTaskProgressBar && project.selectedSlug}
     <TaskProgressBar
-      projectSlug={selectedProject}
-      stage={initBusy ? "初始化" : lithoProgressParts.stage}
-      message={initBusy && initProgress ? initProgress : lithoProgressParts.message}
+      projectSlug={project.selectedSlug}
+      stage={project.initBusy ? "初始化" : lithoProgressParts.stage}
+      message={project.initBusy && project.initProgress ? project.initProgress : lithoProgressParts.message}
     />
   {/if}
 
-  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "overview"}>
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={project.activeTab !== "overview"}>
     <ProjectOverviewPanel
-      overview={projectOverview}
-      loading={overviewLoading}
-      {acpOk}
-      llmReady={llmStatus?.ready ?? false}
+      overview={project.projectOverview}
+      loading={project.overviewLoading}
+      acpOk={project.acpOk}
+      llmReady={project.llmStatus?.ready ?? false}
       {hybridNativeLlm}
-      {agentContextBusy}
+      agentContextBusy={project.agentContextBusy}
       lithoBusy={lithoBusy}
       repackBusy={repackBusy}
-      {initBusy}
-      {initProgress}
-      {staleProjects}
-      onOpenKnowledge={() => (activeTab = "knowledge")}
-      onOpenEnv={() => (activeTab = "env")}
-      onOpenSettings={() => (settingsOpen = true)}
+      initBusy={project.initBusy}
+      initProgress={project.initProgress}
+      staleProjects={project.staleProjects}
+      onOpenKnowledge={() => (project.activeTab = "knowledge")}
+      onOpenEnv={() => (project.activeTab = "env")}
+      onOpenSettings={() => (project.settingsOpen = true)}
       onOpenAsk={() => openDeepWiki()}
       onGenerateHuman={triggerHumanGeneration}
       onGenerateAgentContext={triggerAgentContextGeneration}
       onRepack={packAgentForSelected}
       onInitializeProject={triggerProjectInitialization}
       onOpenPath={openFolderPath}
-      onOpenArchitectureDoc={projectOverview?.agent_context.ready ? openArchitectureDoc : undefined}
-      onOpenHumanOverview={projectOverview?.litho.has_human_docs ? openOverviewHumanDoc : undefined}
+      onOpenArchitectureDoc={project.projectOverview?.agent_context.ready ? openArchitectureDoc : undefined}
+      onOpenHumanOverview={project.projectOverview?.litho.has_human_docs ? openOverviewHumanDoc : undefined}
       onOpenStructured={openStructuredDocs}
-      quickRefreshBusy={quickRefreshBusy}
-      freshnessLoading={freshnessLoading}
+      quickRefreshBusy={project.quickRefreshBusy}
+      freshnessLoading={project.freshnessLoading}
       onQuickRefresh={triggerQuickRefresh}
       onSaveProjectRemark={async (remark) => {
-        if (!selectedProject) return;
-        const prevFreshness = projectOverview?.freshness;
-        const updated = await saveProjectRemark(selectedProject, remark);
-        projectOverview =
+        if (!project.selectedSlug) return;
+        const prevFreshness = project.projectOverview?.freshness;
+        const updated = await saveProjectRemark(project.selectedSlug, remark);
+        project.projectOverview =
           prevFreshness && !updated.freshness
             ? mergeFreshnessIntoOverview(updated, prevFreshness)
             : updated;
@@ -834,51 +767,51 @@
     />
   </div>
 
-  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "sdd"}>
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={project.activeTab !== "sdd"}>
     <SddWorkflowPanel
-      projectSlug={selectedProject}
-      repoPath={selectedRepoPath}
-      {acpOk}
-      llmReady={llmStatus?.ready ?? false}
+      projectSlug={project.selectedSlug}
+      repoPath={project.selectedRepoPath}
+      acpOk={project.acpOk}
+      llmReady={project.llmStatus?.ready ?? false}
       {hybridNativeLlm}
       onStatus={(message, kind) => setStatus(message, kind)}
     />
   </div>
 
-  {#if activeTab === "env"}
+  {#if project.activeTab === "env"}
     <div class="flex min-h-0 flex-1 flex-col">
       <EnvIntegratePanel
-        repoPath={selectedRepoPath}
+        repoPath={project.selectedRepoPath}
         onStatus={(message, kind) => setStatus(message, kind)}
         onIntegrated={() => {
-          if (selectedProject) void loadProjectOverview(selectedProject);
+          if (project.selectedSlug) void loadProjectOverview(project.selectedSlug);
         }}
       />
     </div>
   {/if}
 
-  <div class="flex min-h-0 flex-1 flex-col" class:hidden={activeTab !== "knowledge"}>
+  <div class="flex min-h-0 flex-1 flex-col" class:hidden={project.activeTab !== "knowledge"}>
       <div class="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#14171c]/80 px-4 py-2">
         <input
           id="search-input"
           class="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
           placeholder={`搜索${TERMS.knowledgeTab}… (⌘K)`}
-          bind:value={query}
+          bind:value={project.query}
         />
         <button
           type="button"
           class="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-50"
-          disabled={docLoading}
+          disabled={project.docLoading}
           onclick={runSearch}
         >
           搜索
         </button>
-        {#if selectedProject}
+        {#if project.selectedSlug}
           <div class="flex shrink-0 items-center gap-2 border-l border-white/10 pl-3">
             <button
               type="button"
               class="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs hover:bg-white/5 disabled:opacity-50"
-              disabled={repackBusy || lithoBusy || !selectedRepoPath}
+              disabled={repackBusy || lithoBusy || !project.selectedRepoPath}
               onclick={packAgentForSelected}
             >
               {repackBusy ? "重建中…" : "重建源码索引"}
@@ -886,9 +819,9 @@
             <button
               type="button"
               class="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs hover:bg-white/5 disabled:opacity-50"
-              disabled={repackBusy || lithoBusy || !selectedRepoPath || !acpOk}
+              disabled={repackBusy || lithoBusy || !project.selectedRepoPath || !project.acpOk}
               onclick={triggerHumanGeneration}
-              title={!acpOk ? "请先在设置中配置 ACP 代理" : undefined}
+              title={!project.acpOk ? "请先在设置中配置 ACP 代理" : undefined}
             >
               {generateLabel(TERMS.humanKnowledge, lithoBusy)}
             </button>
@@ -899,39 +832,39 @@
       <div class="flex min-h-0 flex-1">
         <aside class="flex w-60 shrink-0 flex-col border-r border-white/10 bg-[#14171c]">
           <HumanDocTree
-            docs={humanDocs}
-            activePath={activeHumanPath}
-            loading={humanDocsLoading}
+            docs={project.humanDocs}
+            activePath={project.activeHumanPath}
+            loading={project.humanDocsLoading}
             onselect={openHumanDoc}
           />
           <div class="mt-auto border-t border-white/10 px-3 py-2 text-[10px] text-white/35">
-            <div class="truncate" title={knowledgeRoot || selectedRepoPath || "—"}>
-              📁 {knowledgeRoot || (selectedRepoPath ? `${selectedRepoPath}/.mind-mesh` : "—")}
+            <div class="truncate" title={project.knowledgeRoot || project.selectedRepoPath || "—"}>
+              📁 {project.knowledgeRoot || (project.selectedRepoPath ? `${project.selectedRepoPath}/.mind-mesh` : "—")}
             </div>
             <div class="mt-1">
-              ACP {acpOk ? "✓" : "✗"}{#if hybridNativeLlm} · LLM {llmStatus?.ready ? "✓" : "✗"}{/if}
+              ACP {project.acpOk ? "✓" : "✗"}{#if hybridNativeLlm} · LLM {project.llmStatus?.ready ? "✓" : "✗"}{/if}
             </div>
           </div>
         </aside>
 
         <main class="flex min-w-0 flex-1 flex-col">
-          {#if docLoading}
+          {#if project.docLoading}
             <div class="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-white/40">
               <span class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent"></span>
-              <span>Loading document…</span>
+              <span>{UI_MESSAGES.loadingDocument}</span>
             </div>
-          {:else if activeDoc}
+          {:else if project.activeDoc}
             <KnowledgeArticle
-              body={activeDoc.body}
-              path={activeDoc.path}
-              repoPath={selectedRepoPath}
+              body={project.activeDoc.body}
+              path={project.activeDoc.path}
+              repoPath={project.selectedRepoPath}
               onSourceClick={openKnowledgeSourceCitation}
             />
     {:else}
             <div class="flex-1 overflow-y-auto">
-              {#if hits.length > 0}
+              {#if project.hits.length > 0}
               <ul class="p-4">
-                {#each hits as hit}
+                {#each project.hits as hit}
                   <li>
                     <button
                       type="button"
@@ -950,7 +883,7 @@
               {:else}
                 <div class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-white/40">
                   <p class="text-lg text-white/60">
-                    {selectedProject ? "从左侧目录选择文档" : "添加或选择项目以浏览知识资产"}
+                    {project.selectedSlug ? "从左侧目录选择文档" : "添加或选择项目以浏览知识资产"}
                   </p>
                   <p class="text-sm">阅读文档后，可在底部问答栏就当前项目提问。</p>
                 </div>
@@ -959,16 +892,16 @@
           {/if}
 
           <AskBar
-            disabled={!selectedProject || !acpOk}
+            disabled={!project.selectedSlug || !project.acpOk}
             disabledReason={
-              !selectedProject
+              !project.selectedSlug
                 ? "请先选择项目"
-                : !acpOk
+                : !project.acpOk
                   ? "请先在设置中配置 ACP 代理"
                   : null
             }
-            placeholder={activeDoc
-              ? `就「${activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
+            placeholder={project.activeDoc
+              ? `就「${project.activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
               : "就当前项目提问…"}
             onclear={clearChatHistory}
             onask={handleAskInput}
@@ -979,21 +912,21 @@
 </div>
 
 <DeepWikiPanel
-  open={deepWikiOpen}
-  projectSlug={selectedProject}
-  projectName={selectedProjectMeta?.name ?? null}
-  repoPath={selectedRepoPath}
+  open={project.deepWikiOpen}
+  projectSlug={project.selectedSlug}
+  projectName={selectedProjectMetaDerived?.name ?? null}
+  repoPath={project.selectedRepoPath}
   messages={currentMessages}
-  initialQuestion={deepWikiInitialQuestion}
+  initialQuestion={project.deepWikiInitialQuestion}
   sourceSlice={currentDeepWikiSource}
   onclose={closeDeepWiki}
   onmessageschange={(update) => {
-    if (!selectedProject) return;
-    updateChat(selectedProject, update);
+    if (!project.selectedSlug) return;
+    updateChat(project.selectedSlug, update);
   }}
   onsourcechange={(slice) => {
-    if (!selectedProject) return;
-    setDeepWikiSource(selectedProject, slice);
+    if (!project.selectedSlug) return;
+    setDeepWikiSource(project.selectedSlug, slice);
   }}
   onopenDoc={openDocPath}
 />
@@ -1001,26 +934,26 @@
 <SourceDrawer
   open={Boolean(knowledgeSourceSlice)}
   slice={knowledgeSourceSlice}
-  repoPath={selectedRepoPath}
-  onclose={() => selectedProject && setKnowledgeSource(selectedProject, null)}
+  repoPath={project.selectedRepoPath}
+  onclose={() => project.selectedSlug && setKnowledgeSource(project.selectedSlug, null)}
   onSourceClick={openKnowledgeSourceCitation}
 />
 
-<HelpPanel open={helpOpen} onclose={() => (helpOpen = false)} />
+<HelpPanel open={project.helpOpen} onclose={() => (project.helpOpen = false)} />
 
 <SettingsPanel
-  open={settingsOpen}
-  onclose={() => (settingsOpen = false)}
+  open={project.settingsOpen}
+  onclose={() => (project.settingsOpen = false)}
   onsaved={async (status) => {
-    llmStatus = status;
+    project.llmStatus = status;
     try {
       const settings = await getModelSettings();
-      agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
+      project.agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
     } catch {
       // keep previous mode
     }
-    acpOk = await checkAcp();
-    const ok = hybridNativeLlm ? status.ready && acpOk : acpOk;
+    project.acpOk = await checkAcp();
+    const ok = hybridNativeLlm ? status.ready && project.acpOk : project.acpOk;
     setStatus(ok ? "设置已保存" : "请检查 ACP 与 LLM 配置", ok ? "success" : "error");
   }}
 />

@@ -63,9 +63,9 @@
     try {
       const mode = await copySvgAsImage(svg);
       copyStatus =
-        mode === "image" ? "Image copied to clipboard" : "SVG source copied to clipboard";
+        mode === "image" ? "图片已复制到剪贴板" : "SVG 源码已复制到剪贴板";
     } catch (e) {
-      copyStatus = `Copy failed: ${e}`;
+      copyStatus = `复制失败：${e}`;
     } finally {
       copying = false;
     }
@@ -88,13 +88,13 @@
   role="presentation"
 >
   <header class="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-3">
-    <span class="text-sm font-medium text-white/80">Mermaid diagram</span>
+    <span class="text-sm font-medium text-white/80">Mermaid 图表</span>
     <div class="flex-1"></div>
     <button
       type="button"
       class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5"
       onclick={zoomOut}
-      title="Zoom out (-)"
+      title="缩小 (-)"
     >
       −
     </button>
@@ -103,7 +103,7 @@
       type="button"
       class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5"
       onclick={zoomIn}
-      title="Zoom in (+)"
+      title="放大 (+)"
     >
       +
     </button>
@@ -111,9 +111,9 @@
       type="button"
       class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5"
       onclick={resetView}
-      title="Reset view (0)"
+      title="重置视图 (0)"
     >
-      Reset
+      重置
     </button>
     <button
       type="button"
@@ -121,14 +121,14 @@
       disabled={copying}
       onclick={copyImage}
     >
-      {copying ? "Copying…" : "Copy image"}
+      {copying ? "复制中…" : "复制图片"}
     </button>
     <button
       type="button"
       class="rounded-lg border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
       onclick={onclose}
     >
-      Close
+      关闭
     </button>
   </header>
 

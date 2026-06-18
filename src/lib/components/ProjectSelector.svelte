@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ProjectSummary } from "../types";
+  import { UI_MESSAGES } from "../terminology";
 
   interface Props {
     projects: ProjectSummary[];
@@ -72,7 +73,7 @@
     aria-haspopup="listbox"
   >
     <span class="min-w-0 flex-1 truncate font-medium">
-      {selected?.name ?? "Select project"}
+      {selected?.name ?? UI_MESSAGES.selectProject}
     </span>
     <span class="shrink-0 text-white/40">{open ? "▴" : "▾"}</span>
   </button>

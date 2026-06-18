@@ -130,6 +130,8 @@ pub fn repo_path_for_slug(slug: &str) -> Option<String> {
 }
 
 /// Registered projects whose repo `.mind-mesh/index.md` is missing (e.g. data was deleted).
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct StaleProjectSummary {
     pub slug: String,

@@ -9,6 +9,7 @@ rust-version.workspace = true
 [features]
 default = ["repomix"]
 repomix = ["dep:repomix-core"]
+ts-export = ["dep:ts-rs"]
 
 [dependencies]
 anyhow.workspace = true
@@ -23,6 +24,7 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["process", "io-util"] }
 walkdir.workspace = true
 repomix-core = { workspace = true, optional = true }
+ts-rs = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3"

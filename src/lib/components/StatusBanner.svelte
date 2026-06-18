@@ -1,6 +1,8 @@
 <script lang="ts">
   export type StatusKind = "idle" | "loading" | "progress" | "success" | "error";
 
+  import { STATUS_CHIP_LABELS } from "../terminology";
+
   interface Props {
     message: string;
     kind?: StatusKind;
@@ -17,13 +19,7 @@
     error: "border-rose-500/30 bg-rose-500/10 text-rose-200",
   };
 
-  const labels: Record<StatusKind, string> = {
-    idle: "Ready",
-    loading: "Loading",
-    progress: "Working",
-    success: "Done",
-    error: "Error",
-  };
+  const labels = STATUS_CHIP_LABELS;
 </script>
 
 <div

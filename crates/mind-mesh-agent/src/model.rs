@@ -29,6 +29,8 @@ pub struct ModelConfig {
     pub openai_base_url: Option<String>,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LlmStatus {
     pub provider: String,

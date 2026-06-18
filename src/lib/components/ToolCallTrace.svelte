@@ -2,6 +2,8 @@
   import type { ToolCallRecord } from "../types";
   import { formatDuration, formatTime } from "../timeFormat";
 
+  import { TOOL_LABELS, TOOL_STATUS_LABELS } from "../terminology";
+
   interface Props {
     toolCalls: ToolCallRecord[];
     defaultExpanded?: boolean;
@@ -15,16 +17,6 @@
   $effect(() => {
     if (defaultExpanded) panelOpen = true;
   });
-
-  const TOOL_LABELS: Record<string, string> = {
-    list_projects: "List projects",
-    search_knowledge: "Search knowledge",
-    read_doc: "Read document",
-    read_agent_pack_meta: "Read pack metadata",
-    grep_agent_pack: "Search agent pack",
-    read_agent_pack_file: "Read source file",
-    list_human_docs: "List human docs",
-  };
 
   function label(name: string): string {
     return TOOL_LABELS[name] ?? name;
@@ -65,9 +57,9 @@
   }
 
   function statusLabel(status: ToolCallRecord["status"]): string {
-    if (status === "running") return "Running";
-    if (status === "error") return "Failed";
-    return "Done";
+    if (status === "running") return TOOL_STATUS_LABELS.running;
+    if (status === "error") return TOOL_STATUS_LABELS.error;
+    return TOOL_STATUS_LABELS.ok;
   }
 </script>
 
@@ -138,7 +130,7 @@
                 </div>
                 {#if call.error}
                   <div>
-                    <p class="mb-1 text-[10px] uppercase tracking-wide text-red-300/70">Error</p>
+                    <p class="mb-1 text-[10px] uppercase tracking-wide text-red-300/70">错误</p>
                     <pre class="overflow-auto rounded bg-red-500/10 p-2 font-mono text-[11px] text-red-200">{call.error}</pre>
                   </div>
                 {:else if call.result !== undefined}

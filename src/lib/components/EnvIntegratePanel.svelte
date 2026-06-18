@@ -28,30 +28,40 @@
     status?.items.filter((i) => i.kind === "agents_md" || i.kind === "gitignore") ?? [],
   );
 
-  const lockedIds = $derived(new Set(status?.items.filter((i) => i.locked).map((i) => i.id) ?? []));
+  const applyCount = $derived(plan?.steps.length ?? 0);
 
-  const applyCount = $derived(selected.size);
+  function isReinstallPending(item: EnvIntegrationStatus): boolean {
+    return reinstallMarked.has(item.id);
+  }
 
   function isBundledLocked(item: EnvIntegrationStatus): boolean {
-    return item.locked && !reinstallMarked.has(item.id);
+    return item.locked && !isReinstallPending(item);
   }
 
   function isLockedIntegrated(item: EnvIntegrationStatus): boolean {
-    return item.integrated && !item.locked && !reinstallMarked.has(item.id);
+    return item.integrated && !item.locked && !isReinstallPending(item);
   }
 
   function isCheckboxChecked(item: EnvIntegrationStatus): boolean {
-    if (isBundledLocked(item) || isLockedIntegrated(item)) return true;
+    if (isReinstallPending(item) || isBundledLocked(item) || isLockedIntegrated(item)) {
+      return true;
+    }
     return selected.has(item.id);
   }
 
   function isCheckboxDisabled(item: EnvIntegrationStatus): boolean {
-    if (isBundledLocked(item) || isLockedIntegrated(item)) return true;
+    if (isReinstallPending(item) || isBundledLocked(item) || isLockedIntegrated(item)) {
+      return true;
+    }
     return dependencyBlocked(item);
   }
 
   function canMarkReinstall(item: EnvIntegrationStatus): boolean {
-    return (item.integrated || item.locked) && !reinstallMarked.has(item.id);
+    return (item.integrated || item.locked) && !isReinstallPending(item);
+  }
+
+  function canCancelReinstall(item: EnvIntegrationStatus): boolean {
+    return isReinstallPending(item);
   }
 
   function dependencySatisfied(depId: string): boolean {
@@ -68,7 +78,7 @@
   }
 
   function defaultSelectedIds(items: EnvIntegrationStatus[]): Set<string> {
-    return new Set(items.filter((i) => i.locked || !i.integrated).map((i) => i.id));
+    return new Set(items.filter((i) => !i.integrated).map((i) => i.id));
   }
 
   async function loadStatus() {
@@ -105,7 +115,13 @@
 
   function toggle(id: string) {
     const item = status?.items.find((i) => i.id === id);
-    if (!item || isBundledLocked(item) || isLockedIntegrated(item) || dependencyBlocked(item)) {
+    if (
+      !item ||
+      isReinstallPending(item) ||
+      isBundledLocked(item) ||
+      isLockedIntegrated(item) ||
+      dependencyBlocked(item)
+    ) {
       return;
     }
 
@@ -117,10 +133,6 @@
       nextReinstall.delete(id);
     } else {
       next.add(id);
-    }
-
-    for (const lockedId of lockedIds) {
-      next.add(lockedId);
     }
 
     selected = next;
@@ -136,9 +148,19 @@
     const nextReinstall = new Set(reinstallMarked);
     next.add(id);
     nextReinstall.add(id);
-    for (const lockedId of lockedIds) {
-      next.add(lockedId);
-    }
+    selected = next;
+    reinstallMarked = nextReinstall;
+    void refreshPlan(next);
+  }
+
+  function cancelReinstall(id: string) {
+    const item = status?.items.find((i) => i.id === id);
+    if (!item || !canCancelReinstall(item)) return;
+
+    const next = new Set(selected);
+    const nextReinstall = new Set(reinstallMarked);
+    next.delete(id);
+    nextReinstall.delete(id);
     selected = next;
     reinstallMarked = nextReinstall;
     void refreshPlan(next);
@@ -153,13 +175,13 @@
 
   function selectNone() {
     if (!status) return;
-    selected = new Set(status.items.filter((i) => i.locked).map((i) => i.id));
+    selected = new Set();
     reinstallMarked = new Set();
     void refreshPlan(selected);
   }
 
   async function apply() {
-    if (!repoPath || selected.size === 0) return;
+    if (!repoPath || applyCount === 0) return;
     applying = true;
     progressMessage = "准备集成…";
     onStatus?.("正在集成 Agent 友好的工程环境…", "progress");
@@ -298,6 +320,7 @@
     {#snippet itemRow(item: EnvIntegrationStatus)}
       {@const bundledLocked = isBundledLocked(item)}
       {@const lockedIntegrated = isLockedIntegrated(item)}
+      {@const reinstallPending = isReinstallPending(item)}
       {@const blocked = dependencyBlocked(item)}
       {@const checked = isCheckboxChecked(item)}
       {@const disabled = isCheckboxDisabled(item)}
@@ -307,12 +330,12 @@
             ? "border-white/5 bg-white/[0.01]"
             : lockedIntegrated
               ? "border-white/5 bg-white/[0.01]"
-              : item.integrated && reinstallMarked.has(item.id)
+              : reinstallPending
                 ? "border-amber-500/25 bg-amber-500/[0.04]"
                 : checked
                   ? "border-indigo-500/20 bg-indigo-500/[0.04]"
                   : "border-white/10 bg-white/[0.02]"
-        } ${blocked && !bundledLocked && !lockedIntegrated ? "opacity-50" : ""}`}
+        } ${blocked && !bundledLocked && !lockedIntegrated && !reinstallPending ? "opacity-50" : ""}`}
       >
         <input
           type="checkbox"
@@ -324,7 +347,7 @@
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <span
-              class={`text-sm font-medium ${disabled && (bundledLocked || lockedIntegrated) ? "text-white/45" : "text-white/85"}`}
+              class={`text-sm font-medium ${disabled && (bundledLocked || lockedIntegrated || reinstallPending) ? "text-white/45" : "text-white/85"}`}
             >
               {item.label}
             </span>
@@ -336,7 +359,7 @@
               <span class="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/35">
                 已集成
               </span>
-            {:else if reinstallMarked.has(item.id)}
+            {:else if reinstallPending}
               <span class="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200/90">
                 将重新安装
               </span>
@@ -345,14 +368,22 @@
               <span class="text-[10px] text-white/35">可选</span>
             {/if}
           </div>
-          <p class={`mt-0.5 text-xs ${disabled && (bundledLocked || lockedIntegrated) ? "text-white/30" : "text-white/45"}`}>
+          <p class={`mt-0.5 text-xs ${disabled && (bundledLocked || lockedIntegrated || reinstallPending) ? "text-white/30" : "text-white/45"}`}>
             {item.description}
           </p>
-          <p class={`mt-1 text-[11px] ${disabled && (bundledLocked || lockedIntegrated) ? "text-white/25" : "text-white/35"}`}>
+          <p class={`mt-1 text-[11px] ${disabled && (bundledLocked || lockedIntegrated || reinstallPending) ? "text-white/25" : "text-white/35"}`}>
             {item.detail}
           </p>
         </div>
-        {#if canMarkReinstall(item)}
+        {#if canCancelReinstall(item)}
+          <button
+            type="button"
+            class="shrink-0 rounded-lg border border-amber-500/25 px-2.5 py-1 text-[11px] text-amber-200/80 hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100"
+            onclick={() => cancelReinstall(item.id)}
+          >
+            取消重新安装
+          </button>
+        {:else if canMarkReinstall(item)}
           <button
             type="button"
             class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-white/55 hover:border-white/20 hover:bg-white/5 hover:text-white/75"

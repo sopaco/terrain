@@ -13,6 +13,8 @@ use crate::acp::{
 use crate::chat::ChatEngine;
 use crate::settings::AcpSettings;
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentContextGenerationResult {
     pub output_path: String,

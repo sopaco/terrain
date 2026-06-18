@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ProjectOverview, StaleProjectSummary } from "../types";
-  import { generateLabel, SHORT_TERMS, TERMS } from "../terminology";
+  import { generateLabel, SHORT_TERMS, TERMS, UI_MESSAGES } from "../terminology";
   import FreshnessHelpPanel from "./FreshnessHelpPanel.svelte";
   import OverviewActionBanner, {
     type OverviewActionItem,
@@ -204,7 +204,7 @@
     return "text-rose-200";
   }
 
-  function freshnessBadgeClass(score: number, stale?: boolean): string {
+  function freshnessBadgeClass(score: number, stale?: boolean | null): string {
     if (!stale && score >= 80) return "bg-emerald-500/15 text-emerald-200";
     if (score >= 50) return "bg-amber-500/15 text-amber-200";
     return "bg-rose-500/15 text-rose-200";
@@ -216,7 +216,7 @@
     return "bg-rose-500";
   }
 
-  function formatSyncedAt(value?: string): string {
+  function formatSyncedAt(value?: string | null): string {
     if (!value) return "—";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
@@ -275,7 +275,7 @@
       }
     } else if (asset.track === "agent_pack" && onRepack) {
       return {
-        label: repackBusy ? "Repacking…" : "Repack",
+        label: repackBusy ? UI_MESSAGES.repacking : UI_MESSAGES.repack,
         onClick: onRepack,
         disabled: repackBusy,
       };

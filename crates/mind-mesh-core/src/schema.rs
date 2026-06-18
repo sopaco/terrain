@@ -2,9 +2,12 @@
 //!
 //! See `idea.md` §4.2 for the full convention.
 
+use crate::ts_ipc;
 use serde::{Deserialize, Serialize};
 
 /// Top-level document kinds stored under `{repo}/.mind-mesh/`.
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export, rename_all = "lowercase"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DocType {
@@ -121,6 +124,8 @@ pub enum AssetTrack {
     Structured,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export, rename_all = "kebab-case"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AssetGenerator {
@@ -134,12 +139,18 @@ fn default_pack_strategy() -> String {
     "architecture-context".into()
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenHeavyFile {
     pub path: String,
     pub tokens: usize,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentPackMeta {
     pub project: String,
@@ -161,6 +172,9 @@ pub struct AgentPackMeta {
 }
 
 /// Plan for Agent + Litho skill to generate human-facing docs.
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LithoPlan {
     pub project_slug: String,
@@ -172,6 +186,8 @@ pub struct LithoPlan {
 }
 
 /// Citation attached to a DeepWiki-style Q&A reply.
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export, rename_all = "snake_case"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CitationKind {
@@ -180,6 +196,9 @@ pub enum CitationKind {
     SourceCode,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceCitation {
     pub kind: CitationKind,
@@ -195,6 +214,9 @@ pub struct SourceCitation {
     pub excerpt: Option<String>,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HumanDocEntry {
     pub path: String,
@@ -209,6 +231,9 @@ fn default_human_section() -> String {
     "human".into()
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export, rename = "IpcSourceSlice"))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceSlice {
     pub repo_path: String,
@@ -218,6 +243,9 @@ pub struct SourceSlice {
     pub content: String,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocCounts {
     pub human: usize,
@@ -227,6 +255,9 @@ pub struct DocCounts {
     pub events: usize,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LithoStatus {
     pub human_doc_count: usize,
@@ -235,6 +266,9 @@ pub struct LithoStatus {
     pub has_research_artifacts: bool,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentContextMeta {
     pub project: String,
@@ -248,6 +282,9 @@ pub struct AgentContextMeta {
     pub baseline_git_head: Option<String>,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentContextStatus {
     pub ready: bool,
@@ -259,6 +296,9 @@ pub struct AgentContextStatus {
     pub section_count: usize,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentEnvStatus {
     pub ready: bool,
@@ -268,6 +308,9 @@ pub struct AgentEnvStatus {
     pub detail: String,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssetTrackHealth {
     pub track: String,
@@ -283,6 +326,9 @@ pub struct AssetTrackHealth {
     pub stale_reason: Option<String>,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FreshnessDriftFactor {
     pub id: String,
@@ -294,6 +340,9 @@ pub struct FreshnessDriftFactor {
     pub points_lost: Option<u8>,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FreshnessSummary {
     pub overall_score: u8,
@@ -320,6 +369,21 @@ pub struct FreshnessSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_baseline_short: Option<String>,
 }
+
+/// Result of scan + repack + optional agent context regeneration (desktop quick refresh).
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuickRefreshResult {
+    pub project_slug: String,
+    pub scan_files_written: usize,
+    pub pack_tokens: Option<usize>,
+    pub agent_context_regenerated: bool,
+    pub notes: Vec<String>,
+    pub freshness: FreshnessSummary,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FreshnessBaseline {
@@ -368,6 +432,9 @@ pub struct FreshnessLedger {
     pub last_computed_at: String,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectOverview {
     pub slug: String,
@@ -398,6 +465,8 @@ pub struct ProjectOverview {
 }
 
 /// SDD standardized workflow phases.
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export, rename_all = "snake_case"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SddPhase {
@@ -445,6 +514,9 @@ impl SddPhase {
     }
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SddSessionInfo {
     pub id: String,
@@ -467,6 +539,9 @@ pub struct SddPlan {
     pub skill_ready: bool,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SddPhaseInfo {
     pub phase: SddPhase,
@@ -477,6 +552,9 @@ pub struct SddPhaseInfo {
     pub updated_at: Option<String>,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SddStatus {
     pub project_slug: String,
@@ -491,6 +569,9 @@ pub struct SddStatus {
     pub sessions: Vec<SddSessionInfo>,
 }
 
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SddPhaseResult {
     pub phase: SddPhase,

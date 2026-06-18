@@ -25,6 +25,7 @@
   import { formatTime } from "../timeFormat";
   import { assistantMessageMarkdown, assistantStepsMarkdown } from "../assistantMarkdown";
   import { copyTextToClipboard } from "../clipboard";
+  import { CHAT_PHASE_LABELS, UI_MESSAGES } from "../terminology";
   import CopyMarkdownButton from "./CopyMarkdownButton.svelte";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
@@ -147,12 +148,12 @@
 
   const phaseLabel = $derived(
     streamPhase === "tools"
-      ? "Running tools…"
+      ? CHAT_PHASE_LABELS.tools
       : streamPhase === "generating"
-        ? "Generating answer…"
+        ? CHAT_PHASE_LABELS.generating
         : streamPhase === "streaming"
-          ? "Streaming answer…"
-          : "Thinking…",
+          ? CHAT_PHASE_LABELS.streaming
+          : CHAT_PHASE_LABELS.thinking,
   );
 
   const streamingUsageLine = $derived(formatUsageLine(streamingUsage));
@@ -200,7 +201,7 @@
     const steps = finalizeAssistantSteps(streamSteps, payload.answer, payload.toolCalls);
     const finalContent =
       finalAnswerFromSteps(steps, payload.answer) ||
-      "I finished reviewing the knowledge base but received no final text. Check tool calls above for retrieved context.";
+      "已完成知识库检索，但未收到最终文本回复。请查看上方工具调用结果。"
 
     try {
       onmessageschange((prev) => [
@@ -385,7 +386,7 @@
         try {
           onmessageschange((prev) => [
             ...prev,
-            { role: "assistant", content: `Error: ${e}`, timestamp: Date.now() },
+            { role: "assistant", content: `错误：${e}`, timestamp: Date.now() },
           ]);
         } catch {
           // ignore persistence errors
@@ -421,7 +422,7 @@
     citationError = null;
 
     if (!projectSlug && !isKnowledgeMarkdownPath(c.path)) {
-      citationError = "No project selected.";
+      citationError = UI_MESSAGES.noProjectSelected;
       return;
     }
 
@@ -517,7 +518,7 @@
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold">DeepWiki</h2>
         <p class="truncate text-xs text-white/40">
-          {projectName ?? projectSlug ?? "No project"} · follow-up enabled
+          {projectName ?? projectSlug ?? UI_MESSAGES.noProject} · 可继续追问
         </p>
       </div>
       {#if busy}
@@ -683,7 +684,7 @@
           <textarea
             class="mb-2 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
             rows="2"
-            placeholder="Ask a follow-up…"
+            placeholder={UI_MESSAGES.askFollowUpPlaceholder}
             bind:value={input}
             onkeydown={onKeydown}
             oncompositionstart={() => (composing = true)}

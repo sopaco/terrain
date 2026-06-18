@@ -22,6 +22,8 @@ struct EnvStatusCacheEntry {
 
 static ENV_STATUS_CACHE: Mutex<Option<HashMap<String, EnvStatusCacheEntry>>> = Mutex::new(None);
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvStatus {
     pub repo_path: String,
@@ -31,6 +33,8 @@ pub struct EnvStatus {
     pub items: Vec<EnvIntegrationStatus>,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvIntegrationStatus {
     pub id: String,
@@ -45,6 +49,8 @@ pub struct EnvIntegrationStatus {
     pub detail: String,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvPlan {
     pub repo_path: String,
@@ -53,6 +59,8 @@ pub struct EnvPlan {
     pub skipped: Vec<String>,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvPlanStep {
     pub id: String,
@@ -80,7 +88,7 @@ pub fn invalidate_env_status_cache_for_repo(repo: &Path) {
     }
 }
 
-/// Fast env summary for project overview — no CLI subprocesses.
+/// Fast env summary for project overview — uses the same readiness rules as `get_env_status`.
 pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEnvStatus {
     let catalog = match load_catalog() {
         Ok(c) => c,
@@ -99,7 +107,7 @@ pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEn
     let ready_count = catalog
         .integrations
         .iter()
-        .filter(|def| integration_light_ready(repo, def))
+        .filter(|def| integration_is_ready(repo, def))
         .count();
 
     let core = repo
@@ -210,19 +218,20 @@ fn env_cache_put(key: String, fingerprint: u64, status: EnvStatus) {
     }
 }
 
-fn integration_light_ready(repo: &Path, def: &IntegrationDef) -> bool {
+fn integration_is_ready(repo: &Path, def: &IntegrationDef) -> bool {
     match def.kind.as_str() {
         "skill" => repo
             .join(".agents/skills")
             .join(skill_target_name(def))
             .join("SKILL.md")
             .is_file(),
-        "tool" => match def.id.as_str() {
-            "tool-rtk" => rtk_runtime_ready(),
-            "tool-codegraph" => codegraph_index_ready(repo),
-            "tool-bun" => agent_bin_dir().join("bun").is_file(),
-            _ => false,
-        },
+        "tool" => {
+            let locked = bundled_tool_runtime_ready(def);
+            match def.id.as_str() {
+                "tool-rtk" if locked => true,
+                _ => tool_check_passes(repo, def),
+            }
+        }
         "agents_md" => agents_md_ready(repo),
         "gitignore" => gitignore_has_patterns(repo, &def.patterns),
         _ => false,
@@ -386,53 +395,38 @@ pub(crate) fn dependencies_satisfied(
 }
 
 fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<EnvIntegrationStatus> {
-    let (integrated, detail) = match def.kind.as_str() {
+    let integrated = integration_is_ready(repo, def);
+    let detail = match def.kind.as_str() {
         "skill" => {
-            let target = repo.join(".agents/skills").join(skill_target_name(def));
-            let skill_file = target.join("SKILL.md");
-            (
-                skill_file.is_file(),
-                if skill_file.is_file() {
-                    format!("{}", skill_file.display())
-                } else {
-                    "未注入".into()
-                },
-            )
+            let skill_file = repo
+                .join(".agents/skills")
+                .join(skill_target_name(def))
+                .join("SKILL.md");
+            if skill_file.is_file() {
+                format!("{}", skill_file.display())
+            } else {
+                "未注入".into()
+            }
         }
         "tool" => {
             let locked = bundled_tool_runtime_ready(def);
-            let integrated = match def.id.as_str() {
-                "tool-rtk" if locked => true,
-                _ => tool_check_passes(repo, def),
-            };
-            (
-                integrated,
-                tool_status_detail(def, repo, integrated, locked),
-            )
+            tool_status_detail(def, repo, integrated, locked)
         }
         "agents_md" => {
-            let ready = agents_md_ready(repo);
-            (
-                ready,
-                if ready {
-                    "AGENTS.md 含 MindMesh 托管片段".into()
-                } else {
-                    "未配置".into()
-                },
-            )
+            if integrated {
+                "AGENTS.md 含 MindMesh 托管片段".into()
+            } else {
+                "未配置".into()
+            }
         }
         "gitignore" => {
-            let ok = gitignore_has_patterns(repo, &def.patterns);
-            (
-                ok,
-                if ok {
-                    "repomix.md 已忽略".into()
-                } else {
-                    "未配置".into()
-                },
-            )
+            if integrated {
+                "repomix.md 已忽略".into()
+            } else {
+                "未配置".into()
+            }
         }
-        _ => (false, "未知类型".into()),
+        _ => "未知类型".into(),
     };
 
     let locked = def.bundled && bundled_tool_runtime_ready(def);
@@ -589,6 +583,21 @@ mod tests {
 
         assert!(dependencies_satisfied(skill_cg, &selected, &integrated));
         assert!(dependencies_satisfied(skill_rtk, &selected, &integrated));
+    }
+
+    #[test]
+    fn overview_summary_matches_full_env_status_count() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
+        invalidate_env_status_cache();
+        let full = get_env_status(&repo).expect("env status");
+        let light = summarize_agent_env_light(&repo, 0);
+        assert_eq!(
+            light.integrated_count,
+            full.ready_count,
+            "overview ({}) and env page ({}) should match",
+            light.summary,
+            full.summary,
+        );
     }
 
     #[test]

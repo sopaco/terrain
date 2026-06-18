@@ -48,12 +48,12 @@ export async function resolveSourceCitation(
     isKnowledgeMarkdownPath(citation.path) ||
     (citation.path.endsWith(".md") && citation.kind !== "source_code" && !isPackIndex);
 
-  const focusLine = fullFile ? citation.start_line : undefined;
+  const focusLine = fullFile ? (citation.start_line ?? null) : null;
 
   return {
     ...slice,
     format: isPackIndex || isMarkdownDoc ? "markdown" : "code",
-    focus_line: focusLine,
+    focus_line: focusLine ?? undefined,
   };
 }
 

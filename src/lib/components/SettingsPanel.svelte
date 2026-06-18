@@ -85,7 +85,7 @@
     };
   }
 
-  function profileToDraft(profile: ProviderProfile | undefined, id: ProviderId): ProviderDraft {
+  function profileToDraft(profile: ProviderProfile | null | undefined, id: ProviderId): ProviderDraft {
     const base = defaultDraft(id);
     if (!profile) return base;
     return {
@@ -98,10 +98,10 @@
 
   function draftToProfile(draft: ProviderDraft): ProviderProfile {
     return {
-      model: draft.model.trim() || undefined,
-      api_key: draft.api_key.trim() || undefined,
-      base_url: draft.base_url.trim() || undefined,
-      ollama_host: draft.ollama_host.trim() || undefined,
+      model: draft.model.trim() || null,
+      api_key: draft.api_key.trim() || null,
+      base_url: draft.base_url.trim() || null,
+      ollama_host: draft.ollama_host.trim() || null,
     };
   }
 
@@ -157,9 +157,9 @@
     }
     const active = draftToProfile(drafts[provider]);
     const acp: AcpSettings = {
-      binary: acpBinary.trim() || undefined,
-      args: acpArgs.trim() || undefined,
-      command: acpCommand.trim() || undefined,
+      binary: acpBinary.trim() || null,
+      args: acpArgs.trim() || null,
+      command: acpCommand.trim() || null,
       agent_execution: agentExecution,
       auto_approve: true,
     };

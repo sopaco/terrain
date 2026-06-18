@@ -1,6 +1,7 @@
 <script lang="ts">
   import { shouldSubmitOnEnter } from "../ime";
   import { parseAskSlashCommand } from "../askSlashCommands";
+  import { UI_MESSAGES } from "../terminology";
 
   interface Props {
     disabled?: boolean;
@@ -13,7 +14,7 @@
   let {
     disabled = false,
     disabledReason = null,
-    placeholder = "Ask about this project…",
+    placeholder = UI_MESSAGES.askPlaceholder,
     onask,
     onclear,
   }: Props = $props();

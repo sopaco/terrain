@@ -35,10 +35,10 @@
     {#if slice.format !== "markdown"}
       {#if slice.focus_line}
         <div class="mt-1">
-          {slice.end_line} lines · cited line {slice.focus_line}
+          第 {slice.start_line}–{slice.end_line} 行 · 引用行 {slice.focus_line}
         </div>
       {:else if slice.start_line > 0 && slice.end_line > 0}
-        <div class="mt-1">Lines {slice.start_line}–{slice.end_line}</div>
+        <div class="mt-1">第 {slice.start_line}–{slice.end_line} 行</div>
       {/if}
     {/if}
   </div>

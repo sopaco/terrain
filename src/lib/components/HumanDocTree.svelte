@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { HumanDocEntry } from "../types";
-  import { generateLabel, TERMS } from "../terminology";
+  import { generateLabel, TERMS, UI_MESSAGES } from "../terminology";
 
   interface Props {
     docs: HumanDocEntry[];
@@ -292,7 +292,7 @@
       {#if loading}
         <span class="inline-flex items-center gap-1.5 text-[10px] text-sky-300/90">
           <span class="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent"></span>
-          Loading
+          {UI_MESSAGES.loadingDocs}
         </span>
       {:else}
         <span class="text-[10px] text-white/30">{docs.length} 篇</span>

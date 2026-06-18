@@ -10,6 +10,7 @@
     "build:app": "tauri build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "gen:types": "cargo run -p mind-mesh-ts-export --bin export-ts-types",
     "tauri": "tauri"
   },
   "dependencies": {

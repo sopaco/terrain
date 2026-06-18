@@ -4,6 +4,7 @@ members = [
     "crates/mind-mesh-core",
     "crates/mind-mesh-agent",
     "crates/mind-mesh-cli",
+    "crates/mind-mesh-ts-export",
     "src-tauri",
 ]
 
@@ -43,6 +44,7 @@ adk-tool = "1.0.0"
 mind-mesh-core = { path = "crates/mind-mesh-core" }
 mind-mesh-agent = { path = "crates/mind-mesh-agent" }
 repomix-core = "2.0"
+ts-rs = { version = "10", features = ["serde-compat"] }
 
 [patch.crates-io]
 # Vendored fixes for blanket `From` impl conflicts with `time` 0.3.48 (Rust 1.88+).

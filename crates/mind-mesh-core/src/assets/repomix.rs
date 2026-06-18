@@ -51,6 +51,8 @@ fn architecture_ignore_patterns() -> Vec<String> {
     .collect()
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentPackReport {
     pub project_slug: String,

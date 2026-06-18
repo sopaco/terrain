@@ -18,6 +18,8 @@ pub struct ProjectInitProgress {
     pub message: String,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ProjectInitResult {
     pub project_slug: String,

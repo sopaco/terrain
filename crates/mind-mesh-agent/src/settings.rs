@@ -13,6 +13,8 @@ use crate::model::{
 pub const DEFAULT_ACP_BINARY: &str = "opencode";
 pub const DEFAULT_ACP_ARGS: &str = "acp";
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export, rename_all = "snake_case"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentExecution {
@@ -27,6 +29,8 @@ pub enum AgentExecution {
 /// Deprecated alias — use [`AgentExecution`].
 pub type AskExecution = AgentExecution;
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AcpSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -56,6 +60,8 @@ impl Default for AcpSettings {
 pub const DEFAULT_OLLAMA_MODEL: &str = "qwen3.5:9b";
 pub const DEFAULT_OLLAMA_HOST: &str = "http://localhost:11434";
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProviderProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -68,6 +74,8 @@ pub struct ProviderProfile {
     pub ollama_host: Option<String>,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ModelSettings {
     pub provider: Option<String>,

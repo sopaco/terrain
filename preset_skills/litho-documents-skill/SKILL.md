@@ -107,8 +107,7 @@ version: 3.0.0
 
 **决策要点**：
 - Mermaid 图表语法验证（节点 ID 仅字母数字、标签用双引号、换行用 `<br/>`）
-- 每份文档末尾标注置信度评分（1-10）
-- 生成执行摘要报告（文档清单、模块覆盖数、置信度表、需人工审查项）
+- 生成执行摘要报告（文档清单、模块覆盖数、需人工审查项）
 
 **数据库文档触发**（满足任一即触发，否则写极简声明文件）：
 - `.sql`/`.sqlproj` 文件 | `migrations/`/`sql/`/`db/`/`database/` 目录 | ORM 依赖 | DB 配置文件
@@ -180,5 +179,5 @@ Agent 单次对话上下文窗口有限。随着分析深入，早期的研究�
 - `references/phase1-preprocessing.md` — 预处理详细步骤 + 搜索策略
 - `references/phase2-research.md` — 研究各 Agent 详细指南 + 输出格式
 - `references/phase3-composition.md` — 文档模板 + 分章节策略 + 代码引用规范
-- `references/phase4-output.md` — Mermaid 验证清单 + 置信度评分模板
+- `references/phase4-output.md` — Mermaid 验证清单与交付摘要模板
 - `references/doc-templates.md` — Mermaid 图表语法速查 + 类型选择指南

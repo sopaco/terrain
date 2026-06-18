@@ -19,6 +19,8 @@ pub struct EnvApplyProgress {
     pub message: String,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvApplyResult {
     pub repo_path: String,

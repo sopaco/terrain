@@ -45,9 +45,10 @@ export function buildSourceCitation(
     kind: citationKindForPath(path),
     title: start ? `${path}:${start}` : path,
     path,
-    repo_path: repoPath ?? undefined,
-    start_line: start,
-    end_line: end,
+    repo_path: repoPath ?? null,
+    start_line: start ?? null,
+    end_line: end ?? null,
+    excerpt: null,
   };
 }
 

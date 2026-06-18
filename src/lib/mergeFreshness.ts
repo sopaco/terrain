@@ -7,7 +7,7 @@ export function mergeFreshnessIntoOverview(
   overview: ProjectOverview,
   freshness: FreshnessSummary,
 ): ProjectOverview {
-  const staleReason = freshness.stale_reason ?? undefined;
+  const staleReason = freshness.stale_reason;
   const asset_health = overview.asset_health.map((asset) => {
     switch (asset.track) {
       case "agent_pack": {
@@ -16,7 +16,7 @@ export function mergeFreshnessIntoOverview(
           ...asset,
           freshness_score: freshness.agent_pack_score,
           stale,
-          stale_reason: stale ? staleReason : undefined,
+          stale_reason: stale ? staleReason : null,
         };
       }
       case "agent_context": {
@@ -25,7 +25,7 @@ export function mergeFreshnessIntoOverview(
           ...asset,
           freshness_score: freshness.agent_context_score,
           stale,
-          stale_reason: stale ? staleReason : undefined,
+          stale_reason: stale ? staleReason : null,
         };
       }
       case "human": {
@@ -34,7 +34,7 @@ export function mergeFreshnessIntoOverview(
           ...asset,
           freshness_score: freshness.human_docs_score,
           stale,
-          stale_reason: stale ? staleReason : undefined,
+          stale_reason: stale ? staleReason : null,
         };
       }
       default:

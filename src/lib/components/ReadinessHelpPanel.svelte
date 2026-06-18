@@ -20,7 +20,7 @@
     rows: AssetRow[];
     onclose: () => void;
     onOpenKnowledge: () => void;
-    freshnessBadgeClass: (score: number, stale?: boolean) => string;
+    freshnessBadgeClass: (score: number, stale?: boolean | null) => string;
   }
 
   let {

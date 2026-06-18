@@ -16,6 +16,8 @@ pub mod agent_tools_deploy;
 pub mod bundled_tools;
 pub mod shell_path;
 pub mod source;
+#[macro_use]
+mod ts_ipc;
 
 pub use assets::{
     agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
@@ -49,7 +51,7 @@ pub use freshness::{
     write_freshness_ledger, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
 };
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
-pub use ingest::{ProjectScanner, ScanReport};
+pub use ingest::{AgentPackSummary, ProjectScanner, ScanReport};
 pub use model_text::{
     extract_markdown_body, prepare_chat_markdown, prepare_model_markdown, repair_flattened_markdown,
     strip_model_reasoning, unwrap_markdown_fence,
@@ -65,7 +67,8 @@ pub use schema::{
     AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, FreshnessDriftFactor,
     FreshnessSummary,
     HumanDocEntry,
-    InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, RouteMeta, SddPhase,
+    InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, QuickRefreshResult,
+    RouteMeta, SddPhase,
     SddPhaseInfo, SddPhaseResult, SddPlan, SddSessionInfo, SddStatus, SourceCitation, SourceSlice, SyncMeta,
     TokenHeavyFile,
 };

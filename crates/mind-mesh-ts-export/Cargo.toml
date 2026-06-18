@@ -1,0 +1,17 @@
+[package]
+name = "mind-mesh-ts-export"
+description = "Export Rust IPC types to TypeScript for the MindMesh desktop UI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "export-ts-types"
+path = "src/main.rs"
+
+[dependencies]
+mind-mesh-core = { workspace = true, features = ["ts-export", "repomix"] }
+mind-mesh-agent = { workspace = true, features = ["ts-export"] }
+ts-rs = { workspace = true }

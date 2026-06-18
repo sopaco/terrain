@@ -8,6 +8,8 @@ use crate::error::Result;
 use crate::paths::KnowledgePaths;
 use crate::schema::DocType;
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchHit {
     pub path: String,
@@ -139,6 +141,8 @@ impl<'a> KnowledgeSearch<'a> {
     }
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectSummary {
     pub slug: String,

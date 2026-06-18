@@ -15,6 +15,8 @@ use crate::schema::SyncMeta;
 #[cfg(feature = "repomix")]
 use crate::assets::pack_agent_assets;
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ScanReport {
     pub project_slug: String,
@@ -24,6 +26,8 @@ pub struct ScanReport {
     pub agent_pack: Option<AgentPackSummary>,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentPackSummary {
     pub total_files: usize,

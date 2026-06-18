@@ -15,6 +15,8 @@ const STABLE_TICKS: u32 = 10;
 const MAX_COMPOSITION_ATTEMPTS: u32 = 3;
 const DEFAULT_WALL_TIMEOUT_SECS: u64 = 45 * 60;
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LithoGenerationJob {
     pub plan: LithoPlan,
@@ -29,6 +31,8 @@ pub struct LithoProgress {
     pub message: String,
 }
 
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LithoGenerationResult {
     pub plan: LithoPlan,

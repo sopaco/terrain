@@ -3,8 +3,8 @@
   "project": "mind-mesh",
   "repo_path": "/Users/bjsttlp485/Workspace/SAW/mind-mesh",
   "baseline": {
-    "git_head": "43273e7febdaef4dd9d80f1d403081661c9ab21d",
-    "git_head_at": "2026-06-18T07:10:54.768180+00:00",
+    "git_head": "8230a9a78d0a9c21d9c1ae61324ef5c0d8084c89",
+    "git_head_at": "2026-06-18T09:07:16.283749+00:00",
     "dirty": true
   },
   "assets": {
@@ -13,46 +13,56 @@
       "synced_at": "2026-06-18T07:08:01.771178+00:00",
       "baseline_git_head": "43273e7febdaef4dd9d80f1d403081661c9ab21d",
       "stale": false,
-      "freshness_score": 95
+      "freshness_score": 93
     },
     "agent_context": {
       "path": "agent/context.md",
       "synced_at": "2026-06-18T07:10:54.472448+00:00",
       "baseline_git_head": "43273e7febdaef4dd9d80f1d403081661c9ab21d",
       "stale": false,
-      "freshness_score": 85
+      "freshness_score": 83
     },
     "human_docs": {
       "path": "human/",
       "synced_at": "2026-06-18T07:07:59.682541+00:00",
       "stale": false,
-      "freshness_score": 95
+      "freshness_score": 93
     }
   },
   "drift": {
-    "commits_since_baseline": 0,
-    "changed_files_since_baseline": 0,
-    "sample_changed_files": []
+    "commits_since_baseline": 1,
+    "changed_files_since_baseline": 1,
+    "sample_changed_files": [
+      "crates/mind-mesh-core/src/freshness.rs"
+    ]
   },
   "summary": {
-    "overall_score": 85,
+    "overall_score": 83,
     "overall_stale": false,
-    "commits_since_baseline": 0,
-    "changed_files_count": 0,
-    "current_git_head": "43273e7",
+    "commits_since_baseline": 1,
+    "changed_files_count": 1,
+    "current_git_head": "8230a9a",
     "working_tree_dirty": true,
     "is_git_repo": true,
-    "last_computed_at": "2026-06-18T07:10:54.768180+00:00",
-    "agent_pack_score": 95,
-    "agent_context_score": 85,
-    "human_docs_score": 95,
+    "last_computed_at": "2026-06-18T09:07:16.283749+00:00",
+    "agent_pack_score": 93,
+    "agent_context_score": 83,
+    "human_docs_score": 93,
     "macro_preload_allowed": true,
     "drift_factors": [
       {
-        "id": "baseline_match",
-        "severity": "info",
-        "title": "与 baseline 提交一致",
-        "detail": "源码索引与 Agent 上下文均基于提交 43273e7febdaef4dd9d80f1d403081661c9ab21d 生成，相对 HEAD 无文件漂移。"
+        "id": "commits_behind",
+        "severity": "medium",
+        "title": "代码已前进 1 个提交",
+        "detail": "知识资产 baseline 为 43273e7febdaef4dd9d80f1d403081661c9ab21d，当前 HEAD 为 8230a9a。每多 1 个提交约扣 2 分（上限 40 分）。",
+        "points_lost": 2
+      },
+      {
+        "id": "files_changed",
+        "severity": "medium",
+        "title": "1 个文件相对 baseline 有变更",
+        "detail": "变更文件占索引规模的比例越高，扣分越多（上限 30 分）。下方列出部分路径。",
+        "points_lost": 0
       },
       {
         "id": "dirty_tree",
@@ -65,18 +75,21 @@
         "id": "context_lineage",
         "severity": "info",
         "title": "Agent 上下文受源码索引牵连",
-        "detail": "架构上下文原始分 95/100，按规则不超过源码索引分数的 90%，现为 85/100。",
+        "detail": "架构上下文原始分 93/100，按规则不超过源码索引分数的 90%，现为 83/100。",
         "points_lost": 10
       },
       {
         "id": "overall_driver",
         "severity": "info",
         "title": "总分由 Agent 架构上下文决定",
-        "detail": "综合分取三层最低值：源码索引 95、Agent 上下文 85、人类文档 95。"
+        "detail": "综合分取三层最低值：源码索引 93、Agent 上下文 83、人类文档 93。"
       }
+    ],
+    "sample_changed_files": [
+      "crates/mind-mesh-core/src/freshness.rs"
     ],
     "pack_baseline_short": "43273e7",
     "context_baseline_short": "43273e7"
   },
-  "last_computed_at": "2026-06-18T07:10:54.768180+00:00"
+  "last_computed_at": "2026-06-18T09:07:16.283749+00:00"
 }
