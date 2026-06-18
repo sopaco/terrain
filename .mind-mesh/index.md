@@ -43,11 +43,14 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
     - skills/
   - Cargo.lock
   - bun.lock
+  - README.md
   - .gitignore
   - package.json
   - examples/
     - fixtures/
   - packages/
+    - mind-mesh/
+    - codegraph/
     - rtk/
   - src-tauri/
     - Cargo.toml
@@ -55,6 +58,7 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
     - capabilities/
     - build.rs
     - gen/
+    - binaries/
     - icons/
     - src/
   - tsconfig.json
@@ -68,6 +72,7 @@ source: /Users/bjsttlp485/Workspace/SAW/mind-mesh
   - AGENTS.md
   - vite.config.ts
   - assets/
+    - screenshots/
     - banner.png
     - app-icon.png
   - .codegraph/

@@ -177,6 +177,14 @@ fn stale_reason_for(score: u8, commits: u32, dirty: bool, ready: bool) -> Option
     Some("sync_age".into())
 }
 
+/// Overall freshness is the minimum across all three asset layers (including 0 = not ready).
+fn overall_freshness_score(pack_score: u8, ctx_score: u8, human_score: u8) -> u8 {
+    [pack_score, ctx_score, human_score]
+        .into_iter()
+        .min()
+        .unwrap_or(0)
+}
+
 fn short_git_ref(value: Option<&str>) -> Option<String> {
     value.map(|h| {
         let h = h.trim();
@@ -465,11 +473,7 @@ pub fn compute_freshness(
         git.dirty,
     );
 
-    let overall_score = [pack_score, ctx_score, human_score]
-        .into_iter()
-        .filter(|&s| s > 0)
-        .min()
-        .unwrap_or(0);
+    let overall_score = overall_freshness_score(pack_score, ctx_score, human_score);
 
     let commits_since = pack_drift
         .commits_since_baseline
@@ -477,7 +481,11 @@ pub fn compute_freshness(
     let changed_files_count = pack_drift.changed_files.len().max(ctx_drift.changed_files.len()) as u32;
 
     let overall_stale = overall_score < FRESH_THRESHOLD;
-    let stale_reason = stale_reason_for(overall_score, commits_since, git.dirty, pack_ready || ctx_ready);
+    let stale_reason = if !pack_ready || !ctx_ready {
+        Some("asset_not_ready".into())
+    } else {
+        stale_reason_for(overall_score, commits_since, git.dirty, true)
+    };
 
     let now = Utc::now().to_rfc3339();
 
@@ -666,6 +674,14 @@ fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overall_score_includes_not_ready_layers() {
+        assert_eq!(overall_freshness_score(100, 0, 100), 0);
+        assert_eq!(overall_freshness_score(0, 100, 100), 0);
+        assert_eq!(overall_freshness_score(100, 80, 100), 80);
+        assert_eq!(overall_freshness_score(50, 60, 70), 50);
+    }
 
     #[test]
     fn score_decreases_with_commits_and_age() {
