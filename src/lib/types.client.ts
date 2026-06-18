@@ -29,6 +29,8 @@ export type SourceSlice = IpcSourceSlice & {
   format?: "code" | "markdown";
   /** Scroll to this line when opening a full-file view from a citation. */
   focus_line?: number;
+  /** Client-side load state for optimistic source panel open. */
+  status?: "loading" | "ready" | "error";
 };
 
 export type AssistantStep =

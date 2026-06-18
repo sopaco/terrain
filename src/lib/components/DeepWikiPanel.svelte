@@ -11,7 +11,7 @@
     syncStepTools,
   } from "../assistantSteps";
   import { isKnowledgeMarkdownPath } from "../knowledgeDoc";
-  import { citationToSourceSlice } from "../resolveSource";
+  import { citationToSourceSlice, createPendingSourceSlice } from "../resolveSource";
   import { shouldSubmitOnEnter } from "../ime";
   import type {
     AssistantStep,
@@ -97,6 +97,7 @@
   let sourceRailPresented = $state(false);
   let showSourcePanel = $state(false);
   let visibleSourceSlice = $state<SourceSlice | null>(null);
+  let sourceLoadId = 0;
 
   $effect(() => {
     if (open) {
@@ -120,12 +121,17 @@
 
   $effect(() => {
     if (sourceSlice) {
-      sourceRailMounted = true;
-      showSourcePanel = false;
-      void schedulePresent((value) => {
-        sourceRailPresented = value;
-        if (value) showSourcePanel = true;
-      });
+      if (!sourceRailMounted) {
+        sourceRailMounted = true;
+        showSourcePanel = false;
+        void schedulePresent((value) => {
+          sourceRailPresented = value;
+          if (value) showSourcePanel = true;
+        });
+      } else {
+        sourceRailPresented = true;
+        showSourcePanel = true;
+      }
       return;
     }
     sourceRailPresented = false;
@@ -497,6 +503,9 @@
       return;
     }
 
+    const loadId = ++sourceLoadId;
+    onsourcechange(createPendingSourceSlice(c, repoPath));
+
     try {
       const slice = await citationToSourceSlice(
         projectSlug ?? "",
@@ -504,16 +513,16 @@
         repoPath,
         readDocument,
       );
+      if (loadId !== sourceLoadId) return;
       onsourcechange(slice);
     } catch (e) {
+      if (loadId !== sourceLoadId) return;
       citationError = String(e);
       onsourcechange({
-        repo_path: c.repo_path ?? repoPath ?? "",
-        file_path: c.path,
-        start_line: c.start_line ?? 0,
-        end_line: c.end_line ?? 0,
-        content: `**Could not load source**\n\n${e}`,
+        ...createPendingSourceSlice(c, repoPath),
+        status: "error",
         format: "markdown",
+        content: String(e),
       });
     }
   }

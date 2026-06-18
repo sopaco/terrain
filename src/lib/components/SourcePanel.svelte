@@ -11,6 +11,9 @@
   }
 
   let { slice, repoPath = null, onclose, onSourceClick }: Props = $props();
+
+  const loading = $derived(slice.status === "loading");
+  const errored = $derived(slice.status === "error");
 </script>
 
 <div
@@ -42,7 +45,34 @@
       {/if}
     {/if}
   </div>
-  {#if slice.format === "markdown"}
+  {#if loading}
+    <div
+      class="flex flex-1 flex-col gap-3 p-4"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-indigo-400/30 border-t-indigo-300"
+        ></div>
+        <p class="text-sm text-white/60">正在加载…</p>
+      </div>
+      <div class="space-y-2">
+        {#each Array.from({ length: 8 }, (_, i) => i) as i (i)}
+          <div
+            class="h-3 animate-pulse rounded bg-white/[0.06]"
+            style:width="{55 + (i % 4) * 10}%"
+          ></div>
+        {/each}
+      </div>
+    </div>
+  {:else if errored}
+    <div class="flex-1 overflow-y-auto p-4 text-sm text-red-300/90">
+      <p class="font-medium">无法加载源文件</p>
+      <p class="mt-2 whitespace-pre-wrap text-white/50">{slice.content}</p>
+    </div>
+  {:else if slice.format === "markdown"}
     <div class="flex-1 overflow-y-auto p-4">
       <MarkdownViewer
         body={slice.content}

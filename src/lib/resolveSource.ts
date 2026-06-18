@@ -18,6 +18,33 @@ export function isKnowledgeDocCitation(c: SourceCitation): boolean {
   );
 }
 
+export function inferSourceSliceFormat(citation: SourceCitation): "code" | "markdown" {
+  if (isKnowledgeDocCitation(citation)) return "markdown";
+  const isPackIndex =
+    citation.path === "agent/repomix.md" || citation.path.endsWith("/agent/repomix.md");
+  const isMarkdownDoc =
+    isKnowledgeMarkdownPath(citation.path) ||
+    (citation.path.endsWith(".md") && citation.kind !== "source_code" && !isPackIndex);
+  return isPackIndex || isMarkdownDoc ? "markdown" : "code";
+}
+
+/** Placeholder slice shown immediately while IPC resolves the citation. */
+export function createPendingSourceSlice(
+  citation: SourceCitation,
+  repoPath?: string | null,
+): SourceSlice {
+  return {
+    repo_path: citation.repo_path ?? repoPath ?? "",
+    file_path: citation.path,
+    start_line: citation.start_line ?? 0,
+    end_line: citation.end_line ?? 0,
+    content: "",
+    format: inferSourceSliceFormat(citation),
+    focus_line: citation.start_line ?? undefined,
+    status: "loading",
+  };
+}
+
 export function knowledgeDocPathForCitation(
   projectSlug: string,
   path: string,
@@ -54,6 +81,7 @@ export async function resolveSourceCitation(
     ...slice,
     format: isPackIndex || isMarkdownDoc ? "markdown" : "code",
     focus_line: focusLine ?? undefined,
+    status: "ready",
   };
 }
 
@@ -74,11 +102,12 @@ export async function citationToSourceSlice(
       end_line: 0,
       content: doc.body,
       format: "markdown",
+      status: "ready",
     };
   }
 
   const slice = await resolveSourceCitation(projectSlug, citation, repoPath, {
     fullFile: true,
   });
-  return { ...slice, format: slice.format ?? "code" };
+  return { ...slice, format: slice.format ?? "code", status: "ready" };
 }

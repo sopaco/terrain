@@ -41,9 +41,10 @@
   $effect(() => {
     if (open) {
       mounted = true;
-      showContent = true;
+      showContent = false;
       void schedulePresent((value) => {
         presented = value;
+        if (value) showContent = true;
       });
       return;
     }

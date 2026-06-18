@@ -43,7 +43,7 @@
   import { usesNativeLlm, normalizeAgentExecution } from "./lib/agentExecution";
   import { parseAskSlashCommand } from "./lib/askSlashCommands";
   import { generateLabel, TERMS, UI_MESSAGES } from "./lib/terminology";
-  import { citationToSourceSlice } from "./lib/resolveSource";
+  import { citationToSourceSlice, createPendingSourceSlice } from "./lib/resolveSource";
   import { setStatus, status } from "./lib/stores/status.svelte";
   import {
     chatSessions,
@@ -82,6 +82,7 @@
   const knowledgeSourceSlice = $derived(
     project.selectedSlug ? (knowledgeSources[project.selectedSlug] ?? null) : null,
   );
+  let knowledgeSourceLoadId = 0;
   const repackBusy = $derived(currentTaskDerived.repackBusy);
   const lithoBusy = $derived(currentTaskDerived.lithoBusy);
   const lithoProgress = $derived(currentTaskDerived.lithoProgress);
@@ -499,17 +500,27 @@
   async function openKnowledgeSourceCitation(c: SourceCitation) {
     if (!project.selectedSlug) return;
 
+    const slug = project.selectedSlug;
+    const loadId = ++knowledgeSourceLoadId;
+    setKnowledgeSource(slug, createPendingSourceSlice(c, project.selectedRepoPath));
+
     try {
       const slice = await citationToSourceSlice(
-        project.selectedSlug,
+        slug,
         c,
         project.selectedRepoPath,
         readDocument,
       );
-      setKnowledgeSource(project.selectedSlug, slice);
+      if (loadId !== knowledgeSourceLoadId) return;
+      setKnowledgeSource(slug, slice);
     } catch (e) {
+      if (loadId !== knowledgeSourceLoadId) return;
       setStatus(String(e), "error");
-      setKnowledgeSource(project.selectedSlug, null);
+      setKnowledgeSource(slug, {
+        ...createPendingSourceSlice(c, project.selectedRepoPath),
+        status: "error",
+        content: String(e),
+      });
     }
   }
 
