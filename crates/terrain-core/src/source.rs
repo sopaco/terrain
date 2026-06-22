@@ -654,31 +654,4 @@ mod tests {
             .expect("absolute path under repo should resolve");
         assert!(slice.content.contains("absolute path test"));
     }
-
-    #[test]
-    #[ignore = "requires repomix-rs registered in local ~/.terrain/registry.json"]
-    fn resolves_live_repo_from_registered_project() {
-        let paths = KnowledgePaths::new();
-        if !paths.agent_pack_meta("repomix-rs").is_file() {
-            return;
-        }
-        let repo = "/Users/bjsttlp485/Workspace/SAW/repomix-rs";
-        if !std::path::Path::new(repo).is_dir() {
-            return;
-        }
-        let slice = resolve_source_citation(
-            &paths,
-            "repomix-rs",
-            Some(repo),
-            "crates/core/src/lib.rs",
-            1,
-            5,
-        )
-        .expect("should read live repo file");
-        assert!(
-            slice.content.contains("pub mod"),
-            "expected real source, got: {}",
-            slice.content
-        );
-    }
 }

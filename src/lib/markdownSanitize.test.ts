@@ -67,7 +67,8 @@ describe("extractMarkdownBody", () => {
 
 describe("linkifySourcesOutsideCode", () => {
   test("skips inline and fenced code", () => {
-    const input = "See `src/foo.rs:1` and `src/bar.rs:2`.\n\n```\nsrc/baz.rs:3\n```";
+    const input =
+      "See `src/foo.rs:1` and `src/bar.rs:2`.\n\n```\nsrc/baz.rs:3\n```";
     const linked = linkifySourcesOutsideCode(input, linkify);
     expect(linked).toContain("`src/foo.rs:1`");
     expect(linked).toContain("`src/bar.rs:2`");
@@ -104,7 +105,9 @@ describe("markdown pipeline", () => {
 
   test("renders fenced markdown replies as markdown", () => {
     const input = "```markdown\n## Answer\n\n- Item one\n```";
-    const html = marked.parse(prepareMarkdownForRender(input), { async: false }) as string;
+    const html = marked.parse(prepareMarkdownForRender(input), {
+      async: false,
+    }) as string;
     expect(html).toContain("<h2>Answer</h2>");
     expect(html).toContain("<li>Item one</li>");
     expect(html).not.toContain("<pre><code");
@@ -122,15 +125,6 @@ describe("markdown pipeline", () => {
     expect(out).toContain("\n\n## 总结");
     const html = marked.parse(out, { async: false }) as string;
     expect(html).toContain("<h2>核心依赖与协议</h2>");
-    expect(html).toContain("<li>");
-  });
-
-  test("repairs flattened lm studio style markdown", async () => {
-    const raw = await Bun.file("/Users/bjsttlp485/.terrain/debug/last-ask-raw.md").text();
-    const repaired = repairFlattenedMarkdown(raw);
-    expect(repaired.split("\n").length).toBeGreaterThan(5);
-    const html = marked.parse(prepareMarkdownForRender(raw), { async: false }) as string;
-    expect(html).toMatch(/<h[23]>/);
     expect(html).toContain("<li>");
   });
 });
