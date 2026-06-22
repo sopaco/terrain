@@ -10,6 +10,7 @@ use crate::doc::read_json;
 use crate::error::Result;
 use crate::paths::{is_knowledge_output_path, KnowledgePaths};
 use crate::path_portable::stored_repo_path;
+use crate::project::resolve_project_repo_path;
 use crate::schema::{
     AgentContextMeta, AgentPackMeta, AssetFreshness, FreshnessDriftFactor, FreshnessLedger,
     FreshnessSummary, SyncMeta,
@@ -402,7 +403,9 @@ pub fn compute_freshness(
     project_slug: &str,
     repo_path: &str,
 ) -> Result<FreshnessSummary> {
-    let git = git_snapshot(repo_path);
+    let repo_path = resolve_project_repo_path(paths, project_slug, Some(repo_path))
+        .unwrap_or_else(|_| repo_path.to_string());
+    let git = git_snapshot(&repo_path);
     let pack_meta = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)).ok();
     let ctx_meta = read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)).ok();
     let sync_meta = read_json::<SyncMeta>(paths.sync_meta_path(project_slug)).ok();
@@ -413,7 +416,7 @@ pub fn compute_freshness(
     let pack_baseline = pack_meta
         .as_ref()
         .and_then(|m| m.baseline_git_head.clone());
-    let pack_drift = git_drift_since(repo_path, pack_baseline.as_deref());
+    let pack_drift = git_drift_since(&repo_path, pack_baseline.as_deref());
     let pack_days = pack_meta
         .as_ref()
         .map(|m| days_since_rfc3339(&m.synced_at))
@@ -440,7 +443,7 @@ pub fn compute_freshness(
         .as_ref()
         .and_then(|m| m.baseline_git_head.clone())
         .or(pack_baseline.clone());
-    let ctx_drift = git_drift_since(repo_path, ctx_baseline.as_deref());
+    let ctx_drift = git_drift_since(&repo_path, ctx_baseline.as_deref());
     let ctx_days = ctx_meta
         .as_ref()
         .map(|m| days_since_rfc3339(&m.generated_at))
@@ -463,7 +466,7 @@ pub fn compute_freshness(
         .map(|m| days_since_rfc3339(&m.synced_at))
         .unwrap_or(pack_days);
     let human_drift = git_drift_since(
-        repo_path,
+        &repo_path,
         pack_baseline.as_deref().or(git.head.as_deref()),
     );
     let human_score = score_asset(
@@ -543,7 +546,7 @@ pub fn compute_freshness(
     let ledger = FreshnessLedger {
         version: LEDGER_VERSION,
         project: project_slug.to_string(),
-        repo_path: stored_repo_path(Path::new(repo_path)),
+        repo_path: stored_repo_path(Path::new(&repo_path)),
         baseline: crate::schema::FreshnessBaseline {
             git_head: git.head.clone(),
             git_head_at: now.clone(),

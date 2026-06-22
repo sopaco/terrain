@@ -126,7 +126,8 @@ impl<'a> KnowledgeSearch<'a> {
             let repo_path = doc
                 .frontmatter
                 .source
-                .filter(|s| !s.is_empty())
+                .as_deref()
+                .and_then(|s| crate::path_portable::resolve_stored_repo_path(s, &slug))
                 .or_else(|| crate::registry::repo_path_for_slug(&slug));
             projects.push(ProjectSummary {
                 slug: slug.clone(),

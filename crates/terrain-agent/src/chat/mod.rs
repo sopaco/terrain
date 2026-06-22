@@ -13,8 +13,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use terrain_core::{
-    agent_pack_ready, KnowledgePaths, KnowledgeSearch, SearchOptions, SourceCitation,
-    prepare_chat_markdown,
+    agent_pack_ready, normalize_repo_hint, KnowledgePaths, KnowledgeSearch, SearchOptions,
+    SourceCitation, prepare_chat_markdown,
 };
 
 use crate::acp::{
@@ -129,7 +129,7 @@ impl ChatEngine {
                     &self.paths,
                     &self.model_config,
                     slug,
-                    repo_path.filter(|r| !r.is_empty()),
+                    normalize_repo_hint(repo_path),
                 )
                 .await?;
             }

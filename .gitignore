@@ -36,3 +36,5 @@ src-tauri/binaries/*
 
 **/.litho-agent
 **/.sdd-agent
+
+.codegraph

@@ -47,3 +47,80 @@ pub struct MyPayload { /* ... */ }
 ```
 
 feature 定义见各 crate 的 `Cargo.toml`（`terrain-core`、`terrain-agent` 的 `ts-export`）。
+
+<!-- terrain:begin env-overview v3 -->
+## AI 工程环境（Terrain）
+
+本仓库由 Terrain 配置了 AI 工程环境。Coding Agent 请遵循以下约定：
+
+- **知识资产**位于本仓库 **`.terrain/`**（Agent 友好的知识资产、人类友好的知识库、私域知识、源码索引；可随 Git 协作）
+- **项目登记**在本地 `~/.terrain/registry.json`（仅记录仓库路径，不含知识正文）
+- **Skills** 位于 `.agents/skills/`（由 Terrain 注入，可按需重新集成）
+- **Agent 工具路径**在 `.terrain/env/agent-tools.json`（`~/.terrain/bin/` 下的 `rtk` / `codegraph` / `terrain`；本地生成，不入库；参考 `env-catalog/agent-tools.template.json`）
+- **工作流**：先读知识 → 再查关系 → 最后读源码；shell 输出优先走 RTK
+<!-- terrain:end env-overview -->
+
+<!-- terrain:begin knowledge-guide v3 -->
+## Terrain 知识资产
+
+Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层策略查询 **`.terrain/`**（仓库内路径，非全局目录）。
+
+| 层级 | 路径 | 何时使用 |
+|------|------|----------|
+| Agent 友好 | `.terrain/agent/context.md` | 模块划分、核心流程、系统边界 |
+| 私域 | `.terrain/knowledge/` | 业务术语、内部框架/API/脚手架 |
+| 人类友好 | `.terrain/human/` | Litho 人类友好的知识库（可选参考） |
+| 源码 | `.terrain/agent/repomix.md`（见 `repomix-context-skill`） | 实现细节（本地索引，不入库） |
+| 关系 | codegraph CLI（见 `codegraph-skill`） | 调用链、依赖关系、影响分析 |
+
+**原则**：先宏观后微观；优先读已生成文档，再 grep 源码索引。
+
+## 知识保鲜（必读）
+
+1. 回答架构/模块问题前，读取 `.terrain/.meta/freshness.json`（或 `freshness` 工具输出）
+2. `freshness_score < 70` 时：不得仅凭 `agent/context.md` 下结论，须用 `grep repomix` 或 `codegraph` 交叉验证
+3. `freshness_score < 50` 时：宏观架构上下文不可信，以 repomix 源码切片为准
+4. 发现矛盾时的优先级：**repomix 源码 > codegraph > agent/context.md > human/**
+5. `knowledge/` 私域文档视为人为维护；若 `refs` 指向的源码路径已删除，应降权处理
+<!-- terrain:end knowledge-guide -->
+
+<!-- terrain:begin skills v2 -->
+### 可用 Skills
+
+| Skill | 用途 |
+|-------|------|
+| `terrain-knowledge-skill` | `.terrain/` 知识分层与查询顺序（先读） |
+| `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
+| `codegraph-skill` | `bunx codegraph query/callers/callees/impact` |
+| `rtk-skill` | **所有冗长 shell 命令加 `rtk` 前缀**（git/test/build/lint） |
+
+加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。
+<!-- terrain:end skills -->
+
+<!-- terrain:begin tools v2 -->
+### 工具链
+
+| 工具 | 用法 | 场景 |
+|------|------|------|
+| Terrain 知识 | 加载 `terrain-knowledge-skill` | 架构、私域知识 |
+| Repomix | 见 `repomix-context-skill`；`rtk grep` 搜索 pack | 源码片段 |
+| CodeGraph | 见 `codegraph-skill`；**用 manifest 里的绝对路径** | 符号关系、影响分析 |
+| RTK | 见 `rtk-skill`；**用 manifest 里的绝对路径** | git、test、build、lint |
+| Terrain CLI | `~/.terrain/bin/terrain tools …`（ACP 知识查询） | 读 context / grep pack |
+
+### Agent 可执行路径（必读）
+
+Coding Agent 的 shell **不会**自动找到 Terrain.app 内的二进制。Env 集成后请读：
+
+1. **本仓库** `.terrain/env/agent-tools.json` — 含 `rtk`、`codegraph`、`terrain` 的**绝对路径**
+2. **用户级** `~/.terrain/bin/` — Terrain 部署的 symlink（`rtk`、`codegraph`、`terrain`）
+3. 若 `command not found`：用 manifest 中的绝对路径，或把 `~/.terrain/bin` 加入 PATH
+
+### RTK 要点（必读 `rtk-skill`）
+
+- 使用 **`$RTK` 或 manifest 中的 `rtk` 绝对路径**，不要假设裸 `rtk` 在 PATH 上
+- Terrain **不启用** `rtk init` 全局 hook — Agent **必须显式**包装命令
+- 内置 Read/Grep 工具不会自动走 RTK — 大文件用 `rtk read`，搜索用 `rtk grep`
+
+**注意**：不要运行 `codegraph install` 或 `rtk init`（已由 Terrain + Skills 配置）。
+<!-- terrain:end tools -->

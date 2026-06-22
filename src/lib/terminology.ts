@@ -5,7 +5,7 @@ export const TERMS = {
   /** `agent/context.md` and related agent-facing knowledge */
   agentKnowledge: "Agent 友好的知识资产",
   /** Main tab: browse all `.terrain/` documents */
-  knowledgeTab: "知识库",
+  knowledgeTab: "知识资产",
   /** Skills, tools, AGENTS.md integration */
   agentEnv: "Agent 友好的工程环境",
 } as const;

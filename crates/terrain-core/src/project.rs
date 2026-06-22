@@ -33,10 +33,7 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
         .title
         .clone()
         .unwrap_or_else(|| project_slug.to_string());
-    let repo_path = doc
-        .frontmatter
-        .source
-        .clone()
+    let repo_path = resolve_project_repo_path(paths, project_slug, doc.frontmatter.source.as_deref())
         .unwrap_or_default();
 
     let tech_stack = parse_tech_stack(&doc.body);
@@ -160,7 +157,7 @@ pub fn resolve_project_repo_path(
     project_slug: &str,
     hint: Option<&str>,
 ) -> Result<String> {
-    if let Some(repo) = hint.filter(|r| !r.is_empty()) {
+    if let Some(repo) = crate::path_portable::normalize_repo_hint(hint) {
         return Ok(repo.to_string());
     }
     if let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) {

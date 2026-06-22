@@ -11,7 +11,7 @@ source: .
 
 ## Repository
 
-`.` (repository root)
+`.`
 
 ## Tech stack
 
@@ -37,6 +37,7 @@ source: .
     - agent-architecture-skill/
     - agent-context-skill/
   - env-catalog/
+    - agent-tools.template.json
     - agents-md/
     - skills/
     - catalog.json
@@ -47,8 +48,6 @@ source: .
   - README.md
   - .gitignore
   - package.json
-  - examples/
-    - fixtures/
   - packages/
     - codegraph/
     - terrain/
@@ -69,7 +68,6 @@ source: .
     - tauri-utils/
     - cookie/
   - .env.example
-  - bindings/
   - rust-toolchain.toml
   - AGENTS.md
   - vite.config.ts
@@ -77,14 +75,6 @@ source: .
     - screenshots/
     - banner.png
     - app-icon.png
-  - .codegraph/
-    - codegraph.db-wal
-    - codegraph.db-shm
-    - codegraph.db
-    - daemon.log
-    - .gitignore
-    - daemon.pid
-    - daemon.sock
   - src/
     - main.ts
     - app.css

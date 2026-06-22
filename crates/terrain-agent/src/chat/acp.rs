@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::acp::{acp_spawn_command, build_acp_config, default_ask_acp_skill_dir};
 use terrain_core::{
-    extract_source_citations, merge_citations, resolve_project_repo_path,
+    extract_source_citations, merge_citations, normalize_repo_hint, resolve_project_repo_path,
 };
 
 use super::{finalize_usage, sanitize_answer_text};
@@ -49,8 +49,7 @@ impl super::ChatEngine {
         };
         on_tool_calls(&[acp_record.clone()]);
 
-        let repo = repo_path
-            .filter(|r| !r.is_empty())
+        let repo = normalize_repo_hint(repo_path)
             .map(str::to_string)
             .or_else(|| {
                 project.and_then(|slug| resolve_project_repo_path(&self.paths, slug, None).ok())

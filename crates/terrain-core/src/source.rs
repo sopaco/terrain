@@ -258,7 +258,7 @@ fn repo_path_candidates(
     project_slug: &str,
     repo_path: Option<&str>,
 ) -> Vec<String> {
-    match resolve_project_repo_path(paths, project_slug, repo_path.filter(|r| !r.is_empty())) {
+    match resolve_project_repo_path(paths, project_slug, repo_path) {
         Ok(repo) if !repo.is_empty() => vec![repo],
         _ => Vec::new(),
     }
@@ -641,6 +641,20 @@ mod tests {
         .unwrap();
         assert!(slice.content.contains("plugins"));
         assert_eq!(slice.file_path, "au_home/build.gradle.kts");
+    }
+
+    #[test]
+    fn resolves_repo_from_marker_hint_via_pack_meta() {
+        let (paths, slug, repo, _guard) = test_setup("marker-hint-repo");
+        write_repo_file(&repo, "src/lib.rs", "marker hint live\n");
+        std::fs::write(
+            paths.agent_pack_meta(&slug),
+            r#"{"repo_path":".","synced_at":"now","total_files":1,"total_tokens":1,"pack_strategy":"test","top_files_by_tokens":[]}"#,
+        )
+        .unwrap();
+
+        let slice = resolve_source_citation(&paths, &slug, Some("."), "src/lib.rs", 0, 0).unwrap();
+        assert!(slice.content.contains("marker hint live"));
     }
 
     #[test]

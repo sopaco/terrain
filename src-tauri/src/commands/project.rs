@@ -159,12 +159,12 @@ pub fn compute_freshness_cmd(
     project_slug: String,
     repo_path: Option<String>,
 ) -> Result<FreshnessSummary, String> {
-    let repo = repo_path
-        .filter(|r| !r.is_empty())
-        .or_else(|| {
-            terrain_core::resolve_project_repo_path(&state.paths, &project_slug, None).ok()
-        })
-        .ok_or_else(|| "需要仓库路径".to_string())?;
+    let repo = terrain_core::resolve_project_repo_path(
+        &state.paths,
+        &project_slug,
+        repo_path.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
     compute_freshness(&state.paths, &project_slug, &repo).map_err(|e| e.to_string())
 }
 

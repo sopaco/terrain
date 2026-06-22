@@ -8,6 +8,16 @@ use std::path::{Path, PathBuf};
 /// Sentinel stored in `.terrain/` meta when the repo root is implicit.
 pub const REPO_ROOT_MARKER: &str = ".";
 
+/// True when `stored` is empty or the portable repo-root marker (needs registry resolution).
+pub fn is_stored_repo_marker(stored: &str) -> bool {
+    stored.is_empty() || stored == REPO_ROOT_MARKER
+}
+
+/// Hint suitable for [`crate::project::resolve_project_repo_path`]; treats `.` and empty as absent.
+pub fn normalize_repo_hint(hint: Option<&str>) -> Option<&str> {
+    hint.filter(|r| !is_stored_repo_marker(r))
+}
+
 /// Relative path to the per-repo agent tools manifest (portable across clones).
 pub const REPO_AGENT_TOOLS_MANIFEST: &str = ".terrain/env/agent-tools.json";
 
@@ -105,5 +115,14 @@ mod tests {
     #[test]
     fn stored_repo_path_is_marker() {
         assert_eq!(stored_repo_path(Path::new("/any/path")), ".");
+    }
+
+    #[test]
+    fn stored_repo_marker_detection() {
+        assert!(is_stored_repo_marker(""));
+        assert!(is_stored_repo_marker("."));
+        assert!(!is_stored_repo_marker("/tmp/repo"));
+        assert_eq!(normalize_repo_hint(Some(".")), None);
+        assert_eq!(normalize_repo_hint(Some("/tmp/repo")), Some("/tmp/repo"));
     }
 }

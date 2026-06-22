@@ -66,7 +66,7 @@ pub use preset_skills::{
 pub use paths::KnowledgePaths;
 pub use path_portable::{
     path_in_repo, resolve_stored_repo_path, stored_repo_path, to_tilde_path,
-    REPO_AGENT_TOOLS_MANIFEST, REPO_ROOT_MARKER,
+    is_stored_repo_marker, normalize_repo_hint, REPO_AGENT_TOOLS_MANIFEST, REPO_ROOT_MARKER,
 };
 pub use project::{get_project_overview, merge_overview_freshness, resolve_project_repo_path, write_project_remark};
 pub use registry::{
