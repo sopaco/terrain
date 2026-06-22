@@ -1,23 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::paths::KnowledgePaths;
+use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 use crate::schema::{SddPhase, SddPhaseInfo, SddPlan, SddSessionInfo, SddStatus};
-
-pub fn default_sdd_skill_dir() -> PathBuf {
-    if let Ok(path) = std::env::var("TERRAIN_SDD_SKILL") {
-        return PathBuf::from(path);
-    }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills/sdd-workflow-skill")
-}
-
-pub fn resolve_sdd_skill_dir() -> Option<PathBuf> {
-    let dir = default_sdd_skill_dir();
-    if dir.join("SKILL.md").is_file() {
-        Some(dir)
-    } else {
-        None
-    }
-}
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct ActiveSessionFile {

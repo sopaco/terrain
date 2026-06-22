@@ -11,9 +11,9 @@ mod sdd;
 mod repomix;
 
 pub use agent_context::{
-    agent_context_ready, build_agent_context_prompt, default_agent_arch_skill_dir,
-    read_agent_context_status, write_agent_context,
+    agent_context_ready, build_agent_context_prompt, read_agent_context_status, write_agent_context,
 };
+pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{
     agents_md_ready, apply_env_integration, env_catalog_root, get_env_status, load_catalog,
     invalidate_env_status_cache, invalidate_env_status_cache_for_repo, patch_agents_md,
@@ -28,11 +28,11 @@ pub use context_layers::{
 };
 pub use litho::{
     build_litho_composition_prompt, build_litho_generation_prompt, count_deep_exploration_modules,
-    count_litho_research_modules, count_markdown_in_dir, default_litho_skill_dir,
-    has_litho_research_artifacts, litho_human_complete, litho_human_complete_with_research,
-    litho_research_ready, plan_litho_generation, resolve_litho_skill_dir,
-    LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
+    count_litho_research_modules, count_markdown_in_dir, has_litho_research_artifacts,
+    litho_human_complete, litho_human_complete_with_research, litho_research_ready,
+    plan_litho_generation, LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
 };
+pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
 pub use pack_read::{agent_pack_ready, read_agent_pack_file, AgentPackFileContent};
 pub use project_meta::{
     collect_knowledge_dir_inputs, collect_project_meta, discover_meta_files,
@@ -42,11 +42,11 @@ pub use project_meta::{
 };
 pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
 pub use sdd::{
-    build_sdd_llm_prompt, build_sdd_phase_prompt, create_sdd_session, default_sdd_skill_dir,
-    delete_sdd_session, get_active_sdd_session, get_sdd_status, list_sdd_sessions, new_session_id,
-    plan_sdd_workflow, resolve_sdd_session_id, resolve_sdd_skill_dir, save_sdd_output,
-    sdd_phase_output_path, set_active_sdd_session,
+    build_sdd_llm_prompt, build_sdd_phase_prompt, create_sdd_session, delete_sdd_session,
+    get_active_sdd_session, get_sdd_status, list_sdd_sessions, new_session_id, plan_sdd_workflow,
+    resolve_sdd_session_id, save_sdd_output, sdd_phase_output_path, set_active_sdd_session,
 };
+pub use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 
 #[cfg(feature = "repomix")]
 pub use repomix::{pack_agent_assets, AgentPackReport};

@@ -9,6 +9,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../packages/terrain/darwin-arm64/terrain");
     println!("cargo:rerun-if-changed=../packages/codegraph/darwin-arm64/bin/codegraph");
     println!("cargo:rerun-if-changed=../packages/codegraph/darwin-arm64/node");
+    println!("cargo:rerun-if-changed=../preset_skills");
 
     if target == "aarch64-apple-darwin" {
         stage_sidecar("rtk", "../packages/rtk/darwin-arm64/rtk");

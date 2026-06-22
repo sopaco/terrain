@@ -27,8 +27,8 @@ use crate::settings::{AcpSettings, AgentExecution};
 
 use native::{build_native_backend, NativeBackend};
 
-pub(crate) const CHAT_APP_NAME: &str = "mindmesh";
-pub(crate) const CHAT_USER_ID: &str = "mindmesh-user";
+pub(crate) const CHAT_APP_NAME: &str = "terrain";
+pub(crate) const CHAT_USER_ID: &str = "terrain-user";
 pub(crate) const ASK_TIMEOUT: Duration = Duration::from_secs(1200);
 
 pub(crate) fn finalize_usage(usage: &mut ChatTokenUsage, prompt_chars: usize, answer: &str) {

@@ -258,6 +258,7 @@ fn default_env_ids(repo_path: &std::path::Path) -> anyhow::Result<Vec<String>> {
 async fn main() -> Result<()> {
     terrain_agent::load_dotenv();
     terrain_core::ensure_bundled_tools_initialized();
+    terrain_core::ensure_preset_skills_initialized();
     let cli = Cli::parse();
     let paths = paths(&cli);
     let cli_repo = cli.repo_path.clone();

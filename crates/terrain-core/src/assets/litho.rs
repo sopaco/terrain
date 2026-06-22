@@ -1,27 +1,18 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::paths::KnowledgePaths;
+use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
 use crate::schema::LithoPlan;
 
-/// Default preset skill bundled with Terrain.
-pub fn default_litho_skill_dir() -> PathBuf {
-    if let Ok(path) = std::env::var("TERRAIN_LITHO_SKILL") {
-        return PathBuf::from(path);
-    }
-
-    // Workspace layout: terrain/preset_skills/litho-documents-skill
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../preset_skills/litho-documents-skill")
-}
-
-pub fn resolve_litho_skill_dir() -> Option<PathBuf> {
-    let dir = default_litho_skill_dir();
-    if dir.join("SKILL.md").is_file() {
-        Some(dir)
-    } else {
-        None
-    }
-}
+/// Minimum research files before skipping the full C4 pipeline.
+pub const LITHO_CORE_RESEARCH_FILES: &[&str] = &[
+    "preprocessing.md",
+    "c1-system-context.md",
+    "c2-domain-modules.md",
+    "architecture.md",
+    "workflow.md",
+    "boundary.md",
+];
 
 pub fn plan_litho_generation(
     paths: &KnowledgePaths,
@@ -57,16 +48,6 @@ pub fn build_litho_generation_prompt(plan: &LithoPlan) -> String {
         plan.skill_dir, plan.repo_path, plan.human_output_dir, plan.litho_workspace_dir
     )
 }
-
-/// Minimum research files before skipping the full C4 pipeline.
-pub const LITHO_CORE_RESEARCH_FILES: &[&str] = &[
-    "preprocessing.md",
-    "c1-system-context.md",
-    "c2-domain-modules.md",
-    "architecture.md",
-    "workflow.md",
-    "boundary.md",
-];
 
 /// Follow-up prompt when research artifacts exist but final human docs were not written.
 pub fn build_litho_composition_prompt(plan: &LithoPlan) -> String {

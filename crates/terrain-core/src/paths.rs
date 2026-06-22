@@ -190,10 +190,7 @@ impl KnowledgePaths {
     }
 
     pub fn preset_skills_root() -> PathBuf {
-        if let Ok(root) = std::env::var("TERRAIN_PRESET_SKILLS") {
-            return PathBuf::from(root);
-        }
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills")
+        crate::preset_skills::preset_skills_root()
     }
 
     pub fn ensure_layout(&self) -> std::io::Result<()> {

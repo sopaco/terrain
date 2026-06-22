@@ -130,7 +130,7 @@ pub fn build_agent(model: Arc<dyn Llm>, config: AgentConfig) -> Result<Arc<dyn A
         INSTRUCTION
     };
 
-    let mut builder = LlmAgentBuilder::new("mindmesh")
+    let mut builder = LlmAgentBuilder::new("terrain")
         .instruction(instruction)
         .model(model)
         .max_iterations(50)

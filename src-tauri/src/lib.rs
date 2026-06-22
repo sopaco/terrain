@@ -1,5 +1,6 @@
 mod bundled_tools;
 mod commands;
+mod preset_skills;
 
 use terrain_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
 use terrain_core::KnowledgePaths;
@@ -71,6 +72,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            preset_skills::init_app_preset_skills(app.handle());
             bundled_tools::init_app_bundled_tools(app.handle());
             Ok(())
         })

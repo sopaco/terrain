@@ -7,6 +7,7 @@ pub mod human;
 pub mod ingest;
 pub mod model_text;
 pub mod path_portable;
+pub mod preset_skills;
 pub mod paths;
 pub mod project;
 pub mod registry;
@@ -25,7 +26,7 @@ pub use assets::{
     agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
     build_generation_plan, build_litho_composition_prompt, build_litho_generation_prompt,
     build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, create_sdd_session,
-    default_agent_arch_skill_dir, default_litho_skill_dir, default_sdd_skill_dir, delete_sdd_session,
+    delete_sdd_session, default_agent_arch_skill_dir, default_litho_skill_dir, default_sdd_skill_dir,
     discover_meta_files,
     enforce_context_max_size, extract_context_section, get_active_sdd_session, get_env_status,
     get_sdd_status, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
@@ -34,8 +35,7 @@ pub use assets::{
     apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready,
     meta_inputs_status, list_sdd_sessions, plan_env_integration, plan_litho_generation,
     plan_sdd_workflow, patch_agents_md, persist_meta_inputs, read_agent_context_status,
-    read_agent_pack_file, resolve_litho_skill_dir, resolve_sdd_session_id, resolve_sdd_skill_dir,
-    save_sdd_output, sdd_phase_output_path, set_active_sdd_session, split_context_sections,
+    read_agent_pack_file, resolve_litho_skill_dir, resolve_sdd_session_id, resolve_sdd_skill_dir, save_sdd_output, sdd_phase_output_path, set_active_sdd_session, split_context_sections,
     summarize_agent_env_light, write_agent_context,
     LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
     EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
@@ -57,6 +57,11 @@ pub use ingest::{AgentPackSummary, ProjectScanner, ScanReport};
 pub use model_text::{
     extract_markdown_body, prepare_chat_markdown, prepare_model_markdown, repair_flattened_markdown,
     strip_model_reasoning, unwrap_markdown_fence,
+};
+pub use preset_skills::{
+    default_ask_skill_dir, deploy_preset_skills_to_home, discover_preset_skills_runtime,
+    ensure_preset_skills_initialized, init_preset_skills_root, preset_skill_dir, preset_skills_root,
+    resolve_preset_skill_dir, user_preset_skills_dir,
 };
 pub use paths::KnowledgePaths;
 pub use path_portable::{

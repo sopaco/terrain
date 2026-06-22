@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use crate::error::{CoreError, Result};
-use crate::paths::KnowledgePaths;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EnvCatalog {
@@ -78,7 +77,7 @@ pub fn load_catalog() -> Result<EnvCatalog> {
 
 pub fn resolve_skill_source(catalog_root: &Path, item: &IntegrationDef) -> PathBuf {
     if let Some(preset) = &item.preset_skill {
-        return KnowledgePaths::preset_skills_root().join(preset);
+        return crate::preset_skills::preset_skill_dir(preset);
     }
     if let Some(dir) = &item.skill_dir {
         let env_path = catalog_root.join("skills").join(dir);

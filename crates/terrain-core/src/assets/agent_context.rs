@@ -11,14 +11,8 @@ use crate::error::Result;
 use crate::model_text::prepare_model_markdown;
 use crate::path_portable::stored_repo_path;
 use crate::paths::KnowledgePaths;
+use crate::preset_skills::default_agent_arch_skill_dir;
 use crate::schema::{AgentContextMeta, AgentContextStatus, DocFrontmatter, DocType};
-
-pub fn default_agent_arch_skill_dir() -> PathBuf {
-    if let Ok(path) = std::env::var("TERRAIN_AGENT_ARCH_SKILL") {
-        return PathBuf::from(path);
-    }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills/agent-architecture-skill")
-}
 
 pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
     let path = paths.agent_context_main(project_slug);

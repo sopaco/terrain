@@ -6,7 +6,7 @@ use crate::model::{llm_status, ModelConfig};
 use crate::settings::{
     load_model_settings, AcpSettings, AgentExecution, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
 };
-use terrain_core::{default_agent_arch_skill_dir, resolve_command};
+use terrain_core::{default_agent_arch_skill_dir, default_ask_skill_dir, resolve_command};
 
 pub fn resolve_acp_settings() -> AcpSettings {
     load_model_settings()
@@ -53,10 +53,7 @@ pub fn acp_available(settings: &AcpSettings) -> bool {
 }
 
 pub fn default_ask_acp_skill_dir() -> PathBuf {
-    if let Ok(path) = std::env::var("TERRAIN_ASK_SKILL") {
-        return PathBuf::from(path);
-    }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills/terrain-ask-skill")
+    default_ask_skill_dir()
 }
 
 pub fn default_agent_arch_acp_skill_dir() -> PathBuf {
