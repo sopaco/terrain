@@ -12,6 +12,7 @@ use super::status::{
 };
 use crate::bundled_tools::{bundled_codegraph, bundled_rtk, run_bundled_check};
 use crate::error::{CoreError, Result};
+use crate::path_portable::REPO_AGENT_TOOLS_MANIFEST;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvApplyProgress {
@@ -170,10 +171,8 @@ async fn apply_bundled_tool(
     repo: &Path,
     def: &super::catalog::IntegrationDef,
 ) -> Result<String> {
-    let manifest = repo
-        .join(".terrain/env/agent-tools.json")
-        .display()
-        .to_string();
+    let _ = repo;
+    let manifest = REPO_AGENT_TOOLS_MANIFEST;
 
     match def.id.as_str() {
         "tool-rtk" => {

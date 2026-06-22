@@ -165,7 +165,11 @@ pub fn resolve_project_repo_path(
     }
     if let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) {
         if !meta.repo_path.is_empty() {
-            return Ok(meta.repo_path);
+            if let Some(repo) =
+                crate::path_portable::resolve_stored_repo_path(&meta.repo_path, project_slug)
+            {
+                return Ok(repo);
+            }
         }
     }
     if let Some(repo) = crate::registry::repo_path_for_slug(project_slug) {
@@ -175,7 +179,11 @@ pub fn resolve_project_repo_path(
     if index_path.is_file() {
         let doc = read_doc(&index_path)?;
         if let Some(source) = doc.frontmatter.source.filter(|s| !s.is_empty()) {
-            return Ok(source);
+            if let Some(repo) =
+                crate::path_portable::resolve_stored_repo_path(&source, project_slug)
+            {
+                return Ok(repo);
+            }
         }
     }
     Err(CoreError::ProjectNotFound(format!(

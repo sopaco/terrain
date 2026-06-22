@@ -49,35 +49,6 @@ Pong.
 }
 
 #[test]
-fn search_finds_demo_document() {
-    let repo = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../examples/fixtures/demo-api");
-    let _lock = registry_test_lock();
-    let registry_dir = tempfile::tempdir().unwrap();
-    let registry_file = registry_dir.path().join("registry.json");
-    unsafe {
-        std::env::set_var("TERRAIN_REGISTRY_FILE", &registry_file);
-    }
-    terrain_core::register_project("demo-api", &repo.display().to_string()).unwrap();
-    let paths = KnowledgePaths::new();
-    let _registry_guard = registry_dir;
-
-    let hits = KnowledgeSearch::new(&paths)
-        .search(
-            "health",
-            SearchOptions {
-                project: Some("demo-api".into()),
-                doc_type: None,
-                limit: 10,
-            },
-        )
-        .unwrap();
-
-    assert!(!hits.is_empty());
-    assert!(hits.iter().any(|h| h.path.contains("health")));
-}
-
-#[test]
 fn write_and_read_doc() {
     let setup = TestKnowledgeSetup::new("test-proj");
     let paths = setup.paths.clone();

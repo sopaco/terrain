@@ -5,9 +5,11 @@ pub use git::GitScanner;
 pub use openapi::OpenApiImporter;
 
 use chrono::Utc;
+use std::path::Path;
 
 use crate::doc::write_json;
 use crate::error::Result;
+use crate::path_portable::stored_repo_path;
 use crate::paths::KnowledgePaths;
 use crate::registry;
 use crate::schema::SyncMeta;
@@ -88,7 +90,7 @@ impl ProjectScanner {
 
         let sync = SyncMeta {
             project: slug.clone(),
-            repo_path: repo_path.to_string(),
+            repo_path: stored_repo_path(Path::new(repo_path)),
             synced_at: Utc::now().to_rfc3339(),
             collectors: collectors.clone(),
         };

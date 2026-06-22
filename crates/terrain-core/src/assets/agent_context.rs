@@ -9,6 +9,7 @@ use crate::assets::project_meta::{
 use crate::doc::{read_doc, write_doc};
 use crate::error::Result;
 use crate::model_text::prepare_model_markdown;
+use crate::path_portable::stored_repo_path;
 use crate::paths::KnowledgePaths;
 use crate::schema::{AgentContextMeta, AgentContextStatus, DocFrontmatter, DocType};
 
@@ -193,7 +194,7 @@ pub fn write_agent_context(
         project: project_slug.to_string(),
         module: None,
         title: Some("Agent Architecture Context".into()),
-        source: Some(repo_path.to_string()),
+        source: Some(stored_repo_path(Path::new(repo_path))),
         refs: vec![],
         deps: vec![],
         extra: serde_json::Map::new(),
@@ -202,7 +203,7 @@ pub fn write_agent_context(
 
     let meta = AgentContextMeta {
         project: project_slug.to_string(),
-        repo_path: repo_path.to_string(),
+        repo_path: stored_repo_path(Path::new(repo_path)),
         output_file: "context.md".into(),
         generated_at: Utc::now().to_rfc3339(),
         section_count: body.matches("\n## ").count(),

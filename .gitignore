@@ -27,5 +27,12 @@ src-tauri/binaries/*
 # Terrain — repomix index (regenerated locally, not versioned)
 .terrain/agent/repomix.md
 
+# Terrain — per-machine env state (regenerated via env integration / scan)
+.terrain/env/agent-tools.json
+.terrain/env/manifest.json
+.terrain/.meta/sync.json
+.terrain/.meta/freshness.json
+.terrain/agent/context-meta.json
+
 **/.litho-agent
 **/.sdd-agent

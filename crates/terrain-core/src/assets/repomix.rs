@@ -2,6 +2,7 @@ use std::path::Path;
 
 use chrono::Utc;
 use crate::freshness::git_snapshot;
+use crate::path_portable::stored_repo_path;
 use repomix_core::{OutputStyle, PackOptions, RepomixConfig, pack_with_options};
 
 use crate::doc::write_json;
@@ -111,7 +112,7 @@ pub async fn pack_agent_assets(
 
     let meta = AgentPackMeta {
         project: project_slug.to_string(),
-        repo_path: repo_path.to_string(),
+        repo_path: stored_repo_path(repo),
         generator: AssetGenerator::RepomixCore,
         pack_strategy: AGENT_PACK_STRATEGY.into(),
         output_file: "repomix.md".into(),

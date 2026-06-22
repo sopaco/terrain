@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::doc::write_json;
 use crate::error::{CoreError, Result};
+use crate::path_portable::path_in_repo;
 use crate::paths::KnowledgePaths;
 use crate::repo_walk::{discover_repo_walk, is_path_gitignored};
 
@@ -170,7 +171,7 @@ pub fn collect_knowledge_dir_inputs(repo: &Path) -> Vec<CollectedMetaInput> {
             let (body, truncated) = truncate_chars(&content, DEFAULT_INPUT_MAX_CHARS);
             Some(CollectedMetaInput {
                 label: format!("Private knowledge ({})", rel),
-                source: path.display().to_string(),
+                source: path_in_repo(repo, &path),
                 content: body,
                 truncated,
             })
@@ -252,7 +253,7 @@ fn resolve_input(
             let (body, truncated) = truncate_chars(&content, spec.max_chars);
             Ok(vec![CollectedMetaInput {
                 label: spec.label.clone(),
-                source: abs.display().to_string(),
+                source: path_in_repo(repo, &abs),
                 content: body,
                 truncated,
             }])
@@ -278,7 +279,7 @@ fn resolve_input(
                 let (body, truncated) = truncate_chars(&content, spec.max_chars);
                 out.push(CollectedMetaInput {
                     label: format!("{} ({})", spec.label, rel),
-                    source: path.display().to_string(),
+                    source: path_in_repo(repo, &path),
                     content: body,
                     truncated,
                 });

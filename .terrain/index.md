@@ -2,7 +2,7 @@
 type: project
 project: terrain
 title: terrain
-source: /Users/bjsttlp485/Workspace/SAW/terrain
+source: .
 ---
 
 # terrain
@@ -11,7 +11,7 @@ source: /Users/bjsttlp485/Workspace/SAW/terrain
 
 ## Repository
 
-`/Users/bjsttlp485/Workspace/SAW/terrain`
+`.` (repository root)
 
 ## Tech stack
 

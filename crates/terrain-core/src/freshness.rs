@@ -9,6 +9,7 @@ use crate::assets::{agent_context_ready, agent_pack_ready};
 use crate::doc::read_json;
 use crate::error::Result;
 use crate::paths::{is_knowledge_output_path, KnowledgePaths};
+use crate::path_portable::stored_repo_path;
 use crate::schema::{
     AgentContextMeta, AgentPackMeta, AssetFreshness, FreshnessDriftFactor, FreshnessLedger,
     FreshnessSummary, SyncMeta,
@@ -542,7 +543,7 @@ pub fn compute_freshness(
     let ledger = FreshnessLedger {
         version: LEDGER_VERSION,
         project: project_slug.to_string(),
-        repo_path: repo_path.to_string(),
+        repo_path: stored_repo_path(Path::new(repo_path)),
         baseline: crate::schema::FreshnessBaseline {
             git_head: git.head.clone(),
             git_head_at: now.clone(),

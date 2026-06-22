@@ -1,6 +1,6 @@
 {
   "project": "terrain",
-  "repo_path": "/Users/bjsttlp485/Workspace/SAW/terrain",
+  "repo_path": ".",
   "generator": "repomix-core",
   "pack_strategy": "architecture-context",
   "output_file": "repomix.md",

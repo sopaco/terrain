@@ -2,7 +2,7 @@
 type: route
 project: terrain
 title: /health
-source: /Users/bjsttlp485/Workspace/SAW/terrain/examples/fixtures/demo-api/openapi.yaml
+source: examples/fixtures/demo-api/openapi.yaml
 uri: /health
 handler: healthCheck
 ---

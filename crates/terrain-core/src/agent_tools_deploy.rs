@@ -11,6 +11,7 @@ use serde::Serialize;
 
 use crate::bundled_tools::{bundled_terrain_cli, bundled_rtk, ensure_bundled_tools_initialized};
 use crate::error::{CoreError, Result};
+use crate::path_portable::to_tilde_path;
 
 const CODEGRAPH_RUNTIME_NAME: &str = "codegraph-runtime";
 
@@ -100,20 +101,37 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
     Ok(paths)
 }
 
+fn paths_for_manifest(paths: &AgentToolPaths) -> AgentToolPaths {
+    AgentToolPaths {
+        bin_dir: to_tilde_path(Path::new(&paths.bin_dir)),
+        rtk: paths.rtk.as_ref().map(|p| to_tilde_path(Path::new(p))),
+        codegraph: paths
+            .codegraph
+            .as_ref()
+            .map(|p| to_tilde_path(Path::new(p))),
+        terrain: paths.terrain.as_ref().map(|p| to_tilde_path(Path::new(p))),
+        codegraph_runtime: paths
+            .codegraph_runtime
+            .as_ref()
+            .map(|p| to_tilde_path(Path::new(p))),
+    }
+}
+
 /// Write per-repo manifest so Agents read concrete paths from the project.
 pub fn write_repo_agent_tools_manifest(repo: &Path, paths: &AgentToolPaths) -> Result<String> {
     let env_dir = repo.join(".terrain/env");
     fs::create_dir_all(&env_dir)?;
     let path = env_dir.join("agent-tools.json");
+    let manifest = paths_for_manifest(paths);
     let doc = serde_json::json!({
-        "bin_dir": paths.bin_dir,
-        "rtk": paths.rtk,
-        "codegraph": paths.codegraph,
-        "terrain": paths.terrain,
-        "codegraph_runtime": paths.codegraph_runtime,
+        "bin_dir": manifest.bin_dir,
+        "rtk": manifest.rtk,
+        "codegraph": manifest.codegraph,
+        "terrain": manifest.terrain,
+        "codegraph_runtime": manifest.codegraph_runtime,
         "usage": {
-            "rtk": "Prefer absolute path from `rtk` field, or ensure ~/.terrain/bin is on PATH",
-            "codegraph": "Prefer absolute path from `codegraph` field; index is per-repo under .codegraph/",
+            "rtk": "Use the `rtk` field (`~/.terrain/bin/rtk`); expand `~` in shell",
+            "codegraph": "Use the `codegraph` field; index is per-repo under .codegraph/",
             "terrain": "ACP / CLI knowledge tools: `terrain tools …`"
         }
     });
@@ -127,7 +145,8 @@ fn write_global_manifest(paths: &AgentToolPaths) -> Result<()> {
         .ok_or_else(|| CoreError::InvalidDoc("cannot resolve HOME".into()))?;
     fs::create_dir_all(&dir)?;
     let path = dir.join("agent-tools.json");
-    fs::write(&path, serde_json::to_string_pretty(paths)?)?;
+    let manifest = paths_for_manifest(paths);
+    fs::write(&path, serde_json::to_string_pretty(&manifest)?)?;
     Ok(())
 }
 
@@ -206,5 +225,23 @@ mod tests {
         if user_home().is_some() {
             assert!(agent_bin_dir().ends_with(".terrain/bin"));
         }
+    }
+
+    #[test]
+    fn manifest_paths_use_tilde_not_absolute_home() {
+        if user_home().is_none() {
+            return;
+        }
+        let paths = AgentToolPaths {
+            bin_dir: agent_bin_dir().display().to_string(),
+            rtk: Some(agent_bin_dir().join("rtk").display().to_string()),
+            codegraph: None,
+            terrain: None,
+            codegraph_runtime: None,
+        };
+        let manifest = paths_for_manifest(&paths);
+        assert!(manifest.bin_dir.starts_with("~/"));
+        assert!(manifest.rtk.as_ref().is_some_and(|p| p.starts_with("~/")));
+        assert!(!manifest.bin_dir.contains("/Users/"));
     }
 }

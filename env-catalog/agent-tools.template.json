@@ -1,0 +1,12 @@
+{
+  "bin_dir": "~/.terrain/bin",
+  "rtk": "~/.terrain/bin/rtk",
+  "codegraph": "~/.terrain/bin/codegraph",
+  "terrain": "~/.terrain/bin/terrain",
+  "codegraph_runtime": "~/.terrain/tools/codegraph-runtime",
+  "usage": {
+    "rtk": "Use the `rtk` field (`~/.terrain/bin/rtk`); expand `~` in shell",
+    "codegraph": "Use the `codegraph` field; index is per-repo under .codegraph/",
+    "terrain": "ACP / CLI knowledge tools: `terrain tools …`"
+  }
+}

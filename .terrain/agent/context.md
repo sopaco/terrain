@@ -2,7 +2,7 @@
 type: agent_context
 project: terrain
 title: Agent Architecture Context
-source: /Users/bjsttlp485/Workspace/SAW/terrain
+source: .
 ---
 
 ## 项目概览

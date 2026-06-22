@@ -4,6 +4,7 @@ use walkdir::WalkDir;
 
 use crate::doc::write_doc;
 use crate::error::Result;
+use crate::path_portable::stored_repo_path;
 use crate::paths::KnowledgePaths;
 use crate::render::{project_frontmatter, project_index_body};
 use crate::schema::ProjectMeta;
@@ -33,7 +34,7 @@ impl<'a> GitScanner<'a> {
 
         let meta = ProjectMeta {
             name,
-            repo_path: repo_path.to_string(),
+            repo_path: stored_repo_path(repo),
             owner: None,
             tech_stack,
         };

@@ -5,6 +5,7 @@ use walkdir::WalkDir;
 
 use crate::doc::write_doc;
 use crate::error::Result;
+use crate::path_portable::path_in_repo;
 use crate::paths::KnowledgePaths;
 use crate::render::{interface_body, interface_frontmatter, route_body, route_frontmatter};
 use crate::schema::{InterfaceMeta, RouteMeta};
@@ -23,19 +24,20 @@ impl<'a> OpenApiImporter<'a> {
     }
 
     pub fn import_repo(&self, repo_path: &str) -> Result<Option<usize>> {
-        let specs = find_openapi_specs(Path::new(repo_path));
+        let repo = Path::new(repo_path);
+        let specs = find_openapi_specs(repo);
         if specs.is_empty() {
             return Ok(None);
         }
 
         let mut written = 0;
         for spec_path in specs {
-            written += self.import_file(&spec_path)?;
+            written += self.import_file(repo, &spec_path)?;
         }
         Ok(Some(written))
     }
 
-    fn import_file(&self, spec_path: &Path) -> Result<usize> {
+    fn import_file(&self, repo: &Path, spec_path: &Path) -> Result<usize> {
         let content = std::fs::read_to_string(spec_path)?;
         let value: serde_json::Value = if spec_path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
             let yaml: serde_yaml::Value = serde_yaml::from_str(&content)?;
@@ -50,7 +52,7 @@ impl<'a> OpenApiImporter<'a> {
             .cloned()
             .unwrap_or_default();
 
-        let source = spec_path.display().to_string();
+        let source = path_in_repo(repo, spec_path);
         let mut count = 0;
 
         for (path, item) in paths_obj {

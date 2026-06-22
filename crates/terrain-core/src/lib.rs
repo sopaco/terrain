@@ -6,6 +6,7 @@ pub mod freshness;
 pub mod human;
 pub mod ingest;
 pub mod model_text;
+pub mod path_portable;
 pub mod paths;
 pub mod project;
 pub mod registry;
@@ -58,6 +59,10 @@ pub use model_text::{
     strip_model_reasoning, unwrap_markdown_fence,
 };
 pub use paths::KnowledgePaths;
+pub use path_portable::{
+    path_in_repo, resolve_stored_repo_path, stored_repo_path, to_tilde_path,
+    REPO_AGENT_TOOLS_MANIFEST, REPO_ROOT_MARKER,
+};
 pub use project::{get_project_overview, merge_overview_freshness, resolve_project_repo_path, write_project_remark};
 pub use registry::{
     knowledge_root_for_repo, list_stale_registry_projects, register_project, unregister_project,
