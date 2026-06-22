@@ -19,7 +19,7 @@ use terrain_core::{
 #[derive(Parser)]
 #[command(
     name = "terrain",
-    about = "Terrain knowledge base CLI",
+    about = "Terrain CLI",
     version,
     long_version = concat!(
         env!("CARGO_PKG_VERSION"),
