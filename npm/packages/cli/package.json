@@ -1,0 +1,39 @@
+{
+  "name": "@terrain-ai/cli",
+  "version": "0.1.0",
+  "description": "Terrain CLI — scan repos, manage .terrain/ knowledge assets, ACP tools",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sopaco/terrain.git",
+    "directory": "npm/packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/sopaco/terrain/issues"
+  },
+  "homepage": "https://github.com/sopaco/terrain/tree/main/npm/packages/cli",
+  "type": "module",
+  "bin": {
+    "terrain": "bin/terrain.js"
+  },
+  "files": [
+    "bin/terrain.js",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "@terrain-ai/cli-darwin-arm64": "0.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "terrain",
+    "knowledge",
+    "cli",
+    "agent",
+    "acp"
+  ]
+}

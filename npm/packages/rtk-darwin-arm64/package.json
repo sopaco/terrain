@@ -1,0 +1,29 @@
+{
+  "name": "@terrain-ai/rtk-darwin-arm64",
+  "version": "0.1.0",
+  "description": "Prebuilt RTK binary for macOS Apple Silicon (Terrain distribution)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sopaco/terrain.git",
+    "directory": "npm/packages/rtk-darwin-arm64"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "bin": {
+    "rtk": "bin/rtk"
+  },
+  "files": [
+    "bin/rtk"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

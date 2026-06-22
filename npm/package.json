@@ -1,0 +1,17 @@
+{
+  "name": "terrain-npm-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "npm distribution wrappers for Terrain CLIs (not published as a unit)",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "prepare": "node scripts/write-shims.mjs && node scripts/prepare-binaries.mjs --build-cli",
+    "prepare:shims": "node scripts/write-shims.mjs",
+    "prepare:binaries": "node scripts/prepare-binaries.mjs",
+    "prepare:binaries:build": "node scripts/prepare-binaries.mjs --build-cli",
+    "version:sync": "node scripts/sync-version.mjs"
+  }
+}

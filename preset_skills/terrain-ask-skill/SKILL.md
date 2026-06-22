@@ -15,9 +15,10 @@ Use **conventional paths only** — never machine-specific absolute paths like `
 | Priority | Command | When |
 |----------|---------|------|
 | 1 | `~/.terrain/bin/terrain` | `test -x ~/.terrain/bin/terrain` (Terrain desktop / env integration) |
-| 2 | — | No npm/bunx fallback — Terrain install required for ACP CLI |
+| 2 | `bunx @terrain-ai/cli` | No Terrain install; needs network once |
+| 3 | `npx @terrain-ai/cli` | Same as bunx if Bun unavailable |
 
-In examples below, `<terrain>` means `~/.terrain/bin/terrain`.
+In examples below, `<terrain>` means your resolved prefix (`~/.terrain/bin/terrain` or `bunx @terrain-ai/cli`).
 
 ## Storage model
 

@@ -178,7 +178,8 @@ terrain/
 ├── src-tauri/              # Tauri 2 backend + IPC commands
 ├── preset_skills/          # Litho, SDD, Ask, Agent Context skills
 ├── env-catalog/            # Env integration catalog
-├── packages/rtk/           # Shell output token compression
+├── packages/rtk/           # Shell output token compression (native prebuilts)
+├── npm/                    # @terrain-ai/rtk & @terrain-ai/cli npm wrappers (optional distribution)
 └── .terrain/             # This repo's own knowledge assets (example)
 ```
 
@@ -224,7 +225,8 @@ Terrain composes with the tools your AI workflow already uses:
 | **OpenCode / ACP agents** | Execute Litho composition, SDD codegen, and tool calls in an isolated process |
 | **Repomix** | Packs source into a grep-friendly index for agents |
 | **CodeGraph** | Symbol callers/callees/impact queries via `bunx codegraph` |
-| **RTK** | Compresses shell output to save tokens (`@terrain/rtk`) |
+| **RTK** | Compresses shell output to save tokens (`@terrain-ai/rtk` on npm, or `~/.terrain/bin/rtk`) |
+| **Terrain CLI** | Scan, assets, `terrain tools` for ACP (`@terrain-ai/cli` on npm, or `~/.terrain/bin/terrain`) |
 | **Preset Skills** | LLM workflow instructions in `preset_skills/` (Litho, SDD, Ask, Context) |
 | **DeepWiki MCP** | Optional GitHub repo documentation in the desktop UI |
 

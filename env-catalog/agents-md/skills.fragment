@@ -5,6 +5,6 @@
 | `terrain-knowledge-skill` | `.terrain/` 知识分层与查询顺序（先读） |
 | `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
 | `codegraph-skill` | 符号关系；`~/.terrain/bin/codegraph` 或 `bunx codegraph` |
-| `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain/rtk` |
+| `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain-ai/rtk` |
 
 加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。

@@ -93,7 +93,7 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 | `terrain-knowledge-skill` | `.terrain/` 知识分层与查询顺序（先读） |
 | `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
 | `codegraph-skill` | 符号关系；`~/.terrain/bin/codegraph` 或 `bunx codegraph` |
-| `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain/rtk` |
+| `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain-ai/rtk` |
 
 加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。
 <!-- terrain:end skills -->
@@ -103,9 +103,9 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 
 | 工具 | 约定路径 | 无 Terrain 时降级 |
 |------|----------|-------------------|
-| RTK | `~/.terrain/bin/rtk` | `bunx @terrain/rtk` 或 `npx @terrain/rtk` |
+| RTK | `~/.terrain/bin/rtk` | `bunx @terrain-ai/rtk` 或 `npx @terrain-ai/rtk` |
 | CodeGraph | `~/.terrain/bin/codegraph` | `bunx codegraph` 或 `npx codegraph` |
-| Terrain CLI | `~/.terrain/bin/terrain` | 需安装 Terrain（无独立 npm 包） |
+| Terrain CLI | `~/.terrain/bin/terrain` | `bunx @terrain-ai/cli` 或 `npx @terrain-ai/cli` |
 | 知识文件 | `.terrain/` 仓库内路径 | 直接 Read/Grep，无需 CLI |
 
 | 场景 | 用法 |

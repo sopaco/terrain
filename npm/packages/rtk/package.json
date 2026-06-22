@@ -1,0 +1,39 @@
+{
+  "name": "@terrain-ai/rtk",
+  "version": "0.1.0",
+  "description": "RTK — shell output token compression for AI coding agents (Terrain distribution)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sopaco/terrain.git",
+    "directory": "npm/packages/rtk"
+  },
+  "bugs": {
+    "url": "https://github.com/sopaco/terrain/issues"
+  },
+  "homepage": "https://github.com/sopaco/terrain/tree/main/npm/packages/rtk",
+  "type": "module",
+  "bin": {
+    "rtk": "bin/rtk.js"
+  },
+  "files": [
+    "bin/rtk.js",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "@terrain-ai/rtk-darwin-arm64": "0.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "rtk",
+    "token",
+    "cli",
+    "terrain",
+    "agent"
+  ]
+}

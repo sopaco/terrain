@@ -15,8 +15,8 @@ Use **conventional paths only** — never machine-specific absolute paths like `
 | Priority | Command prefix | When |
 |----------|----------------|------|
 | 1 | `~/.terrain/bin/rtk` | `test -x ~/.terrain/bin/rtk` (Terrain env integration or desktop app) |
-| 2 | `bunx @terrain/rtk` | No Terrain install; needs network once |
-| 3 | `npx @terrain/rtk` | Same as bunx if Bun unavailable |
+| 2 | `bunx @terrain-ai/rtk` | No Terrain install; needs network once |
+| 3 | `npx @terrain-ai/rtk` | Same as bunx if Bun unavailable |
 
 Optional manifest (local, gitignored): `.terrain/env/agent-tools.json` — same `~/.terrain/bin/…` conventions.
 
@@ -29,14 +29,14 @@ Optional manifest (local, gitignored): `.terrain/env/agent-tools.json` — same 
 Example (pick one prefix per session after the existence check):
 
 ```bash
-test -x ~/.terrain/bin/rtk && PREFIX=~/.terrain/bin/rtk || PREFIX="bunx @terrain/rtk"
+test -x ~/.terrain/bin/rtk && PREFIX=~/.terrain/bin/rtk || PREFIX="bunx @terrain-ai/rtk"
 $PREFIX git status
 ```
 
 Verify:
 
 ```bash
-~/.terrain/bin/rtk gain || bunx @terrain/rtk gain
+~/.terrain/bin/rtk gain || bunx @terrain-ai/rtk gain
 ```
 
 We do **not** run `rtk init` / global hooks.
@@ -47,7 +47,7 @@ We do **not** run `rtk init` / global hooks.
 
 Applies to: git, tests, builds, linters, package managers, docker/kubectl, `ls`/`grep`/`find`, `gh`, etc.
 
-In examples below, `<rtk>` means your resolved prefix (`~/.terrain/bin/rtk` or `bunx @terrain/rtk`).
+In examples below, `<rtk>` means your resolved prefix (`~/.terrain/bin/rtk` or `bunx @terrain-ai/rtk`).
 
 ## Critical: built-in Read / Grep / Glob
 

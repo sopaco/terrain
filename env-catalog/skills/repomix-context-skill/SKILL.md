@@ -21,7 +21,7 @@ Read **architecture first** via `terrain-knowledge-skill` → `.terrain/agent/co
 1. **Read meta** — `.terrain/agent/meta.json` (`total_tokens`, `synced_at`, `top_files_by_tokens`)
 2. **Search the pack** — never load the entire file:
    ```bash
-   # <rtk> = ~/.terrain/bin/rtk or bunx @terrain/rtk (see rtk-skill)
+   # <rtk> = ~/.terrain/bin/rtk or bunx @terrain-ai/rtk (see rtk-skill)
    <rtk> grep "struct ProjectOverview" .terrain/agent/repomix.md
    <rtk> grep "### src/lib/api.ts" .terrain/agent/repomix.md
    ```
@@ -67,12 +67,13 @@ Grep for `### relative/path` to jump to a file.
 If `repomix.md` is missing:
 
 ```bash
-# Terrain CLI — conventional path only; no bunx/npx fallback (requires Terrain)
-test -x ~/.terrain/bin/terrain && ~/.terrain/bin/terrain assets pack-agent .
+# <terrain> = ~/.terrain/bin/terrain or bunx @terrain-ai/cli (see below)
+test -x ~/.terrain/bin/terrain && ~/.terrain/bin/terrain assets pack-agent . \
+  || bunx @terrain-ai/cli assets pack-agent .
 # or from repo root in Terrain UI: 重建源码索引
 ```
 
-If `~/.terrain/bin/terrain` is absent, ask the user to install Terrain or run **重建源码索引** from the desktop app.
+If neither `~/.terrain/bin/terrain` nor `bunx @terrain-ai/cli` works, ask the user to install Terrain or run **重建源码索引** from the desktop app.
 
 ## Related skills
 

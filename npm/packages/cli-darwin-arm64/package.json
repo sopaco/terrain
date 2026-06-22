@@ -1,0 +1,29 @@
+{
+  "name": "@terrain-ai/cli-darwin-arm64",
+  "version": "0.1.0",
+  "description": "Prebuilt Terrain CLI for macOS Apple Silicon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sopaco/terrain.git",
+    "directory": "npm/packages/cli-darwin-arm64"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "bin": {
+    "terrain": "bin/terrain"
+  },
+  "files": [
+    "bin/terrain"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

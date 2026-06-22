@@ -1,7 +1,7 @@
 ---
 name: codegraph-skill
 description: Use when a coding agent needs symbol relationships, callers, callees, or change impact. Guides CodeGraph CLI usage (not MCP).
-version: 1.1.0
+version: 1.2.0
 ---
 
 # CodeGraph Skill
@@ -10,48 +10,54 @@ version: 1.1.0
 
 Terrain uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
 
+## Resolve the CodeGraph command (read first)
+
+Use **conventional paths only** — never machine-specific absolute paths like `/Users/...`.
+
+| Priority | Command | When |
+|----------|---------|------|
+| 1 | `~/.terrain/bin/codegraph` | `test -x ~/.terrain/bin/codegraph` (Terrain env integration) |
+| 2 | `bunx codegraph` | No Terrain install; needs network once |
+| 3 | `npx codegraph` | Same as bunx if Bun unavailable |
+
+Optional manifest (local, gitignored): `.terrain/env/agent-tools.json` — same `~/.terrain/bin/…` conventions.
+
+In examples below, `<cg>` means your resolved prefix (`~/.terrain/bin/codegraph` or `bunx codegraph`).
+
 ## Prerequisites
 
-Terrain deploys CodeGraph to **`~/.terrain/bin/codegraph`** (symlink to bundled runtime). The **index** is per-repo under `.codegraph/`.
-
-**Read executable paths first:**
+The **index** is per-repo under `.codegraph/`. If missing, initialize from the repo root:
 
 ```bash
-cat .terrain/env/agent-tools.json
+test -x ~/.terrain/bin/codegraph && ~/.terrain/bin/codegraph init -i \
+  || bunx codegraph init -i
 ```
+
+Refresh after edits: `<cg> sync`
+
+Health check:
 
 ```bash
-# health check (use absolute path from manifest)
-~/.terrain/bin/codegraph status
+<cg> status
 ```
-
-If the repo has no index yet, run env integration or:
-
-```bash
-~/.terrain/bin/codegraph init -i
-```
-
-Index lives in `.codegraph/` (refresh with `codegraph sync` after edits).
 
 ## CLI commands
 
-Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.terrain/bin/codegraph`):
-
 | Intent | Command |
 |--------|---------|
-| Find symbol by name | `codegraph query <name>` |
-| Who calls X | `codegraph callers <symbol>` |
-| What X calls | `codegraph callees <symbol>` |
-| Change blast radius | `codegraph impact <symbol>` |
-| Tests affected by file changes | `codegraph affected <files…>` |
-| Project file tree | `codegraph files` |
-| Index health | `codegraph status` |
-| Refresh after edits | `codegraph sync` |
+| Find symbol by name | `<cg> query <name>` |
+| Who calls X | `<cg> callers <symbol>` |
+| What X calls | `<cg> callees <symbol>` |
+| Change blast radius | `<cg> impact <symbol>` |
+| Tests affected by file changes | `<cg> affected <files…>` |
+| Project file tree | `<cg> files` |
+| Index health | `<cg> status` |
+| Refresh after edits | `<cg> sync` |
 
 ## Recommended workflow
 
 1. Read `.terrain/agent/context.md` (`terrain-knowledge-skill`)
-2. `codegraph query <SymbolName>` to locate definition
+2. `<cg> query <SymbolName>` to locate definition
 3. `callers` / `callees` / `impact` for relationship questions
 4. `repomix-context-skill` for full source text of a specific file
 5. Use **`rtk-skill`** for any follow-up shell commands (tests, git)
@@ -63,7 +69,7 @@ Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.terrain/bi
 | Symbol lookup, call chains | Architecture → `context.md` |
 | Impact before refactor | Business rules → `knowledge/` |
 | File/symbol graph | Raw source slice → repomix |
-| Verbose test/git output | `rtk cargo test`, `rtk git diff` |
+| Verbose test/git output | `<rtk> cargo test`, `<rtk> git diff` |
 
 ## Do not
 
@@ -73,8 +79,8 @@ Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.terrain/bi
 
 ## Staleness
 
-If `codegraph status` shows pending files after your edits:
+If `<cg> status` shows pending files after your edits:
 
 ```bash
-codegraph sync
+<cg> sync
 ```

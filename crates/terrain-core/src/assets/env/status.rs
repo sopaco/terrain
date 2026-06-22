@@ -455,7 +455,7 @@ fn skill_target_name(def: &IntegrationDef) -> String {
 fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool) -> String {
     if locked {
         return match def.id.as_str() {
-            "tool-rtk" => "约定路径 ~/.terrain/bin/rtk（无 Terrain 时 bunx @terrain/rtk）".into(),
+            "tool-rtk" => "约定路径 ~/.terrain/bin/rtk（无 Terrain 时 bunx @terrain-ai/rtk）".into(),
             "tool-codegraph" if ok => {
                 "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 仓库索引已就绪".into()
             }

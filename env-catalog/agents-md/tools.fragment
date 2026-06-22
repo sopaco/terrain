@@ -2,9 +2,9 @@
 
 | 工具 | 约定路径 | 无 Terrain 时降级 |
 |------|----------|-------------------|
-| RTK | `~/.terrain/bin/rtk` | `bunx @terrain/rtk` 或 `npx @terrain/rtk` |
+| RTK | `~/.terrain/bin/rtk` | `bunx @terrain-ai/rtk` 或 `npx @terrain-ai/rtk` |
 | CodeGraph | `~/.terrain/bin/codegraph` | `bunx codegraph` 或 `npx codegraph` |
-| Terrain CLI | `~/.terrain/bin/terrain` | 需安装 Terrain（无独立 npm 包） |
+| Terrain CLI | `~/.terrain/bin/terrain` | `bunx @terrain-ai/cli` 或 `npx @terrain-ai/cli` |
 | 知识文件 | `.terrain/` 仓库内路径 | 直接 Read/Grep，无需 CLI |
 
 | 场景 | 用法 |

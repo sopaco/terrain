@@ -130,13 +130,14 @@ pub fn write_repo_agent_tools_manifest(repo: &Path, paths: &AgentToolPaths) -> R
         "terrain": manifest.terrain,
         "codegraph_runtime": manifest.codegraph_runtime,
         "fallback": {
-            "rtk": "bunx @terrain/rtk",
-            "codegraph": "bunx codegraph"
+            "rtk": "bunx @terrain-ai/rtk",
+            "codegraph": "bunx codegraph",
+            "terrain": "bunx @terrain-ai/cli"
         },
         "usage": {
-            "rtk": "Prefer ~/.terrain/bin/rtk if executable; else bunx @terrain/rtk or npx @terrain/rtk",
+            "rtk": "Prefer ~/.terrain/bin/rtk if executable; else bunx @terrain-ai/rtk or npx @terrain-ai/rtk",
             "codegraph": "Prefer ~/.terrain/bin/codegraph if executable; else bunx codegraph; index under .codegraph/",
-            "terrain": "Prefer ~/.terrain/bin/terrain; requires Terrain install (no npm fallback)"
+            "terrain": "Prefer ~/.terrain/bin/terrain if executable; else bunx @terrain-ai/cli or npx @terrain-ai/cli"
         }
     });
     fs::write(&path, serde_json::to_string_pretty(&doc)?)?;
