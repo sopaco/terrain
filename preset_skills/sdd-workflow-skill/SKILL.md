@@ -1,20 +1,20 @@
 ---
 name: sdd-workflow-skill
-description: MindMesh SDD standardized workflow — requirement clarification, technical design, code generation, and code review.
+description: Terrain SDD standardized workflow — requirement clarification, technical design, code generation, and code review.
 ---
 
 # SDD Standardized Workflow
 
-Software Design Driven (SDD) workflow for MindMesh. Execute one phase at a time and persist outputs under the local SDD store (`~/.mind-mesh/sdd/{project}/sessions/{id}/outputs/`).
+Software Design Driven (SDD) workflow for Terrain. Execute one phase at a time and persist outputs under the local SDD store (`~/.terrain/sdd/{project}/sessions/{id}/outputs/`).
 
 ## Environment
 
 | Variable | Purpose |
 |----------|---------|
-| `MIND_MESH_SDD_SKILL` | This skill directory |
-| `MIND_MESH_SDD_WORKSPACE` | Intermediate workspace (local session dir under `~/.mind-mesh/sdd/`) |
-| `MIND_MESH_SDD_OUTPUT_DIR` | Phase outputs (`outputs/`) — **not versioned in Git** |
-| `MIND_MESH_HUMAN_OUTPUT_DIR` | Litho human docs for context |
+| `TERRAIN_SDD_SKILL` | This skill directory |
+| `TERRAIN_SDD_WORKSPACE` | Intermediate workspace (local session dir under `~/.terrain/sdd/`) |
+| `TERRAIN_SDD_OUTPUT_DIR` | Phase outputs (`outputs/`) — **not versioned in Git** |
+| `TERRAIN_HUMAN_OUTPUT_DIR` | Litho human docs for context |
 
 ## Phases
 
@@ -44,4 +44,4 @@ Software Design Driven (SDD) workflow for MindMesh. Execute one phase at a time 
 
 ## Output contract
 
-Write each phase artifact to `MIND_MESH_SDD_OUTPUT_DIR` using the filenames above. Use absolute paths when writing outside the repository root.
+Write each phase artifact to `TERRAIN_SDD_OUTPUT_DIR` using the filenames above. Use absolute paths when writing outside the repository root.

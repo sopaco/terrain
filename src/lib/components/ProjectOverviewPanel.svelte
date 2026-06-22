@@ -101,7 +101,7 @@
   });
 
   const knowledgePath = $derived(
-    overview?.repo_path ? `${overview.repo_path}/.mind-mesh` : null,
+    overview?.repo_path ? `${overview.repo_path}/.terrain` : null,
   );
 
   const freshness = $derived(overview?.freshness ?? null);
@@ -180,7 +180,7 @@
       priority: 2,
       accent: "amber" as const,
       title: stale.slug,
-      detail: "仓库 `.mind-mesh` 已缺失或损坏，可一键重新扫描并生成知识资产。",
+      detail: "仓库 `.terrain` 已缺失或损坏，可一键重新扫描并生成知识资产。",
       hint: initHint ?? undefined,
       actionLabel: "重新初始化",
       busyLabel: initProgress ?? "初始化中…",
@@ -345,7 +345,7 @@
   {:else if !overview}
     <div class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-6 py-10">
       <section class="rounded-2xl border border-white/8 bg-[#14171c] px-6 py-8">
-        <h2 class="text-xl font-semibold text-white/90">欢迎使用 MindMesh</h2>
+        <h2 class="text-xl font-semibold text-white/90">欢迎使用 Terrain</h2>
         <p class="mt-2 text-sm leading-relaxed text-white/45">
           添加本地仓库后将自动完成索引与知识资产生成，可在本页查看状态并进入知识库阅读。
         </p>
@@ -380,7 +380,7 @@
               <textarea
                 class="w-full resize-y rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-sm text-white/80 placeholder:text-white/30 focus:border-indigo-500/40 focus:outline-none"
                 rows="2"
-                placeholder="填写项目备注，将保存至 .mind-mesh/project-note.md"
+                placeholder="填写项目备注，将保存至 .terrain/project-note.md"
                 bind:value={remarkDraft}
                 disabled={remarkSaving}
               ></textarea>
@@ -472,7 +472,7 @@
       <section class="space-y-3">
         <div>
           <h3 class="text-sm font-medium text-white/70">知识资产</h3>
-          <p class="mt-0.5 text-xs text-white/40">仓库内 <code class="text-white/55">.mind-mesh/</code> 的完整性与时效</p>
+          <p class="mt-0.5 text-xs text-white/40">仓库内 <code class="text-white/55">.terrain/</code> 的完整性与时效</p>
         </div>
 
         <div class="space-y-5 rounded-2xl border border-white/8 bg-[#14171c] p-5">
@@ -596,7 +596,7 @@
           {#if needsGenerationSetup}
             <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
               <p class="text-xs text-white/45">
-                生成知识资产需要 MindMesh 生成能力：
+                生成知识资产需要 Terrain 生成能力：
                 {#if hybridNativeLlm && !llmReady}
                   <span class="text-amber-200/90">LLM 未配置</span>
                 {/if}

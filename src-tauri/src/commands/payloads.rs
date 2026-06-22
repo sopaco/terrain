@@ -1,7 +1,7 @@
-use mind_mesh_agent::{
+use terrain_agent::{
     ChatPhase, ChatTokenUsage, ChatToolCallRecord, LithoGenerationResult, ProjectInitResult,
 };
-use mind_mesh_core::{EnvApplyResult, SddPhase, SddPhaseResult, SourceCitation};
+use terrain_core::{EnvApplyResult, SddPhase, SddPhaseResult, SourceCitation};
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]

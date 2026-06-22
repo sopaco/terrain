@@ -1,5 +1,5 @@
-use mind_mesh_agent::{ChatReply, ChatTokenUsage, ChatToolCallRecord};
-use mind_mesh_core::{
+use terrain_agent::{ChatReply, ChatTokenUsage, ChatToolCallRecord};
+use terrain_core::{
     extract_source_citations, merge_citations, KnowledgePaths, KnowledgeSearch, SearchOptions,
     SourceCitation,
 };
@@ -145,9 +145,9 @@ fn fallback_search_reply(
         .iter()
         .map(|h| SourceCitation {
             kind: if h.path.contains("/human/") {
-                mind_mesh_core::CitationKind::HumanDoc
+                terrain_core::CitationKind::HumanDoc
             } else {
-                mind_mesh_core::CitationKind::StructuredDoc
+                terrain_core::CitationKind::StructuredDoc
             },
             title: h.title.clone().unwrap_or_else(|| h.path.clone()),
             path: h.path.clone(),

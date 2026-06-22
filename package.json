@@ -1,5 +1,5 @@
 {
-  "name": "mind-mesh",
+  "name": "terrain",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "build:app": "tauri build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "gen:types": "cargo run -p mind-mesh-ts-export --bin export-ts-types",
+    "gen:types": "cargo run -p terrain-ts-export --bin export-ts-types",
     "tauri": "tauri"
   },
   "dependencies": {

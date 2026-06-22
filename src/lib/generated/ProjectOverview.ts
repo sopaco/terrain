@@ -9,6 +9,6 @@ import type { LithoStatus } from "./LithoStatus";
 
 export type ProjectOverview = { slug: string, name: string, repo_path: string, tech_stack: Array<string>, synced_at: string | null, collectors: Array<string>, doc_counts: DocCounts, agent_pack: AgentPackMeta | null, litho: LithoStatus, agent_context: AgentContextStatus, asset_health: Array<AssetTrackHealth>, agent_env: AgentEnvStatus, structure_preview: string | null, overview_excerpt: string | null, architecture_excerpt: string | null, freshness: FreshnessSummary | null, 
 /**
- * Human-editable remark from `.mind-mesh/project-note.md`.
+ * Human-editable remark from `.terrain/project-note.md`.
  */
 project_remark: string | null, };

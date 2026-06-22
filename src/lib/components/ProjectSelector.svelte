@@ -54,7 +54,7 @@
     e.stopPropagation();
     if (
       !confirm(
-        `从列表中移除「${project.name}」？\n\n仅移除 MindMesh 登记，不会删除仓库或 .mind-mesh/ 知识资产。`,
+        `从列表中移除「${project.name}」？\n\n仅移除 Terrain 登记，不会删除仓库或 .terrain/ 知识资产。`,
       )
     ) {
       return;

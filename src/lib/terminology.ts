@@ -1,10 +1,10 @@
-/** User-facing Chinese labels — single source of truth for MindMesh UI copy. */
+/** User-facing Chinese labels — single source of truth for Terrain UI copy. */
 export const TERMS = {
-  /** Litho C4 docs under `.mind-mesh/human/` */
+  /** Litho C4 docs under `.terrain/human/` */
   humanKnowledge: "人类友好的知识库",
   /** `agent/context.md` and related agent-facing knowledge */
   agentKnowledge: "Agent 友好的知识资产",
-  /** Main tab: browse all `.mind-mesh/` documents */
+  /** Main tab: browse all `.terrain/` documents */
   knowledgeTab: "知识库",
   /** Skills, tools, AGENTS.md integration */
   agentEnv: "Agent 友好的工程环境",

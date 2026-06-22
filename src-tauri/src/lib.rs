@@ -1,8 +1,8 @@
 mod bundled_tools;
 mod commands;
 
-use mind_mesh_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
-use mind_mesh_core::KnowledgePaths;
+use terrain_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
+use terrain_core::KnowledgePaths;
 use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex;
 
@@ -57,11 +57,11 @@ impl AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    mind_mesh_core::augment_path_from_login_shell();
-    mind_mesh_agent::load_dotenv();
+    terrain_core::augment_path_from_login_shell();
+    terrain_agent::load_dotenv();
 
     tracing_subscriber::fmt()
-        .with_env_filter("info,mind_mesh=debug,mind_mesh_core=debug")
+        .with_env_filter("info,terrain=debug,terrain_core=debug")
         .init();
 
     let paths = commands::init_paths();
@@ -119,5 +119,5 @@ pub fn run() {
             commands::run_env_integration_cmd,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running MindMesh");
+        .expect("error while running Terrain");
 }

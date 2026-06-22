@@ -10,7 +10,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     term: TERMS.knowledgeTab,
     description:
-      "浏览仓库内 `.mind-mesh/` 下的全部知识资产，包含人类友好与 Agent 友好两类文档及结构化索引。",
+      "浏览仓库内 `.terrain/` 下的全部知识资产，包含人类友好与 Agent 友好两类文档及结构化索引。",
   },
   {
     term: TERMS.humanKnowledge,
@@ -67,6 +67,6 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     term: "SDD 工作流",
     description:
-      "软件设计驱动四阶段流程：需求澄清 → 技术设计 → 实现记录 → 代码评审，产出保存在本地 `~/.mind-mesh/sdd/`（不入 Git）。",
+      "软件设计驱动四阶段流程：需求澄清 → 技术设计 → 实现记录 → 代码评审，产出保存在本地 `~/.terrain/sdd/`（不入 Git）。",
   },
 ];

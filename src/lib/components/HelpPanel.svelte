@@ -14,7 +14,7 @@
   <header class="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
     <div>
       <h2 id="help-title" class="text-base font-semibold text-white/95">术语说明</h2>
-      <p class="mt-0.5 text-xs text-white/45">MindMesh 常用概念速查</p>
+      <p class="mt-0.5 text-xs text-white/45">Terrain 常用概念速查</p>
     </div>
     <button
       type="button"
@@ -36,7 +36,7 @@
     </dl>
   </div>
   <footer class="shrink-0 border-t border-white/10 px-5 py-3 text-[11px] text-white/35">
-    知识库存放在各仓库的 <span class="font-mono text-white/50">.mind-mesh/</span> 目录；项目列表登记在
-    <span class="font-mono text-white/50">~/.mind-mesh/registry.json</span>。
+    知识库存放在各仓库的 <span class="font-mono text-white/50">.terrain/</span> 目录；项目列表登记在
+    <span class="font-mono text-white/50">~/.terrain/registry.json</span>。
   </footer>
 </ModalShell>

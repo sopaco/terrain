@@ -1,0 +1,8 @@
+{
+  "catalog_version": 1,
+  "integrated_at": "2026-06-16T12:07:06.073348+00:00",
+  "applied": [
+    "tool-codegraph: CodeGraph 索引已就绪（Agent 路径见 /Users/bjsttlp485/Workspace/SAW/terrain/.terrain/env/agent-tools.json）",
+    "tool-rtk: RTK 已部署至 ~/.terrain/bin/rtk（详见 /Users/bjsttlp485/Workspace/SAW/terrain/.terrain/env/agent-tools.json）"
+  ]
+}

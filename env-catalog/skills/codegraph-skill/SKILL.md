@@ -8,34 +8,34 @@ version: 1.1.0
 
 [CodeGraph](https://colbymchenry.github.io/codegraph/) provides a pre-indexed **AST code graph** for this project.
 
-MindMesh uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
+Terrain uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
 
 ## Prerequisites
 
-MindMesh deploys CodeGraph to **`~/.mind-mesh/bin/codegraph`** (symlink to bundled runtime). The **index** is per-repo under `.codegraph/`.
+Terrain deploys CodeGraph to **`~/.terrain/bin/codegraph`** (symlink to bundled runtime). The **index** is per-repo under `.codegraph/`.
 
 **Read executable paths first:**
 
 ```bash
-cat .mind-mesh/env/agent-tools.json
+cat .terrain/env/agent-tools.json
 ```
 
 ```bash
 # health check (use absolute path from manifest)
-~/.mind-mesh/bin/codegraph status
+~/.terrain/bin/codegraph status
 ```
 
 If the repo has no index yet, run env integration or:
 
 ```bash
-~/.mind-mesh/bin/codegraph init -i
+~/.terrain/bin/codegraph init -i
 ```
 
 Index lives in `.codegraph/` (refresh with `codegraph sync` after edits).
 
 ## CLI commands
 
-Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.mind-mesh/bin/codegraph`):
+Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.terrain/bin/codegraph`):
 
 | Intent | Command |
 |--------|---------|
@@ -50,7 +50,7 @@ Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.mind-mesh/
 
 ## Recommended workflow
 
-1. Read `.mind-mesh/agent/context.md` (`mind-mesh-knowledge-skill`)
+1. Read `.terrain/agent/context.md` (`terrain-knowledge-skill`)
 2. `codegraph query <SymbolName>` to locate definition
 3. `callers` / `callees` / `impact` for relationship questions
 4. `repomix-context-skill` for full source text of a specific file
@@ -67,7 +67,7 @@ Use the **`codegraph` absolute path** from `agent-tools.json` (or `~/.mind-mesh/
 
 ## Do not
 
-- Run `codegraph install` (MindMesh manages AGENTS.md)
+- Run `codegraph install` (Terrain manages AGENTS.md)
 - Blind `grep` the whole repo to re-verify CodeGraph AST results
 - Chain `query` + manual file reads when `impact` answers the question
 

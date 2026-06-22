@@ -8,17 +8,17 @@ version: 3.0.0
 
 本 Skill 是 Litho（deepwiki-rs）的**纯 Agent 平行实现**。不依赖任何外部二进制，完全通过 Agent 的工具调用能力自主完成四阶段文档生成流水线。
 
-**MindMesh 路径（必须遵守）**：当由 MindMesh 调用时，使用以下环境变量，**不要**写入仓库根目录的 `.litho-agent/` 或任意默认路径：
+**Terrain 路径（必须遵守）**：当由 Terrain 调用时，使用以下环境变量，**不要**写入仓库根目录的 `.litho-agent/` 或任意默认路径：
 
 | 环境变量 | 用途 |
 |---------|------|
-| `MIND_MESH_LITHO_WORKSPACE` | 研究中间产物目录（等价于 `.mind-mesh/.litho-agent/`） |
-| `MIND_MESH_HUMAN_OUTPUT_DIR` | 最终人类文档输出目录（等价于 `.mind-mesh/human/`） |
-| `MIND_MESH_LITHO_SKILL` | 本 Skill 目录（只读） |
+| `TERRAIN_LITHO_WORKSPACE` | 研究中间产物目录（等价于 `.terrain/.litho-agent/`） |
+| `TERRAIN_HUMAN_OUTPUT_DIR` | 最终人类文档输出目录（等价于 `.terrain/human/`） |
+| `TERRAIN_LITHO_SKILL` | 本 Skill 目录（只读） |
 
 若未设置上述变量，则回退到仓库根目录 `.litho-agent/`（研究）与 Skill 提示中的输出目录。
 
-**目标产出**（写入 `MIND_MESH_HUMAN_OUTPUT_DIR`）：
+**目标产出**（写入 `TERRAIN_HUMAN_OUTPUT_DIR`）：
 - `1.概述.md` — C4 Context 图 + 项目概述 + 业务价值
 - `2.架构.md` — C4 Container/Component 图 + 架构模式 + 模块职责
 - `3.工作流.md` — 时序图 + 流程图 + 并发模型 + 错误处理
@@ -65,7 +65,7 @@ version: 3.0.0
 - 执行顺序：**C1 → C2 → [C3 并行]**（与 deepwiki-rs 一致）
 - **领域模块必须全覆盖**：`src/` 下每个子目录都识别为候选模块，用 DDD 分组（核心域/支撑域/通用域），不得遗漏
 - **渐进式深度控制**：按 importance 评分分级分析
-- 研究产出写入 `MIND_MESH_LITHO_WORKSPACE`（`.mind-mesh/.litho-agent/`）持久化（见下方中间产物策略）
+- 研究产出写入 `TERRAIN_LITHO_WORKSPACE`（`.terrain/.litho-agent/`）持久化（见下方中间产物策略）
 
 **并发搜索**：Step 2.3(架构) + 2.4(工作流) + 2.6(边界) 的搜索可并发调用，Step 2.5(模块深度) 必须在 2.2(领域模块) 之后
 
@@ -122,10 +122,10 @@ version: 3.0.0
 Agent 单次对话上下文窗口有限。随着分析深入，早期的研究结果可能因上下文压力被「遗忘」。
 
 ### 解决方案
-每完成一个研究步骤，将关键发现**持久化到 Litho 工作区目录**（MindMesh 下为 `MIND_MESH_LITHO_WORKSPACE`，即 `.mind-mesh/.litho-agent/`），而非仅依赖对话上下文：
+每完成一个研究步骤，将关键发现**持久化到 Litho 工作区目录**（Terrain 下为 `TERRAIN_LITHO_WORKSPACE`，即 `.terrain/.litho-agent/`），而非仅依赖对话上下文：
 
 ```
-{MIND_MESH_LITHO_WORKSPACE}/   # 或 .mind-mesh/.litho-agent/
+{TERRAIN_LITHO_WORKSPACE}/   # 或 .terrain/.litho-agent/
 ├── preprocessing.md        ← 预处理报告（阶段一产出）
 ├── c1-system-context.md    ← 系统上下文报告
 ├── c2-domain-modules.md    ← 领域模块报告
@@ -139,10 +139,10 @@ Agent 单次对话上下文窗口有限。随着分析深入，早期的研究�
     └── ...
 ```
 
-最终文档写入 `{MIND_MESH_HUMAN_OUTPUT_DIR}/`（即 `.mind-mesh/human/`）：
+最终文档写入 `{TERRAIN_HUMAN_OUTPUT_DIR}/`（即 `.terrain/human/`）：
 
 ```
-{MIND_MESH_HUMAN_OUTPUT_DIR}/
+{TERRAIN_HUMAN_OUTPUT_DIR}/
 ├── 1.概述.md
 ├── 2.架构.md
 ├── 3.工作流.md
@@ -152,9 +152,9 @@ Agent 单次对话上下文窗口有限。随着分析深入，早期的研究�
 ```
 
 **操作方法**：
-- 每完成一个研究 Step → `write_to_file` 写入 `MIND_MESH_LITHO_WORKSPACE` 对应文件（使用绝对路径）
-- 编排阶段需要某报告 → `read_file` 从 `MIND_MESH_LITHO_WORKSPACE` 读取
-- 最终输出 → `write_to_file` 写入 `MIND_MESH_HUMAN_OUTPUT_DIR`（使用绝对路径）
+- 每完成一个研究 Step → `write_to_file` 写入 `TERRAIN_LITHO_WORKSPACE` 对应文件（使用绝对路径）
+- 编排阶段需要某报告 → `read_file` 从 `TERRAIN_LITHO_WORKSPACE` 读取
+- 最终输出 → `write_to_file` 写入 `TERRAIN_HUMAN_OUTPUT_DIR`（使用绝对路径）
 - 最终输出完成后 → 可删除 Litho 工作区临时目录（可选保留供复查）
 
 **关键优势**：

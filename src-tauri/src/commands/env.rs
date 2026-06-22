@@ -1,5 +1,5 @@
-use mind_mesh_agent::{env_plan_for_repo, env_status_for_repo, run_env_integration, validate_repo_path};
-use mind_mesh_core::{EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus};
+use terrain_agent::{env_plan_for_repo, env_status_for_repo, run_env_integration, validate_repo_path};
+use terrain_core::{EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus};
 use tauri::{AppHandle, Emitter};
 
 use super::payloads::{EnvOptDonePayload, EnvOptProgressPayload};

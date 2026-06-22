@@ -9,7 +9,7 @@
 
   let { headings, scrollRoot, contentRoot }: Props = $props();
 
-  const STORAGE_KEY = "mind-mesh:article-toc-expanded";
+  const STORAGE_KEY = "terrain:article-toc-expanded";
 
   let expanded = $state(readExpandedPreference());
   let activeId = $state<string | null>(null);

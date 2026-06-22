@@ -1,8 +1,8 @@
-use mind_mesh_core::{
+use terrain_core::{
     list_human_docs, read_doc_at, read_source_slice, resolve_source_citation, HumanDocEntry,
     KnowledgeDoc, KnowledgeSearch, SearchHit, SearchOptions, SourceSlice,
 };
-use mind_mesh_agent::validate_repo_path;
+use terrain_agent::validate_repo_path;
 use tauri::State;
 
 use crate::AppState;

@@ -1,17 +1,17 @@
 [package]
-name = "mind-mesh"
+name = "terrain"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "MindMesh desktop application"
+description = "Terrain desktop application"
 
 [lib]
-name = "mind_mesh_lib"
+name = "terrain_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "mind-mesh-app"
+name = "terrain-app"
 path = "src/main.rs"
 
 [build-dependencies]
@@ -29,8 +29,8 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 
-mind-mesh-core.workspace = true
-mind-mesh-agent.workspace = true
+terrain-core.workspace = true
+terrain-agent.workspace = true
 slug.workspace = true
 arboard = "3"
 base64 = "0.22"

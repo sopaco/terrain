@@ -231,7 +231,7 @@
   <header class="flex items-center justify-between border-b border-white/10 px-5 py-4">
       <div>
         <h2 class="text-base font-semibold">设置</h2>
-        <p class="text-xs text-white/40">ACP 代理与执行模式（保存至 ~/.mind-mesh/settings.json）</p>
+        <p class="text-xs text-white/40">ACP 代理与执行模式（保存至 ~/.terrain/settings.json）</p>
       </div>
       <button
         type="button"
@@ -418,7 +418,7 @@
       {/if}
 
       <p class="text-[11px] leading-relaxed text-white/35">
-        每个 Provider 的配置会分别保存到 ~/.mind-mesh/settings.json。
+        每个 Provider 的配置会分别保存到 ~/.terrain/settings.json。
         仅在没有设置文件时，才会读取 `.env` 中的默认值。
       </p>
 

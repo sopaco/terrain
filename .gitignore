@@ -24,8 +24,8 @@ src-tauri/binaries/*
 # Logs
 *.log
 
-# MindMesh — repomix index (regenerated locally, not versioned)
-.mind-mesh/agent/repomix.md
+# Terrain — repomix index (regenerated locally, not versioned)
+.terrain/agent/repomix.md
 
 **/.litho-agent
 **/.sdd-agent

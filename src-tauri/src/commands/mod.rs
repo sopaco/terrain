@@ -7,10 +7,10 @@ mod project;
 mod sdd;
 mod settings;
 
-use mind_mesh_agent::{
+use terrain_agent::{
     knowledge_paths_from_env, load_model_settings, resolve_acp_settings, AcpSettings,
 };
-use mind_mesh_core::KnowledgePaths;
+use terrain_core::KnowledgePaths;
 
 pub(crate) fn resolved_acp_settings() -> AcpSettings {
     load_model_settings()

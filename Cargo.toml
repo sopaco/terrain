@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/mind-mesh-core",
-    "crates/mind-mesh-agent",
-    "crates/mind-mesh-cli",
-    "crates/mind-mesh-ts-export",
+    "crates/terrain-core",
+    "crates/terrain-agent",
+    "crates/terrain-cli",
+    "crates/terrain-ts-export",
     "src-tauri",
 ]
 
@@ -42,8 +42,8 @@ adk-runner = "1.0.0"
 adk-session = "1.0.0"
 adk-tool = "1.0.0"
 
-mind-mesh-core = { path = "crates/mind-mesh-core" }
-mind-mesh-agent = { path = "crates/mind-mesh-agent" }
+terrain-core = { path = "crates/terrain-core" }
+terrain-agent = { path = "crates/terrain-agent" }
 repomix-core = "2.0"
 ts-rs = { version = "10", features = ["serde-compat"] }
 

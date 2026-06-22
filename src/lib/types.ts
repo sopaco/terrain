@@ -1,5 +1,5 @@
 /**
- * Public type surface for the MindMesh desktop UI.
+ * Public type surface for the Terrain desktop UI.
  *
  * - IPC types: auto-generated from Rust (`bun run gen:types`)
  * - UI-only types: `types.client.ts`

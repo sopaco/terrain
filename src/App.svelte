@@ -418,7 +418,7 @@
           await openHumanDoc(target);
         } else {
           setStatus(
-            "尚无结构化条目：在仓库根目录添加 mind-mesh-meta.json，然后生成 Agent 友好的知识资产",
+            "尚无结构化条目：在仓库根目录添加 terrain-meta.json，然后生成 Agent 友好的知识资产",
             "error",
           );
         }
@@ -676,7 +676,7 @@
   <header class="relative z-50 flex shrink-0 items-center gap-3 overflow-x-auto border-b border-white/10 bg-[#14171c] px-4 py-2.5">
     <div class="flex min-w-0 shrink items-center gap-3">
       <div class="shrink-0">
-        <h1 class="text-base font-semibold tracking-tight">MindMesh</h1>
+        <h1 class="text-base font-semibold tracking-tight">Terrain</h1>
       </div>
 
       <ProjectSelector
@@ -848,7 +848,7 @@
           />
           <div class="mt-auto border-t border-white/10 px-3 py-2 text-[10px] text-white/35">
             <div class="truncate" title={project.knowledgeRoot || project.selectedRepoPath || "—"}>
-              📁 {project.knowledgeRoot || (project.selectedRepoPath ? `${project.selectedRepoPath}/.mind-mesh` : "—")}
+              📁 {project.knowledgeRoot || (project.selectedRepoPath ? `${project.selectedRepoPath}/.terrain` : "—")}
             </div>
             <div class="mt-1">
               ACP {project.acpOk ? "✓" : "✗"}{#if hybridNativeLlm} · LLM {project.llmStatus?.ready ? "✓" : "✗"}{/if}

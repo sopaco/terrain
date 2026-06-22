@@ -4,14 +4,15 @@ use std::path::Path;
 
 fn main() {
     let target = env::var("TARGET").unwrap_or_default();
-    println!("cargo:rustc-env=MIND_MESH_TARGET_TRIPLE={target}");
+    println!("cargo:rustc-env=TERRAIN_TARGET_TRIPLE={target}");
     println!("cargo:rerun-if-changed=../packages/rtk/darwin-arm64/rtk");
-    println!("cargo:rerun-if-changed=../packages/mind-mesh/darwin-arm64/mind-mesh");
-    println!("cargo:rerun-if-changed=../packages/codegraph/darwin-arm64");
+    println!("cargo:rerun-if-changed=../packages/terrain/darwin-arm64/terrain");
+    println!("cargo:rerun-if-changed=../packages/codegraph/darwin-arm64/bin/codegraph");
+    println!("cargo:rerun-if-changed=../packages/codegraph/darwin-arm64/node");
 
     if target == "aarch64-apple-darwin" {
         stage_sidecar("rtk", "../packages/rtk/darwin-arm64/rtk");
-        stage_sidecar("mind-mesh-cli", "../packages/mind-mesh/darwin-arm64/mind-mesh");
+        stage_sidecar("terrain-cli", "../packages/terrain/darwin-arm64/terrain");
     }
 
     tauri_build::build()
@@ -33,7 +34,15 @@ fn stage_sidecar(name: &str, source_rel: &str) {
     }
 
     fs::create_dir_all(&dest_dir).expect("create binaries dir");
-    fs::copy(&source, &dest).unwrap_or_else(|e| {
+
+    let source_bytes = fs::read(&source).unwrap_or_else(|e| {
+        panic!("failed to read sidecar {}: {e}", source.display())
+    });
+    if fs::read(&dest).ok().as_deref() == Some(source_bytes.as_slice()) {
+        return;
+    }
+
+    fs::write(&dest, &source_bytes).unwrap_or_else(|e| {
         panic!(
             "failed to stage sidecar {} -> {}: {e}",
             source.display(),
@@ -48,6 +57,4 @@ fn stage_sidecar(name: &str, source_rel: &str) {
         perms.set_mode(0o755);
         fs::set_permissions(&dest, perms).expect("chmod sidecar");
     }
-
-    println!("cargo:rerun-if-changed={}", dest.display());
 }

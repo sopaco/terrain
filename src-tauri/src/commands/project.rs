@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use mind_mesh_agent::{
+use terrain_agent::{
     agent_execution_ready, execution_pure_acp, execution_uses_native_llm, run_agent_context_generation,
     run_project_initialization, validate_repo_path, ChatEngine, LithoGenerationResult,
     LithoProgress, ProjectInitProgress,
 };
-use mind_mesh_core::{
+use terrain_core::{
     compute_freshness, get_project_overview, list_stale_registry_projects, pack_agent_assets,
     plan_litho_generation, read_freshness_ledger, write_project_remark, FreshnessSummary,
     ProjectOverview, ProjectScanner, ProjectSummary, QuickRefreshResult, ScanReport,
@@ -22,7 +22,7 @@ use super::{resolved_acp_settings, slugify_repo};
 
 #[tauri::command]
 pub fn list_projects(state: State<'_, AppState>) -> Result<Vec<ProjectSummary>, String> {
-    mind_mesh_core::KnowledgeSearch::new(&state.paths)
+    terrain_core::KnowledgeSearch::new(&state.paths)
         .list_projects()
         .map_err(|e| e.to_string())
 }
@@ -52,7 +52,7 @@ pub async fn initialize_project_cmd(
     state: State<'_, AppState>,
     repo_path: String,
     project_slug: Option<String>,
-) -> Result<mind_mesh_agent::ProjectInitResult, String> {
+) -> Result<terrain_agent::ProjectInitResult, String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let paths = state.paths.clone();
@@ -131,7 +131,7 @@ pub async fn initialize_project_cmd(
 
 #[tauri::command]
 pub fn remove_project_cmd(state: State<'_, AppState>, project_slug: String) -> Result<(), String> {
-    mind_mesh_core::unregister_project(&project_slug).map_err(|e| e.to_string())?;
+    terrain_core::unregister_project(&project_slug).map_err(|e| e.to_string())?;
     let _ = state;
     Ok(())
 }
@@ -163,7 +163,7 @@ pub fn compute_freshness_cmd(
     let repo = repo_path
         .filter(|r| !r.is_empty())
         .or_else(|| {
-            mind_mesh_core::resolve_project_repo_path(&state.paths, &project_slug, None).ok()
+            terrain_core::resolve_project_repo_path(&state.paths, &project_slug, None).ok()
         })
         .ok_or_else(|| "需要仓库路径".to_string())?;
     compute_freshness(&state.paths, &project_slug, &repo).map_err(|e| e.to_string())

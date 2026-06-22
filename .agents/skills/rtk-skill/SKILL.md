@@ -1,6 +1,6 @@
 ---
 name: rtk-skill
-description: Use when running shell commands that produce verbose output (git, test, build, lint, package managers, docker). Prefix with rtk to save 60-90% tokens. MindMesh projects use explicit rtk prefix (no global hook).
+description: Use when running shell commands that produce verbose output (git, test, build, lint, package managers, docker). Prefix with rtk to save 60-90% tokens. Terrain projects use explicit rtk prefix (no global hook).
 version: 1.1.0
 ---
 
@@ -8,9 +8,9 @@ version: 1.1.0
 
 [RTK](https://github.com/rtk-ai/rtk) is a CLI proxy that **filters and compresses command output** before it reaches the LLM (typically **60–90% token savings**).
 
-## MindMesh setup (this repo)
+## Terrain setup (this repo)
 
-MindMesh integrates RTK via **AGENTS.md + this skill** — we do **not** run `rtk init` / global hooks.
+Terrain integrates RTK via **AGENTS.md + this skill** — we do **not** run `rtk init` / global hooks.
 
 **You must prefix commands explicitly:**
 
@@ -21,7 +21,7 @@ rtk <original-command-and-args>
 Resolve binary (try in order):
 
 1. `rtk` on PATH (common in dev environments)
-2. `bunx rtk` (project-local via `@mind-mesh/rtk`)
+2. `bunx rtk` (project-local via `@terrain/rtk`)
 3. `./node_modules/.bin/rtk`
 
 Verify:
@@ -51,7 +51,7 @@ Those tools **do not** auto-rewrite to RTK. For token-efficient file/search work
 | Find files | `rtk find "*.ts" .` |
 | List directory | `rtk ls .` |
 
-**Exception:** `.mind-mesh/agent/context.md` and short `knowledge/*.md` — read directly (already dense).
+**Exception:** `.terrain/agent/context.md` and short `knowledge/*.md` — read directly (already dense).
 
 ## Command reference (by category)
 
@@ -150,13 +150,13 @@ RTK_DISABLED=1 git status    # one-off full output
 
 ## When NOT to use RTK
 
-| Use RTK | Use other MindMesh skills instead |
+| Use RTK | Use other Terrain skills instead |
 |---------|-----------------------------------|
-| Shell command output | Architecture → `mind-mesh-knowledge-skill` / `context.md` |
+| Shell command output | Architecture → `terrain-knowledge-skill` / `context.md` |
 | git test build lint | Symbol relations → `codegraph-skill` |
 | `rtk read` for code slices | Structured repomix index → `repomix-context-skill` |
 
-**Workflow order:** MindMesh knowledge → codegraph → repomix slices → **rtk** for remaining shell work.
+**Workflow order:** Terrain knowledge → codegraph → repomix slices → **rtk** for remaining shell work.
 
 ## Analytics (optional)
 
@@ -168,13 +168,13 @@ rtk discover                 # missed optimization opportunities
 
 ## Do not
 
-- Run `rtk init` or `rtk init -g` — MindMesh owns agent guidance via AGENTS.md
+- Run `rtk init` or `rtk init -g` — Terrain owns agent guidance via AGENTS.md
 - Assume hooks rewrite commands — **you** must type `rtk` prefix
 - Re-run identical verbose commands after RTK already summarized them
 - Use wrong `rtk` package (verify with `rtk gain`)
 
 ## Complements
 
-- **mind-mesh-knowledge-skill** — what project knowledge to read first
+- **terrain-knowledge-skill** — what project knowledge to read first
 - **codegraph-skill** — AST/call-graph queries
 - **repomix-context-skill** — grep repomix pack for source sections

@@ -49,7 +49,7 @@ export function knowledgeDocPathForCitation(
   projectSlug: string,
   path: string,
 ): string {
-  if (path.startsWith("/") || path.includes(".mind-mesh/")) {
+  if (path.startsWith("/") || path.includes(".terrain/")) {
     return path;
   }
   return resolveKnowledgeDocPath(projectSlug, path);

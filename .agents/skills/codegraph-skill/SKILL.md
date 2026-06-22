@@ -8,7 +8,7 @@ version: 1.1.0
 
 [CodeGraph](https://colbymchenry.github.io/codegraph/) provides a pre-indexed **AST code graph** for this project.
 
-MindMesh uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
+Terrain uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ Always run via `bunx codegraph …` (or `codegraph` on PATH):
 
 ## Recommended workflow
 
-1. Read `.mind-mesh/agent/context.md` (`mind-mesh-knowledge-skill`)
+1. Read `.terrain/agent/context.md` (`terrain-knowledge-skill`)
 2. `bunx codegraph query <SymbolName>` to locate definition
 3. `callers` / `callees` / `impact` for relationship questions
 4. `repomix-context-skill` for full source text of a specific file
@@ -59,7 +59,7 @@ Always run via `bunx codegraph …` (or `codegraph` on PATH):
 
 ## Do not
 
-- Run `codegraph install` (MindMesh manages AGENTS.md)
+- Run `codegraph install` (Terrain manages AGENTS.md)
 - Blind `grep` the whole repo to re-verify CodeGraph AST results
 - Chain `query` + manual file reads when `impact` answers the question
 

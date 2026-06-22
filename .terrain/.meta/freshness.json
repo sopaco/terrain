@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "project": "terrain",
+  "repo_path": "/Users/bjsttlp485/Workspace/SAW/terrain",
+  "baseline": {
+    "git_head": "c93d9e67d679bedad9fdf3bbae16d9d9f73cbd6d",
+    "git_head_at": "2026-06-22T05:44:14.267255+00:00",
+    "dirty": true
+  },
+  "assets": {
+    "agent_pack": {
+      "path": "agent/repomix.md",
+      "synced_at": "2026-06-22T05:31:13.915444+00:00",
+      "baseline_git_head": "c93d9e67d679bedad9fdf3bbae16d9d9f73cbd6d",
+      "stale": false,
+      "freshness_score": 95
+    },
+    "agent_context": {
+      "path": "agent/context.md",
+      "synced_at": "2026-06-18T09:36:34.236358+00:00",
+      "baseline_git_head": "21718adf37cf1901d88ea5d657473629fa0463b3",
+      "stale": true,
+      "stale_reason": "repo_advanced_3_commits",
+      "freshness_score": 72
+    },
+    "human_docs": {
+      "path": "human/",
+      "synced_at": "2026-06-22T05:31:13.916346+00:00",
+      "stale": false,
+      "freshness_score": 95
+    }
+  },
+  "drift": {
+    "commits_since_baseline": 3,
+    "changed_files_since_baseline": 29,
+    "sample_changed_files": []
+  },
+  "summary": {
+    "overall_score": 72,
+    "overall_stale": true,
+    "commits_since_baseline": 3,
+    "changed_files_count": 29,
+    "current_git_head": "c93d9e6",
+    "working_tree_dirty": true,
+    "is_git_repo": true,
+    "last_computed_at": "2026-06-22T05:44:14.267255+00:00",
+    "stale_reason": "repo_advanced_3_commits",
+    "agent_pack_score": 95,
+    "agent_context_score": 72,
+    "human_docs_score": 95,
+    "macro_preload_allowed": true,
+    "drift_factors": [
+      {
+        "id": "baseline_match",
+        "severity": "info",
+        "title": "与 baseline 提交一致",
+        "detail": "源码索引与 Agent 上下文均基于提交 c93d9e67d679bedad9fdf3bbae16d9d9f73cbd6d 生成，相对 HEAD 无文件漂移。"
+      },
+      {
+        "id": "context_older_than_pack",
+        "severity": "low",
+        "title": "Agent 上下文早于源码索引",
+        "detail": "context.md 已 3 天未更新，而源码索引为 0 天前。建议重新生成 Agent 知识资产。"
+      },
+      {
+        "id": "dirty_tree",
+        "severity": "medium",
+        "title": "工作区有未提交修改",
+        "detail": "Git 工作区在源码路径上有未提交改动（已排除 `.terrain/` 等知识产出目录）。知识资产基于某次提交快照，与磁盘上的未提交源码改动不一致，扣 5 分。",
+        "points_lost": 5
+      },
+      {
+        "id": "context_lineage",
+        "severity": "info",
+        "title": "Agent 上下文受源码索引牵连",
+        "detail": "架构上下文原始分 81/100，按规则不超过源码索引分数的 90%，现为 72/100。",
+        "points_lost": 9
+      },
+      {
+        "id": "overall_driver",
+        "severity": "info",
+        "title": "总分由 Agent 架构上下文决定",
+        "detail": "综合分取三层最低值：源码索引 95、Agent 上下文 72、人类文档 95。"
+      }
+    ],
+    "pack_baseline_short": "c93d9e6",
+    "context_baseline_short": "21718ad"
+  },
+  "last_computed_at": "2026-06-22T05:44:14.267255+00:00"
+}

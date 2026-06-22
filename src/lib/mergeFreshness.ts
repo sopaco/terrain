@@ -1,6 +1,6 @@
 import type { FreshnessSummary, ProjectOverview } from "./types";
 
-/** Matches `mind_mesh_core::freshness::FRESH_THRESHOLD`. */
+/** Matches `terrain_core::freshness::FRESH_THRESHOLD`. */
 const FRESH_THRESHOLD = 80;
 
 export function mergeFreshnessIntoOverview(

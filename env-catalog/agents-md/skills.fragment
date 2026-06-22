@@ -2,7 +2,7 @@
 
 | Skill | 用途 |
 |-------|------|
-| `mind-mesh-knowledge-skill` | `.mind-mesh/` 知识分层与查询顺序（先读） |
+| `terrain-knowledge-skill` | `.terrain/` 知识分层与查询顺序（先读） |
 | `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
 | `codegraph-skill` | `bunx codegraph query/callers/callees/impact` |
 | `rtk-skill` | **所有冗长 shell 命令加 `rtk` 前缀**（git/test/build/lint） |

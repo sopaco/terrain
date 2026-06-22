@@ -51,7 +51,7 @@
     e.stopPropagation();
     if (
       !confirm(
-        `删除需求「${session.title}」？\n\n将永久删除该 SDD 任务及 ~/.mind-mesh/sdd/ 下的全部产出，不可恢复。`,
+        `删除需求「${session.title}」？\n\n将永久删除该 SDD 任务及 ~/.terrain/sdd/ 下的全部产出，不可恢复。`,
       )
     ) {
       return;

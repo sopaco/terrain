@@ -641,7 +641,7 @@
               }`}
             >
               <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-white/40">
-                <span>{msg.role === "user" ? "You" : "MindMesh"}</span>
+                <span>{msg.role === "user" ? "You" : "Terrain"}</span>
                 {#if msg.timestamp}
                   <span class="normal-case text-white/30">{formatTime(msg.timestamp)}</span>
                 {/if}
@@ -709,7 +709,7 @@
           {#if busy}
             <div class="rounded-xl bg-white/[0.04] px-4 py-3">
               <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-white/40">
-                <span>MindMesh</span>
+                <span>Terrain</span>
                 <span class="normal-case text-indigo-200/80">{phaseLabel}</span>
               </div>
               {#if streamSteps.length === 0}

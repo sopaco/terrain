@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use mind_mesh_agent::{
+use terrain_agent::{
     agent_execution_ready, execution_uses_native_llm, prepare_litho_generation,
     run_agent_context_generation, run_litho_generation, validate_repo_path, AgentContextGenerationResult,
     ChatEngine, LithoGenerationJob, LithoProgress,
 };
-use mind_mesh_core::{
+use terrain_core::{
     build_generation_plan, pack_agent_assets, plan_litho_generation, AgentPackReport,
     AssetGenerationPlan, LithoPlan,
 };
@@ -27,7 +27,7 @@ pub async fn pack_agent_assets_cmd(
     let report = pack_agent_assets(&state.paths, &slug, &repo_path)
         .await
         .map_err(|e| e.to_string())?;
-    let _ = mind_mesh_core::compute_freshness(&state.paths, &slug, &repo_path);
+    let _ = terrain_core::compute_freshness(&state.paths, &slug, &repo_path);
     Ok(report)
 }
 

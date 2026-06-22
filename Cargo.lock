@@ -2799,100 +2799,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mind-mesh"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "arboard",
- "base64 0.22.1",
- "image",
- "mind-mesh-agent",
- "mind-mesh-core",
- "serde",
- "serde_json",
- "slug",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-shell",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "mind-mesh-agent"
-version = "0.1.0"
-dependencies = [
- "adk-acp",
- "adk-agent",
- "adk-core",
- "adk-model",
- "adk-runner",
- "adk-session",
- "adk-tool",
- "agent-client-protocol",
- "anyhow",
- "async-trait",
- "dotenvy",
- "futures",
- "mind-mesh-core",
- "schemars 1.2.1",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "tracing",
- "ts-rs",
- "uuid",
- "walkdir",
-]
-
-[[package]]
-name = "mind-mesh-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "dotenvy",
- "mind-mesh-agent",
- "mind-mesh-core",
- "serde_json",
- "slug",
- "tokio",
-]
-
-[[package]]
-name = "mind-mesh-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "glob",
- "ignore",
- "regex",
- "repomix-core",
- "serde",
- "serde_json",
- "serde_yaml",
- "slug",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "ts-rs",
- "walkdir",
-]
-
-[[package]]
-name = "mind-mesh-ts-export"
-version = "0.1.0"
-dependencies = [
- "mind-mesh-agent",
- "mind-mesh-core",
- "ts-rs",
-]
-
-[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5318,6 +5224,100 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "terrain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arboard",
+ "base64 0.22.1",
+ "image",
+ "serde",
+ "serde_json",
+ "slug",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-shell",
+ "terrain-agent",
+ "terrain-core",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "terrain-agent"
+version = "0.1.0"
+dependencies = [
+ "adk-acp",
+ "adk-agent",
+ "adk-core",
+ "adk-model",
+ "adk-runner",
+ "adk-session",
+ "adk-tool",
+ "agent-client-protocol",
+ "anyhow",
+ "async-trait",
+ "dotenvy",
+ "futures",
+ "schemars 1.2.1",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "terrain-core",
+ "tokio",
+ "tracing",
+ "ts-rs",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "terrain-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dotenvy",
+ "serde_json",
+ "slug",
+ "terrain-agent",
+ "terrain-core",
+ "tokio",
+]
+
+[[package]]
+name = "terrain-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "glob",
+ "ignore",
+ "regex",
+ "repomix-core",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "slug",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "ts-rs",
+ "walkdir",
+]
+
+[[package]]
+name = "terrain-ts-export"
+version = "0.1.0"
+dependencies = [
+ "terrain-agent",
+ "terrain-core",
+ "ts-rs",
 ]
 
 [[package]]

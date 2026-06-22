@@ -1,5 +1,5 @@
-use mind_mesh_agent::{execution_pure_acp, run_sdd_phase, validate_repo_path, SddProgress};
-use mind_mesh_core::{
+use terrain_agent::{execution_pure_acp, run_sdd_phase, validate_repo_path, SddProgress};
+use terrain_core::{
     create_sdd_session, delete_sdd_session, get_sdd_status, resolve_sdd_session_id,
     save_sdd_output, set_active_sdd_session, SddPhase, SddPhaseResult, SddSessionInfo, SddStatus,
 };

@@ -2,11 +2,11 @@
   "version": 1,
   "integrations": [
     {
-      "id": "skill-mind-mesh-knowledge",
+      "id": "skill-terrain-knowledge",
       "kind": "skill",
-      "label": "MindMesh 知识 Skill",
-      "description": "教 Coding Agent 如何使用 .mind-mesh/ 知识资产",
-      "skill_dir": "mind-mesh-knowledge-skill",
+      "label": "Terrain 知识 Skill",
+      "description": "教 Coding Agent 如何使用 .terrain/ 知识资产",
+      "skill_dir": "terrain-knowledge-skill",
       "required": true,
       "depends_on": []
     },
@@ -16,7 +16,7 @@
       "label": "Repomix 查询 Skill",
       "description": "按需 grep 本地 repomix 索引（不入库）",
       "skill_dir": "repomix-context-skill",
-      "depends_on": ["skill-mind-mesh-knowledge"]
+      "depends_on": ["skill-terrain-knowledge"]
     },
     {
       "id": "skill-codegraph",
@@ -24,7 +24,7 @@
       "label": "CodeGraph Skill",
       "description": "通过 CLI 查询符号关系与影响面",
       "skill_dir": "codegraph-skill",
-      "depends_on": ["tool-codegraph", "skill-mind-mesh-knowledge"]
+      "depends_on": ["tool-codegraph", "skill-terrain-knowledge"]
     },
     {
       "id": "skill-rtk",
@@ -47,7 +47,7 @@
       "id": "tool-codegraph",
       "kind": "tool",
       "label": "CodeGraph CLI",
-      "description": "MindMesh 内置 — 在目标仓库初始化 .codegraph/ 索引",
+      "description": "Terrain 内置 — 在目标仓库初始化 .codegraph/ 索引",
       "bundled": true,
       "depends_on": []
     },
@@ -55,7 +55,7 @@
       "id": "tool-rtk",
       "kind": "tool",
       "label": "RTK CLI",
-      "description": "MindMesh 内置 — Shell 输出 Token 压缩（无需写入目标仓库）",
+      "description": "Terrain 内置 — Shell 输出 Token 压缩（无需写入目标仓库）",
       "bundled": true,
       "depends_on": []
     },
@@ -63,22 +63,22 @@
       "id": "agents-md",
       "kind": "agents_md",
       "label": "AGENTS.md 工作指南",
-      "description": "注入 MindMesh 托管片段，指引 Agent 使用知识 Skill 与工具链",
-      "depends_on": ["skill-mind-mesh-knowledge"]
+      "description": "注入 Terrain 托管片段，指引 Agent 使用知识 Skill 与工具链",
+      "depends_on": ["skill-terrain-knowledge"]
     },
     {
       "id": "gitignore-repomix",
       "kind": "gitignore",
       "label": "忽略 repomix.md",
-      "description": "将 .mind-mesh/agent/repomix.md 加入 .gitignore",
-      "patterns": [".mind-mesh/agent/repomix.md"],
+      "description": "将 .terrain/agent/repomix.md 加入 .gitignore",
+      "patterns": [".terrain/agent/repomix.md"],
       "depends_on": []
     },
     {
       "id": "gitignore-sdd-agent",
       "kind": "gitignore",
       "label": "忽略 SDD 工作区",
-      "description": "将 .mind-mesh/.sdd-agent/ 加入 .gitignore（SDD 产出已迁至本地 ~/.mind-mesh/sdd/）",
+      "description": "将 .terrain/.sdd-agent/ 加入 .gitignore（SDD 产出已迁至本地 ~/.terrain/sdd/）",
       "patterns": ["**/.sdd-agent"],
       "depends_on": []
     }

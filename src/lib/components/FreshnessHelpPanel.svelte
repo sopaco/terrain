@@ -141,7 +141,7 @@
             距上次同步每多 1 天 · 约 −2 分（上限 20）
           </div>
           <div class="rounded-lg border border-white/8 bg-black/20 px-3 py-2">
-            源码路径有未提交改动 · −5 分（不含 `.mind-mesh/` 知识产出）
+            源码路径有未提交改动 · −5 分（不含 `.terrain/` 知识产出）
           </div>
         </div>
       </section>
@@ -229,7 +229,7 @@
           <h3 class="text-xs font-semibold text-indigo-200/90">可以怎么做</h3>
           <ul class="mt-2 list-inside list-disc space-y-1 text-xs leading-relaxed text-white/55">
             {#if freshness.working_tree_dirty}
-              <li>提交或暂存<strong>源码</strong>改动，避免「未提交修改」持续扣分（`.mind-mesh/` 产出不计入）</li>
+              <li>提交或暂存<strong>源码</strong>改动，避免「未提交修改」持续扣分（`.terrain/` 产出不计入）</li>
             {/if}
             {#if freshness.commits_since_baseline > 0 || freshness.changed_files_count > 0}
               <li>代码已前进时，使用「快速保鲜」更新源码索引与 Agent 知识资产（无需重跑 Litho）</li>

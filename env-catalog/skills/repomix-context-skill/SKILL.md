@@ -1,14 +1,14 @@
 ---
 name: repomix-context-skill
-description: Use when an agent needs source code from the local repomix index under .mind-mesh/agent/repomix.md (not committed; regenerate via MindMesh scan).
+description: Use when an agent needs source code from the local repomix index under .terrain/agent/repomix.md (not committed; regenerate via Terrain scan).
 version: 1.2.0
 ---
 
 # Repomix Context Skill
 
-MindMesh stores a **local repomix index** at `.mind-mesh/agent/repomix.md` (gitignored, fast to regenerate).
+Terrain stores a **local repomix index** at `.terrain/agent/repomix.md` (gitignored, fast to regenerate).
 
-Read **architecture first** via `mind-mesh-knowledge-skill` → `.mind-mesh/agent/context.md`.
+Read **architecture first** via `terrain-knowledge-skill` → `.terrain/agent/context.md`.
 
 ## When to use
 
@@ -18,19 +18,19 @@ Read **architecture first** via `mind-mesh-knowledge-skill` → `.mind-mesh/agen
 
 ## Query strategy (mandatory)
 
-1. **Read meta** — `.mind-mesh/agent/meta.json` (`total_tokens`, `synced_at`, `top_files_by_tokens`)
+1. **Read meta** — `.terrain/agent/meta.json` (`total_tokens`, `synced_at`, `top_files_by_tokens`)
 2. **Search the pack** — never load the entire file:
    ```bash
-   rtk grep "struct ProjectOverview" .mind-mesh/agent/repomix.md
-   rtk grep "### src/lib/api.ts" .mind-mesh/agent/repomix.md
+   rtk grep "struct ProjectOverview" .terrain/agent/repomix.md
+   rtk grep "### src/lib/api.ts" .terrain/agent/repomix.md
    ```
    Or agent Grep limited to that path with tight patterns.
 3. **Read slices** — extract matching `### path/to/file` sections only:
    ```bash
-   rtk read .mind-mesh/agent/repomix.md -l aggressive   # scan structure first if huge
+   rtk read .terrain/agent/repomix.md -l aggressive   # scan structure first if huge
    ```
    Then read the specific `### file` block (line range), ≤150 lines per read.
-4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run MindMesh **重建源码索引** / scan
+4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run Terrain **重建源码索引** / scan
 
 ## Repomix section format
 
@@ -50,9 +50,9 @@ Grep for `### relative/path` to jump to a file.
 
 | File | Purpose |
 |------|---------|
-| `.mind-mesh/agent/repomix.md` | Full indexed snapshot (local only) |
-| `.mind-mesh/agent/meta.json` | Pack metrics |
-| `.mind-mesh/agent/context.md` | Architecture (read first) |
+| `.terrain/agent/repomix.md` | Full indexed snapshot (local only) |
+| `.terrain/agent/meta.json` | Pack metrics |
+| `.terrain/agent/context.md` | Architecture (read first) |
 
 ## Do not
 
@@ -66,8 +66,8 @@ Grep for `### relative/path` to jump to a file.
 If `repomix.md` is missing:
 
 ```bash
-mind-mesh assets pack-agent <repo-path>
-# or from repo root in MindMesh UI: 重建源码索引
+terrain assets pack-agent <repo-path>
+# or from repo root in Terrain UI: 重建源码索引
 ```
 
 ## Related skills

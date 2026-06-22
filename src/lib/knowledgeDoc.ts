@@ -6,7 +6,7 @@ export function isKnowledgeMarkdownPath(path: string): boolean {
   if (!p.endsWith(".md") || p.includes("repomix.md")) {
     return false;
   }
-  if (p.includes("/.mind-mesh/")) {
+  if (p.includes("/.terrain/")) {
     return true;
   }
   return (
@@ -38,18 +38,18 @@ export function citationKindForPath(path: string): CitationKind {
   return "human_doc";
 }
 
-/** Resolve a citation path to a `read_document` argument (absolute or `.mind-mesh`-relative). */
+/** Resolve a citation path to a `read_document` argument (absolute or `.terrain`-relative). */
 export function resolveKnowledgeDocPath(_projectSlug: string, path: string): string {
   const p = path.trim().replace(/^\.\//, "");
   if (p.startsWith("/")) {
     return p;
   }
-  const mindMeshIdx = p.indexOf("/.mind-mesh/");
+  const mindMeshIdx = p.indexOf("/.terrain/");
   if (mindMeshIdx >= 0) {
-    return p.slice(mindMeshIdx + "/.mind-mesh/".length);
+    return p.slice(mindMeshIdx + "/.terrain/".length);
   }
-  if (p.startsWith(".mind-mesh/")) {
-    return p.slice(".mind-mesh/".length);
+  if (p.startsWith(".terrain/")) {
+    return p.slice(".terrain/".length);
   }
   if (p === "context.md") {
     return "agent/context.md";

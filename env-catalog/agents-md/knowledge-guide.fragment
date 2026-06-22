@@ -1,20 +1,20 @@
-## MindMesh 知识资产
+## Terrain 知识资产
 
-Coding Agent **必须先加载** `mind-mesh-knowledge-skill`，并按其中分层策略查询 **`.mind-mesh/`**（仓库内路径，非全局目录）。
+Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层策略查询 **`.terrain/`**（仓库内路径，非全局目录）。
 
 | 层级 | 路径 | 何时使用 |
 |------|------|----------|
-| Agent 友好 | `.mind-mesh/agent/context.md` | 模块划分、核心流程、系统边界 |
-| 私域 | `.mind-mesh/knowledge/` | 业务术语、内部框架/API/脚手架 |
-| 人类友好 | `.mind-mesh/human/` | Litho 人类友好的知识库（可选参考） |
-| 源码 | `.mind-mesh/agent/repomix.md`（见 `repomix-context-skill`） | 实现细节（本地索引，不入库） |
+| Agent 友好 | `.terrain/agent/context.md` | 模块划分、核心流程、系统边界 |
+| 私域 | `.terrain/knowledge/` | 业务术语、内部框架/API/脚手架 |
+| 人类友好 | `.terrain/human/` | Litho 人类友好的知识库（可选参考） |
+| 源码 | `.terrain/agent/repomix.md`（见 `repomix-context-skill`） | 实现细节（本地索引，不入库） |
 | 关系 | codegraph CLI（见 `codegraph-skill`） | 调用链、依赖关系、影响分析 |
 
 **原则**：先宏观后微观；优先读已生成文档，再 grep 源码索引。
 
 ## 知识保鲜（必读）
 
-1. 回答架构/模块问题前，读取 `.mind-mesh/.meta/freshness.json`（或 `freshness` 工具输出）
+1. 回答架构/模块问题前，读取 `.terrain/.meta/freshness.json`（或 `freshness` 工具输出）
 2. `freshness_score < 70` 时：不得仅凭 `agent/context.md` 下结论，须用 `grep repomix` 或 `codegraph` 交叉验证
 3. `freshness_score < 50` 时：宏观架构上下文不可信，以 repomix 源码切片为准
 4. 发现矛盾时的优先级：**repomix 源码 > codegraph > agent/context.md > human/**

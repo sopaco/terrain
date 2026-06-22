@@ -1,4 +1,4 @@
-use mind_mesh_agent::{
+use terrain_agent::{
     acp_available, acp_spawn_command, llm_status, load_model_settings, model_settings_from_config,
     save_model_settings, ModelSettings,
 };
@@ -40,7 +40,7 @@ pub fn check_opencode() -> bool {
 }
 
 #[tauri::command]
-pub fn check_llm(state: State<'_, AppState>) -> mind_mesh_agent::LlmStatus {
+pub fn check_llm(state: State<'_, AppState>) -> terrain_agent::LlmStatus {
     llm_status(&state.get_model_config())
 }
 
@@ -53,9 +53,9 @@ pub fn get_model_settings(state: State<'_, AppState>) -> ModelSettings {
 pub async fn save_model_settings_cmd(
     state: State<'_, AppState>,
     settings: ModelSettings,
-) -> Result<mind_mesh_agent::LlmStatus, String> {
+) -> Result<terrain_agent::LlmStatus, String> {
     save_model_settings(&settings).map_err(|e| e.to_string())?;
-    let config = mind_mesh_agent::resolve_model_config();
+    let config = terrain_agent::resolve_model_config();
     state.set_model_config(config);
     *state.chat.lock().await = None;
     Ok(llm_status(&state.get_model_config()))

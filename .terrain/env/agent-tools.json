@@ -1,0 +1,12 @@
+{
+  "bin_dir": "/Users/bjsttlp485/.terrain/bin",
+  "rtk": "/Users/bjsttlp485/.terrain/bin/rtk",
+  "codegraph": "/Users/bjsttlp485/.terrain/bin/codegraph",
+  "terrain": "/Users/bjsttlp485/.terrain/bin/terrain",
+  "codegraph_runtime": "/Users/bjsttlp485/.terrain/tools/codegraph-runtime",
+  "usage": {
+    "rtk": "Prefer absolute path from `rtk` field, or ensure ~/.terrain/bin is on PATH",
+    "codegraph": "Prefer absolute path from `codegraph` field; index is per-repo under .codegraph/",
+    "terrain": "ACP / CLI knowledge tools: `terrain tools …`"
+  }
+}

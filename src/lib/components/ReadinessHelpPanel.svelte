@@ -61,7 +61,7 @@
     <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
       <section>
         <p class="text-sm leading-relaxed text-white/60">
-          就绪度衡量仓库内 <code class="text-white/70">.mind-mesh/</code> 各项知识资产是否已生成并可供 Agent 与人类阅读使用，包括源码索引、架构上下文、人类文档等。
+          就绪度衡量仓库内 <code class="text-white/70">.terrain/</code> 各项知识资产是否已生成并可供 Agent 与人类阅读使用，包括源码索引、架构上下文、人类文档等。
         </p>
       </section>
 

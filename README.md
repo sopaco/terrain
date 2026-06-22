@@ -1,8 +1,10 @@
 <div align="center">
 
-# MindMesh
+# Terrain
 
-**Engineering environment management for human developers and AI coding assistants**
+**Terrain prepares the ground so agents don't have to guess where to stand.**
+
+Engineering environment management for human developers and AI coding assistants — knowledge as the map, tools as the roads, conventions as the trail markers.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -12,27 +14,27 @@ Scan any Git repository, generate C4 architecture docs, maintain structured know
 
 ---
 
-## What is MindMesh?
+## What is Terrain?
 
-MindMesh is an **engineering environment management platform** built for the age of AI-assisted development. Point it at a Git repository and it will:
+Terrain is an **engineering environment management platform** built for the age of AI-assisted development. Point it at a Git repository and it will:
 
 - **Scan** the codebase and index project structure
 - **Generate** human-readable C4 architecture documentation (Litho)
-- **Maintain** AI-friendly structured knowledge assets under `.mind-mesh/`
+- **Maintain** AI-friendly structured knowledge assets under `.terrain/`
 - **Answer** architecture questions via DeepWiki (RAG over your knowledge base)
 - **Run** standardized development workflows (SDD: requirements → design → codegen → review)
 - **Integrate** Skills, tools, and `AGENTS.md` guidance for external coding agents
 
-Knowledge lives **in the repository** — not in a central database. Every branch carries its own docs. Human developers use the **Tauri desktop app** or **CLI**; external AI coding assistants (OpenCode, Cursor, etc.) call `mind-mesh tools` over ACP to read the same knowledge layers.
+Knowledge lives **in the repository** — not in a central database. Every branch carries its own docs. Human developers use the **Tauri desktop app** or **CLI**; external AI coding assistants (OpenCode, Cursor, etc.) call `terrain tools` over ACP to read the same knowledge layers.
 
 ### Dual-track knowledge
 
 | Audience | Path | Format |
 |----------|------|--------|
-| **Humans** | `.mind-mesh/human/` | Narrative C4 docs with Mermaid diagrams |
-| **AI agents** | `.mind-mesh/agent/context.md` | Structured architecture overview (≤ 14 KiB) |
-| **Source index** | `.mind-mesh/agent/repomix.md` | Repomix pack — grep/read on demand, not preloaded |
-| **Domain terms** | `.mind-mesh/knowledge/` | Business glossary and internal conventions |
+| **Humans** | `.terrain/human/` | Narrative C4 docs with Mermaid diagrams |
+| **AI agents** | `.terrain/agent/context.md` | Structured architecture overview (≤ 14 KiB) |
+| **Source index** | `.terrain/agent/repomix.md` | Repomix pack — grep/read on demand, not preloaded |
+| **Domain terms** | `.terrain/knowledge/` | Business glossary and internal conventions |
 
 ### Knowledge factory
 
@@ -41,21 +43,21 @@ Git repository (input)
         │
         ▼
 ┌───────────────────────────────────────────┐
-│  MindMesh Core + Agent                    │
+│  Terrain Core + Agent                    │
 │  scan → register → pack → context → litho │
 └───────────────────────────────────────────┘
         │
         ▼
-.mind-mesh/  (output — versioned with your code)
+.terrain/  (output — versioned with your code)
 ```
 
 ---
 
-## Why MindMesh?
+## Why Terrain?
 
-Onboarding to a new codebase usually means days of reading source and stale wiki pages. MindMesh compresses that to minutes: register a repo, run initialization, and get a full C4 doc set plus an agent-ready context pack.
+Onboarding to a new codebase usually means days of reading source and stale wiki pages. Terrain compresses that to minutes: register a repo, run initialization, and get a full C4 doc set plus an agent-ready context pack.
 
-| Without MindMesh | With MindMesh |
+| Without Terrain | With Terrain |
 |------------------|---------------|
 | Architecture knowledge scattered across wikis, Slack, and senior engineers | C4 docs and agent context generated from the actual codebase |
 | AI assistants grep the live repo blindly | Agents read `context.md` first, then targeted repomix slices |
@@ -68,7 +70,7 @@ Onboarding to a new codebase usually means days of reading source and stale wiki
 - **Tech leads** who want architecture docs that stay close to the code
 - **Teams** adopting AI coding assistants and need a shared knowledge contract
 - **CI/CD** pipelines that regenerate knowledge assets on merge
-- **ACP integrators** wiring `mind-mesh tools` into OpenCode or compatible agents
+- **ACP integrators** wiring `terrain tools` into OpenCode or compatible agents
 
 ---
 
@@ -85,7 +87,7 @@ Automated four-phase pipeline (research → composition) produces six standard h
 5. Boundary interfaces
 6. Database overview
 
-Intermediate research artifacts persist under `.mind-mesh/.litho-agent/` so generation can resume after interruption.
+Intermediate research artifacts persist under `.terrain/.litho-agent/` so generation can resume after interruption.
 
 ### DeepWiki — knowledge-grounded Q&A
 
@@ -102,21 +104,21 @@ Four sequential phases, each producing a reviewable Markdown artifact:
 | 3. Code generation | `3.implementation.md` + repo changes | ACP agent |
 | 4. Code review | `4.code-review.md` | Native LLM |
 
-Session outputs live under `~/.mind-mesh/sdd/{project}/sessions/{id}/outputs/` (local, not versioned).
+Session outputs live under `~/.terrain/sdd/{project}/sessions/{id}/outputs/` (local, not versioned).
 
 ### Env — AI engineering environment integration
 
 Detect and install the toolchain your coding agents need:
 
-- **Skills** — mind-mesh-knowledge, repomix-context, codegraph, rtk
+- **Skills** — terrain-knowledge, repomix-context, codegraph, rtk
 - **Tools** — CodeGraph CLI, RTK token optimizer
 - **AGENTS.md** — managed snippets guiding agents to the knowledge layers
 
-Dependency order is respected: `mind-mesh-knowledge` → `repomix` → `codegraph` → `rtk`.
+Dependency order is respected: `terrain-knowledge` → `repomix` → `codegraph` → `rtk`.
 
 ### ACP tools — CLI for external agents
 
-When MindMesh runs in ACP mode, external agents call `mind-mesh tools` (JSON stdout) instead of built-in function tools. Same three-layer model: macro (preloaded) → meso (`read-context`) → micro (`grep-pack` / `read-pack-file`).
+When Terrain runs in ACP mode, external agents call `terrain tools` (JSON stdout) instead of built-in function tools. Same three-layer model: macro (preloaded) → meso (`read-context`) → micro (`grep-pack` / `read-pack-file`).
 
 ### Freshness tracking
 
@@ -133,18 +135,18 @@ graph TB
         Agent["AI Coding Assistant<br/>(ACP)"]
     end
 
-    subgraph MindMesh
+    subgraph Terrain
         UI["Desktop App<br/>Tauri + Svelte 5"]
-        CLI["CLI<br/>mind-mesh"]
-        Core["mind-mesh-core<br/>paths · scan · search · assets"]
-        AgentLayer["mind-mesh-agent<br/>chat · litho · sdd · acp"]
-        KB[".mind-mesh/<br/>knowledge store"]
+        CLI["CLI<br/>terrain"]
+        Core["terrain-core<br/>paths · scan · search · assets"]
+        AgentLayer["terrain-agent<br/>chat · litho · sdd · acp"]
+        KB[".terrain/<br/>knowledge store"]
     end
 
     subgraph External
         LLM["LLM API<br/>OpenAI / Ollama / LM Studio"]
         Git["Git Repository"]
-        Reg["~/.mind-mesh/registry.json"]
+        Reg["~/.terrain/registry.json"]
         ACP["ACP Agent<br/>OpenCode, etc."]
     end
 
@@ -167,23 +169,23 @@ graph TB
 ### Repository layout
 
 ```
-mind-mesh/
+terrain/
 ├── crates/
-│   ├── mind-mesh-core/     # Paths, registry, scan, search, assets
-│   ├── mind-mesh-agent/    # Chat, Litho, SDD, ACP, context generation
-│   └── mind-mesh-cli/      # CLI entry point
+│   ├── terrain-core/     # Paths, registry, scan, search, assets
+│   ├── terrain-agent/    # Chat, Litho, SDD, ACP, context generation
+│   └── terrain-cli/      # CLI entry point
 ├── src/                    # Svelte 5 frontend
 ├── src-tauri/              # Tauri 2 backend + IPC commands
 ├── preset_skills/          # Litho, SDD, Ask, Agent Context skills
 ├── env-catalog/            # Env integration catalog
 ├── packages/rtk/           # Shell output token compression
-└── .mind-mesh/             # This repo's own knowledge assets (example)
+└── .terrain/             # This repo's own knowledge assets (example)
 ```
 
-### `.mind-mesh/` directory (per project)
+### `.terrain/` directory (per project)
 
 ```
-{your-repo}/.mind-mesh/
+{your-repo}/.terrain/
 ├── index.md                 # Project index (from scan)
 ├── agent/
 │   ├── context.md           # Macro architecture context for agents
@@ -197,7 +199,7 @@ mind-mesh/
 └── .litho-agent/            # Litho research workspace (transient)
 ```
 
-Project registration (slug ↔ repo path) is stored locally at `~/.mind-mesh/registry.json` — pointers only, not knowledge files.
+Project registration (slug ↔ repo path) is stored locally at `~/.terrain/registry.json` — pointers only, not knowledge files.
 
 ### Tech stack
 
@@ -215,14 +217,14 @@ Project registration (slug ↔ repo path) is stored locally at `~/.mind-mesh/reg
 
 ## Ecosystem
 
-MindMesh composes with the tools your AI workflow already uses:
+Terrain composes with the tools your AI workflow already uses:
 
 | Component | Role |
 |-----------|------|
 | **OpenCode / ACP agents** | Execute Litho composition, SDD codegen, and tool calls in an isolated process |
 | **Repomix** | Packs source into a grep-friendly index for agents |
 | **CodeGraph** | Symbol callers/callees/impact queries via `bunx codegraph` |
-| **RTK** | Compresses shell output to save tokens (`@mind-mesh/rtk`) |
+| **RTK** | Compresses shell output to save tokens (`@terrain/rtk`) |
 | **Preset Skills** | LLM workflow instructions in `preset_skills/` (Litho, SDD, Ask, Context) |
 | **DeepWiki MCP** | Optional GitHub repo documentation in the desktop UI |
 
@@ -237,35 +239,35 @@ Screenshots are placeholders — replace with captures from the desktop app when
 ### Overview
 
 <!-- Capture: Desktop app project list with freshness indicators -->
-<img src="assets/screenshots/01-overview.png" alt="MindMesh desktop — project overview" width="800" />
+<img src="assets/screenshots/01-overview.png" alt="Terrain desktop — project overview" width="800" />
 
 *Project list, registration status, and freshness scores.*
 
 ### Knowledge & Litho
 
 <!-- Capture: Human docs tree with Litho C4 document open -->
-<img src="assets/screenshots/02-knowledge-litho.png" alt="MindMesh — Litho human documentation" width="800" />
+<img src="assets/screenshots/02-knowledge-litho.png" alt="Terrain — Litho human documentation" width="800" />
 
 *Human-facing C4 architecture docs generated by the Litho pipeline.*
 
 ### DeepWiki
 
 <!-- Capture: DeepWiki Ask panel with a question and cited answer -->
-<img src="assets/screenshots/03-deepwiki.png" alt="MindMesh — DeepWiki Q&A" width="800" />
+<img src="assets/screenshots/03-deepwiki.png" alt="Terrain — DeepWiki Q&A" width="800" />
 
 *Knowledge-grounded Q&A with citations and tool-call traces.*
 
 ### SDD Workflow
 
 <!-- Capture: SDD session panel showing phase outputs -->
-<img src="assets/screenshots/04-sdd.png" alt="MindMesh — SDD workflow" width="800" />
+<img src="assets/screenshots/04-sdd.png" alt="Terrain — SDD workflow" width="800" />
 
 *Four-phase standardized development: requirements through code review.*
 
 ### Env Integration
 
 <!-- Capture: Env panel with integration status and apply action -->
-<img src="assets/screenshots/05-env.png" alt="MindMesh — environment integration" width="800" />
+<img src="assets/screenshots/05-env.png" alt="Terrain — environment integration" width="800" />
 
 *Skills, tools, and AGENTS.md integration status for coding agents.*
 
@@ -287,15 +289,15 @@ Screenshots are placeholders — replace with captures from the desktop app when
 
 ```bash
 # Clone and install frontend dependencies
-git clone https://github.com/sopaco/mind-mesh.git
-cd mind-mesh
+git clone https://github.com/sopaco/terrain.git
+cd terrain
 bun install
 
 # Build Rust workspace (CLI + libraries)
 cargo build --release
 
 # CLI binary
-./target/release/mind-mesh --help
+./target/release/terrain --help
 
 # Desktop app (development)
 bun run dev:app
@@ -306,26 +308,26 @@ bun run dev:app
 Replace `/path/to/your-repo` with any Git repository you want to index.
 
 ```bash
-# Register the repository (creates {repo}/.mind-mesh/ layout)
-./target/release/mind-mesh assets register /path/to/your-repo
+# Register the repository (creates {repo}/.terrain/ layout)
+./target/release/terrain assets register /path/to/your-repo
 
 # Scan repository structure into index.md
-./target/release/mind-mesh scan /path/to/your-repo
+./target/release/terrain scan /path/to/your-repo
 
 # Pack agent source index (repomix)
-./target/release/mind-mesh assets pack-agent /path/to/your-repo
+./target/release/terrain assets pack-agent /path/to/your-repo
 
 # Generate agent/context.md (requires LLM configured in Settings)
-./target/release/mind-mesh assets agent-context /path/to/your-repo
+./target/release/terrain assets agent-context /path/to/your-repo
 
 # List generated human docs (after Litho)
-./target/release/mind-mesh assets list-human --project your-repo-slug
+./target/release/terrain assets list-human --project your-repo-slug
 ```
 
 Run Litho human doc generation (requires ACP agent):
 
 ```bash
-./target/release/mind-mesh assets run-litho /path/to/your-repo
+./target/release/terrain assets run-litho /path/to/your-repo
 ```
 
 ### Configure models
@@ -338,13 +340,13 @@ For headless CLI use, environment variables are supported — see [.env.example]
 
 ```bash
 # Check integration status
-./target/release/mind-mesh env status --repo-path /path/to/your-repo
+./target/release/terrain env status --repo-path /path/to/your-repo
 
 # Preview plan
-./target/release/mind-mesh env plan --repo-path /path/to/your-repo
+./target/release/terrain env plan --repo-path /path/to/your-repo
 
 # Apply integrations (Skills, CodeGraph, RTK, AGENTS.md)
-./target/release/mind-mesh env apply --repo-path /path/to/your-repo
+./target/release/terrain env apply --repo-path /path/to/your-repo
 ```
 
 ---
@@ -363,44 +365,44 @@ For headless CLI use, environment variables are supported — see [.env.example]
 | `assets` | Pack, Litho, agent context, registration |
 | `env` | AI engineering environment integration |
 
-Global flag: `--repo-path` (default: current Git workspace or `MIND_MESH_REPO_PATH`).
+Global flag: `--repo-path` (default: current Git workspace or `TERRAIN_REPO_PATH`).
 
 ### Search and read
 
 ```bash
 # Search across knowledge docs
-mind-mesh search "authentication flow" --limit 10
+terrain search "authentication flow" --limit 10
 
 # Read a specific document
-mind-mesh read human/2.架构.md
+terrain read human/2.架构.md
 ```
 
-### `mind-mesh tools` — for ACP integrators
+### `terrain tools` — for ACP integrators
 
 All commands output JSON to stdout. Run from the repository root or pass `--repo-path`.
 
 ```bash
 # List indexed projects
-mind-mesh tools list-projects
+terrain tools list-projects
 
 # Architecture overview (macro layer)
-mind-mesh tools read-context --project my-app
+terrain tools read-context --project my-app
 
 # Specific context section
-mind-mesh tools read-context --project my-app --section "核心流程"
+terrain tools read-context --project my-app --section "核心流程"
 
 # Grep the repomix pack (micro layer)
-mind-mesh tools grep-pack --project my-app --pattern "struct ProjectScanner"
+terrain tools grep-pack --project my-app --pattern "struct ProjectScanner"
 
 # Read source slice from pack (≤ 150 lines recommended)
-mind-mesh tools read-pack-file --project my-app \
-  --file crates/mind-mesh-core/src/paths.rs --start-line 1 --end-line 80
+terrain tools read-pack-file --project my-app \
+  --file crates/terrain-core/src/paths.rs --start-line 1 --end-line 80
 
 # Search human and agent docs
-mind-mesh tools search --query "freshness" --project my-app --limit 5
+terrain tools search --query "freshness" --project my-app --limit 5
 
 # Read a doc by project-relative path
-mind-mesh tools read-doc --project my-app --path human/1.概述.md
+terrain tools read-doc --project my-app --path human/1.概述.md
 ```
 
 **Agent workflow:** answer from preloaded macro context when possible → `read-context` for missing sections → `grep-pack` then `read-pack-file` for implementation detail. Never read the live repository filesystem; the repomix pack is authoritative for code.
@@ -421,7 +423,7 @@ The desktop UI provides:
 - Env integration panel
 - Model and ACP settings
 
-### What MindMesh does not do
+### What Terrain does not do
 
 - **Does not modify your code** by default (SDD codegen phase is the exception, via an external ACP agent)
 - **Does not host a web service** — all data stays on the local filesystem
@@ -434,9 +436,9 @@ The desktop UI provides:
 
 | Crate | Responsibility |
 |-------|----------------|
-| `mind-mesh-core` | Paths, registry, ingest, search, assets, freshness, env catalog |
-| `mind-mesh-agent` | ChatEngine, Litho, SDD, agent context, ACP adapter, project init |
-| `mind-mesh-cli` | Clap CLI wrapping Core + Agent |
+| `terrain-core` | Paths, registry, ingest, search, assets, freshness, env catalog |
+| `terrain-agent` | ChatEngine, Litho, SDD, agent context, ACP adapter, project init |
+| `terrain-cli` | Clap CLI wrapping Core + Agent |
 | `src-tauri` | IPC bridge between Svelte UI and Rust backend |
 
 ---
@@ -452,4 +454,4 @@ MIT — see [LICENSE](LICENSE).
 - [AGENTS.md](AGENTS.md) — guidance injected for coding agents in this repo
 - [preset_skills/](preset_skills/) — Litho, SDD, Ask, and Agent Context skill definitions
 - [env-catalog/catalog.json](env-catalog/catalog.json) — integration catalog
-- [.mind-mesh/human/](.mind-mesh/human/) — Litho-generated docs for MindMesh itself (living example)
+- [.terrain/human/](.terrain/human/) — Litho-generated docs for Terrain itself (living example)

@@ -233,7 +233,7 @@
     <h2 class="text-lg font-semibold text-white/90">{TERMS.agentEnv}</h2>
     <p class="mt-1 text-sm text-white/50">
       为 Coding Agent（Claude Code、Cursor 等）配置 Skills、工具链与 AGENTS.md。
-      知识资产使用仓库内 <code class="text-white/70">.mind-mesh/</code>，由 MindMesh 生成。
+      知识资产使用仓库内 <code class="text-white/70">.terrain/</code>，由 Terrain 生成。
     </p>
     {#if status}
       <p class="mt-2 text-sm text-indigo-200/80">{status.summary}</p>
@@ -353,7 +353,7 @@
             </span>
             {#if bundledLocked}
               <span class="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] text-indigo-200/70">
-                MindMesh 内置
+                Terrain 内置
               </span>
             {:else if lockedIntegrated}
               <span class="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/35">
