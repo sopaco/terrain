@@ -75,6 +75,16 @@ source: .
     - screenshots/
     - banner.png
     - app-icon.png
+  - npm/
+    - README.md
+    - .gitignore
+    - package-lock.json
+    - package.json
+    - scripts/
+    - packages/
+  - .codegraph/
+    - codegraph.db
+    - .gitignore
   - src/
     - main.ts
     - app.css
