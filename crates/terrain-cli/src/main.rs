@@ -17,7 +17,15 @@ use terrain_core::{
 };
 
 #[derive(Parser)]
-#[command(name = "terrain", about = "Terrain knowledge base CLI")]
+#[command(
+    name = "terrain",
+    about = "Terrain knowledge base CLI",
+    version,
+    long_version = concat!(
+        env!("CARGO_PKG_VERSION"),
+        "\n\nScan repos, manage .terrain/ knowledge assets, and ACP tools for Ask agents."
+    ),
+)]
 struct Cli {
     /// Repository path (default: current Git workspace or TERRAIN_REPO_PATH)
     #[arg(long, global = true)]

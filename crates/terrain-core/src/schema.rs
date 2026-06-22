@@ -2,7 +2,6 @@
 //!
 //! See `idea.md` §4.2 for the full convention.
 
-use crate::ts_ipc;
 use serde::{Deserialize, Serialize};
 
 /// Top-level document kinds stored under `{repo}/.terrain/`.
