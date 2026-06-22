@@ -1,12 +1,23 @@
 ---
 name: terrain-ask-skill
 description: Terrain Ask — query knowledge via terrain CLI when Agent execution mode is ACP.
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Terrain Ask (ACP mode)
 
 When Terrain runs in **ACP Agent execution mode**, built-in function tools are unavailable for Ask. Use the **`terrain tools`** CLI to access the same knowledge layers.
+
+## Resolve the Terrain CLI
+
+Use **conventional paths only** — never machine-specific absolute paths like `/Users/...`.
+
+| Priority | Command | When |
+|----------|---------|------|
+| 1 | `~/.terrain/bin/terrain` | `test -x ~/.terrain/bin/terrain` (Terrain desktop / env integration) |
+| 2 | — | No npm/bunx fallback — Terrain install required for ACP CLI |
+
+In examples below, `<terrain>` means `~/.terrain/bin/terrain`.
 
 ## Storage model
 
@@ -16,7 +27,7 @@ Each project's knowledge lives at **`{repo}/.terrain/`** (versioned with the rep
 
 | Variable | Purpose |
 |----------|---------|
-| `TERRAIN_KNOWLEDGE_ROOT` | Current project's `.terrain/` directory (absolute path) |
+| `TERRAIN_KNOWLEDGE_ROOT` | Current project's `.terrain/` directory |
 | `TERRAIN_PROJECT_SLUG` | Current project slug |
 | `TERRAIN_REPO_PATH` | Repository root (for citations) |
 | `TERRAIN_ASK_SKILL` | Ask skill directory |
@@ -39,27 +50,27 @@ All commands output JSON to stdout.
 
 ```bash
 # From repository root (auto-detects workspace), or:
-# terrain --repo-path /path/to/repo tools ...
+# <terrain> --repo-path /path/to/repo tools ...
 
 # List indexed projects
-terrain tools list-projects
+<terrain> tools list-projects
 
 # Repomix pack metadata
-terrain tools pack-meta --project {slug}
+<terrain> tools pack-meta --project {slug}
 
 # Grep agent/repomix.md
-terrain tools grep-pack --project {slug} --pattern "struct Foo"
+<terrain> tools grep-pack --project {slug} --pattern "struct Foo"
 
 # Read a file slice from the pack (≤150 lines recommended)
-terrain tools read-pack-file --project {slug} --file src/main.rs --start-line 1 --end-line 80
+<terrain> tools read-pack-file --project {slug} --file src/main.rs --start-line 1 --end-line 80
 
 # Architecture context (optional section)
-terrain tools read-context --project {slug}
-terrain tools read-context --project {slug} --section "核心流程"
+<terrain> tools read-context --project {slug}
+<terrain> tools read-context --project {slug} --section "核心流程"
 
 # Human / structured docs (paths relative to .terrain/)
-terrain tools search --query "authentication" --project {slug}
-terrain tools read-doc --project {slug} --path human/1.概述.md
+<terrain> tools search --query "authentication" --project {slug}
+<terrain> tools read-doc --project {slug} --path human/1.概述.md
 ```
 
 ## Workflow

@@ -1,7 +1,7 @@
 ---
 name: repomix-context-skill
 description: Use when an agent needs source code from the local repomix index under .terrain/agent/repomix.md (not committed; regenerate via Terrain scan).
-version: 1.2.0
+version: 1.3.0
 ---
 
 # Repomix Context Skill
@@ -21,13 +21,14 @@ Read **architecture first** via `terrain-knowledge-skill` → `.terrain/agent/co
 1. **Read meta** — `.terrain/agent/meta.json` (`total_tokens`, `synced_at`, `top_files_by_tokens`)
 2. **Search the pack** — never load the entire file:
    ```bash
-   rtk grep "struct ProjectOverview" .terrain/agent/repomix.md
-   rtk grep "### src/lib/api.ts" .terrain/agent/repomix.md
+   # <rtk> = ~/.terrain/bin/rtk or bunx @terrain/rtk (see rtk-skill)
+   <rtk> grep "struct ProjectOverview" .terrain/agent/repomix.md
+   <rtk> grep "### src/lib/api.ts" .terrain/agent/repomix.md
    ```
    Or agent Grep limited to that path with tight patterns.
 3. **Read slices** — extract matching `### path/to/file` sections only:
    ```bash
-   rtk read .terrain/agent/repomix.md -l aggressive   # scan structure first if huge
+   <rtk> read .terrain/agent/repomix.md -l aggressive
    ```
    Then read the specific `### file` block (line range), ≤150 lines per read.
 4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run Terrain **重建源码索引** / scan
@@ -66,11 +67,14 @@ Grep for `### relative/path` to jump to a file.
 If `repomix.md` is missing:
 
 ```bash
-terrain assets pack-agent <repo-path>
+# Terrain CLI — conventional path only; no bunx/npx fallback (requires Terrain)
+test -x ~/.terrain/bin/terrain && ~/.terrain/bin/terrain assets pack-agent .
 # or from repo root in Terrain UI: 重建源码索引
 ```
+
+If `~/.terrain/bin/terrain` is absent, ask the user to install Terrain or run **重建源码索引** from the desktop app.
 
 ## Related skills
 
 - **codegraph-skill** — symbol relationships (prefer before wide repomix grep)
-- **rtk-skill** — use `rtk grep` / `rtk read` on the pack file
+- **rtk-skill** — resolve `<rtk>` prefix for grep/read on the pack file

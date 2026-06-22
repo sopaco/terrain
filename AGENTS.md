@@ -56,7 +56,8 @@ feature 定义见各 crate 的 `Cargo.toml`（`terrain-core`、`terrain-agent` �
 - **知识资产**位于本仓库 **`.terrain/`**（Agent 友好的知识资产、人类友好的知识库、私域知识、源码索引；可随 Git 协作）
 - **项目登记**在本地 `~/.terrain/registry.json`（仅记录仓库路径，不含知识正文）
 - **Skills** 位于 `.agents/skills/`（由 Terrain 注入，可按需重新集成）
-- **Agent 工具路径**在 `.terrain/env/agent-tools.json`（`~/.terrain/bin/` 下的 `rtk` / `codegraph` / `terrain`；本地生成，不入库；参考 `env-catalog/agent-tools.template.json`）
+- **Agent 工具**约定在 `~/.terrain/bin/`（`rtk` / `codegraph` / `terrain`）；可选本地清单 `.terrain/env/agent-tools.json`（不入库）
+- **无 Terrain 安装**时：RTK / CodeGraph 可降级为 `bunx` / `npx`（见 `rtk-skill`、`codegraph-skill`）
 - **工作流**：先读知识 → 再查关系 → 最后读源码；shell 输出优先走 RTK
 <!-- terrain:end env-overview -->
 
@@ -91,8 +92,8 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 |-------|------|
 | `terrain-knowledge-skill` | `.terrain/` 知识分层与查询顺序（先读） |
 | `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
-| `codegraph-skill` | `bunx codegraph query/callers/callees/impact` |
-| `rtk-skill` | **所有冗长 shell 命令加 `rtk` 前缀**（git/test/build/lint） |
+| `codegraph-skill` | 符号关系；`~/.terrain/bin/codegraph` 或 `bunx codegraph` |
+| `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain/rtk` |
 
 加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。
 <!-- terrain:end skills -->
@@ -100,27 +101,36 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 <!-- terrain:begin tools v2 -->
 ### 工具链
 
-| 工具 | 用法 | 场景 |
-|------|------|------|
-| Terrain 知识 | 加载 `terrain-knowledge-skill` | 架构、私域知识 |
-| Repomix | 见 `repomix-context-skill`；`rtk grep` 搜索 pack | 源码片段 |
-| CodeGraph | 见 `codegraph-skill`；**用 manifest 里的绝对路径** | 符号关系、影响分析 |
-| RTK | 见 `rtk-skill`；**用 manifest 里的绝对路径** | git、test、build、lint |
-| Terrain CLI | `~/.terrain/bin/terrain tools …`（ACP 知识查询） | 读 context / grep pack |
+| 工具 | 约定路径 | 无 Terrain 时降级 |
+|------|----------|-------------------|
+| RTK | `~/.terrain/bin/rtk` | `bunx @terrain/rtk` 或 `npx @terrain/rtk` |
+| CodeGraph | `~/.terrain/bin/codegraph` | `bunx codegraph` 或 `npx codegraph` |
+| Terrain CLI | `~/.terrain/bin/terrain` | 需安装 Terrain（无独立 npm 包） |
+| 知识文件 | `.terrain/` 仓库内路径 | 直接 Read/Grep，无需 CLI |
 
-### Agent 可执行路径（必读）
+| 场景 | 用法 |
+|------|------|
+| 架构、私域知识 | 加载 `terrain-knowledge-skill` |
+| 源码片段 | `repomix-context-skill`；`<rtk> grep` 搜索 pack |
+| 符号关系 | `codegraph-skill`；先 `test -x ~/.terrain/bin/codegraph` |
+| git/test/build | `rtk-skill`；先 `test -x ~/.terrain/bin/rtk` |
+| ACP 知识查询 | `~/.terrain/bin/terrain tools …` |
 
-Coding Agent 的 shell **不会**自动找到 Terrain.app 内的二进制。Env 集成后请读：
+### Agent 工具解析（必读）
 
-1. **本仓库** `.terrain/env/agent-tools.json` — 含 `rtk`、`codegraph`、`terrain` 的**绝对路径**
-2. **用户级** `~/.terrain/bin/` — Terrain 部署的 symlink（`rtk`、`codegraph`、`terrain`）
-3. 若 `command not found`：用 manifest 中的绝对路径，或把 `~/.terrain/bin` 加入 PATH
+**一律使用约定路径**（`~/.terrain/bin/…`、`.terrain/…`），**不要**写机器相关的绝对路径（如 `/Users/…`）。
+
+1. 执行前检查：`test -x ~/.terrain/bin/<tool>`（rtk / codegraph / terrain）
+2. 存在 → 用 `~/.terrain/bin/<tool> …`（shell 会在词首展开 `~`）
+3. 不存在 → RTK / CodeGraph 用上表 `bunx` / `npx` 降级；Terrain CLI 请用户通过桌面应用操作
+4. 可选参考：`.terrain/env/agent-tools.json`（本地生成、不入库），内容与约定路径一致
+
+**不要**把 manifest 里的 `~` 路径赋给变量再引号调用（`"$VAR"` 不会展开 `~`）。直接写 `~/.terrain/bin/rtk` 或选用 `bunx` 前缀。
 
 ### RTK 要点（必读 `rtk-skill`）
 
-- 使用 **`$RTK` 或 manifest 中的 `rtk` 绝对路径**，不要假设裸 `rtk` 在 PATH 上
-- Terrain **不启用** `rtk init` 全局 hook — Agent **必须显式**包装命令
-- 内置 Read/Grep 工具不会自动走 RTK — 大文件用 `rtk read`，搜索用 `rtk grep`
+- **必须显式**加 rtk 前缀 — Terrain 不启用 `rtk init` 全局 hook
+- 内置 Read/Grep 不会自动走 RTK — 大文件用 `<rtk> read`，搜索用 `<rtk> grep`
 
 **注意**：不要运行 `codegraph install` 或 `rtk init`（已由 Terrain + Skills 配置）。
 <!-- terrain:end tools -->

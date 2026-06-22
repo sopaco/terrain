@@ -455,12 +455,12 @@ fn skill_target_name(def: &IntegrationDef) -> String {
 fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool) -> String {
     if locked {
         return match def.id.as_str() {
-            "tool-rtk" => "Terrain 内置 → ~/.terrain/bin/rtk（见 .terrain/env/agent-tools.json）".into(),
+            "tool-rtk" => "约定路径 ~/.terrain/bin/rtk（无 Terrain 时 bunx @terrain/rtk）".into(),
             "tool-codegraph" if ok => {
-                "Terrain 内置 → ~/.terrain/bin/codegraph（运行时链接至 ~/.terrain/tools/codegraph-runtime）· 仓库索引已就绪".into()
+                "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 仓库索引已就绪".into()
             }
             "tool-codegraph" => {
-                "Terrain 内置 → ~/.terrain/bin/codegraph（运行时链接至 ~/.terrain/tools/codegraph-runtime）· 待初始化 .codegraph/".into()
+                "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 待初始化 .codegraph/".into()
             }
             _ => "Terrain 内置".into(),
         };
