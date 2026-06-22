@@ -78,9 +78,13 @@ source: /Users/bjsttlp485/Workspace/SAW/terrain
     - banner.png
     - app-icon.png
   - .codegraph/
+    - codegraph.db-wal
+    - codegraph.db-shm
     - codegraph.db
     - daemon.log
     - .gitignore
+    - daemon.pid
+    - daemon.sock
   - src/
     - main.ts
     - app.css

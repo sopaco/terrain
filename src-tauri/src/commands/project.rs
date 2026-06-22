@@ -6,10 +6,9 @@ use terrain_agent::{
     LithoProgress, ProjectInitProgress,
 };
 use terrain_core::{
-    compute_freshness, get_project_overview, list_stale_registry_projects, pack_agent_assets,
-    plan_litho_generation, read_freshness_ledger, write_project_remark, FreshnessSummary,
-    ProjectOverview, ProjectScanner, ProjectSummary, QuickRefreshResult, ScanReport,
-    StaleProjectSummary,
+    compute_freshness, get_project_overview, list_stale_registry_projects, plan_litho_generation,
+    read_freshness_ledger, write_project_remark, FreshnessSummary, ProjectOverview,
+    ProjectScanner, ProjectSummary, QuickRefreshResult, ScanReport, StaleProjectSummary,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -178,6 +177,10 @@ pub fn read_project_freshness_cached_cmd(
     read_freshness_ledger(&state.paths, &project_slug).map(|ledger| ledger.summary)
 }
 
+/// Scan + repack + optional agent context regeneration (skips Litho).
+///
+/// Repomix packing runs once inside [`ProjectScanner::scan_repo`]; do not call
+/// [`terrain_core::pack_agent_assets`] again here.
 #[tauri::command]
 pub async fn run_quick_refresh_cmd(
     state: State<'_, AppState>,
@@ -195,9 +198,12 @@ pub async fn run_quick_refresh_cmd(
         .await
         .map_err(|e| e.to_string())?;
 
-    let pack = pack_agent_assets(&paths, &slug, &repo_path)
-        .await
-        .map_err(|e| e.to_string())?;
+    let pack_tokens = scan.agent_pack.as_ref().map(|pack| pack.total_tokens);
+    if pack_tokens.is_none() {
+        notes.push(
+            "源码索引：scan 未执行 repomix 打包（terrain-core 未启用 repomix feature）".into(),
+        );
+    }
 
     let mut agent_context_regenerated = false;
     let acp = resolved_acp_settings();
@@ -225,7 +231,7 @@ pub async fn run_quick_refresh_cmd(
     Ok(QuickRefreshResult {
         project_slug: slug,
         scan_files_written: scan.files_written,
-        pack_tokens: Some(pack.total_tokens),
+        pack_tokens,
         agent_context_regenerated,
         notes,
         freshness,
