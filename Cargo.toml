@@ -46,11 +46,6 @@ terrain-core = { path = "crates/terrain-core" }
 terrain-agent = { path = "crates/terrain-agent" }
 repomix-core = "2.0"
 ts-rs = { version = "10", features = ["serde-compat"] }
-
-[patch.crates-io]
-# Vendored fixes for blanket `From` impl conflicts with `time` 0.3.48 (Rust 1.88+).
-# Still required on stable; see third-party/README.md.
-cookie = { path = "third-party/cookie" }
-tauri-utils = { path = "third-party/tauri-utils" }
-tauri = { path = "third-party/tauri" }
+# Avoid time 0.3.48 (E0119 with Tauri/cookie blanket From impls; see time-rs/time#783).
+time = ">=0.3.36, <0.3.48"
 

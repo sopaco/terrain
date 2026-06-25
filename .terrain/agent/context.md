@@ -73,7 +73,7 @@ Terrain 是面向 AI 编码助手的**工程环境管理平台**：扫描 Git �
 ## 技术选型
 
 - **语言/运行时**：Rust（`rust-toolchain.toml`）、Tokio 异步
-- **桌面壳**：Tauri v2（`src-tauri/`，vendored `third-party/tauri/`）
+- **桌面壳**：Tauri v2（`src-tauri/`，crates.io；`time` pin `<0.3.48` 规避 E0119）
 - **前端**：Svelte 5 + Vite + TypeScript（`src/`, `vite.config.ts`）
 - **CLI**：clap（`crates/terrain-cli/`）
 - **源码打包**：repomix-core（`crates/terrain-core/src/assets/repomix.rs`）

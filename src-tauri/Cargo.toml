@@ -28,6 +28,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
+time.workspace = true
 
 terrain-core.workspace = true
 terrain-agent.workspace = true
