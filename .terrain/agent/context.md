@@ -73,7 +73,7 @@ Terrain 是面向 AI 编码助手的**工程环境管理平台**：扫描 Git �
 ## 技术选型
 
 - **语言/运行时**：Rust（`rust-toolchain.toml`）、Tokio 异步
-- **桌面壳**：Tauri v2（`src-tauri/`，crates.io；`time` pin `<0.3.48` 规避 E0119）
+- **桌面壳**：Tauri v2（`src-tauri/`）
 - **前端**：Svelte 5 + Vite + TypeScript（`src/`, `vite.config.ts`）
 - **CLI**：clap（`crates/terrain-cli/`）
 - **源码打包**：repomix-core（`crates/terrain-core/src/assets/repomix.rs`）
@@ -94,7 +94,7 @@ Terrain 是面向 AI 编码助手的**工程环境管理平台**：扫描 Git �
 | `terrain tools` | CLI 边界 | JSON stdout | ACP 模式专用；不直接读活仓库，仅读 repomix 包 |
 | env-catalog | 内置模板 | `terrain env apply` 部署 | 写入 `.agents/`、AGENTS.md、MCP 工具配置 |
 | preset_skills | 内置/可覆盖 | 环境变量指向 skill 目录 | Litho/Ask/SDD/Agent 上下文生成 prompt 来源 |
-| Tauri IPC | 进程内 | 32+ invoke 命令 | 桌面 UI 唯一后端通道；`src-tauri/capabilities/` 权限控制 |
+| Tauri IPC | 进程内 | invoke 命令 | 桌面 UI 唯一后端通道；`src-tauri/capabilities/` 权限控制 |
 | DeepWiki MCP | 可选集成 | MCP 协议 | 外部仓库文档查询，与本地知识库互补 |
 
 **环境变量要点**：`TERRAIN_REPO_PATH`、`TERRAIN_PROJECT_SLUG`、`TERRAIN_KNOWLEDGE_ROOT`、`TERRAIN_AGENT_CONTEXT_OUTPUT`、`TERRAIN_LITHO_WORKSPACE`（默认 `.terrain/.litho-agent/`）、`TERRAIN_HUMAN_OUTPUT_DIR`（默认 `.terrain/human/`）。
