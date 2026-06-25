@@ -160,8 +160,7 @@ impl ChatEngine {
         on_phase: impl FnMut(ChatPhase),
         on_usage: impl FnMut(&ChatTokenUsage),
     ) -> Result<ChatReply> {
-        let use_acp = !session_id.starts_with("agent-ctx-") || execution_pure_acp(&self.acp_settings);
-        if use_acp {
+        if execution_pure_acp(&self.acp_settings) {
             return self
                 .run_turn_acp(
                     session_id,

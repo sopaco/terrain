@@ -152,15 +152,12 @@ impl super::ChatEngine {
             .await
             .context("agent run failed")?;
 
-        let mut answer = String::new();
+        let mut answer_collector = ModelAnswerCollector::new();
         let mut tool_tracker = ToolCallTracker::new();
         let mut usage = ChatTokenUsage::default();
         let deadline = Instant::now() + ASK_TIMEOUT;
         let mut phase = ChatPhase::Thinking;
         on_phase(phase);
-        let mut post_tool_answer = String::new();
-        // Collect model text only after the most recent tool batch finished.
-        let mut collect_final_answer = false;
 
         loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
@@ -196,48 +193,46 @@ impl super::ChatEngine {
             }
 
             if tool_tracker.ingest_event(&event) {
+                answer_collector.note_tool_activity();
                 on_tool_calls(tool_tracker.records());
                 if tool_tracker.has_running() {
-                    collect_final_answer = false;
+                    answer_collector.on_tools_running();
                     if phase != ChatPhase::Tools {
                         phase = ChatPhase::Tools;
                         on_phase(phase);
                     }
-                } else if tool_tracker.all_done() {
-                    // Agent may run multiple tool rounds; emit generating after each batch.
-                    collect_final_answer = true;
-                    post_tool_answer.clear();
-                    if phase != ChatPhase::Generating {
-                        phase = ChatPhase::Generating;
-                        on_phase(phase);
-                    }
+                } else if tool_tracker.has_any() && phase != ChatPhase::Generating {
+                    phase = ChatPhase::Generating;
+                    on_phase(phase);
                 }
             }
 
-            if collect_final_answer {
-                append_event_text(&event, &mut answer, &mut |text| {
-                    post_tool_answer.push_str(text);
-                    on_chunk(text);
+            let stream_model_text = !tool_tracker.has_running();
+            let event_text = extract_event_text(&event);
+            if stream_model_text {
+                if !event_text.visible.is_empty() {
+                    answer_collector.push_visible(&event_text.visible, &mut on_chunk);
                     if phase != ChatPhase::Streaming {
                         phase = ChatPhase::Streaming;
                         on_phase(phase);
                     }
-                });
-            } else {
-                append_event_text(&event, &mut answer, &mut |text| {
-                    if !tool_tracker.has_any() {
-                        on_chunk(text);
-                        if phase != ChatPhase::Streaming {
-                            phase = ChatPhase::Streaming;
-                            on_phase(phase);
-                        }
-                    }
-                });
+                }
+            } else if !event_text.visible.is_empty() {
+                answer_collector.push_visible_silent(&event_text.visible);
+            }
+            if !event_text.thinking.is_empty() {
+                answer_collector.push_thinking(&event_text.thinking);
             }
         }
 
-        if tool_tracker.has_any() {
-            answer = post_tool_answer;
+        let thinking_fallback = answer_collector.thinking_fallback();
+        let mut answer = answer_collector.finalize();
+        if answer.trim().is_empty() && !thinking_fallback.trim().is_empty() {
+            for chunk in thinking_fallback.chars().collect::<Vec<_>>().chunks(48) {
+                let s: String = chunk.iter().collect();
+                on_chunk(&s);
+            }
+            answer = thinking_fallback;
         }
         let raw_answer = answer.clone();
         answer = sanitize_answer_text(&answer);
@@ -290,20 +285,132 @@ impl super::ChatEngine {
     }
 }
 
-fn append_event_text(
-    event: &adk_core::Event,
-    answer: &mut String,
-    on_chunk: &mut impl FnMut(&str),
-) {
+fn extract_event_text(event: &adk_core::Event) -> EventText {
     let Some(content) = &event.llm_response.content else {
-        return;
+        return EventText::default();
     };
+    let mut visible = String::new();
+    let mut thinking = String::new();
     for part in &content.parts {
-        let text = part.text().unwrap_or_default();
-        if text.is_empty() {
-            continue;
+        if let Some(text) = part.text() {
+            if !text.is_empty() {
+                visible.push_str(text);
+            }
+        } else if let Some(text) = part.thinking_text() {
+            if !text.is_empty() {
+                thinking.push_str(text);
+            }
         }
+    }
+    EventText { visible, thinking }
+}
+
+#[derive(Default)]
+struct EventText {
+    visible: String,
+    thinking: String,
+}
+
+/// Segments model text around tool execution windows.
+struct ModelAnswerCollector {
+    segments: Vec<String>,
+    current: String,
+    thinking_parts: Vec<String>,
+    had_tools: bool,
+}
+
+impl ModelAnswerCollector {
+    fn new() -> Self {
+        Self {
+            segments: Vec::new(),
+            current: String::new(),
+            thinking_parts: Vec::new(),
+            had_tools: false,
+        }
+    }
+
+    fn note_tool_activity(&mut self) {
+        self.had_tools = true;
+    }
+
+    fn on_tools_running(&mut self) {
+        self.flush_current();
+    }
+
+    fn push_visible(&mut self, text: &str, on_chunk: &mut impl FnMut(&str)) {
         on_chunk(text);
-        answer.push_str(text);
+        self.current.push_str(text);
+    }
+
+    fn push_visible_silent(&mut self, text: &str) {
+        self.current.push_str(text);
+    }
+
+    fn push_thinking(&mut self, text: &str) {
+        self.thinking_parts.push(text.to_string());
+    }
+
+    fn flush_current(&mut self) {
+        if !self.current.is_empty() {
+            self.segments.push(std::mem::take(&mut self.current));
+        }
+    }
+
+    fn finalize(mut self) -> String {
+        self.flush_current();
+        select_model_answer(&self.segments, self.had_tools)
+    }
+
+    fn thinking_fallback(&self) -> String {
+        self.thinking_parts.join("")
+    }
+}
+
+fn select_model_answer(segments: &[String], had_tools: bool) -> String {
+    let non_empty: Vec<&str> = segments
+        .iter()
+        .map(String::as_str)
+        .filter(|s| !s.trim().is_empty())
+        .collect();
+    if non_empty.is_empty() {
+        return String::new();
+    }
+    if had_tools {
+        non_empty.last().copied().unwrap_or("").to_string()
+    } else {
+        non_empty.join("")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn select_model_answer_prefers_last_segment_after_tools() {
+        let segments = vec![
+            "Let me search.".into(),
+            String::new(),
+            "Here is the answer.".into(),
+        ];
+        assert_eq!(
+            select_model_answer(&segments, true),
+            "Here is the answer."
+        );
+    }
+
+    #[test]
+    fn select_model_answer_falls_back_to_earlier_segment_when_last_empty() {
+        let segments = vec!["Draft before tools.".into(), String::new()];
+        assert_eq!(
+            select_model_answer(&segments, true),
+            "Draft before tools."
+        );
+    }
+
+    #[test]
+    fn select_model_answer_joins_without_tools() {
+        let segments = vec!["Hello ".into(), "world.".into()];
+        assert_eq!(select_model_answer(&segments, false), "Hello world.");
     }
 }

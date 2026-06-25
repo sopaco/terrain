@@ -60,7 +60,7 @@ pub fn default_agent_arch_acp_skill_dir() -> PathBuf {
     default_agent_arch_skill_dir()
 }
 
-/// True when Ask/Litho/SDD codegen should route through the configured ACP agent.
+/// True when Litho/SDD codegen (and all workloads in pure ACP mode) route through the configured ACP agent.
 pub fn execution_uses_acp(settings: &AcpSettings) -> bool {
     matches!(
         settings.agent_execution,

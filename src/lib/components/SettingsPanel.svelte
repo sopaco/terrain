@@ -252,7 +252,7 @@
             (agentExecution = (e.currentTarget as HTMLSelectElement).value as AgentExecution)}
         >
           <option value="acp">纯ACP模式</option>
-          <option value="acp_native">Native LLM + 纯ACP</option>
+          <option value="acp_native">Native LLM（BYOK） + ACP</option>
         </select>
       </label>
 
@@ -269,7 +269,7 @@
           </p>
         {:else}
           <p>
-            ACP 处理问答、Litho 与 SDD 代码生成；内置 LLM 处理 SDD 文档阶段与 Agent Context，通常更快、成本更低。请同时配置下方两项。
+            Native LLM（BYOK）处理问答、SDD 文档阶段与 Agent Context，支持流式输出与工具调用详情；ACP 处理 Litho 与 SDD 代码生成。请同时配置下方两项。
           </p>
         {/if}
       </div>

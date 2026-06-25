@@ -21,7 +21,7 @@ pub enum AgentExecution {
     /// Pure ACP — Ask, Litho, SDD, and context generation route through the external agent.
     #[default]
     Acp,
-    /// ACP + native LLM — ACP for Ask/Litho/codegen; native LLM for SDD doc phases and context.
+    /// Native LLM (BYOK) + ACP — native LLM for Ask, SDD doc phases, and context; ACP for Litho and SDD codegen.
     #[serde(alias = "native")]
     AcpNative,
 }

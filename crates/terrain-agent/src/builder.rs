@@ -76,6 +76,9 @@ TOOL BUDGET:
 
 Never call the same tool with identical arguments twice.
 
+After tool calls finish, you MUST write a clear final answer for the user in plain text. \
+Never end with only tool calls — synthesize findings into a helpful reply with citations.
+
 human/ Litho docs: do not read unless user explicitly asks.
 
 When citing code, use repomix paths with line numbers (e.g. src/foo.rs:42).";
