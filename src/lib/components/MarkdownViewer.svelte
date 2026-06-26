@@ -1,6 +1,6 @@
 <script lang="ts">
-  import mermaid from "mermaid";
   import { marked } from "marked";
+  import { loadMermaid } from "../mermaidLoader";
   import type { SourceCitation } from "../types";
   import { escapeHtml, hasCompleteMermaidBlocks } from "../mermaid-utils";
   import { linkifySourcesInHtml, prepareMarkdownForRender } from "../markdownSanitize";
@@ -34,7 +34,6 @@
 
   let container = $state<HTMLDivElement | null>(null);
   let lightboxSvg = $state<string | null>(null);
-  let mermaidReady = false;
 
   function sourceRefButton(match: string, parsed: ReturnType<typeof parseSourceRef>) {
     if (!parsed) return match;
@@ -96,19 +95,6 @@
 
   const canRenderMermaid = $derived(allowMermaid && hasCompleteMermaidBlocks(preparedBody));
 
-  async function ensureMermaid() {
-    if (mermaidReady) return;
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: "dark",
-      securityLevel: "loose",
-      suppressErrorRendering: true,
-      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-    });
-    mermaid.parseError = () => {};
-    mermaidReady = true;
-  }
-
   function cleanupMermaidArtifacts() {
     for (const node of document.body.children) {
       if (!(node instanceof HTMLElement)) continue;
@@ -124,7 +110,7 @@
 
   async function renderMermaidBlocks() {
     if (!container || !canRenderMermaid) return;
-    await ensureMermaid();
+    const mermaid = await loadMermaid();
 
     const blocks = container.querySelectorAll<HTMLElement>(".mermaid-wrap");
     for (const block of blocks) {

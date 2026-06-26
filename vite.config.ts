@@ -6,6 +6,26 @@ const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
   plugins: [svelte(), tailwindcss()],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "mermaid",
+              test: /node_modules[\\/](mermaid|cytoscape|katex|dagre|@mermaid-js)/,
+              priority: 30,
+            },
+            {
+              name: "highlight",
+              test: /node_modules[\\/]highlight\.js/,
+              priority: 25,
+            },
+          ],
+        },
+      },
+    },
+  },
   clearScreen: false,
   server: {
     port: 1420,

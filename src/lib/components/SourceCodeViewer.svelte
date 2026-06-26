@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { highlightSourceLines } from "../highlightSetup";
+  import type { HighlightedLine } from "../highlightSetup";
   import "../source-code.css";
 
   interface Props {
@@ -12,8 +12,23 @@
   let { content, filePath, startLine = 1, focusLine }: Props = $props();
 
   let container = $state<HTMLDivElement | null>(null);
+  let lines = $state<HighlightedLine[]>([]);
 
-  const lines = $derived(highlightSourceLines(content, filePath, startLine));
+  $effect(() => {
+    const nextContent = content;
+    const nextPath = filePath;
+    const nextStart = startLine;
+    let cancelled = false;
+
+    void import("../highlightSetup").then(({ highlightSourceLines }) => {
+      if (cancelled) return;
+      lines = highlightSourceLines(nextContent, nextPath, nextStart);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  });
 
   $effect(() => {
     const target = focusLine;
