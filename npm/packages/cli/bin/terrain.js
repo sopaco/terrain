@@ -5,10 +5,20 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const key = `${process.platform}-${process.arch}`;
 const pkg = `@terrain-ai/cli-${key}`;
+const candidates =
+  process.platform === "win32"
+    ? [`${pkg}/bin/terrain.exe`, `${pkg}/bin/terrain`]
+    : [`${pkg}/bin/terrain`];
 let binary;
-try {
-  binary = require.resolve(`${pkg}/bin/terrain`);
-} catch {
+for (const candidate of candidates) {
+  try {
+    binary = require.resolve(candidate);
+    break;
+  } catch {
+    // try next candidate
+  }
+}
+if (!binary) {
   console.error(
     `@terrain-ai/cli: no prebuilt binary for ${key}.\n` +
       "Install Terrain desktop, run env integration (~/.terrain/bin), or publish the matching platform package.",

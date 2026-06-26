@@ -21,7 +21,8 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@terrain-ai/rtk-darwin-arm64": "0.1.0"
+    "@terrain-ai/rtk-darwin-arm64": "0.1.0",
+    "@terrain-ai/rtk-win32-x64": "0.1.0"
   },
   "publishConfig": {
     "access": "public"

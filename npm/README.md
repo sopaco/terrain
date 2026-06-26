@@ -4,8 +4,8 @@ Optional **npm / bunx / npx** channel for agent-facing CLIs when `~/.terrain/bin
 
 | Package | Binary | Platform (v0.1) |
 |---------|--------|-----------------|
-| `@terrain-ai/rtk` | `rtk` | via `@terrain-ai/rtk-darwin-arm64` |
-| `@terrain-ai/cli` | `terrain` | via `@terrain-ai/cli-darwin-arm64` |
+| `@terrain-ai/rtk` | `rtk` | via `@terrain-ai/rtk-<platform>` (e.g. `darwin-arm64`, `win32-x64`) |
+| `@terrain-ai/cli` | `terrain` | via `@terrain-ai/cli-<platform>` |
 
 Upstream RTK: [rtk-ai/rtk](https://github.com/rtk-ai/rtk). Terrain CLI: `crates/terrain-cli`.
 

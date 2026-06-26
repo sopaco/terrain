@@ -12,11 +12,20 @@ When Terrain runs in **ACP Agent execution mode**, built-in function tools are u
 
 Use **conventional paths only** — never machine-specific absolute paths like `/Users/...`.
 
+On Windows, tools deploy to `%USERPROFILE%\.terrain\bin\` (also `~/.terrain/bin/` in Git Bash / PowerShell 7+). Binaries use `.exe` extensions.
+
 | Priority | Command | When |
 |----------|---------|------|
-| 1 | `~/.terrain/bin/terrain` | `test -x ~/.terrain/bin/terrain` (Terrain desktop / env integration) |
+| 1 | `~/.terrain/bin/terrain` | Terrain desktop / env integration (see existence check below) |
 | 2 | `bunx @terrain-ai/cli` | No Terrain install; needs network once |
 | 3 | `npx @terrain-ai/cli` | Same as bunx if Bun unavailable |
+
+**Existence check:**
+
+| Shell | Check |
+|-------|-------|
+| bash / Git Bash | `[ -x ~/.terrain/bin/terrain ] \|\| [ -x ~/.terrain/bin/terrain.exe ]` |
+| PowerShell | `Test-Path "$HOME\.terrain\bin\terrain.exe"` |
 
 In examples below, `<terrain>` means your resolved prefix (`~/.terrain/bin/terrain` or `bunx @terrain-ai/cli`).
 

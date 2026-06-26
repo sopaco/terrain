@@ -10,27 +10,48 @@ version: 1.2.0
 
 ## Resolve the RTK command (read first)
 
-Use **conventional paths only** — never machine-specific absolute paths like `/Users/...`.
+Use **conventional paths only** — never machine-specific absolute paths like `/Users/...` or `C:\Users\...`.
+
+On Windows, tools deploy to `%USERPROFILE%\.terrain\bin\` (also written as `~/.terrain/bin/` in Git Bash / PowerShell 7+). Binaries use `.exe` extensions; PATHEXT resolves `rtk` → `rtk.exe`.
 
 | Priority | Command prefix | When |
 |----------|----------------|------|
-| 1 | `~/.terrain/bin/rtk` | `test -x ~/.terrain/bin/rtk` (Terrain env integration or desktop app) |
+| 1 | `~/.terrain/bin/rtk` | Terrain env integration or desktop app (see existence check below) |
 | 2 | `bunx @terrain-ai/rtk` | No Terrain install; needs network once |
 | 3 | `npx @terrain-ai/rtk` | Same as bunx if Bun unavailable |
 
 Optional manifest (local, gitignored): `.terrain/env/agent-tools.json` — same `~/.terrain/bin/…` conventions.
 
+**Existence check (cross-platform):**
+
+| Shell | Check |
+|-------|-------|
+| bash / zsh / Git Bash | `[ -x ~/.terrain/bin/rtk ] \|\| [ -x ~/.terrain/bin/rtk.exe ]` |
+| PowerShell | `Test-Path "$HOME\.terrain\bin\rtk.exe"` |
+| cmd | `if exist "%USERPROFILE%\.terrain\bin\rtk.exe"` |
+
 **Shell rules:**
 
-- Invoke as `~/.terrain/bin/rtk <cmd>` — tilde expands at word start in bash/zsh.
+- Invoke as `~/.terrain/bin/rtk <cmd>` — tilde expands at word start in bash/zsh/Git Bash/PowerShell 7+.
 - Do **not** `export RTK="$(jq -r .rtk …)"` then `"$RTK"` — quoted variables do not expand `~`.
 - Do **not** assume bare `rtk` is on PATH.
 
 Example (pick one prefix per session after the existence check):
 
 ```bash
-test -x ~/.terrain/bin/rtk && PREFIX=~/.terrain/bin/rtk || PREFIX="bunx @terrain-ai/rtk"
+# bash / Git Bash
+if [ -x ~/.terrain/bin/rtk ] || [ -x ~/.terrain/bin/rtk.exe ]; then
+  PREFIX=~/.terrain/bin/rtk
+else
+  PREFIX="bunx @terrain-ai/rtk"
+fi
 $PREFIX git status
+```
+
+```powershell
+# PowerShell
+$PREFIX = if (Test-Path "$HOME\.terrain\bin\rtk.exe") { "$HOME\.terrain\bin\rtk.exe" } else { "bunx @terrain-ai/rtk" }
+& $PREFIX git status
 ```
 
 Verify:

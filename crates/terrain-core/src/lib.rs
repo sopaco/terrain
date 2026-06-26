@@ -7,6 +7,7 @@ pub mod human;
 pub mod ingest;
 pub mod model_text;
 pub mod path_portable;
+pub mod platform;
 pub mod preset_skills;
 pub mod paths;
 pub mod project;
@@ -92,8 +93,8 @@ pub use agent_tools_deploy::{
 };
 pub use bundled_tools::{
     bundled_terrain_cli, bundled_tools, discover_bundled_tools_from_packages,
-    ensure_bundled_tools_initialized, init_bundled_tools, packages_root,
-    resolve_sidecar_next_to_exe, BundledTools,
+    ensure_bundled_tools_initialized, find_codegraph_wrapper_under, init_bundled_tools,
+    packages_root, resolve_sidecar_next_to_exe, BundledTools,
 };
 pub use shell_path::{
     augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,

@@ -12,6 +12,7 @@ use serde::Serialize;
 use crate::bundled_tools::{bundled_terrain_cli, bundled_rtk, ensure_bundled_tools_initialized};
 use crate::error::{CoreError, Result};
 use crate::path_portable::to_tilde_path;
+use crate::platform::agent_tool_filename;
 
 const CODEGRAPH_RUNTIME_NAME: &str = "codegraph-runtime";
 
@@ -62,13 +63,13 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
     };
 
     if let Some(src) = bundled_rtk() {
-        let dest = bin_dir.join("rtk");
+        let dest = bin_dir.join(agent_tool_filename("rtk"));
         symlink_ensure(&dest, &src, opts.force)?;
         paths.rtk = Some(dest.display().to_string());
     }
 
     if let Some(src) = bundled_terrain_cli() {
-        let dest = bin_dir.join("terrain");
+        let dest = bin_dir.join(agent_tool_filename("terrain"));
         symlink_ensure(&dest, &src, opts.force)?;
         paths.terrain = Some(dest.display().to_string());
     }
@@ -82,10 +83,14 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
         )?;
         symlink_ensure(&runtime_dest, &runtime_src, opts.force)?;
 
-        let codegraph_bin = runtime_dest.join("bin/codegraph");
-        if codegraph_bin.is_file() {
-            let dest = bin_dir.join("codegraph");
-            symlink_ensure(&dest, &codegraph_bin, opts.force)?;
+        let codegraph_bin = find_codegraph_bin(&runtime_dest);
+        if let Some(codegraph_src) = codegraph_bin {
+            let dest_name = codegraph_src
+                .file_name()
+                .map(|n| n.to_owned())
+                .unwrap_or_else(|| std::ffi::OsString::from(agent_tool_filename("codegraph")));
+            let dest = bin_dir.join(dest_name);
+            symlink_ensure(&dest, &codegraph_src, opts.force)?;
             paths.codegraph = Some(dest.display().to_string());
             paths.codegraph_runtime = Some(runtime_dest.display().to_string());
         }
@@ -158,13 +163,23 @@ fn write_global_manifest(paths: &AgentToolPaths) -> Result<()> {
 fn bundled_codegraph_runtime() -> Option<PathBuf> {
     ensure_bundled_tools_initialized();
     let bin = crate::bundled_tools::bundled_tools().codegraph.as_ref()?;
-    // `.../darwin-arm64/bin/codegraph` → runtime root `.../darwin-arm64`
+    // `.../<platform>/bin/codegraph` → runtime root `.../<platform>`
     let runtime = bin.parent()?.parent()?;
     if runtime.join("node").is_file() && runtime.join("lib").is_dir() {
         Some(runtime.to_path_buf())
     } else {
         None
     }
+}
+
+fn find_codegraph_bin(runtime_dest: &Path) -> Option<PathBuf> {
+    for rel in crate::platform::codegraph_wrapper_candidates() {
+        let candidate = runtime_dest.join(rel);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
 }
 
 fn symlink_ensure(link: &Path, target: &Path, force: bool) -> Result<()> {
@@ -212,14 +227,21 @@ fn symlink_replace(link: &Path, target: &Path) -> Result<()> {
     })?;
     #[cfg(not(unix))]
     {
-        fs::copy(target, link)?;
+        fs::copy(target, link).map_err(|e| {
+            CoreError::InvalidDoc(format!(
+                "copy {} -> {}: {e}",
+                target.display(),
+                link.display()
+            ))
+        })?;
     }
     Ok(())
 }
 
 fn user_home() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from)
+    crate::platform::user_home()
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -247,6 +269,8 @@ mod tests {
         let manifest = paths_for_manifest(&paths);
         assert!(manifest.bin_dir.starts_with("~/"));
         assert!(manifest.rtk.as_ref().is_some_and(|p| p.starts_with("~/")));
-        assert!(!manifest.bin_dir.contains("/Users/"));
+        let home = user_home().expect("home");
+        let home_str = home.to_string_lossy();
+        assert!(!manifest.bin_dir.contains(home_str.as_ref()));
     }
 }

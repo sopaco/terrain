@@ -5,10 +5,20 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const key = `${process.platform}-${process.arch}`;
 const pkg = `@terrain-ai/rtk-${key}`;
+const candidates =
+  process.platform === "win32"
+    ? [`${pkg}/bin/rtk.exe`, `${pkg}/bin/rtk`]
+    : [`${pkg}/bin/rtk`];
 let binary;
-try {
-  binary = require.resolve(`${pkg}/bin/rtk`);
-} catch {
+for (const candidate of candidates) {
+  try {
+    binary = require.resolve(candidate);
+    break;
+  } catch {
+    // try next candidate
+  }
+}
+if (!binary) {
   console.error(
     `@terrain-ai/rtk: no prebuilt binary for ${key}.\n` +
       "Install Terrain desktop, run env integration (~/.terrain/bin), or publish the matching platform package.",

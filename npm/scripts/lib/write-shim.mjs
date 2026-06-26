@@ -14,10 +14,20 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const key = \`\${process.platform}-\${process.arch}\`;
 const pkg = \`${packagePrefix}-\${key}\`;
+const candidates =
+  process.platform === "win32"
+    ? [\`\${pkg}/bin/${tool}.exe\`, \`\${pkg}/bin/${tool}\`]
+    : [\`\${pkg}/bin/${tool}\`];
 let binary;
-try {
-  binary = require.resolve(\`\${pkg}/bin/${tool}\`);
-} catch {
+for (const candidate of candidates) {
+  try {
+    binary = require.resolve(candidate);
+    break;
+  } catch {
+    // try next candidate
+  }
+}
+if (!binary) {
   console.error(
     \`${packagePrefix}: no prebuilt binary for \${key}.\\n\` +
       "Install Terrain desktop, run env integration (~/.terrain/bin), or publish the matching platform package.\",

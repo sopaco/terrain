@@ -12,15 +12,24 @@ Terrain uses **CLI only** — do not run `codegraph install` (that configures MC
 
 ## Resolve the CodeGraph command (read first)
 
-Use **conventional paths only** — never machine-specific absolute paths like `/Users/...`.
+Use **conventional paths only** — never machine-specific absolute paths like `/Users/...` or `C:\Users\...`.
+
+On Windows, the wrapper may be `codegraph.cmd` or `codegraph.exe` under `~/.terrain/bin/`.
 
 | Priority | Command | When |
 |----------|---------|------|
-| 1 | `~/.terrain/bin/codegraph` | `test -x ~/.terrain/bin/codegraph` (Terrain env integration) |
+| 1 | `~/.terrain/bin/codegraph` | Terrain env integration (see existence check below) |
 | 2 | `bunx codegraph` | No Terrain install; needs network once |
 | 3 | `npx codegraph` | Same as bunx if Bun unavailable |
 
 Optional manifest (local, gitignored): `.terrain/env/agent-tools.json` — same `~/.terrain/bin/…` conventions.
+
+**Existence check (cross-platform):**
+
+| Shell | Check |
+|-------|-------|
+| bash / zsh / Git Bash | `[ -x ~/.terrain/bin/codegraph ] \|\| [ -f ~/.terrain/bin/codegraph.exe ] \|\| [ -f ~/.terrain/bin/codegraph.cmd ]` |
+| PowerShell | `Test-Path "$HOME\.terrain\bin\codegraph*"` |
 
 In examples below, `<cg>` means your resolved prefix (`~/.terrain/bin/codegraph` or `bunx codegraph`).
 
@@ -29,8 +38,12 @@ In examples below, `<cg>` means your resolved prefix (`~/.terrain/bin/codegraph`
 The **index** is per-repo under `.codegraph/`. If missing, initialize from the repo root:
 
 ```bash
-test -x ~/.terrain/bin/codegraph && ~/.terrain/bin/codegraph init -i \
-  || bunx codegraph init -i
+# bash / Git Bash
+if [ -x ~/.terrain/bin/codegraph ] || [ -f ~/.terrain/bin/codegraph.exe ] || [ -f ~/.terrain/bin/codegraph.cmd ]; then
+  ~/.terrain/bin/codegraph init -i
+else
+  bunx codegraph init -i
+fi
 ```
 
 Refresh after edits: `<cg> sync`

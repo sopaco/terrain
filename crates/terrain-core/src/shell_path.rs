@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Mutex, Once};
 
+use crate::platform::{expand_user_path, user_home};
+
 static EXECUTABLE_CACHE: Mutex<Option<HashMap<String, Option<PathBuf>>>> = Mutex::new(None);
 static PATH_INIT: Once = Once::new();
 
@@ -19,6 +21,7 @@ pub fn augment_path_from_login_shell() {
     let shell_path = interactive_shell_path()
         .or_else(login_shell_path)
         .or_else(path_helper_path)
+        .or_else(windows_user_path)
         .unwrap_or_default();
     let merged = merge_paths(
         &merge_paths(&shell_path, &standard_user_bins_path()),
@@ -83,7 +86,7 @@ pub fn resolve_command(command: &str) -> String {
 fn resolve_executable_uncached(name: &str) -> Option<PathBuf> {
     let path = Path::new(name);
     if has_path_component(path) {
-        let expanded = expand_user_path(path);
+        let expanded = expand_user_path_local(path);
         if is_executable_file(&expanded) {
             return Some(expanded);
         }
@@ -114,22 +117,44 @@ fn search_directories() -> Vec<PathBuf> {
 }
 
 fn standard_user_bin_dirs() -> Vec<PathBuf> {
-    let mut dirs = vec![
-        PathBuf::from("/opt/homebrew/bin"),
-        PathBuf::from("/usr/local/bin"),
-    ];
+    let mut dirs = Vec::new();
+    #[cfg(not(windows))]
+    {
+        dirs.push(PathBuf::from("/opt/homebrew/bin"));
+        dirs.push(PathBuf::from("/usr/local/bin"));
+    }
     if let Some(home) = user_home() {
-        for rel in [
-            ".bun/bin",
-            ".local/bin",
-            ".cargo/bin",
-            "go/bin",
-            ".npm-global/bin",
-            "Library/pnpm",
-            ".volta/bin",
-            ".fnm/aliases/default/bin",
-        ] {
-            dirs.push(home.join(rel));
+        #[cfg(windows)]
+        {
+            for rel in [
+                ".cargo\\bin",
+                ".bun\\bin",
+                "AppData\\Local\\pnpm",
+                "AppData\\Roaming\\npm",
+                ".local\\bin",
+                "go\\bin",
+                ".volta\\bin",
+            ] {
+                dirs.push(home.join(rel));
+            }
+            if let Ok(local) = std::env::var("LOCALAPPDATA") {
+                dirs.push(PathBuf::from(local).join("Programs"));
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            for rel in [
+                ".bun/bin",
+                ".local/bin",
+                ".cargo/bin",
+                "go/bin",
+                ".npm-global/bin",
+                "Library/pnpm",
+                ".volta/bin",
+                ".fnm/aliases/default/bin",
+            ] {
+                dirs.push(home.join(rel));
+            }
         }
     }
     dirs
@@ -164,19 +189,8 @@ fn has_path_component(path: &Path) -> bool {
             .is_some_and(|s| s.starts_with("~/") || s.starts_with("./"))
 }
 
-fn expand_user_path(path: &Path) -> PathBuf {
-    if let Some(rest) = path.to_str().and_then(|s| s.strip_prefix("~/")) {
-        if let Some(home) = user_home() {
-            return home.join(rest);
-        }
-    }
-    path.to_path_buf()
-}
-
-fn user_home() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
+fn expand_user_path_local(path: &Path) -> PathBuf {
+    expand_user_path(path)
 }
 
 fn path_directories() -> Vec<PathBuf> {
@@ -255,7 +269,7 @@ fn run_shell_output(args: &[&str]) -> Option<String> {
     #[cfg(not(unix))]
     {
         let _ = args;
-        None
+        windows_user_path()
     }
 }
 
@@ -291,8 +305,33 @@ fn shell_lookup_executable(name: &str) -> Option<PathBuf> {
     }
     #[cfg(not(unix))]
     {
-        let _ = name;
-        None
+        if name.contains('\0') {
+            return None;
+        }
+        let output = Command::new("where.exe")
+            .arg(name)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let line = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .next()?
+            .trim()
+            .to_string();
+        if line.is_empty() {
+            return None;
+        }
+        let candidate = PathBuf::from(line);
+        if candidate.is_file() {
+            Some(candidate)
+        } else {
+            None
+        }
     }
 }
 
@@ -314,6 +353,36 @@ fn path_helper_path() -> Option<String> {
 
 #[cfg(not(target_os = "macos"))]
 fn path_helper_path() -> Option<String> {
+    None
+}
+
+#[cfg(windows)]
+fn windows_user_path() -> Option<String> {
+    let output = Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "[Environment]::GetEnvironmentVariable('Path','User') + ';' + [Environment]::GetEnvironmentVariable('Path','Machine')",
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path)
+    }
+}
+
+#[cfg(not(windows))]
+fn windows_user_path() -> Option<String> {
     None
 }
 
@@ -368,6 +437,7 @@ mod tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
+    #[cfg(unix)]
     #[test]
     fn merge_paths_deduplicates_and_preserves_order() {
         let merged = merge_paths("/a:/b:/c", "/b:/d");
@@ -377,6 +447,9 @@ mod tests {
     #[test]
     fn standard_user_bin_dirs_include_bun() {
         let dirs = standard_user_bin_dirs();
+        #[cfg(windows)]
+        assert!(dirs.iter().any(|p| p.ends_with(".bun\\bin")));
+        #[cfg(not(windows))]
         assert!(dirs.iter().any(|p| p.ends_with(".bun/bin")));
     }
 

@@ -21,7 +21,8 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@terrain-ai/cli-darwin-arm64": "0.1.0"
+    "@terrain-ai/cli-darwin-arm64": "0.1.0",
+    "@terrain-ai/cli-win32-x64": "0.1.0"
   },
   "publishConfig": {
     "access": "public"

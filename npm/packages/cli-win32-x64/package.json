@@ -1,0 +1,29 @@
+{
+  "name": "@terrain-ai/cli-win32-x64",
+  "version": "0.1.0",
+  "description": "Prebuilt Terrain CLI for Windows x64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sopaco/terrain.git",
+    "directory": "npm/packages/cli-win32-x64"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "bin": {
+    "terrain": "bin/terrain.exe"
+  },
+  "files": [
+    "bin/terrain.exe"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

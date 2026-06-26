@@ -514,10 +514,13 @@ pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
 }
 
 fn rtk_runtime_ready() -> bool {
-    if bundled_rtk().is_some() && agent_bin_dir().join("rtk").exists() {
-        return true;
+    let bin_dir = agent_bin_dir();
+    for name in ["rtk", "rtk.exe"] {
+        if bin_dir.join(name).is_file() {
+            return true;
+        }
     }
-    agent_bin_dir().join("rtk").is_file()
+    false
 }
 
 fn command_succeeds(program: &str, args: &[&str], cwd: &Path) -> bool {

@@ -112,16 +112,18 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 |------|------|
 | 架构、私域知识 | 加载 `terrain-knowledge-skill` |
 | 源码片段 | `repomix-context-skill`；`<rtk> grep` 搜索 pack |
-| 符号关系 | `codegraph-skill`；先 `test -x ~/.terrain/bin/codegraph` |
-| git/test/build | `rtk-skill`；先 `test -x ~/.terrain/bin/rtk` |
+| 符号关系 | `codegraph-skill`；检查 `~/.terrain/bin/codegraph` 是否存在（见 codegraph-skill） |
+| git/test/build | `rtk-skill`；检查 `~/.terrain/bin/rtk` 是否存在（见 rtk-skill） |
 | ACP 知识查询 | `~/.terrain/bin/terrain tools …` |
 
 ### Agent 工具解析（必读）
 
-**一律使用约定路径**（`~/.terrain/bin/…`、`.terrain/…`），**不要**写机器相关的绝对路径（如 `/Users/…`）。
+**一律使用约定路径**（`~/.terrain/bin/…`、`.terrain/…`），**不要**写机器相关的绝对路径（如 `/Users/…` 或 `C:\Users\…`）。
 
-1. 执行前检查：`test -x ~/.terrain/bin/<tool>`（rtk / codegraph / terrain）
-2. 存在 → 用 `~/.terrain/bin/<tool> …`（shell 会在词首展开 `~`）
+Windows 上工具部署在 `%USERPROFILE%\.terrain\bin\`（Git Bash / PowerShell 7+ 中可写为 `~/.terrain/bin/`），二进制带 `.exe` 后缀。
+
+1. 执行前检查工具是否存在 — 见 `rtk-skill` / `codegraph-skill` 中的跨平台检查表（**不要**在 Windows 上使用 Unix 专用的 `test -x`）
+2. 存在 → 用 `~/.terrain/bin/<tool> …`（词首 `~` 在 bash/zsh/Git Bash/PowerShell 7+ 会展开）
 3. 不存在 → RTK / CodeGraph 用上表 `bunx` / `npx` 降级；Terrain CLI 请用户通过桌面应用操作
 4. 可选参考：`.terrain/env/agent-tools.json`（本地生成、不入库），内容与约定路径一致
 

@@ -67,9 +67,12 @@ Grep for `### relative/path` to jump to a file.
 If `repomix.md` is missing:
 
 ```bash
-# <terrain> = ~/.terrain/bin/terrain or bunx @terrain-ai/cli (see below)
-test -x ~/.terrain/bin/terrain && ~/.terrain/bin/terrain assets pack-agent . \
-  || bunx @terrain-ai/cli assets pack-agent .
+# bash / Git Bash — <terrain> = ~/.terrain/bin/terrain or bunx @terrain-ai/cli
+if [ -x ~/.terrain/bin/terrain ] || [ -x ~/.terrain/bin/terrain.exe ]; then
+  ~/.terrain/bin/terrain assets pack-agent .
+else
+  bunx @terrain-ai/cli assets pack-agent .
+fi
 # or from repo root in Terrain UI: 重建源码索引
 ```
 

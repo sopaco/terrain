@@ -27,7 +27,7 @@
     "targets": "all",
     "externalBin": ["binaries/rtk", "binaries/terrain-cli"],
     "resources": {
-      "../packages/codegraph/darwin-arm64": "tools/codegraph",
+      "bundled-resources/codegraph": "tools/codegraph",
       "../preset_skills": "preset_skills"
     },
     "icon": [

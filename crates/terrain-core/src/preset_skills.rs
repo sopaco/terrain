@@ -171,6 +171,8 @@ fn discover_next_to_exe() -> Option<PathBuf> {
     let candidates = [
         parent.join("../Resources/preset_skills"),
         parent.join("Resources/preset_skills"),
+        parent.join("resources/preset_skills"),
+        parent.join("../resources/preset_skills"),
         parent.join("preset_skills"),
         parent.join("../preset_skills"),
     ];
