@@ -154,6 +154,7 @@ impl ToolCallTracker {
         !self.records.is_empty()
     }
 
+    #[cfg(test)]
     pub(crate) fn all_done(&self) -> bool {
         self.has_any() && !self.has_running()
     }

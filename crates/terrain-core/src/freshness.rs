@@ -211,10 +211,8 @@ struct DriftExplainInput<'a> {
     pack_drift: &'a GitDrift,
     pack_days: u32,
     ctx_days: u32,
-    human_days: u32,
     pack_total_files: u32,
     pack_baseline: Option<&'a str>,
-    ctx_baseline: Option<&'a str>,
 }
 
 fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<FreshnessDriftFactor> {
@@ -505,10 +503,8 @@ pub fn compute_freshness(
         pack_drift: &pack_drift,
         pack_days,
         ctx_days,
-        human_days,
         pack_total_files,
         pack_baseline: pack_baseline.as_deref(),
-        ctx_baseline: ctx_baseline.as_deref(),
     });
 
     let sample_changed_files: Vec<String> = pack_drift

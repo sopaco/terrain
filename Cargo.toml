@@ -45,7 +45,7 @@ adk-tool = "1.0.0"
 terrain-core = { path = "crates/terrain-core" }
 terrain-agent = { path = "crates/terrain-agent" }
 repomix-core = "2.0"
-ts-rs = { version = "10", features = ["serde-compat"] }
+ts-rs = { version = "10", features = ["serde-compat", "no-serde-warnings"] }
 # Avoid time 0.3.48 (E0119 with Tauri/cookie blanket From impls; see time-rs/time#783).
 time = ">=0.3.36, <0.3.48"
 

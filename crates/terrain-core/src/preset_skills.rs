@@ -229,6 +229,7 @@ fn symlink_replace(link: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(unix))]
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
     fs::create_dir_all(dest)?;
     for entry in fs::read_dir(src)? {
