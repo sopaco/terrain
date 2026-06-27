@@ -107,10 +107,10 @@
     }
   }
 
-  async function refreshPlan(ids: Set<string>) {
+  async function refreshPlan(ids: Set<string>, reinstall: Set<string> = reinstallMarked) {
     if (!repoPath) return;
     try {
-      plan = await planEnvIntegration(repoPath, [...ids]);
+      plan = await planEnvIntegration(repoPath, [...ids], [...reinstall]);
     } catch {
       plan = null;
     }
@@ -140,7 +140,7 @@
 
     selected = next;
     reinstallMarked = nextReinstall;
-    void refreshPlan(next);
+    void refreshPlan(next, nextReinstall);
   }
 
   function markForReinstall(id: string) {
@@ -153,7 +153,7 @@
     nextReinstall.add(id);
     selected = next;
     reinstallMarked = nextReinstall;
-    void refreshPlan(next);
+    void refreshPlan(next, nextReinstall);
   }
 
   function cancelReinstall(id: string) {
@@ -166,7 +166,7 @@
     nextReinstall.delete(id);
     selected = next;
     reinstallMarked = nextReinstall;
-    void refreshPlan(next);
+    void refreshPlan(next, nextReinstall);
   }
 
   function selectAllPending() {

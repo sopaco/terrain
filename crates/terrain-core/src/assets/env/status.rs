@@ -243,7 +243,11 @@ pub fn codegraph_index_ready(repo: &Path) -> bool {
     repo.join(".codegraph/codegraph.db").is_file()
 }
 
-pub fn plan_env_integration(repo: &Path, selected_ids: &[String]) -> Result<EnvPlan> {
+pub fn plan_env_integration(
+    repo: &Path,
+    selected_ids: &[String],
+    reinstall_ids: &[String],
+) -> Result<EnvPlan> {
     let catalog = load_catalog()?;
     let status = get_env_status(repo)?;
     let status_map: std::collections::HashMap<_, _> = status
@@ -253,6 +257,7 @@ pub fn plan_env_integration(repo: &Path, selected_ids: &[String]) -> Result<EnvP
         .collect();
 
     let selected: std::collections::HashSet<_> = selected_ids.iter().cloned().collect();
+    let reinstall: std::collections::HashSet<_> = reinstall_ids.iter().cloned().collect();
     let mut steps = Vec::new();
     let mut skipped = Vec::new();
 
@@ -282,7 +287,13 @@ pub fn plan_env_integration(repo: &Path, selected_ids: &[String]) -> Result<EnvP
             }),
             "tool" => {
                 if def.bundled {
-                    plan_bundled_tool(repo, def, &mut steps, &mut skipped);
+                    plan_bundled_tool(
+                        repo,
+                        def,
+                        &mut steps,
+                        &mut skipped,
+                        reinstall.contains(&def.id),
+                    );
                     continue;
                 }
                 if def.optional && tool_check_passes(repo, def) {
@@ -361,9 +372,40 @@ fn plan_bundled_tool(
     def: &IntegrationDef,
     steps: &mut Vec<EnvPlanStep>,
     skipped: &mut Vec<String>,
+    reinstall: bool,
 ) {
     if !bundled_tool_runtime_ready(def) {
         skipped.push(format!("{}: Terrain 内置工具不可用", def.id));
+        return;
+    }
+    if reinstall {
+        match def.id.as_str() {
+            "tool-rtk" => {
+                steps.push(EnvPlanStep {
+                    id: def.id.clone(),
+                    label: def.label.clone(),
+                    kind: def.kind.clone(),
+                    action: "重新部署 ~/.terrain/bin/rtk".into(),
+                });
+            }
+            "tool-codegraph" => {
+                steps.push(EnvPlanStep {
+                    id: def.id.clone(),
+                    label: def.label.clone(),
+                    kind: def.kind.clone(),
+                    action: "重新部署 ~/.terrain/bin/codegraph".into(),
+                });
+                if !tool_check_passes(repo, def) {
+                    steps.push(EnvPlanStep {
+                        id: def.id.clone(),
+                        label: def.label.clone(),
+                        kind: def.kind.clone(),
+                        action: "内置 CodeGraph：init -i（写入 .codegraph/）".into(),
+                    });
+                }
+            }
+            _ => skipped.push(format!("{}: 未知内置工具", def.id)),
+        }
         return;
     }
     match def.id.as_str() {
@@ -524,7 +566,7 @@ fn rtk_runtime_ready() -> bool {
 }
 
 fn command_succeeds(program: &str, args: &[&str], cwd: &Path) -> bool {
-    std::process::Command::new(program)
+    crate::process::command(program)
         .args(args)
         .current_dir(cwd)
         .stdout(std::process::Stdio::null())
@@ -613,6 +655,45 @@ mod tests {
         std::fs::write(dir.join(".codegraph/codegraph.db"), b"x").unwrap();
         assert!(codegraph_index_ready(&dir));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bundled_tool_reinstall_produces_plan_steps() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
+        invalidate_env_status_cache();
+        let selected = vec!["tool-rtk".into(), "tool-codegraph".into()];
+        let reinstall = vec!["tool-rtk".into(), "tool-codegraph".into()];
+        let plan = plan_env_integration(&repo, &selected, &reinstall).expect("plan");
+        let rtk_steps: Vec<_> = plan
+            .steps
+            .iter()
+            .filter(|s| s.id == "tool-rtk")
+            .collect();
+        let cg_steps: Vec<_> = plan
+            .steps
+            .iter()
+            .filter(|s| s.id == "tool-codegraph")
+            .collect();
+        assert!(
+            !rtk_steps.is_empty(),
+            "reinstall RTK should produce at least one plan step, got skipped={:?}",
+            plan.skipped
+        );
+        assert!(
+            !cg_steps.is_empty(),
+            "reinstall CodeGraph should produce at least one plan step, got skipped={:?}",
+            plan.skipped
+        );
+    }
+
+    #[test]
+    fn bundled_tool_without_reinstall_skips_rtk() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
+        invalidate_env_status_cache();
+        let selected = vec!["tool-rtk".into()];
+        let plan = plan_env_integration(&repo, &selected, &[]).expect("plan");
+        assert!(plan.steps.is_empty());
+        assert!(plan.skipped.iter().any(|s| s.contains("tool-rtk")));
     }
 
     #[test]

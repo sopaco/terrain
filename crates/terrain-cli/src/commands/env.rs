@@ -19,7 +19,7 @@ pub async fn run(
         EnvCommands::Plan { repo_path, ids } => {
             let repo_path = require_repo_path(cli_repo, repo_path)?;
             let selected = resolve_selected_ids(&repo_path, ids)?;
-            let plan = plan_env_integration(&repo_path, &selected)?;
+            let plan = plan_env_integration(&repo_path, &selected, &[])?;
             print_json(&plan)
         }
         EnvCommands::Apply { repo_path, ids } => {

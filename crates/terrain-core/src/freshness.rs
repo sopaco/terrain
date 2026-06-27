@@ -1,7 +1,6 @@
 //! Knowledge freshness ledger — detect drift between Git repo and `.terrain/` assets.
 
 use std::path::Path;
-use std::process::Command;
 
 use chrono::{DateTime, Utc};
 
@@ -653,7 +652,7 @@ fn working_tree_dirty_excluding_knowledge(porcelain: &str) -> bool {
 }
 
 fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
-    let output = Command::new("git")
+    let output = crate::process::command("git")
         .args(args)
         .current_dir(repo)
         .output()

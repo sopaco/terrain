@@ -44,7 +44,7 @@ pub async fn apply_env_integration(
         .iter()
         .map(|i| (i.id.clone(), super::status::dependency_ready(i)))
         .collect();
-    let plan = plan_env_integration(repo, selected_ids)?;
+    let plan = plan_env_integration(repo, selected_ids, reinstall_ids)?;
     let mut applied = Vec::new();
     let mut skipped = plan.skipped.clone();
     let mut errors = Vec::new();
@@ -207,7 +207,7 @@ async fn apply_bundled_tool(
 }
 
 async fn run_binary(cwd: &Path, program: &Path, args: &[&str]) -> Result<()> {
-    let output = tokio::process::Command::new(program)
+    let output = crate::process::async_command(program)
         .args(args)
         .current_dir(cwd)
         .output()
@@ -233,7 +233,7 @@ async fn run_binary(cwd: &Path, program: &Path, args: &[&str]) -> Result<()> {
 }
 
 async fn run_command(cwd: &Path, cmd: &str, args: &[String]) -> Result<()> {
-    let output = tokio::process::Command::new(cmd)
+    let output = crate::process::async_command(cmd)
         .args(args)
         .current_dir(cwd)
         .output()

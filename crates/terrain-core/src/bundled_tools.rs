@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use crate::process::command as hidden_command;
 use crate::platform::{
     bundled_binary_candidates, codegraph_wrapper_candidates, platform_key,
     platform_key_for_target,
@@ -159,7 +160,7 @@ pub fn bundled_terrain_cli() -> Option<PathBuf> {
 }
 
 pub(crate) fn run_bundled_check(program: &Path, args: &[&str], cwd: &Path) -> bool {
-    std::process::Command::new(program)
+    hidden_command(program)
         .args(args)
         .current_dir(cwd)
         .stdout(std::process::Stdio::null())

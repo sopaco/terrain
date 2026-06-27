@@ -192,8 +192,12 @@ export const runSddPhase = (
 export const getEnvStatus = (repoPath: string) =>
   invoke<EnvStatus>("get_env_status_cmd", { repoPath });
 
-export const planEnvIntegration = (repoPath: string, selectedIds: string[]) =>
-  invoke<EnvPlan>("plan_env_integration_cmd", { repoPath, selectedIds });
+export const planEnvIntegration = (
+  repoPath: string,
+  selectedIds: string[],
+  reinstallIds: string[] = [],
+) =>
+  invoke<EnvPlan>("plan_env_integration_cmd", { repoPath, selectedIds, reinstallIds });
 
 export const runEnvIntegration = (
   repoPath: string,

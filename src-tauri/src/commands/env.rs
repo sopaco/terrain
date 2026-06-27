@@ -14,9 +14,10 @@ pub fn get_env_status_cmd(repo_path: String) -> Result<EnvStatus, String> {
 pub fn plan_env_integration_cmd(
     repo_path: String,
     selected_ids: Vec<String>,
+    reinstall_ids: Vec<String>,
 ) -> Result<EnvPlan, String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
-    env_plan_for_repo(&repo_path, &selected_ids).map_err(|e| e.to_string())
+    env_plan_for_repo(&repo_path, &selected_ids, &reinstall_ids).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

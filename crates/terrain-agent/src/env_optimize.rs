@@ -8,8 +8,12 @@ pub fn env_status_for_repo(repo_path: &str) -> anyhow::Result<EnvStatus> {
     get_env_status(Path::new(repo_path)).map_err(Into::into)
 }
 
-pub fn env_plan_for_repo(repo_path: &str, selected_ids: &[String]) -> anyhow::Result<EnvPlan> {
-    plan_env_integration(Path::new(repo_path), selected_ids).map_err(Into::into)
+pub fn env_plan_for_repo(
+    repo_path: &str,
+    selected_ids: &[String],
+    reinstall_ids: &[String],
+) -> anyhow::Result<EnvPlan> {
+    plan_env_integration(Path::new(repo_path), selected_ids, reinstall_ids).map_err(Into::into)
 }
 
 pub async fn run_env_integration(

@@ -7,10 +7,11 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::{Mutex, Once};
 
 use crate::platform::{expand_user_path, user_home};
+use crate::process::command as hidden_command;
 
 static EXECUTABLE_CACHE: Mutex<Option<HashMap<String, Option<PathBuf>>>> = Mutex::new(None);
 static PATH_INIT: Once = Once::new();
@@ -249,7 +250,7 @@ fn run_shell_output(args: &[&str]) -> Option<String> {
     #[cfg(unix)]
     {
         let shell = default_shell();
-        let output = Command::new(&shell)
+        let output = hidden_command(&shell)
             .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -282,7 +283,7 @@ fn shell_lookup_executable(name: &str) -> Option<PathBuf> {
         let escaped = name.replace('\'', r"'\''");
         let script = format!("command -v -- '{escaped}'");
         let shell = default_shell();
-        let output = Command::new(&shell)
+        let output = hidden_command(&shell)
             .args(["-il", "-c", &script])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -308,7 +309,7 @@ fn shell_lookup_executable(name: &str) -> Option<PathBuf> {
         if name.contains('\0') {
             return None;
         }
-        let output = Command::new("where.exe")
+        let output = hidden_command("where.exe")
             .arg(name)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -337,7 +338,7 @@ fn shell_lookup_executable(name: &str) -> Option<PathBuf> {
 
 #[cfg(target_os = "macos")]
 fn path_helper_path() -> Option<String> {
-    let output = Command::new("/usr/libexec/path_helper")
+    let output = hidden_command("/usr/libexec/path_helper")
         .arg("-s")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -358,7 +359,7 @@ fn path_helper_path() -> Option<String> {
 
 #[cfg(windows)]
 fn windows_user_path() -> Option<String> {
-    let output = Command::new("powershell")
+    let output = hidden_command("powershell")
         .args([
             "-NoProfile",
             "-NonInteractive",

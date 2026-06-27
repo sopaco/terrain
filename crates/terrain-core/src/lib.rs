@@ -9,6 +9,7 @@ pub mod model_text;
 pub mod path_portable;
 pub mod platform;
 pub mod preset_skills;
+pub mod process;
 pub mod paths;
 pub mod project;
 pub mod registry;
@@ -99,4 +100,5 @@ pub use bundled_tools::{
 pub use shell_path::{
     augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,
 };
+pub use process::{async_command, command as process_command, hide_console, hide_console_async};
 pub use source::{read_source_slice, resolve_source_citation};
