@@ -126,43 +126,128 @@ Git HEAD and dirty-state monitoring score knowledge assets. Agents should down-w
 
 ## Architecture
 
+Terrain is an **agent-first engineering environment platform**. For each Git repository it delivers three coordinated solutions:
+
+| Pillar | Metaphor | What agents get |
+|--------|----------|-----------------|
+| **Knowledge** | *Map* | Structured assets in `.terrain/` — **produced** from code, **consumed** through layered access |
+| **Environment** | *Roads* | Skills, CLIs, and `AGENTS.md` that route agents to the right knowledge and tools |
+| **Workflow** | *Trail markers* | SDD — a four-phase convention from requirements through code review |
+
+> **Knowledge as the map, tools as the roads, conventions as the trail markers.**
+
+Humans use the **desktop app** or **CLI**; external coding agents (Cursor, OpenCode, …) use the same contract via **`terrain tools`** (JSON stdout). Assets live **in-repo** (`.terrain/` travels with branches); `~/.terrain/registry.json` holds project pointers only.
+
+### System overview
+
 ```mermaid
 graph TB
-    subgraph Users
-        Dev["Developer<br/>(Desktop / CLI)"]
-        Agent["AI Coding Assistant<br/>(ACP)"]
+    subgraph Actors
+        Dev[Developer]
+        ExtAgent[External coding agent]
     end
 
-    subgraph Terrain
-        UI["Desktop App<br/>Tauri + Svelte 5"]
-        CLI["CLI<br/>terrain"]
-        Core["terrain-core<br/>paths · scan · search · assets"]
-        AgentLayer["terrain-agent<br/>chat · litho · sdd · acp"]
-        KB[".terrain/<br/>knowledge store"]
+    subgraph Terrain["Terrain"]
+        K["Knowledge<br/>produce · consume"]
+        E["Environment<br/>skills · tools · AGENTS.md"]
+        W["Workflow<br/>SDD"]
+    end
+
+    subgraph Output
+        DotTerrain[".terrain/"]
+        EnvDot[".agents/ · AGENTS.md"]
+        SddDir["~/.terrain/sdd/"]
     end
 
     subgraph External
-        LLM["LLM API<br/>OpenAI / Ollama / LM Studio"]
-        Git["Git Repository"]
-        Reg["~/.terrain/registry.json"]
-        ACP["ACP Agent<br/>OpenCode, etc."]
+        Git[Git repo]
+        LLM[LLM API]
+        ACP[ACP agent]
     end
 
-    Dev --> UI
-    Dev --> CLI
-    Agent --> CLI
-    UI --> Core
-    UI --> AgentLayer
-    CLI --> Core
-    CLI --> AgentLayer
-    AgentLayer --> LLM
-    AgentLayer --> ACP
-    Core --> KB
-    Core --> Git
-    Core --> Reg
+    Dev --> K
+    Dev --> E
+    Dev --> W
+    ExtAgent --> K
+    ExtAgent --> E
+    K --> DotTerrain
+    E --> EnvDot
+    W --> SddDir
+    K --> Git
+    K --> LLM
+    W --> ACP
+    W --> LLM
 ```
 
-**Layered dependency:** UI / CLI → Agent → Core → filesystem / Git / LLM. Core has no UI dependency; CLI and Tauri share the same Rust APIs.
+### ① Knowledge — the map
+
+Dual-track assets from one factory — narrative `human/` for people, structured `agent/` for machines:
+
+```
+.terrain/
+├── agent/context.md    macro overview
+├── agent/repomix.md    grep-friendly source pack
+├── human/              Litho C4 docs
+├── knowledge/          domain glossary
+└── .meta/freshness.json
+```
+
+**Produce** (scan/pack are offline; LLM/ACP where noted):
+
+```
+Git ──scan──► index.md
+    ──pack──► repomix.md
+    ──context (LLM)──► context.md
+    ──litho (ACP)──► human/ + .litho-agent/ checkpoints
+    ──track──► freshness.json
+```
+
+**Consume** — DeepWiki and `terrain tools` share the same three layers:
+
+| Layer | Source | API |
+|-------|--------|-----|
+| Macro | `agent/context.md` | `read-context` |
+| Meso | `human/`, `knowledge/` | `search`, `read-doc` |
+| Micro | `agent/repomix.md` | `grep-pack` → `read-pack-file` |
+
+When sources conflict: **repomix > CodeGraph > context.md > human/**. Down-weight macro context when `freshness_score < 50`.
+
+### ② Environment — the roads
+
+`terrain env apply` installs the navigation layer so agents don't improvise:
+
+| Component | Purpose |
+|-----------|---------|
+| **Skills** | Standard playbooks — terrain-knowledge → repomix → codegraph → rtk |
+| **Tools** | `~/.terrain/bin/` — CodeGraph, RTK, `terrain` CLI (`terrain tools` for ACP) |
+| **AGENTS.md** | Managed snippets — knowledge-first workflow, repomix for code, RTK for shell |
+
+### ③ Workflow — the trail markers
+
+SDD defines a repeatable path; each phase produces a reviewable Markdown artifact:
+
+| Phase | Output | Engine |
+|-------|--------|--------|
+| Requirements | `1.requirements.md` | Native LLM |
+| Tech design | `2.tech-design.md` | Native LLM |
+| Codegen | `3.implementation.md` + repo changes | ACP agent |
+| Code review | `4.code-review.md` | Native LLM |
+
+Litho uses the same resumable pattern — research checkpoints under `.terrain/.litho-agent/`.
+
+### Runtime
+
+```mermaid
+graph LR
+    Chan[Desktop · CLI] --> Intel[terrain-agent]
+    Chan --> Core[terrain-core]
+    Intel --> Core
+    Intel --> LLM[LLM]
+    Intel --> ACP[ACP]
+    Core --> FS[".terrain/ · Git · registry"]
+```
+
+Core handles scan, pack, search, freshness, and env without an LLM. Agent orchestrates DeepWiki, Litho, SDD, and context generation — lightweight tasks via native LLM, heavy tool-using work via ACP subprocess.
 
 ### Repository layout
 
