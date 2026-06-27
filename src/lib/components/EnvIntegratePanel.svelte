@@ -4,6 +4,7 @@
   import { getEnvStatus, planEnvIntegration, runEnvIntegration } from "../api";
   import type { EnvIntegrationStatus, EnvPlan, EnvStatus } from "../types";
   import { TERMS } from "../terminology";
+  import EnvPlanPanel from "./EnvPlanPanel.svelte";
 
   interface Props {
     repoPath: string | null;
@@ -21,6 +22,7 @@
   let progressMessage = $state<string | null>(null);
   let selected = $state<Set<string>>(new Set());
   let reinstallMarked = $state<Set<string>>(new Set());
+  let planHelpOpen = $state(false);
 
   const skillItems = $derived(status?.items.filter((i) => i.kind === "skill") ?? []);
   const toolItems = $derived(status?.items.filter((i) => i.kind === "tool") ?? []);
@@ -29,6 +31,7 @@
   );
 
   const applyCount = $derived(plan?.steps.length ?? 0);
+  const canApply = $derived(!applying && applyCount > 0);
 
   function isReinstallPending(item: EnvIntegrationStatus): boolean {
     return reinstallMarked.has(item.id);
@@ -304,14 +307,27 @@
       >
         清空可选
       </button>
-      <button
-        type="button"
-        class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-medium hover:bg-indigo-500 disabled:opacity-50"
-        disabled={applying || applyCount === 0}
-        onclick={apply}
-      >
-        {applying ? "集成中…" : `集成所选 (${applyCount})`}
-      </button>
+      <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-medium hover:bg-indigo-500 disabled:opacity-50"
+          disabled={applying || applyCount === 0}
+          onclick={apply}
+        >
+          {applying ? "集成中…" : `集成所选 (${applyCount})`}
+        </button>
+        {#if canApply}
+          <button
+            type="button"
+            class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 text-xs text-white/45 hover:border-indigo-400/50 hover:text-indigo-200"
+            title="查看执行计划详情"
+            aria-label="执行计划说明"
+            onclick={() => (planHelpOpen = true)}
+          >
+            ?
+          </button>
+        {/if}
+      </div>
       {#if progressMessage}
         <span class="text-xs text-white/45">{progressMessage}</span>
       {/if}
@@ -422,18 +438,7 @@
       </div>
     </section>
 
-    {#if plan && plan.steps.length > 0}
-      <section class="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-white/40">执行计划</h3>
-        <ul class="mt-2 space-y-1 text-xs text-white/55">
-          {#each plan.steps as step}
-            <li>· {step.action}</li>
-          {/each}
-        </ul>
-        {#if plan.skipped.length > 0}
-          <p class="mt-2 text-[11px] text-white/35">跳过：{plan.skipped.join("；")}</p>
-        {/if}
-      </section>
-    {/if}
   {/if}
 </div>
+
+<EnvPlanPanel open={planHelpOpen} {plan} onclose={() => (planHelpOpen = false)} />

@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
+serde.workspace = true
 terrain-core.workspace = true
 terrain-agent.workspace = true
 dotenvy.workspace = true
