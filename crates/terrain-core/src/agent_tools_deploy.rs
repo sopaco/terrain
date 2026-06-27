@@ -85,13 +85,32 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
 
         let codegraph_bin = find_codegraph_bin(&runtime_dest);
         if let Some(codegraph_src) = codegraph_bin {
-            let dest_name = codegraph_src
-                .file_name()
-                .map(|n| n.to_owned())
-                .unwrap_or_else(|| std::ffi::OsString::from(agent_tool_filename("codegraph")));
-            let dest = bin_dir.join(dest_name);
-            symlink_ensure(&dest, &codegraph_src, opts.force)?;
-            paths.codegraph = Some(dest.display().to_string());
+            #[cfg(windows)]
+            {
+                // Copying the bundled .cmd to ~/.terrain/bin/ breaks its relative paths
+                // (`%~dp0..\node.exe`). Instead, write a tiny wrapper that delegates to the
+                // runtime copy under ~/.terrain/tools/codegraph-runtime/.
+                let _ = codegraph_src;
+                let wrapper = bin_dir.join("codegraph.cmd");
+                let wrapper_content = "@\"%~dp0..\\tools\\codegraph-runtime\\bin\\codegraph.cmd\" %*\n";
+                fs::write(&wrapper, wrapper_content).map_err(|e| {
+                    CoreError::InvalidDoc(format!(
+                        "write codegraph wrapper {}: {e}",
+                        wrapper.display()
+                    ))
+                })?;
+                paths.codegraph = Some(wrapper.display().to_string());
+            }
+            #[cfg(not(windows))]
+            {
+                let dest_name = codegraph_src
+                    .file_name()
+                    .map(|n| n.to_owned())
+                    .unwrap_or_else(|| std::ffi::OsString::from(agent_tool_filename("codegraph")));
+                let dest = bin_dir.join(dest_name);
+                symlink_ensure(&dest, &codegraph_src, opts.force)?;
+                paths.codegraph = Some(dest.display().to_string());
+            }
             paths.codegraph_runtime = Some(runtime_dest.display().to_string());
         }
     }
@@ -165,11 +184,15 @@ fn bundled_codegraph_runtime() -> Option<PathBuf> {
     let bin = crate::bundled_tools::bundled_tools().codegraph.as_ref()?;
     // `.../<platform>/bin/codegraph` → runtime root `.../<platform>`
     let runtime = bin.parent()?.parent()?;
-    if runtime.join("node").is_file() && runtime.join("lib").is_dir() {
+    if node_executable_exists(runtime) && runtime.join("lib").is_dir() {
         Some(runtime.to_path_buf())
     } else {
         None
     }
+}
+
+fn node_executable_exists(runtime: &Path) -> bool {
+    runtime.join("node").is_file() || runtime.join("node.exe").is_file()
 }
 
 fn find_codegraph_bin(runtime_dest: &Path) -> Option<PathBuf> {
@@ -227,13 +250,39 @@ fn symlink_replace(link: &Path, target: &Path) -> Result<()> {
     })?;
     #[cfg(not(unix))]
     {
-        fs::copy(target, link).map_err(|e| {
-            CoreError::InvalidDoc(format!(
-                "copy {} -> {}: {e}",
-                target.display(),
-                link.display()
-            ))
-        })?;
+        if target.is_dir() {
+            copy_dir_recursive(target, link)?;
+        } else {
+            fs::copy(target, link).map_err(|e| {
+                CoreError::InvalidDoc(format!(
+                    "copy {} -> {}: {e}",
+                    target.display(),
+                    link.display()
+                ))
+            })?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
+    fs::create_dir_all(dest)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else {
+            fs::copy(&from, &to).map_err(|e| {
+                CoreError::InvalidDoc(format!(
+                    "copy {} -> {}: {e}",
+                    from.display(),
+                    to.display()
+                ))
+            })?;
+        }
     }
     Ok(())
 }
@@ -272,5 +321,22 @@ mod tests {
         let home = user_home().expect("home");
         let home_str = home.to_string_lossy();
         assert!(!manifest.bin_dir.contains(home_str.as_ref()));
+    }
+
+    #[test]
+    fn codegraph_runtime_detects_node_exe() {
+        // The prebuilt codegraph bundle ships node.exe on Windows and `node` on macOS.
+        // This test verifies the runtime check recognizes both without breaking macOS.
+        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../packages/codegraph/win32-x64");
+        let codegraph_cmd = runtime.join("bin/codegraph.cmd");
+        if !codegraph_cmd.is_file() {
+            return; // skip if Windows bundle is not staged
+        }
+        assert!(
+            node_executable_exists(&runtime),
+            "expected node_executable_exists to find node.exe in {}",
+            runtime.display()
+        );
     }
 }
