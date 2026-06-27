@@ -8,8 +8,6 @@ Engineering environment management for human developers and AI coding assistants
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Scan any Git repository, generate C4 architecture docs, maintain structured knowledge assets in-repo, and let AI assistants query your project through a single CLI.
-
 </div>
 
 ---
@@ -202,18 +200,6 @@ terrain/
 
 Project registration (slug ↔ repo path) is stored locally at `~/.terrain/registry.json` — pointers only, not knowledge files.
 
-### Tech stack
-
-| Layer | Choice |
-|-------|--------|
-| Language | Rust 2024 (workspace, rust-version 1.94) |
-| Desktop | Tauri 2 + Svelte 5 + Vite 6 + Tailwind CSS 4 |
-| LLM framework | ADK Rust (adk-agent, adk-model, adk-runner) |
-| ACP | agent-client-protocol 0.11 + adk-acp |
-| Source packing | repomix-core 2.0 |
-| Package managers | Cargo workspace, Bun (Node toolchain) |
-| Symbol analysis | @colbymchenry/codegraph (optional) |
-
 ---
 
 ## Ecosystem
@@ -284,8 +270,8 @@ Screenshots are placeholders — replace with captures from the desktop app when
 - **Rust** 1.94+ ([rust-toolchain.toml](rust-toolchain.toml) pins the version)
 - **Bun** — Node toolchain for frontend and optional tools
 - **Git** — repositories must be Git workspaces
-- **LLM access** — OpenAI-compatible API, Ollama, or LM Studio (configure in the desktop app **Settings** panel)
-- **ACP agent** (optional) — OpenCode or compatible agent for Litho composition and SDD codegen
+- **ACP agent** — OpenCode or compatible agent for Litho composition and SDD codegen
+- **LLM access** (optional) — OpenAI-compatible API, Ollama, or LM Studio (configure in the desktop app **Settings** panel)
 
 ### Build from source
 
