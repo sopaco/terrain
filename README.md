@@ -1,5 +1,5 @@
 <div align="center">
-    <img height="160" src="./assets/banner.png">
+    <img height="160" src="./assets/banner.webp">
 
 # Terrain
 
@@ -37,7 +37,7 @@ Knowledge lives **in the repository** — not in a central database. Every branc
 
 ### Knowledge factory
 
-<img height="160" src="./assets/graph_knowledge_factory.png">
+<img height="160" src="./assets/graph_knowledge_factory.webp">
 
 ---
 
