@@ -52,7 +52,8 @@ fn stage_sidecar(target: &str, name: &str, base_rel: &str) {
         Path::new(&manifest_dir).join(base_rel)
     };
     let dest_dir = Path::new(&manifest_dir).join("binaries");
-    let dest = dest_dir.join(format!("{name}-{target}"));
+    let dest_name = sidecar_source_name(&format!("{name}-{target}"), target);
+    let dest = dest_dir.join(dest_name);
 
     if !source.is_file() {
         println!(
