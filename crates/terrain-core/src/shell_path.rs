@@ -226,12 +226,11 @@ fn merge_paths(primary: &str, secondary: &str) -> String {
     merged.join(path_separator())
 }
 
+#[cfg(unix)]
 fn default_shell() -> String {
     std::env::var("SHELL").unwrap_or_else(|_| {
         if cfg!(target_os = "macos") {
             "/bin/zsh".into()
-        } else if cfg!(windows) {
-            "cmd.exe".into()
         } else {
             "/bin/bash".into()
         }
@@ -387,6 +386,7 @@ fn windows_user_path() -> Option<String> {
     None
 }
 
+#[cfg(target_os = "macos")]
 fn parse_path_helper_output(text: &str) -> Option<String> {
     for line in text.split(';') {
         let line = line.trim();

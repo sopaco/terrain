@@ -23,7 +23,6 @@ pub fn hide_console(cmd: &mut Command) {
 pub fn hide_console_async(cmd: &mut tokio::process::Command) {
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
     #[cfg(not(windows))]
