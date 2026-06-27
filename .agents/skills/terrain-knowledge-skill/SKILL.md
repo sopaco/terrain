@@ -8,8 +8,6 @@ version: 1.1.0
 
 Terrain stores **AI knowledge assets** under **`.terrain/`** in this repository (not a global `~/.terrain/knowledge` directory). The desktop app registry at `~/.terrain/registry.json` only maps slugs → repo paths.
 
-On Windows, `~` means `%USERPROFILE%` (e.g. `C:\Users\<you>\.terrain\`).
-
 Load **`rtk-skill`** when you need to run shell commands during investigation (git, grep repomix file, tests). Resolve tools via **conventional paths** (`~/.terrain/bin/…`) with `bunx`/`npx` fallback — see `rtk-skill` / `codegraph-skill`.
 
 ## Knowledge layers (mandatory order)

@@ -1,4 +1,5 @@
 <div align="center">
+    <img height="160" src="./assets/banner.png">
 
 # Terrain
 
@@ -36,18 +37,7 @@ Knowledge lives **in the repository** — not in a central database. Every branc
 
 ### Knowledge factory
 
-```
-Git repository (input)
-        │
-        ▼
-┌───────────────────────────────────────────┐
-│  Terrain Core + Agent                    │
-│  scan → register → pack → context → litho │
-└───────────────────────────────────────────┘
-        │
-        ▼
-.terrain/  (output — versioned with your code)
-```
+<img height="160" src="./assets/graph_knowledge_factory.png">
 
 ---
 
@@ -249,23 +239,6 @@ graph LR
 
 Core handles scan, pack, search, freshness, and env without an LLM. Agent orchestrates DeepWiki, Litho, SDD, and context generation — lightweight tasks via native LLM, heavy tool-using work via ACP subprocess.
 
-### Repository layout
-
-```
-terrain/
-├── crates/
-│   ├── terrain-core/     # Paths, registry, scan, search, assets
-│   ├── terrain-agent/    # Chat, Litho, SDD, ACP, context generation
-│   └── terrain-cli/      # CLI entry point
-├── src/                    # Svelte 5 frontend
-├── src-tauri/              # Tauri 2 backend + IPC commands
-├── preset_skills/          # Litho, SDD, Ask, Agent Context skills
-├── env-catalog/            # Env integration catalog
-├── packages/rtk/           # Shell output token compression (native prebuilts)
-├── npm/                    # @terrain-ai/rtk & @terrain-ai/cli npm wrappers (optional distribution)
-└── .terrain/             # This repo's own knowledge assets (example)
-```
-
 ### `.terrain/` directory (per project)
 
 ```
@@ -344,8 +317,6 @@ Screenshots are placeholders — replace with captures from the desktop app when
 
 *Skills, tools, and AGENTS.md integration status for coding agents.*
 
-> **Adding screenshots:** Save PNGs as `assets/screenshots/01-overview.png` through `05-env.png`. Recommended width: 1200–1600 px. The HTML comments above describe what each capture should show.
-
 ---
 
 ## Getting Started
@@ -376,155 +347,6 @@ cargo build --release
 bun run dev:app
 ```
 
-### Register and initialize a project
-
-Replace `/path/to/your-repo` with any Git repository you want to index.
-
-```bash
-# Register the repository (creates {repo}/.terrain/ layout)
-./target/release/terrain assets register /path/to/your-repo
-
-# Scan repository structure into index.md
-./target/release/terrain scan /path/to/your-repo
-
-# Pack agent source index (repomix)
-./target/release/terrain assets pack-agent /path/to/your-repo
-
-# Generate agent/context.md (requires LLM configured in Settings)
-./target/release/terrain assets agent-context /path/to/your-repo
-
-# List generated human docs (after Litho)
-./target/release/terrain assets list-human --project your-repo-slug
-```
-
-Run Litho human doc generation (requires ACP agent):
-
-```bash
-./target/release/terrain assets run-litho /path/to/your-repo
-```
-
-### Configure models
-
-Use the desktop app **Settings** panel to set provider, model, base URL, and API key. Settings persist locally for the app and CLI.
-
-For headless CLI use, environment variables are supported — see [.env.example](.env.example) for reference. Copy to `.env` in the repo root (gitignored); do not commit secrets.
-
-### Integrate AI engineering environment
-
-```bash
-# Check integration status
-./target/release/terrain env status --repo-path /path/to/your-repo
-
-# Preview plan
-./target/release/terrain env plan --repo-path /path/to/your-repo
-
-# Apply integrations (Skills, CodeGraph, RTK, AGENTS.md)
-./target/release/terrain env apply --repo-path /path/to/your-repo
-```
-
----
-
-## Usage
-
-### CLI command groups
-
-| Group | Purpose |
-|-------|---------|
-| `list` | List indexed projects |
-| `scan` | Scan a Git repo into Markdown knowledge docs |
-| `search` | Full-text search across knowledge base |
-| `read` | Read a document by path |
-| `tools` | JSON tools for ACP-mode agents |
-| `assets` | Pack, Litho, agent context, registration |
-| `env` | AI engineering environment integration |
-
-Global flag: `--repo-path` (default: current Git workspace or `TERRAIN_REPO_PATH`).
-
-### Search and read
-
-```bash
-# Search across knowledge docs
-terrain search "authentication flow" --limit 10
-
-# Read a specific document
-terrain read human/2.架构.md
-```
-
-### `terrain tools` — for ACP integrators
-
-All commands output JSON to stdout. Run from the repository root or pass `--repo-path`.
-
-```bash
-# List indexed projects
-terrain tools list-projects
-
-# Architecture overview (macro layer)
-terrain tools read-context --project my-app
-
-# Specific context section
-terrain tools read-context --project my-app --section "核心流程"
-
-# Grep the repomix pack (micro layer)
-terrain tools grep-pack --project my-app --pattern "struct ProjectScanner"
-
-# Read source slice from pack (≤ 150 lines recommended)
-terrain tools read-pack-file --project my-app \
-  --file crates/terrain-core/src/paths.rs --start-line 1 --end-line 80
-
-# Search human and agent docs
-terrain tools search --query "freshness" --project my-app --limit 5
-
-# Read a doc by project-relative path
-terrain tools read-doc --project my-app --path human/1.概述.md
-```
-
-**Agent workflow:** answer from preloaded macro context when possible → `read-context` for missing sections → `grep-pack` then `read-pack-file` for implementation detail. Never read the live repository filesystem; the repomix pack is authoritative for code.
-
-### Desktop app
-
-```bash
-bun run dev:app      # Development with hot reload
-bun run build:app    # Production build
-```
-
-The desktop UI provides:
-
-- Project registration and scan triggers
-- Human doc browser (Litho output)
-- DeepWiki Ask bar
-- SDD session management
-- Env integration panel
-- Model and ACP settings
-
-### What Terrain does not do
-
-- **Does not modify your code** by default (SDD codegen phase is the exception, via an external ACP agent)
-- **Does not host a web service** — all data stays on the local filesystem
-- **Does not replace Git** — it reads repository structure; version control remains your responsibility
-- **Does not store binary knowledge** — assets are Markdown and JSON, designed for Git collaboration
-
----
-
-## Project structure (crates)
-
-| Crate | Responsibility |
-|-------|----------------|
-| `terrain-core` | Paths, registry, ingest, search, assets, freshness, env catalog |
-| `terrain-agent` | ChatEngine, Litho, SDD, agent context, ACP adapter, project init |
-| `terrain-cli` | Clap CLI wrapping Core + Agent |
-| `src-tauri` | IPC bridge between Svelte UI and Rust backend |
-
----
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
----
-
-## Related resources
-
-- [AGENTS.md](AGENTS.md) — guidance injected for coding agents in this repo
-- [preset_skills/](preset_skills/) — Litho, SDD, Ask, and Agent Context skill definitions
-- [env-catalog/catalog.json](env-catalog/catalog.json) — integration catalog
-- [.terrain/human/](.terrain/human/) — Litho-generated docs for Terrain itself (living example)
