@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -9,8 +10,8 @@ use anyhow::{bail, Context, Result};
 #[cfg(feature = "opencode")]
 use adk_acp::AcpAgentTool;
 use crate::settings::AcpSettings;
-use crate::acp::{acp_available, acp_spawn_command};
-use terrain_core::{command_on_path, resolve_command, KnowledgePaths};
+use crate::acp::{acp_available, acp_command_parts, acp_config_json, acp_spawn_command};
+use terrain_core::{command_on_path, KnowledgePaths};
 
 use crate::context_generator::AgentContextGenerator;
 use crate::throttle::{call_cooldown_from_env, wrap_tool};
@@ -187,8 +188,9 @@ pub fn build_agent(model: Arc<dyn Llm>, config: AgentConfig) -> Result<Arc<dyn A
                     "ACP agent not found on PATH; agent will run without coding delegation"
                 );
             } else {
-                let spawn = resolve_command(&acp_spawn_command(&config.acp_settings));
-                let mut acp_tool = AcpAgentTool::new(spawn)
+                let (binary, args) = acp_command_parts(&config.acp_settings);
+                let json = acp_config_json(&binary, &args, &HashMap::new());
+                let mut acp_tool = AcpAgentTool::new(json)
                     .name("acp_agent")
                     .description(
                         "Delegate to the configured ACP coding agent for multi-file edits, tests, and shell tasks.",

@@ -49,3 +49,10 @@ ts-rs = { version = "10", features = ["serde-compat", "no-serde-warnings"] }
 # Avoid time 0.3.48 (E0119 with Tauri/cookie blanket From impls; see time-rs/time#783).
 time = ">=0.3.36, <0.3.48"
 
+# Patch agent-client-protocol-tokio to hide the console window on Windows
+# when spawning ACP agents (opencode-cli, etc.). Upstream uses
+# tokio::process::Command without CREATE_NO_WINDOW, causing a black terminal
+# window to flash on every ACP delegation.
+[patch.crates-io]
+agent-client-protocol-tokio = { path = "crates/agent-client-protocol-tokio-patched" }
+

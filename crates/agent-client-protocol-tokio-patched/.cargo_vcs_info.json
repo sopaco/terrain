@@ -1,0 +1,6 @@
+{
+  "git": {
+    "sha1": "7a66763d81ad12104ca8c20ffd44f06fd584330d"
+  },
+  "path_in_vcs": "src/agent-client-protocol-tokio"
+}
