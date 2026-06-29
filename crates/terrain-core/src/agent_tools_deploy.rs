@@ -1,13 +1,19 @@
 //! Deploy Terrain-bundled CLIs where external Coding Agents can invoke them.
 //!
-//! App bundle / `packages/` paths are not on Agent PATH — we symlink into
-//! `~/.terrain/bin/` and `~/.terrain/tools/`. Re-deploy only when missing,
-//! broken, or forced.
+//! App bundle / `packages/` paths are not on Agent PATH — we materialize into
+//! `~/.terrain/bin/` and `~/.terrain/tools/`:
+//!
+//! - **Unix**: symlinks (cheap, always track the bundled sidecar)
+//! - **Windows**: file copies with fingerprint-based skip, atomic replace, and
+//!   graceful fallback when the destination is locked (e.g. Agent running `terrain.exe`)
 
 use std::fs;
+#[cfg(not(unix))]
+use std::io;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::bundled_tools::{bundled_terrain_cli, bundled_rtk, ensure_bundled_tools_initialized};
 use crate::error::{CoreError, Result};
@@ -16,7 +22,11 @@ use crate::platform::agent_tool_filename;
 
 const CODEGRAPH_RUNTIME_NAME: &str = "codegraph-runtime";
 
-/// When `force` is false, keep existing valid deployments; only fill gaps.
+#[cfg(windows)]
+const CODEGRAPH_WRAPPER_CMD: &str =
+    "@\"%~dp0..\\tools\\codegraph-runtime\\bin\\codegraph.cmd\" %*\n";
+
+/// When `force` is false, keep existing valid deployments; only fill gaps or stale copies.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DeployOptions {
     pub force: bool,
@@ -31,6 +41,17 @@ pub struct AgentToolPaths {
     pub terrain: Option<String>,
     pub codegraph_runtime: Option<String>,
 }
+
+/// Shared file stats helper (also used in cross-platform tests).
+#[cfg(any(test, not(unix)))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+struct FileFingerprint {
+    size: u64,
+    modified_ms: u128,
+}
+
+#[cfg(not(unix))]
+type SourceFingerprint = FileFingerprint;
 
 pub fn agent_bin_dir() -> PathBuf {
     user_home()
@@ -64,13 +85,13 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
 
     if let Some(src) = bundled_rtk() {
         let dest = bin_dir.join(agent_tool_filename("rtk"));
-        symlink_ensure(&dest, &src, opts.force)?;
+        materialize_ensure("rtk", &dest, &src, opts.force)?;
         paths.rtk = Some(dest.display().to_string());
     }
 
     if let Some(src) = bundled_terrain_cli() {
         let dest = bin_dir.join(agent_tool_filename("terrain"));
-        symlink_ensure(&dest, &src, opts.force)?;
+        materialize_ensure("terrain", &dest, &src, opts.force)?;
         paths.terrain = Some(dest.display().to_string());
     }
 
@@ -81,24 +102,15 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
                 .parent()
                 .unwrap_or(Path::new(".")),
         )?;
-        symlink_ensure(&runtime_dest, &runtime_src, opts.force)?;
+        materialize_ensure("codegraph-runtime", &runtime_dest, &runtime_src, opts.force)?;
 
         let codegraph_bin = find_codegraph_bin(&runtime_dest);
         if let Some(codegraph_src) = codegraph_bin {
             #[cfg(windows)]
             {
-                // Copying the bundled .cmd to ~/.terrain/bin/ breaks its relative paths
-                // (`%~dp0..\node.exe`). Instead, write a tiny wrapper that delegates to the
-                // runtime copy under ~/.terrain/tools/codegraph-runtime/.
                 let _ = codegraph_src;
                 let wrapper = bin_dir.join("codegraph.cmd");
-                let wrapper_content = "@\"%~dp0..\\tools\\codegraph-runtime\\bin\\codegraph.cmd\" %*\n";
-                fs::write(&wrapper, wrapper_content).map_err(|e| {
-                    CoreError::InvalidDoc(format!(
-                        "write codegraph wrapper {}: {e}",
-                        wrapper.display()
-                    ))
-                })?;
+                write_codegraph_wrapper(&wrapper, opts.force)?;
                 paths.codegraph = Some(wrapper.display().to_string());
             }
             #[cfg(not(windows))]
@@ -108,7 +120,7 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
                     .map(|n| n.to_owned())
                     .unwrap_or_else(|| std::ffi::OsString::from(agent_tool_filename("codegraph")));
                 let dest = bin_dir.join(dest_name);
-                symlink_ensure(&dest, &codegraph_src, opts.force)?;
+                materialize_ensure("codegraph", &dest, &codegraph_src, opts.force)?;
                 paths.codegraph = Some(dest.display().to_string());
             }
             paths.codegraph_runtime = Some(runtime_dest.display().to_string());
@@ -205,28 +217,157 @@ fn find_codegraph_bin(runtime_dest: &Path) -> Option<PathBuf> {
     None
 }
 
-fn symlink_ensure(link: &Path, target: &Path, force: bool) -> Result<()> {
-    if !force && link_is_valid(link, target) {
-        return Ok(());
+#[cfg(windows)]
+fn write_codegraph_wrapper(wrapper: &Path, force: bool) -> Result<()> {
+    if !force {
+        if let Ok(existing) = fs::read_to_string(wrapper) {
+            if existing == CODEGRAPH_WRAPPER_CMD {
+                return Ok(());
+            }
+        }
     }
-    symlink_replace(link, target)
+    fs::write(wrapper, CODEGRAPH_WRAPPER_CMD).map_err(|e| {
+        CoreError::InvalidDoc(format!(
+            "write codegraph wrapper {}: {e}",
+            wrapper.display()
+        ))
+    })
 }
 
-fn link_is_valid(link: &Path, expected_target: &Path) -> bool {
-    let Ok(meta) = link.symlink_metadata() else {
-        return false;
+/// Deploy or refresh `dest` from bundled `source`.
+fn materialize_ensure(key: &str, dest: &Path, source: &Path, force: bool) -> Result<()> {
+    if !force && deployment_is_current(key, dest, source)? {
+        return Ok(());
+    }
+
+    #[cfg(unix)]
+    {
+        symlink_replace(dest, source)?;
+        return Ok(());
+    }
+
+    #[cfg(not(unix))]
+    {
+        if source.is_dir() {
+            materialize_dir(key, dest, source)
+        } else {
+            materialize_file(key, dest, source)
+        }
+    }
+}
+
+#[cfg(unix)]
+fn deployment_is_current(_key: &str, dest: &Path, source: &Path) -> Result<bool> {
+    let Ok(meta) = dest.symlink_metadata() else {
+        return Ok(false);
     };
     if !meta.file_type().is_symlink() {
-        return link.is_file() && paths_equal(link, expected_target);
+        return Ok(false);
     }
-    let Ok(actual) = fs::read_link(link) else {
-        return false;
+    let Ok(actual) = fs::read_link(dest) else {
+        return Ok(false);
     };
-    if !actual.is_absolute() {
-        let resolved = link.parent().map(|p| p.join(&actual));
-        return resolved.is_some_and(|p| paths_equal(&p, expected_target));
+    let resolved = if actual.is_absolute() {
+        actual
+    } else {
+        dest.parent()
+            .map(|p| p.join(&actual))
+            .unwrap_or(actual)
+    };
+    Ok(paths_equal(&resolved, source))
+}
+
+#[cfg(not(unix))]
+fn deployment_is_current(key: &str, dest: &Path, source: &Path) -> Result<bool> {
+    if !dest_exists_for_source(source, dest) {
+        return Ok(false);
     }
-    paths_equal(&actual, expected_target)
+    let Some(stored) = read_deploy_marker(key, dest)? else {
+        return Ok(false);
+    };
+    Ok(stored == source_fingerprint(source)?)
+}
+
+#[cfg(not(unix))]
+fn dest_exists_for_source(source: &Path, dest: &Path) -> bool {
+    if source.is_dir() {
+        dest.is_dir() && node_executable_exists(dest)
+    } else {
+        dest.is_file()
+    }
+}
+
+#[cfg(not(unix))]
+fn materialize_file(key: &str, dest: &Path, source: &Path) -> Result<()> {
+    let temp = temp_sibling_path(dest);
+    if let Err(e) = fs::copy(source, &temp) {
+        let _ = fs::remove_file(&temp);
+        return Err(io_error("copy bundled tool to staging file", &temp, e));
+    }
+
+    match replace_path(&temp, dest) {
+        Ok(()) => {
+            let _ = fs::remove_file(&temp);
+            record_deploy_state(key, dest, source)?;
+            Ok(())
+        }
+        Err(e) if dest.is_file() && is_destination_locked(&e) => {
+            let _ = fs::remove_file(&temp);
+            // Keep the existing deployment; Agent may be running the binary.
+            Ok(())
+        }
+        Err(e) => {
+            let _ = fs::remove_file(&temp);
+            Err(io_error("replace bundled tool", dest, e))
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn materialize_dir(key: &str, dest: &Path, source: &Path) -> Result<()> {
+    let parent = dest
+        .parent()
+        .ok_or_else(|| CoreError::InvalidDoc(format!("invalid deploy dir {}", dest.display())))?;
+    let staging = parent.join(format!(
+        "{}.staging",
+        dest.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("runtime")
+    ));
+
+    if staging.exists() {
+        let _ = fs::remove_dir_all(&staging);
+    }
+    copy_dir_recursive(source, &staging)?;
+
+    match replace_path(&staging, dest) {
+        Ok(()) => {
+            record_deploy_state(key, dest, source)?;
+            Ok(())
+        }
+        Err(e) if dest.is_dir() && is_destination_locked(&e) => {
+            let _ = fs::remove_dir_all(&staging);
+            Ok(())
+        }
+        Err(e) => {
+            let _ = fs::remove_dir_all(&staging);
+            Err(io_error("replace bundled runtime dir", dest, e))
+        }
+    }
+}
+
+#[cfg(unix)]
+fn symlink_replace(link: &Path, target: &Path) -> Result<()> {
+    if link.symlink_metadata().is_ok() {
+        fs::remove_file(link).or_else(|_| fs::remove_dir_all(link))?;
+    }
+    std::os::unix::fs::symlink(target, link).map_err(|e| {
+        CoreError::InvalidDoc(format!(
+            "symlink {} -> {}: {e}",
+            link.display(),
+            target.display()
+        ))
+    })
 }
 
 fn paths_equal(a: &Path, b: &Path) -> bool {
@@ -236,33 +377,122 @@ fn paths_equal(a: &Path, b: &Path) -> bool {
     }
 }
 
-fn symlink_replace(link: &Path, target: &Path) -> Result<()> {
-    if link.symlink_metadata().is_ok() {
-        fs::remove_file(link).or_else(|_| fs::remove_dir_all(link))?;
-    }
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(target, link).map_err(|e| {
-        CoreError::InvalidDoc(format!(
-            "symlink {} -> {}: {e}",
-            link.display(),
-            target.display()
-        ))
-    })?;
-    #[cfg(not(unix))]
-    {
-        if target.is_dir() {
-            copy_dir_recursive(target, link)?;
+#[cfg(not(unix))]
+fn temp_sibling_path(dest: &Path) -> PathBuf {
+    let name = dest
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("tool");
+    dest.with_file_name(format!("{name}.deploy-tmp"))
+}
+
+#[cfg(not(unix))]
+fn replace_path(from: &Path, to: &Path) -> io::Result<()> {
+    if to.exists() {
+        if to.is_dir() {
+            fs::remove_dir_all(to)?;
         } else {
-            fs::copy(target, link).map_err(|e| {
-                CoreError::InvalidDoc(format!(
-                    "copy {} -> {}: {e}",
-                    target.display(),
-                    link.display()
-                ))
-            })?;
+            fs::remove_file(to)?;
         }
     }
-    Ok(())
+    fs::rename(from, to)
+}
+
+#[cfg(not(unix))]
+fn is_destination_locked(err: &io::Error) -> bool {
+    #[cfg(windows)]
+    {
+        matches!(err.raw_os_error(), Some(5 | 32))
+    }
+    #[cfg(not(windows))]
+    {
+        matches!(
+            err.kind(),
+            io::ErrorKind::PermissionDenied | io::ErrorKind::ResourceBusy
+        )
+    }
+}
+
+#[cfg(not(unix))]
+fn io_error(action: &str, path: &Path, err: io::Error) -> CoreError {
+    CoreError::InvalidDoc(format!("{action} {}: {err}", path.display()))
+}
+
+#[cfg(not(unix))]
+fn source_fingerprint(path: &Path) -> Result<SourceFingerprint> {
+    if path.is_dir() {
+        runtime_dir_fingerprint(path)
+    } else {
+        file_fingerprint(path)
+    }
+}
+
+#[cfg(any(test, not(unix)))]
+fn file_fingerprint(path: &Path) -> Result<FileFingerprint> {
+    let meta = path
+        .metadata()
+        .map_err(|e| CoreError::InvalidDoc(format!("read bundled tool metadata {}: {e}", path.display())))?;
+    Ok(FileFingerprint {
+        size: meta.len(),
+        modified_ms: file_modified_ms(&meta)?,
+    })
+}
+
+#[cfg(not(unix))]
+fn runtime_dir_fingerprint(runtime: &Path) -> Result<SourceFingerprint> {
+    let node = if runtime.join("node.exe").is_file() {
+        runtime.join("node.exe")
+    } else {
+        runtime.join("node")
+    };
+    let mut fp = file_fingerprint(&node)?;
+    if let Ok(lib_meta) = runtime.join("lib/package.json").metadata() {
+        fp.modified_ms = fp.modified_ms.saturating_add(file_modified_ms(&lib_meta)?);
+    }
+    Ok(fp)
+}
+
+#[cfg(any(test, not(unix)))]
+fn file_modified_ms(meta: &fs::Metadata) -> Result<u128> {
+    meta.modified()
+        .or_else(|_| meta.created())
+        .map_err(|e| CoreError::InvalidDoc(format!("read file time: {e}")))
+        .and_then(|t| {
+            t.duration_since(UNIX_EPOCH)
+                .map_err(|e| CoreError::InvalidDoc(format!("file time before epoch: {e}")))
+                .map(|d| d.as_millis())
+        })
+}
+
+#[cfg(not(unix))]
+fn deploy_marker_path(key: &str, dest: &Path) -> PathBuf {
+    dest.parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(format!(".{key}.terrain-deploy.json"))
+}
+
+#[cfg(not(unix))]
+fn read_deploy_marker(key: &str, dest: &Path) -> Result<Option<SourceFingerprint>> {
+    let path = deploy_marker_path(key, dest);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let raw = fs::read_to_string(&path).map_err(|e| io_error("read deploy marker", &path, e))?;
+    serde_json::from_str(&raw).map_err(|e| {
+        CoreError::InvalidDoc(format!("parse deploy marker {}: {e}", path.display()))
+    })
+}
+
+#[cfg(not(unix))]
+fn record_deploy_state(key: &str, dest: &Path, source: &Path) -> Result<()> {
+    let path = deploy_marker_path(key, dest);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let fp = source_fingerprint(source)?;
+    fs::write(&path, serde_json::to_string_pretty(&fp)?).map_err(|e| {
+        io_error("write deploy marker", &path, e)
+    })
 }
 
 #[cfg(not(unix))]
@@ -275,13 +505,7 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
         if entry.file_type()?.is_dir() {
             copy_dir_recursive(&from, &to)?;
         } else {
-            fs::copy(&from, &to).map_err(|e| {
-                CoreError::InvalidDoc(format!(
-                    "copy {} -> {}: {e}",
-                    from.display(),
-                    to.display()
-                ))
-            })?;
+            fs::copy(&from, &to).map_err(|e| io_error("copy bundled runtime file", &to, e))?;
         }
     }
     Ok(())
@@ -291,10 +515,11 @@ fn user_home() -> Option<PathBuf> {
     crate::platform::user_home()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn agent_bin_dir_under_home() {
@@ -325,18 +550,96 @@ mod tests {
 
     #[test]
     fn codegraph_runtime_detects_node_exe() {
-        // The prebuilt codegraph bundle ships node.exe on Windows and `node` on macOS.
-        // This test verifies the runtime check recognizes both without breaking macOS.
         let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../packages/codegraph/win32-x64");
         let codegraph_cmd = runtime.join("bin/codegraph.cmd");
         if !codegraph_cmd.is_file() {
-            return; // skip if Windows bundle is not staged
+            return;
         }
         assert!(
             node_executable_exists(&runtime),
             "expected node_executable_exists to find node.exe in {}",
             runtime.display()
         );
+    }
+
+    #[test]
+    fn fingerprint_changes_when_source_changes() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("tool.bin");
+        fs::write(&src, b"v1").expect("write");
+        let fp1 = file_fingerprint(&src).expect("fp1");
+        thread::sleep(Duration::from_millis(20));
+        fs::write(&src, b"v2-longer").expect("rewrite");
+        let fp2 = file_fingerprint(&src).expect("fp2");
+        assert_ne!(fp1, fp2);
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn skips_copy_when_fingerprint_matches() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let source = dir.path().join("terrain.exe");
+        let dest = dir.path().join("bin/terrain.exe");
+        fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir");
+        fs::write(&source, b"terrain-binary").expect("write source");
+        materialize_file("terrain", &dest, &source).expect("first deploy");
+        let before = fs::metadata(&dest).expect("meta").len();
+        materialize_file("terrain", &dest, &source).expect("second deploy");
+        let after = fs::metadata(&dest).expect("meta").len();
+        assert_eq!(before, after);
+        assert!(deployment_is_current("terrain", &dest, &source).expect("current"));
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn recopies_when_source_changes() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let source = dir.path().join("terrain.exe");
+        let dest = dir.path().join("bin/terrain.exe");
+        fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir");
+        fs::write(&source, b"v1").expect("write source");
+        materialize_file("terrain", &dest, &source).expect("first deploy");
+        fs::write(&source, b"v2-updated").expect("update source");
+        materialize_file("terrain", &dest, &source).expect("second deploy");
+        let content = fs::read(&dest).expect("read dest");
+        assert_eq!(content, b"v2-updated");
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn keeps_existing_binary_when_replace_blocked() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let source = dir.path().join("terrain.exe");
+        let dest = dir.path().join("bin/terrain.exe");
+        fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir");
+        fs::write(&source, b"old").expect("write source");
+        materialize_file("terrain", &dest, &source).expect("first deploy");
+
+        let locked = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&dest)
+            .expect("open dest");
+        fs::write(&source, b"new").expect("update source");
+        materialize_file("terrain", &dest, &source).expect("deploy while locked");
+        drop(locked);
+
+        let content = fs::read(&dest).expect("read dest");
+        assert_eq!(content, b"old");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_symlink_tracks_source() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let source = dir.path().join("terrain");
+        fs::write(&source, b"terrain").expect("write source");
+        let dest = dir.path().join("bin/terrain");
+        fs::create_dir_all(dest.parent().expect("parent")).expect("mkdir");
+        symlink_replace(&dest, &source).expect("symlink");
+        assert!(deployment_is_current("terrain", &dest, &source).expect("check"));
+        let linked = fs::read_link(&dest).expect("readlink");
+        assert!(paths_equal(&linked, &source));
     }
 }
