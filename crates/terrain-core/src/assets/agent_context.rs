@@ -28,6 +28,34 @@ pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// True when context exists, meets the ready heuristic, and its baseline matches current HEAD.
+pub fn agent_context_fresh(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> bool {
+    if !agent_context_ready(paths, project_slug) {
+        return false;
+    }
+    let git = git_snapshot(repo_path);
+    if !git.is_git_repo || git.dirty {
+        return false;
+    }
+    let ctx_meta =
+        crate::doc::read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)).ok();
+    let pack_meta =
+        crate::doc::read_json::<crate::schema::AgentPackMeta>(paths.agent_pack_meta(project_slug))
+            .ok();
+    let baseline = ctx_meta
+        .as_ref()
+        .and_then(|m| m.baseline_git_head.clone())
+        .or_else(|| pack_meta.and_then(|m| m.baseline_git_head.clone()));
+    match (baseline.as_deref(), git.head.as_deref()) {
+        (Some(baseline), Some(head)) => baseline == head,
+        _ => false,
+    }
+}
+
 pub fn read_agent_context_status(paths: &KnowledgePaths, project_slug: &str) -> AgentContextStatus {
     let path = paths.agent_context_main(project_slug);
     if !path.is_file() {

@@ -589,7 +589,7 @@ pub fn compute_freshness(
     Ok(summary)
 }
 
-/// Return cached freshness when Git HEAD and dirty state match the ledger; otherwise recompute.
+/// Return cached freshness when Git HEAD/dirty and asset timestamps still match the ledger.
 pub fn resolve_freshness_summary(
     paths: &KnowledgePaths,
     project_slug: &str,
@@ -599,7 +599,7 @@ pub fn resolve_freshness_summary(
         .unwrap_or_else(|_| repo_path.to_string());
 
     if let Some(ledger) = read_freshness_ledger(paths, project_slug) {
-        if freshness_ledger_still_valid(&ledger, &repo_path) {
+        if freshness_ledger_still_valid(paths, project_slug, &ledger, &repo_path) {
             return Ok(ledger.summary);
         }
     }
@@ -607,8 +607,13 @@ pub fn resolve_freshness_summary(
     compute_freshness(paths, project_slug, &repo_path)
 }
 
-/// Fast validity check: one `git rev-parse` + porcelain when HEAD matches ledger baseline.
-fn freshness_ledger_still_valid(ledger: &FreshnessLedger, repo_path: &str) -> bool {
+/// Fast validity: HEAD/dirty unchanged and no asset meta newer than the ledger.
+fn freshness_ledger_still_valid(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    ledger: &FreshnessLedger,
+    repo_path: &str,
+) -> bool {
     let repo = Path::new(repo_path);
     if !repo.join(".git").exists() {
         return false;
@@ -622,7 +627,23 @@ fn freshness_ledger_still_valid(ledger: &FreshnessLedger, repo_path: &str) -> bo
     let dirty = git_output(repo, &["status", "--porcelain"])
         .map(|s| working_tree_dirty_excluding_knowledge(&s))
         .unwrap_or(false);
-    ledger.baseline.dirty == dirty
+    if ledger.baseline.dirty != dirty {
+        return false;
+    }
+
+    let ledger_at = &ledger.last_computed_at;
+    if let Ok(pack_meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) {
+        if pack_meta.synced_at.as_str() > ledger_at.as_str() {
+            return false;
+        }
+    }
+    if let Ok(ctx_meta) = read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)) {
+        if ctx_meta.generated_at.as_str() > ledger_at.as_str() {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Format trust rules block for Ask / Agent prompts.

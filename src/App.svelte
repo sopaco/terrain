@@ -135,7 +135,6 @@
       const cached = await readProjectFreshnessCached(slug);
       if (cached && project.selectedSlug === requestSlug && project.projectOverview) {
         project.projectOverview = mergeFreshnessIntoOverview(project.projectOverview, cached);
-        project.freshnessLoading = false;
       }
 
       window.setTimeout(() => {

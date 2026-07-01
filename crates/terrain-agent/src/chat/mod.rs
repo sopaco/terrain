@@ -13,8 +13,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use terrain_core::{
-    agent_pack_ready, normalize_repo_hint, KnowledgePaths, KnowledgeSearch, SearchOptions,
-    SourceCitation, prepare_chat_markdown,
+    agent_context_fresh, agent_pack_fresh, normalize_repo_hint, resolve_project_repo_path,
+    KnowledgePaths, KnowledgeSearch, SearchOptions, SourceCitation, prepare_chat_markdown,
 };
 
 use crate::acp::{
@@ -122,8 +122,14 @@ impl ChatEngine {
         on_usage: impl FnMut(&ChatTokenUsage),
     ) -> Result<ChatReply> {
         if let Some(slug) = project {
-            if !agent_pack_ready(&self.paths, slug)
-                || !terrain_core::agent_context_ready(&self.paths, slug)
+            let repo = resolve_project_repo_path(
+                &self.paths,
+                slug,
+                normalize_repo_hint(repo_path),
+            )
+            .unwrap_or_default();
+            if !agent_pack_fresh(&self.paths, slug, &repo)
+                || !agent_context_fresh(&self.paths, slug, &repo)
             {
                 prepare_agent_assets_for_ask(
                     &self.paths,

@@ -11,7 +11,8 @@ mod sdd;
 mod repomix;
 
 pub use agent_context::{
-    agent_context_ready, build_agent_context_prompt, read_agent_context_status, write_agent_context,
+    agent_context_fresh, agent_context_ready, build_agent_context_prompt, read_agent_context_status,
+    write_agent_context,
 };
 pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{

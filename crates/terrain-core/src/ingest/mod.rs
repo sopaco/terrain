@@ -32,6 +32,8 @@ pub struct AgentPackSummary {
     pub total_files: usize,
     pub total_tokens: usize,
     pub output_path: String,
+    #[serde(default)]
+    pub pack_skipped: bool,
 }
 
 pub struct ProjectScanner {
@@ -81,6 +83,7 @@ impl ProjectScanner {
                 total_files: pack.total_files,
                 total_tokens: pack.total_tokens,
                 output_path: pack.output_path,
+                pack_skipped: pack.skipped,
             })
         };
 

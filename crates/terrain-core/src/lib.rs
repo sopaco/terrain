@@ -25,7 +25,7 @@ pub mod source;
 mod ts_ipc;
 
 pub use assets::{
-    agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
+    agent_context_fresh, agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
     build_generation_plan, build_litho_composition_prompt, build_litho_generation_prompt,
     build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, create_sdd_session,
     delete_sdd_session, default_agent_arch_skill_dir, default_litho_skill_dir, default_sdd_skill_dir,

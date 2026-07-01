@@ -6,7 +6,7 @@ use terrain_agent::{
     LithoProgress, ProjectInitProgress,
 };
 use terrain_core::{
-    agent_context_ready, compute_freshness, get_project_overview, list_stale_registry_projects,
+    agent_context_fresh, agent_context_ready, compute_freshness, get_project_overview, list_stale_registry_projects,
     plan_litho_generation, read_freshness_ledger, resolve_freshness_summary, write_project_remark,
     FreshnessSummary, ProjectOverview, ProjectScanner, ProjectSummary, QuickRefreshResult,
     ScanReport, StaleProjectSummary,
@@ -200,7 +200,9 @@ pub async fn run_quick_refresh_cmd(
         .map_err(|e| e.to_string())?;
 
     let pack_tokens = scan.agent_pack.as_ref().map(|pack| pack.total_tokens);
-    if pack_tokens.is_none() {
+    if scan.agent_pack.as_ref().is_some_and(|p| p.pack_skipped) {
+        notes.push("源码索引：已与当前提交同步，已跳过".into());
+    } else if pack_tokens.is_none() {
         notes.push(
             "源码索引：scan 未执行 repomix 打包（terrain-core 未启用 repomix feature）".into(),
         );
@@ -210,7 +212,7 @@ pub async fn run_quick_refresh_cmd(
     let acp = resolved_acp_settings();
     let model_config = state.get_model_config();
     if agent_execution_ready(&acp, &model_config).is_ok() {
-        if !agent_context_ready(&paths, &slug) {
+        if !agent_context_fresh(&paths, &slug, &repo_path) {
             let engine = if execution_uses_native_llm(&acp) {
                 Some(Arc::new(
                     ChatEngine::new_native(paths.clone(), model_config).map_err(|e| e.to_string())?,
@@ -222,8 +224,8 @@ pub async fn run_quick_refresh_cmd(
                 Ok(_) => agent_context_regenerated = true,
                 Err(e) => notes.push(format!("Agent 知识资产：{e}")),
             }
-        } else {
-            notes.push("Agent 友好的知识资产：基线未变，已跳过".into());
+        } else if agent_context_ready(&paths, &slug) {
+            notes.push("Agent 友好的知识资产：已与当前提交同步，已跳过".into());
         }
     } else if execution_pure_acp(&acp) {
         notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
@@ -231,8 +233,7 @@ pub async fn run_quick_refresh_cmd(
         notes.push("Agent 友好的知识资产：请配置 ACP 代理与 LLM".into());
     }
 
-    let freshness =
-        resolve_freshness_summary(&paths, &slug, &repo_path).map_err(|e| e.to_string())?;
+    let freshness = compute_freshness(&paths, &slug, &repo_path).map_err(|e| e.to_string())?;
 
     Ok(QuickRefreshResult {
         project_slug: slug,
