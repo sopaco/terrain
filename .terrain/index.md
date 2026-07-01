@@ -20,69 +20,74 @@ source: .
 
 ## Structure
 
-  - .agents/
-    - skills/
-  - .gitignore
-  - AGENTS.md
-  - assets/
-    - app-icon.png
-    - banner.png
-    - screenshots/
-  - bun.lock
-  - Cargo.lock
   - Cargo.toml
+  - svelte.config.js
   - crates/
+    - terrain-ts-export/
+    - agent-client-protocol-tokio-patched/
+    - terrain-core/
     - terrain-agent/
     - terrain-cli/
-    - terrain-core/
-    - terrain-ts-export/
-  - docs/
-    - team-platform-technical-design.md
-  - env-catalog/
-    - agent-tools.template.json
-    - agents-md/
-    - catalog.json
-    - skills/
   - index.html
   - LICENSE
-  - npm/
-    - .gitignore
-    - package-lock.json
-    - package.json
-    - packages/
-    - README.md
-    - scripts/
-  - package.json
-  - packages/
-    - codegraph/
-    - rtk/
-    - terrain/
   - preset_skills/
-    - agent-architecture-skill/
-    - agent-context-skill/
     - litho-documents-skill/
     - repomix-context-skill/
     - sdd-workflow-skill/
     - terrain-ask-skill/
+    - agent-architecture-skill/
+    - agent-context-skill/
+  - env-catalog/
+    - agent-tools.template.json
+    - agents-md/
+    - skills/
+    - catalog.json
+  - .agents/
+    - skills/
+  - Cargo.lock
+  - bun.lock
   - README.md
-  - rust-toolchain.toml
+  - .gitignore
+  - package.json
+  - README_zh.md
   - scripts/
     - cross-windows-terrain.sh
+  - packages/
+    - codegraph/
+    - terrain/
+    - rtk/
+  - src-tauri/
+    - Cargo.toml
+    - tauri.conf.json
+    - capabilities/
+    - build.rs
+    - bundled-resources/
+    - gen/
+    - binaries/
+    - icons/
+    - src/
+  - tsconfig.json
+  - .env.example
+  - rust-toolchain.toml
+  - AGENTS.md
+  - vite.config.ts
+  - assets/
+    - screenshots/
+    - graph_knowledge_factory.webp
+    - app-icon.png
+    - banner.webp
+  - npm/
+    - README.md
+    - .gitignore
+    - package-lock.json
+    - package.json
+    - scripts/
+    - packages/
+  - .codegraph/
+    - codegraph.db
+    - .gitignore
   - src/
+    - main.ts
     - app.css
     - App.svelte
     - lib/
-    - main.ts
-  - src-tauri/
-    - binaries/
-    - build.rs
-    - bundled-resources/
-    - capabilities/
-    - Cargo.toml
-    - gen/
-    - icons/
-    - src/
-    - tauri.conf.json
-  - svelte.config.js
-  - tsconfig.json
-  - vite.config.ts
