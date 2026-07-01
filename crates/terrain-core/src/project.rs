@@ -320,7 +320,7 @@ fn apply_freshness_to_asset_health(
 }
 
 fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
-    use crate::assets::summarize_agent_env_light;
+    use crate::assets::{count_knowledge_markdown_files, get_env_status};
     use crate::schema::AgentEnvStatus;
 
     if repo_path.is_empty() {
@@ -334,8 +334,22 @@ fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
     }
 
     let repo = Path::new(repo_path);
-    let knowledge_count = crate::assets::collect_knowledge_dir_inputs(repo).len();
-    summarize_agent_env_light(repo, knowledge_count)
+    let knowledge_count = count_knowledge_markdown_files(repo);
+    let core = repo
+        .join(".agents/skills/terrain-knowledge-skill/SKILL.md")
+        .is_file()
+        && crate::assets::agents_md_ready(repo);
+
+    match get_env_status(repo) {
+        Ok(status) => AgentEnvStatus {
+            ready: core,
+            integrated_count: status.ready_count,
+            total_count: status.total_count,
+            summary: status.summary,
+            detail: format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
+        },
+        Err(_) => crate::assets::summarize_agent_env_light(repo, knowledge_count),
+    }
 }
 
 fn read_overview_excerpt(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {

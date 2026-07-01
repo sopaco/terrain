@@ -541,7 +541,13 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
 
 pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
     match def.id.as_str() {
-        "tool-bun" => command_succeeds("bun", &["--version"], repo),
+        "tool-bun" => {
+            if def.optional {
+                crate::shell_path::command_on_path("bun")
+            } else {
+                command_succeeds("bun", &["--version"], repo)
+            }
+        }
         "tool-rtk" => rtk_runtime_ready(),
         "tool-codegraph" => codegraph_index_ready(repo),
         _ => {
@@ -555,7 +561,7 @@ pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
     }
 }
 
-fn rtk_runtime_ready() -> bool {
+pub(crate) fn rtk_runtime_ready() -> bool {
     let bin_dir = agent_bin_dir();
     for name in ["rtk", "rtk.exe"] {
         if bin_dir.join(name).is_file() {

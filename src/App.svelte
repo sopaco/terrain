@@ -105,12 +105,14 @@
     try {
       const settings = await getModelSettings();
       project.agentExecution = normalizeAgentExecution(settings.acp?.agent_execution);
-      [project.projects, project.staleProjects, project.acpOk, project.llmStatus] = await Promise.all([
+      [project.projects, project.staleProjects, project.llmStatus] = await Promise.all([
         listProjects(),
         listStaleProjects(),
-        checkAcp(),
         checkLlm(),
       ]);
+      void checkAcp().then((ok) => {
+        project.acpOk = ok;
+      });
       if (!project.selectedSlug && project.projects.length > 0) {
         await selectProject(project.projects[0]);
       } else {
@@ -133,18 +135,30 @@
       const cached = await readProjectFreshnessCached(slug);
       if (cached && project.selectedSlug === requestSlug && project.projectOverview) {
         project.projectOverview = mergeFreshnessIntoOverview(project.projectOverview, cached);
-      }
-
-      const freshness = await computeFreshness(slug, repoPath);
-      if (project.selectedSlug === requestSlug && project.projectOverview) {
-        project.projectOverview = mergeFreshnessIntoOverview(project.projectOverview, freshness);
-      }
-    } catch {
-      /* keep cached or empty freshness */
-    } finally {
-      if (project.selectedSlug === requestSlug) {
         project.freshnessLoading = false;
       }
+
+      window.setTimeout(() => {
+        void (async () => {
+          try {
+            const freshness = await computeFreshness(slug, repoPath);
+            if (project.selectedSlug === requestSlug && project.projectOverview) {
+              project.projectOverview = mergeFreshnessIntoOverview(
+                project.projectOverview,
+                freshness,
+              );
+            }
+          } catch {
+            /* keep cached freshness */
+          } finally {
+            if (project.selectedSlug === requestSlug) {
+              project.freshnessLoading = false;
+            }
+          }
+        })();
+      }, 2000);
+    } catch {
+      project.freshnessLoading = false;
     }
   }
 
@@ -777,6 +791,7 @@
   </div>
 
   <div class="flex min-h-0 flex-1 flex-col" class:hidden={project.activeTab !== "sdd"}>
+    {#if project.activeTab === "sdd"}
     <SddWorkflowPanel
       projectSlug={project.selectedSlug}
       repoPath={project.selectedRepoPath}
@@ -785,6 +800,7 @@
       {hybridNativeLlm}
       onStatus={(message, kind) => setStatus(message, kind)}
     />
+    {/if}
   </div>
 
   {#if project.activeTab === "env"}
@@ -800,6 +816,7 @@
   {/if}
 
   <div class="flex min-h-0 flex-1 flex-col" class:hidden={project.activeTab !== "knowledge"}>
+    {#if project.activeTab === "knowledge"}
       <div class="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#14171c]/80 px-4 py-2">
         <input
           id="search-input"
@@ -917,9 +934,11 @@
           />
         </main>
       </div>
+    {/if}
   </div>
 </div>
 
+{#if project.deepWikiOpen}
 <DeepWikiPanel
   open={project.deepWikiOpen}
   projectSlug={project.selectedSlug}
@@ -939,17 +958,9 @@
   }}
   onopenDoc={openDocPath}
 />
+{/if}
 
-<SourceDrawer
-  open={Boolean(knowledgeSourceSlice)}
-  slice={knowledgeSourceSlice}
-  repoPath={project.selectedRepoPath}
-  onclose={() => project.selectedSlug && setKnowledgeSource(project.selectedSlug, null)}
-  onSourceClick={openKnowledgeSourceCitation}
-/>
-
-<HelpPanel open={project.helpOpen} onclose={() => (project.helpOpen = false)} />
-
+{#if project.settingsOpen}
 <SettingsPanel
   open={project.settingsOpen}
   onclose={() => (project.settingsOpen = false)}
@@ -966,3 +977,16 @@
     setStatus(ok ? "设置已保存" : "请检查 ACP 与 LLM 配置", ok ? "success" : "error");
   }}
 />
+{/if}
+
+<SourceDrawer
+  open={Boolean(knowledgeSourceSlice)}
+  slice={knowledgeSourceSlice}
+  repoPath={project.selectedRepoPath}
+  onclose={() => project.selectedSlug && setKnowledgeSource(project.selectedSlug, null)}
+  onSourceClick={openKnowledgeSourceCitation}
+/>
+
+{#if project.helpOpen}
+<HelpPanel open={project.helpOpen} onclose={() => (project.helpOpen = false)} />
+{/if}

@@ -589,6 +589,42 @@ pub fn compute_freshness(
     Ok(summary)
 }
 
+/// Return cached freshness when Git HEAD and dirty state match the ledger; otherwise recompute.
+pub fn resolve_freshness_summary(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> Result<FreshnessSummary> {
+    let repo_path = resolve_project_repo_path(paths, project_slug, Some(repo_path))
+        .unwrap_or_else(|_| repo_path.to_string());
+
+    if let Some(ledger) = read_freshness_ledger(paths, project_slug) {
+        if freshness_ledger_still_valid(&ledger, &repo_path) {
+            return Ok(ledger.summary);
+        }
+    }
+
+    compute_freshness(paths, project_slug, &repo_path)
+}
+
+/// Fast validity check: one `git rev-parse` + porcelain when HEAD matches ledger baseline.
+fn freshness_ledger_still_valid(ledger: &FreshnessLedger, repo_path: &str) -> bool {
+    let repo = Path::new(repo_path);
+    if !repo.join(".git").exists() {
+        return false;
+    }
+    let Some(head) = git_output(repo, &["rev-parse", "HEAD"]) else {
+        return false;
+    };
+    if ledger.baseline.git_head.as_deref() != Some(head.as_str()) {
+        return false;
+    }
+    let dirty = git_output(repo, &["status", "--porcelain"])
+        .map(|s| working_tree_dirty_excluding_knowledge(&s))
+        .unwrap_or(false);
+    ledger.baseline.dirty == dirty
+}
+
 /// Format trust rules block for Ask / Agent prompts.
 pub fn format_freshness_trust_block(summary: &FreshnessSummary) -> String {
     format!(

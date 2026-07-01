@@ -31,7 +31,6 @@ pub fn init_app_bundled_tools(app: &AppHandle) {
     std::thread::spawn(|| {
         match terrain_core::deploy_agent_toolchain_with_options(Default::default()) {
             Ok(paths) => {
-                terrain_core::invalidate_env_status_cache();
                 tracing::info!(
                     bin_dir = %paths.bin_dir,
                     "deployed Terrain agent toolchain for external Coding Agents"

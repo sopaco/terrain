@@ -40,14 +40,21 @@ pub fn read_agent_context_status(paths: &KnowledgePaths, project_slug: &str) -> 
         };
     }
 
-    let excerpt = read_doc(&path).ok().map(|doc| {
-        doc.body.chars().take(600).collect::<String>()
-    });
+    let doc = match read_doc(&path) {
+        Ok(doc) => doc,
+        Err(_) => {
+            return AgentContextStatus {
+                ready: false,
+                path: path.display().to_string(),
+                excerpt: None,
+                generated_at: None,
+                section_count: 0,
+            };
+        }
+    };
 
-    let section_count = read_doc(&path)
-        .ok()
-        .map(|doc| doc.body.matches("\n## ").count())
-        .unwrap_or(0);
+    let excerpt = Some(doc.body.chars().take(600).collect::<String>());
+    let section_count = doc.body.matches("\n## ").count();
 
     let generated_at = std::fs::metadata(&path)
         .ok()

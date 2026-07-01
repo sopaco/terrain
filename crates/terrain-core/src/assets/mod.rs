@@ -33,9 +33,12 @@ pub use litho::{
     plan_litho_generation, LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
 };
 pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
-pub use pack_read::{agent_pack_ready, read_agent_pack_file, AgentPackFileContent};
+pub use pack_read::{
+    agent_pack_ready, read_agent_pack_file, read_pack_text_cached, AgentPackFileContent,
+};
 pub use project_meta::{
-    collect_knowledge_dir_inputs, collect_project_meta, discover_meta_files,
+    collect_knowledge_dir_inputs, collect_project_meta, count_knowledge_markdown_files,
+    discover_meta_files,
     format_meta_bundle_for_prompt, has_repo_meta_configured, meta_inputs_ready,
     meta_inputs_status, persist_meta_inputs, CollectedMetaInput, MetaInputSpec,
     MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile, META_FILENAME,
@@ -49,7 +52,7 @@ pub use sdd::{
 pub use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 
 #[cfg(feature = "repomix")]
-pub use repomix::{pack_agent_assets, AgentPackReport};
+pub use repomix::{agent_pack_fresh, maybe_pack_agent_assets, pack_agent_assets, AgentPackReport};
 
 use crate::paths::KnowledgePaths;
 use crate::schema::LithoPlan;

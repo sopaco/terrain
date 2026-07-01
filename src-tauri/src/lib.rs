@@ -58,7 +58,6 @@ impl AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    terrain_core::augment_path_from_login_shell();
     terrain_agent::load_dotenv();
 
     tracing_subscriber::fmt()

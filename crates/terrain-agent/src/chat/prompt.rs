@@ -1,7 +1,7 @@
 use anyhow::Result;
 use terrain_core::{
-    agent_pack_ready, build_context_overview, compute_freshness, read_agent_context_status,
-    read_freshness_ledger, read_json, resolve_project_repo_path, AgentPackMeta, KnowledgePaths,
+    agent_pack_ready, build_context_overview, read_agent_context_status, read_freshness_ledger,
+    read_json, resolve_freshness_summary, resolve_project_repo_path, AgentPackMeta, KnowledgePaths,
     AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS, MACRO_PRELOAD_THRESHOLD,
 };
 
@@ -51,7 +51,7 @@ pub(crate) fn build_ask_prompt(
     let pack_meta = read_json::<AgentPackMeta>(paths.agent_pack_meta(slug)).ok();
 
     let freshness = if !repo_path.is_empty() {
-        compute_freshness(paths, slug, &repo_path).ok().or_else(|| {
+        resolve_freshness_summary(paths, slug, &repo_path).ok().or_else(|| {
             read_freshness_ledger(paths, slug).map(|l| l.summary)
         })
     } else {

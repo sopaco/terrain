@@ -11,6 +11,7 @@ use crate::acp::{acp_spawn_command, build_acp_config};
 use crate::settings::AcpSettings;
 
 const POLL_INTERVAL_SECS: u64 = 3;
+const POLL_INTERVAL_STABLE_SECS: u64 = 6;
 const STABLE_TICKS: u32 = 10;
 const MAX_COMPOSITION_ATTEMPTS: u32 = 3;
 const DEFAULT_WALL_TIMEOUT_SECS: u64 = 45 * 60;
@@ -111,6 +112,7 @@ async fn prompt_agent_with_doc_poll(
     let mut agent_handle = tokio::spawn(async move { prompt_agent(&config, &prompt).await });
 
     let poll_interval = Duration::from_secs(POLL_INTERVAL_SECS);
+    let poll_interval_stable = Duration::from_secs(POLL_INTERVAL_STABLE_SECS);
     let wall_timeout = litho_wall_timeout();
     let started = Instant::now();
 
@@ -136,7 +138,11 @@ async fn prompt_agent_with_doc_poll(
                 let inner = result.map_err(|e| anyhow::anyhow!("ACP litho task failed: {e}"))?;
                 return inner.map_err(|e| anyhow::anyhow!("ACP litho agent failed: {e}"));
             }
-            _ = tokio::time::sleep(poll_interval) => {
+            _ = tokio::time::sleep(if stable_ticks > 0 {
+                poll_interval_stable
+            } else {
+                poll_interval
+            }) => {
                 let human = count_markdown_in_dir(&human_dir);
                 let research = research_dir
                     .as_ref()

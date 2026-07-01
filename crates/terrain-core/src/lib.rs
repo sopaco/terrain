@@ -34,10 +34,11 @@ pub use assets::{
     get_sdd_status, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
     invalidate_env_status_cache, invalidate_env_status_cache_for_repo,
     litho_human_complete, litho_human_complete_with_research, litho_research_ready,
-    apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready,
+    apply_env_integration, collect_knowledge_dir_inputs, count_knowledge_markdown_files,
+    count_markdown_in_dir, meta_inputs_ready,
     meta_inputs_status, list_sdd_sessions, plan_env_integration, plan_litho_generation,
     plan_sdd_workflow, patch_agents_md, persist_meta_inputs, read_agent_context_status,
-    read_agent_pack_file, resolve_litho_skill_dir, resolve_sdd_session_id, resolve_sdd_skill_dir, save_sdd_output, sdd_phase_output_path, set_active_sdd_session, split_context_sections,
+    read_agent_pack_file, read_pack_text_cached, resolve_litho_skill_dir, resolve_sdd_session_id, resolve_sdd_skill_dir, save_sdd_output, sdd_phase_output_path, set_active_sdd_session, split_context_sections,
     summarize_agent_env_light, write_agent_context,
     LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
     EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
@@ -46,13 +47,14 @@ pub use assets::{
     AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 #[cfg(feature = "repomix")]
-pub use assets::{pack_agent_assets, AgentPackReport};
+pub use assets::{agent_pack_fresh, maybe_pack_agent_assets, pack_agent_assets, AgentPackReport};
 pub use citations::{extract_source_citations, merge_citations};
 pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_doc, render_markdown, write_doc};
 pub use error::{CoreError, Result};
 pub use freshness::{
     compute_freshness, format_freshness_trust_block, git_snapshot, read_freshness_ledger,
-    write_freshness_ledger, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
+    resolve_freshness_summary, write_freshness_ledger, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD,
+    VERIFY_THRESHOLD,
 };
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
 pub use ingest::{AgentPackSummary, ProjectScanner, ScanReport};

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use chrono::Utc;
+use crate::doc::read_json;
 use crate::freshness::git_snapshot;
 use crate::path_portable::stored_repo_path;
 use repomix_core::{OutputStyle, PackOptions, RepomixConfig, pack_with_options};
@@ -9,6 +10,8 @@ use crate::doc::write_json;
 use crate::error::{CoreError, Result};
 use crate::paths::KnowledgePaths;
 use crate::schema::{AgentPackMeta, AssetGenerator};
+
+use super::pack_read::{agent_pack_ready, invalidate_pack_text_cache, write_pack_file_index};
 
 /// Architecture-oriented agent context — not a full code dump.
 pub const AGENT_PACK_STRATEGY: &str = "architecture-context";
@@ -61,6 +64,56 @@ pub struct AgentPackReport {
     pub meta_path: String,
     pub total_files: usize,
     pub total_tokens: usize,
+    pub skipped: bool,
+}
+
+/// True when an existing pack matches current Git HEAD and the working tree is clean (excluding `.terrain/`).
+pub fn agent_pack_fresh(paths: &KnowledgePaths, project_slug: &str, repo_path: &str) -> bool {
+    if !agent_pack_ready(paths, project_slug) {
+        return false;
+    }
+    let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) else {
+        return false;
+    };
+    let git = git_snapshot(repo_path);
+    if !git.is_git_repo {
+        return true;
+    }
+    if git.dirty {
+        return false;
+    }
+    match (&meta.baseline_git_head, &git.head) {
+        (Some(baseline), Some(head)) => baseline == head,
+        _ => false,
+    }
+}
+
+fn report_from_meta(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    meta: &AgentPackMeta,
+) -> AgentPackReport {
+    AgentPackReport {
+        project_slug: project_slug.to_string(),
+        output_path: paths.agent_pack_main(project_slug).display().to_string(),
+        meta_path: paths.agent_pack_meta(project_slug).display().to_string(),
+        total_files: meta.total_files,
+        total_tokens: meta.total_tokens,
+        skipped: true,
+    }
+}
+
+/// Pack only when missing or Git baseline drifted; otherwise return existing meta.
+pub async fn maybe_pack_agent_assets(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> Result<AgentPackReport> {
+    if agent_pack_fresh(paths, project_slug, repo_path) {
+        let meta = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug))?;
+        return Ok(report_from_meta(paths, project_slug, &meta));
+    }
+    pack_agent_assets(paths, project_slug, repo_path).await
 }
 
 pub async fn pack_agent_assets(
@@ -108,6 +161,16 @@ pub async fn pack_agent_assets(
         std::fs::write(&output_path, &content)?;
     }
 
+    let pack_text = if !content.is_empty() {
+        content
+    } else {
+        std::fs::read_to_string(&output_path).unwrap_or_default()
+    };
+    if !pack_text.is_empty() {
+        let _ = write_pack_file_index(&output_path, &pack_text);
+        invalidate_pack_text_cache(&output_path);
+    }
+
     let baseline_git_head = git_snapshot(repo_path).head;
 
     let meta = AgentPackMeta {
@@ -137,5 +200,6 @@ pub async fn pack_agent_assets(
         meta_path: meta_path.display().to_string(),
         total_files: meta.total_files,
         total_tokens: meta.total_tokens,
+        skipped: false,
     })
 }

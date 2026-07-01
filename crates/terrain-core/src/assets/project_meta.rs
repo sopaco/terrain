@@ -20,6 +20,26 @@ const PROMPT_BUNDLE_MAX_CHARS: usize = 10_000;
 const KNOWLEDGE_DIR: &str = "knowledge";
 const KNOWLEDGE_MAX_FILES: usize = 20;
 
+/// Count `.md` files under `.terrain/knowledge/` without reading file contents.
+pub fn count_knowledge_markdown_files(repo: &Path) -> usize {
+    let dir = repo.join(".terrain").join(KNOWLEDGE_DIR);
+    if !dir.is_dir() {
+        return 0;
+    }
+    walkdir::WalkDir::new(&dir)
+        .max_depth(4)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .is_some_and(|ext| ext == "md" || ext == "markdown")
+        })
+        .take(KNOWLEDGE_MAX_FILES)
+        .count()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectMetaFile {
     #[serde(default = "default_version")]

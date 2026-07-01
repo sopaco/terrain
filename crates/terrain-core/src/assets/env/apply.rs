@@ -58,11 +58,16 @@ pub async fn apply_env_integration(
         let force_bundled = reinstall_ids.iter().any(|id| {
             matches!(id.as_str(), "tool-rtk" | "tool-codegraph")
         });
-        let opts = crate::agent_tools_deploy::DeployOptions {
-            force: force_bundled,
-        };
-        if let Ok(paths) = crate::agent_tools_deploy::deploy_agent_toolchain_with_options(opts) {
-            let _ = crate::agent_tools_deploy::write_repo_agent_tools_manifest(repo, &paths);
+        let toolchain_ready = super::status::rtk_runtime_ready()
+            && bundled_codegraph().is_some_and(|p| p.is_file());
+        if force_bundled || !toolchain_ready {
+            let opts = crate::agent_tools_deploy::DeployOptions {
+                force: force_bundled,
+            };
+            if let Ok(paths) = crate::agent_tools_deploy::deploy_agent_toolchain_with_options(opts)
+            {
+                let _ = crate::agent_tools_deploy::write_repo_agent_tools_manifest(repo, &paths);
+            }
         }
     }
 
