@@ -32,7 +32,6 @@ source: .
   - LICENSE
   - preset_skills/
     - litho-documents-skill/
-    - repomix-context-skill/
     - sdd-workflow-skill/
     - terrain-ask-skill/
     - agent-architecture-skill/
@@ -43,6 +42,8 @@ source: .
     - skills/
     - catalog.json
   - .agents/
+    - skills/
+  - .claude/
     - skills/
   - Cargo.lock
   - bun.lock

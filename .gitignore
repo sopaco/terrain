@@ -28,7 +28,7 @@ src-tauri/bundled-resources/
 # Terrain — repomix index (regenerated locally, not versioned)
 .terrain/agent/repomix.md
 
-# Bundled agent binaries (installed to ~/.terrain/bin / ~/.mind-mesh/bin, not versioned)
+# Bundled agent binaries (installed to ~/.terrain/bin /, not versioned)
 packages/codegraph/darwin-arm64/node
 
 # Terrain — per-machine env state (regenerated via env integration / scan)
