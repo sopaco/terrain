@@ -52,9 +52,9 @@ pub use citations::{extract_source_citations, merge_citations};
 pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_doc, render_markdown, write_doc};
 pub use error::{CoreError, Result};
 pub use freshness::{
-    compute_freshness, format_freshness_trust_block, git_snapshot, read_freshness_ledger,
-    resolve_freshness_summary, write_freshness_ledger, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD,
-    VERIFY_THRESHOLD,
+    codegraph_drift, compute_freshness, format_freshness_trust_block, git_snapshot,
+    read_freshness_ledger, resolve_freshness_summary, write_freshness_ledger, CodegraphDriftReport,
+    FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
 };
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
 pub use ingest::{AgentPackSummary, ProjectScanner, ScanReport};

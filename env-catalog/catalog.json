@@ -86,12 +86,12 @@
   "agents_md_blocks": [
     {
       "id": "env-overview",
-      "version": 3,
+      "version": 4,
       "fragment": "agents-md/env-overview.fragment"
     },
     {
       "id": "knowledge-guide",
-      "version": 3,
+      "version": 4,
       "fragment": "agents-md/knowledge-guide.fragment"
     },
     {
@@ -101,7 +101,7 @@
     },
     {
       "id": "tools",
-      "version": 2,
+      "version": 3,
       "fragment": "agents-md/tools.fragment"
     }
   ]

@@ -14,6 +14,9 @@ use crate::bundled_tools::{bundled_codegraph, bundled_rtk, run_bundled_check};
 use crate::error::{CoreError, Result};
 use crate::path_portable::REPO_AGENT_TOOLS_MANIFEST;
 
+/// Skill deployment targets: ACP/OpenCode convention + Claude Code discovery dir.
+pub const SKILL_DEPLOY_DIRS: [&str; 2] = [".agents/skills", ".claude/skills"];
+
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvApplyProgress {
     pub stage: String,
@@ -133,12 +136,18 @@ fn apply_skill(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<Stri
         .as_deref()
         .or(def.preset_skill.as_deref())
         .unwrap_or(&def.id);
-    let dest = repo.join(".agents/skills").join(target_name);
-    if dest.exists() {
-        fs::remove_dir_all(&dest)?;
+    // `.agents/skills` is the ACP/OpenCode convention; `.claude/skills` is what
+    // Claude Code actually scans for Skill discovery. Deploy to both.
+    for base in SKILL_DEPLOY_DIRS {
+        let dest = repo.join(base).join(target_name);
+        if dest.exists() {
+            fs::remove_dir_all(&dest)?;
+        }
+        copy_dir_recursive(&source, &dest)?;
     }
-    copy_dir_recursive(&source, &dest)?;
-    Ok(format!("→ .agents/skills/{target_name}"))
+    Ok(format!(
+        "→ .agents/skills/{target_name} + .claude/skills/{target_name}"
+    ))
 }
 
 async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<String> {
