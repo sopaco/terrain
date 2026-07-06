@@ -102,8 +102,7 @@ Terrain 是面向 AI 编码助手的**工程环境管理平台**：扫描任意 
 | DeepWiki Chat | `crates/terrain-agent/src/chat/` | `ChatEngine`、prompt/tracker |
 | SDD 阶段执行 | `crates/terrain-agent/src/sdd.rs` | `run_sdd_phase` |
 | 知识路径布局 | `crates/terrain-core/src/paths.rs` | `KnowledgePaths` |
-| 项目注册 | `crates/terrain-core/src/registry.rs` | slug 解析、知识根路径 |
-| 新鲜度计算 | `crates/terrain-core/src/freshness.rs` | `compute_freshness`、Codegraph 漂移 |
+| 项目注册与新鲜度 | `crates/terrain-core/src/registry.rs`、`freshness.rs` | slug 解析、新鲜度账本 |
 | 核心类型 Schema | `crates/terrain-core/src/schema.rs` | 30+ 共享类型 |
 | CLI 命令定义 | `crates/terrain-cli/src/cli.rs`、`commands/` | assets/env/knowledge/tools |
 | Tauri IPC 命令 | `src-tauri/src/commands/` | 桌面↔Rust 桥接 |
