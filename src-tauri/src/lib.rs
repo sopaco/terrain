@@ -118,6 +118,8 @@ pub fn run() {
             commands::get_env_status_cmd,
             commands::plan_env_integration_cmd,
             commands::run_env_integration_cmd,
+            commands::usage_probe_cmd,
+            commands::usage_snapshot_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Terrain");

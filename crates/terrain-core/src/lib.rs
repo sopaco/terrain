@@ -21,6 +21,7 @@ pub mod agent_tools_deploy;
 pub mod bundled_tools;
 pub mod shell_path;
 pub mod source;
+pub mod usage;
 #[macro_use]
 mod ts_ipc;
 
@@ -103,4 +104,8 @@ pub use shell_path::{
     augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,
 };
 pub use process::{async_command, command as process_command, hide_console, hide_console_async};
+pub use usage::{
+    load_usage_snapshot, probe_usage_sources, UsageDetailLevel, UsageModelBreakdown,
+    UsagePeriodEntry, UsageProbeResult, UsageSnapshot, UsageSourceStatus, UsageTotals,
+};
 pub use source::{read_source_slice, resolve_source_citation};

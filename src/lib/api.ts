@@ -25,6 +25,9 @@ import type {
   SearchHit,
   SourceSlice,
   StaleProjectSummary,
+  UsageDetailLevel,
+  UsageProbeResult,
+  UsageSnapshot,
 } from "./types";
 
 export const listProjects = () => invoke<ProjectSummary[]>("list_projects");
@@ -205,3 +208,8 @@ export const runEnvIntegration = (
   reinstallIds: string[] = [],
 ) =>
   invoke<EnvApplyResult>("run_env_integration_cmd", { repoPath, selectedIds, reinstallIds });
+
+export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
+
+export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefresh = false) =>
+  invoke<UsageSnapshot>("usage_snapshot_cmd", { detail, forceRefresh });

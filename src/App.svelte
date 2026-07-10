@@ -14,6 +14,7 @@
   import SddWorkflowPanel from "./lib/components/SddWorkflowPanel.svelte";
   import HelpPanel from "./lib/components/HelpPanel.svelte";
   import SettingsPanel from "./lib/components/SettingsPanel.svelte";
+  import UsageMonitor from "./lib/components/UsageMonitor.svelte";
   import StatusBanner from "./lib/components/StatusBanner.svelte";
   import TaskProgressBar from "./lib/components/TaskProgressBar.svelte";
   import type { StatusKind } from "./lib/components/StatusBanner.svelte";
@@ -720,6 +721,7 @@
       {#if showStatusBar}
         <StatusBanner message={status.message} kind={status.kind} detail={status.detail} />
       {/if}
+      <UsageMonitor />
       <button
         type="button"
         class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"

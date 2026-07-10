@@ -20,6 +20,8 @@ pub struct BundledTools {
     pub terrain_cli: Option<PathBuf>,
     /// Shell wrapper (`bin/codegraph`) — requires sibling `node` + `lib/` tree.
     pub codegraph: Option<PathBuf>,
+    /// Token usage CLI (`ccusage`) — optional; falls back to PATH.
+    pub ccusage: Option<PathBuf>,
 }
 
 /// Install bundled tool paths (call once at app / CLI startup).
@@ -32,6 +34,7 @@ pub fn bundled_tools() -> &'static BundledTools {
         rtk: None,
         terrain_cli: None,
         codegraph: None,
+        ccusage: None,
     };
     BUNDLED.get().unwrap_or(&EMPTY)
 }
@@ -49,6 +52,7 @@ pub fn discover_bundled_tools_from_packages() -> BundledTools {
         rtk: find_bundled_binary(&root, "rtk", &platform_dirs),
         terrain_cli: find_bundled_binary(&root, "terrain", &platform_dirs),
         codegraph: find_codegraph_wrapper(&root, &platform_dirs),
+        ccusage: find_bundled_binary(&root, "ccusage", &platform_dirs),
     }
 }
 
@@ -104,6 +108,7 @@ pub fn ensure_bundled_tools_initialized() {
     if discovered.rtk.is_some()
         || discovered.terrain_cli.is_some()
         || discovered.codegraph.is_some()
+        || discovered.ccusage.is_some()
     {
         let _ = BUNDLED.set(discovered);
     }

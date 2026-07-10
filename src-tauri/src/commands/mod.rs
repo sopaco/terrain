@@ -6,6 +6,7 @@ mod payloads;
 mod project;
 mod sdd;
 mod settings;
+mod usage;
 
 use terrain_agent::{
     knowledge_paths_from_env, load_model_settings, resolve_acp_settings, AcpSettings,
@@ -40,3 +41,4 @@ pub use knowledge::*;
 pub use project::*;
 pub use sdd::*;
 pub use settings::*;
+pub use usage::*;

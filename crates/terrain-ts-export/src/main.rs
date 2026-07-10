@@ -67,6 +67,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     terrain_agent::LlmStatus::export_all_to(&out)?;
     terrain_agent::AgentContextGenerationResult::export_all_to(&out)?;
 
+    terrain_core::UsageSnapshot::export_all_to(&out)?;
+    terrain_core::UsageProbeResult::export_all_to(&out)?;
+    terrain_core::UsageDetailLevel::export_all_to(&out)?;
+
     write_barrel_index(&out)?;
     Ok(())
 }
