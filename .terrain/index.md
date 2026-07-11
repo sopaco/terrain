@@ -44,6 +44,7 @@ source: .
   - .agents/
     - skills/
   - .claude/
+    - settings.local.json
     - skills/
   - Cargo.lock
   - bun.lock
@@ -73,6 +74,7 @@ source: .
   - AGENTS.md
   - vite.config.ts
   - assets/
+    - app_icon_re.png
     - screenshots/
     - graph_knowledge_factory.webp
     - app-icon.png
