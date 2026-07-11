@@ -3,4 +3,4 @@ import type { UsagePeriodEntry } from "./UsagePeriodEntry";
 import type { UsageProbeResult } from "./UsageProbeResult";
 import type { UsageTotals } from "./UsageTotals";
 
-export type UsageSnapshot = { probe: UsageProbeResult, today: UsageTotals, week: UsageTotals, month: UsageTotals, daily: Array<UsagePeriodEntry>, sessions: Array<UsagePeriodEntry>, generated_at: number, cached: boolean, error: string | null, };
+export type UsageSnapshot = { probe: UsageProbeResult, today: UsageTotals, week: UsageTotals, month: UsageTotals, daily: Array<UsagePeriodEntry>, monthly: Array<UsagePeriodEntry>, sessions: Array<UsagePeriodEntry>, generated_at: number, cached: boolean, error: string | null, };

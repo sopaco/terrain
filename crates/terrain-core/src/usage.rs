@@ -123,6 +123,7 @@ pub struct UsageSnapshot {
     pub week: UsageTotals,
     pub month: UsageTotals,
     pub daily: Vec<UsagePeriodEntry>,
+    pub monthly: Vec<UsagePeriodEntry>,
     pub sessions: Vec<UsagePeriodEntry>,
     #[cfg_attr(feature = "ts-export", ts(type = "number"))]
     pub generated_at: u64,
@@ -161,11 +162,12 @@ pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> Usa
             week: UsageTotals::default(),
             month: UsageTotals::default(),
             daily: Vec::new(),
+            monthly: Vec::new(),
             sessions: Vec::new(),
             generated_at,
             cached: false,
             error: Some(
-                "未找到 ccusage。请安装 bun 或 Node.js，Terrain 将通过 bunx ccusage / npx ccusage 调用（与官网一致）。"
+                "未检测到用量分析环境。请安装 bun 或 Node.js 后重试。"
                     .into(),
             ),
         };
@@ -178,6 +180,7 @@ pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> Usa
             week: UsageTotals::default(),
             month: UsageTotals::default(),
             daily: Vec::new(),
+            monthly: Vec::new(),
             sessions: Vec::new(),
             generated_at,
             cached: false,
@@ -199,6 +202,7 @@ pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> Usa
             week: UsageTotals::default(),
             month: UsageTotals::default(),
             daily: Vec::new(),
+            monthly: Vec::new(),
             sessions: Vec::new(),
             generated_at,
             cached: false,
@@ -212,8 +216,12 @@ fn build_snapshot(
     detail: UsageDetailLevel,
     generated_at: u64,
 ) -> Result<UsageSnapshot> {
-    let since = since_days_ago(30);
-    let daily_json = run_ccusage_json(&["daily", "--since", &since])?;
+    let daily_since_days = match detail {
+        UsageDetailLevel::Summary => 30,
+        UsageDetailLevel::Full => 400,
+    };
+    let daily_since = since_days_ago(daily_since_days);
+    let daily_json = run_ccusage_json(&["daily", "--since", &daily_since])?;
     let daily_report: CcusageDailyReport = serde_json::from_value(daily_json)
         .map_err(|e| CoreError::Other(format!("ccusage daily JSON: {e}")))?;
 
@@ -236,8 +244,23 @@ fn build_snapshot(
     let week = sum_entries(daily.iter().filter(|e| parse_period_date(&e.period) >= week_start));
     let month = sum_entries(daily.iter().filter(|e| parse_period_date(&e.period) >= month_start));
 
+    let monthly = if detail == UsageDetailLevel::Full {
+        let monthly_since = since_days_ago(365 * 3);
+        let monthly_json = run_ccusage_json(&["monthly", "--since", &monthly_since])?;
+        let monthly_report: CcusageMonthlyReport = serde_json::from_value(monthly_json)
+            .map_err(|e| CoreError::Other(format!("ccusage monthly JSON: {e}")))?;
+        monthly_report
+            .monthly
+            .into_iter()
+            .map(map_entry)
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let session_since = since_days_ago(30);
     let sessions = if detail == UsageDetailLevel::Full {
-        let session_json = run_ccusage_json(&["session", "--since", &since])?;
+        let session_json = run_ccusage_json(&["session", "--since", &session_since])?;
         let session_report: CcusageSessionReport = serde_json::from_value(session_json)
             .map_err(|e| CoreError::Other(format!("ccusage session JSON: {e}")))?;
         session_report
@@ -255,6 +278,7 @@ fn build_snapshot(
         week,
         month,
         daily,
+        monthly,
         sessions,
         generated_at,
         cached: false,
@@ -663,6 +687,12 @@ struct CcusageModelBreakdown {
 #[derive(Debug, Deserialize)]
 struct CcusageDailyReport {
     daily: Vec<CcusageEntry>,
+    totals: CcusageTotals,
+}
+
+#[derive(Debug, Deserialize)]
+struct CcusageMonthlyReport {
+    monthly: Vec<CcusageEntry>,
     totals: CcusageTotals,
 }
 

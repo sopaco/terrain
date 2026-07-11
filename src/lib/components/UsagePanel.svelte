@@ -6,8 +6,12 @@
     usageDisplay,
     type UsageBadgePeriod,
   } from "../stores/usageDisplay.svelte";
-  import type { UsagePeriodEntry, UsageSnapshot, UsageTotals } from "../types";
+  import type { UsagePeriodEntry, UsageSnapshot } from "../types";
+  import UsageBarChart, { type UsageBarPoint } from "./UsageBarChart.svelte";
+  import UsageDetailTable from "./UsageDetailTable.svelte";
   import SlideDrawer from "./SlideDrawer.svelte";
+
+  type ChartPeriod = "day" | "month" | "year";
 
   interface Props {
     open: boolean;
@@ -20,7 +24,8 @@
   let snapshot = $state<UsageSnapshot | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
-  let tab = $state<"daily" | "sessions">("daily");
+  let chartPeriod = $state<ChartPeriod>("day");
+  let chartMetric = $state<"tokens" | "cost">("tokens");
 
   $effect(() => {
     if (open) {
@@ -58,44 +63,106 @@
     return new Date(ms).toLocaleString();
   }
 
-  function totalsCard(label: string, totals: UsageTotals) {
-    return { label, totals };
-  }
-
-  const summaryCards = $derived(
-    snapshot
-      ? [
-          totalsCard("今日", snapshot.today),
-          totalsCard("近 7 天", snapshot.week),
-          totalsCard("本月", snapshot.month),
-        ]
-      : [],
-  );
-
-  const dailyRows = $derived(
-    [...(snapshot?.daily ?? [])].sort((a, b) => b.period.localeCompare(a.period)),
-  );
-
-  const sessionRows = $derived(
-    [...(snapshot?.sessions ?? [])].sort((a, b) => b.total_tokens - a.total_tokens),
-  );
-
-  const activeRows = $derived(tab === "daily" ? dailyRows : sessionRows);
-
-  function rowLabel(row: UsagePeriodEntry): string {
-    return tab === "daily" ? row.period : row.period || row.agent || "会话";
-  }
-
-  function agentsLabel(row: UsagePeriodEntry): string {
-    if (row.agents.length > 0) return row.agents.join(", ");
-    return row.agent ?? "—";
-  }
-
   const badgePeriod = $derived(usageDisplay.badgePeriod);
 
   function selectBadgePeriod(period: UsageBadgePeriod) {
     setUsageBadgePeriod(period);
   }
+
+  function sortByPeriodAsc(rows: UsagePeriodEntry[]): UsagePeriodEntry[] {
+    return [...rows].sort((a, b) => a.period.localeCompare(b.period));
+  }
+
+  function sortByPeriodDesc(rows: UsagePeriodEntry[]): UsagePeriodEntry[] {
+    return [...rows].sort((a, b) => b.period.localeCompare(a.period));
+  }
+
+  function sortByTokensDesc(rows: UsagePeriodEntry[]): UsagePeriodEntry[] {
+    return [...rows].sort((a, b) => b.total_tokens - a.total_tokens);
+  }
+
+  function aggregateYearly(monthly: UsagePeriodEntry[]): UsageBarPoint[] {
+    const byYear = new Map<string, UsageBarPoint>();
+    for (const row of monthly) {
+      const year = row.period.slice(0, 4);
+      if (!/^\d{4}$/.test(year)) continue;
+      const prev = byYear.get(year) ?? { label: year, tokens: 0, cost: 0 };
+      byYear.set(year, {
+        label: year,
+        tokens: prev.tokens + row.total_tokens,
+        cost: prev.cost + row.total_cost_usd,
+      });
+    }
+    return [...byYear.values()].sort((a, b) => a.label.localeCompare(b.label)).slice(-5);
+  }
+
+  function toBarPoints(rows: UsagePeriodEntry[]): UsageBarPoint[] {
+    return rows.map((row) => ({
+      label: row.period,
+      tokens: row.total_tokens,
+      cost: row.total_cost_usd,
+    }));
+  }
+
+  const chartBars = $derived.by((): UsageBarPoint[] => {
+    if (!snapshot) return [];
+    if (chartPeriod === "day") {
+      return toBarPoints(sortByPeriodAsc(snapshot.daily).slice(-30));
+    }
+    if (chartPeriod === "month") {
+      return toBarPoints(sortByPeriodAsc(snapshot.monthly).slice(-12));
+    }
+    return aggregateYearly(snapshot.monthly);
+  });
+
+  const detailConfig = $derived.by(() => {
+    if (chartPeriod === "day") {
+      return {
+        title: "会话明细",
+        labelColumn: "会话",
+        rows: sortByTokensDesc(snapshot?.sessions ?? []),
+        rowLabel: sessionRowLabel,
+        emptyLabel: "近 30 天暂无会话数据",
+      };
+    }
+    if (chartPeriod === "month") {
+      return {
+        title: "按日明细",
+        labelColumn: "日期",
+        rows: sortByPeriodDesc(snapshot?.daily ?? []),
+        rowLabel: (row: UsagePeriodEntry) => row.period,
+        emptyLabel: "暂无按日用量记录",
+      };
+    }
+    return {
+      title: "按月明细",
+      labelColumn: "月份",
+      rows: sortByPeriodDesc(snapshot?.monthly ?? []),
+      rowLabel: (row: UsagePeriodEntry) => row.period,
+      emptyLabel: "暂无按月用量记录",
+    };
+  });
+
+  function sessionRowLabel(row: UsagePeriodEntry): string {
+    if (row.period.length >= 8) return `会话 ${row.period.slice(0, 8)}`;
+    return row.period || "会话";
+  }
+
+  const summaryCards = $derived(
+    snapshot
+      ? [
+          { label: "今日", totals: snapshot.today },
+          { label: "近 7 天", totals: snapshot.week },
+          { label: "本月", totals: snapshot.month },
+        ]
+      : [],
+  );
+
+  const chartPeriodOptions: { id: ChartPeriod; label: string }[] = [
+    { id: "day", label: "按日" },
+    { id: "month", label: "按月" },
+    { id: "year", label: "按年" },
+  ];
 </script>
 
 <SlideDrawer {open} {onclose} ariaLabel="开发者 Token 用量" widthClass="w-[min(92vw,44rem)]">
@@ -106,9 +173,6 @@
       </div>
       <div class="min-w-0">
         <h2 class="text-base font-semibold text-white">开发者 Token 用量</h2>
-        <p class="mt-0.5 text-xs text-white/45">
-          基于 ccusage 读取本地 Agent 日志，数据不上传
-        </p>
       </div>
     </div>
     <div class="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -193,87 +257,72 @@
         <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-white/40">数据来源</h3>
         <ul class="space-y-2">
           {#each snapshot.probe.sources as source}
-            <li class="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span
-                    class="inline-block h-1.5 w-1.5 rounded-full {source.detected ? 'bg-emerald-400' : 'bg-white/20'}"
-                  ></span>
-                  <span class="font-medium text-white/85">{source.label}</span>
-                </div>
-                {#if source.path}
-                  <p class="mt-1 truncate text-white/40" title={source.path}>{source.path}</p>
-                {/if}
+            <li class="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs">
+              <div class="flex min-w-0 items-center gap-2">
+                <span
+                  class="inline-block h-1.5 w-1.5 shrink-0 rounded-full {source.detected ? 'bg-emerald-400' : 'bg-white/20'}"
+                ></span>
+                <span class="font-medium text-white/85">{source.label}</span>
               </div>
-              <span class="shrink-0 text-white/45">
-                {source.detected ? `${source.file_count} 个文件` : "未检测"}
+              <span class="shrink-0 {source.detected ? 'text-emerald-300/80' : 'text-white/40'}">
+                {source.detected ? "已安装" : "未检测到"}
               </span>
             </li>
           {/each}
         </ul>
-        {#if snapshot.probe.ccusage_version}
+        {#if snapshot.generated_at}
           <p class="mt-2 text-[10px] text-white/30">
-            ccusage {snapshot.probe.ccusage_version}
-            {#if snapshot.cached}· 缓存{/if}
-            {#if snapshot.generated_at}· 更新于 {formatTime(snapshot.generated_at)}{/if}
+            {#if snapshot.cached}缓存数据 · {/if}更新于 {formatTime(snapshot.generated_at)}
           </p>
         {/if}
       </section>
 
-      <div class="mb-3 flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
-        <button
-          type="button"
-          class="flex-1 rounded-md px-3 py-1.5 text-xs transition-colors {tab === 'daily' ? 'bg-indigo-600 text-white' : 'text-white/60 hover:bg-white/5'}"
-          onclick={() => (tab = "daily")}
-        >
-          按日
-        </button>
-        <button
-          type="button"
-          class="flex-1 rounded-md px-3 py-1.5 text-xs transition-colors {tab === 'sessions' ? 'bg-indigo-600 text-white' : 'text-white/60 hover:bg-white/5'}"
-          onclick={() => (tab = "sessions")}
-        >
-          按会话
-        </button>
-      </div>
-
-      {#if activeRows.length === 0}
-        <p class="py-6 text-center text-sm text-white/45">
-          {tab === "sessions" ? "暂无会话数据" : "所选时间范围内暂无用量记录"}
-        </p>
-      {:else}
-        <div class="overflow-x-auto rounded-xl border border-white/10">
-          <table class="w-full min-w-[36rem] text-left text-xs">
-            <thead class="border-b border-white/10 bg-white/[0.03] text-white/45">
-              <tr>
-                <th class="px-3 py-2 font-medium">{tab === "daily" ? "日期" : "会话"}</th>
-                <th class="px-3 py-2 font-medium">Agent</th>
-                <th class="px-3 py-2 font-medium text-right">输入</th>
-                <th class="px-3 py-2 font-medium text-right">输出</th>
-                <th class="px-3 py-2 font-medium text-right">Cache</th>
-                <th class="px-3 py-2 font-medium text-right">成本</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each activeRows as row}
-                <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                  <td class="px-3 py-2 text-white/80">{rowLabel(row)}</td>
-                  <td class="px-3 py-2 text-white/55">{agentsLabel(row)}</td>
-                  <td class="px-3 py-2 text-right text-white/70">{formatTokens(row.input_tokens)}</td>
-                  <td class="px-3 py-2 text-right text-white/70">{formatTokens(row.output_tokens)}</td>
-                  <td class="px-3 py-2 text-right text-white/50">
-                    {formatTokens(row.cache_creation_tokens + row.cache_read_tokens)}
-                  </td>
-                  <td class="px-3 py-2 text-right text-indigo-200/90">{formatCost(row.total_cost_usd)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+      <section class="mb-5">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
+            {#each chartPeriodOptions as option}
+              <button
+                type="button"
+                class="rounded-md px-3 py-1.5 text-xs transition-colors {chartPeriod === option.id ? 'bg-indigo-600 text-white' : 'text-white/60 hover:bg-white/5'}"
+                aria-pressed={chartPeriod === option.id}
+                onclick={() => (chartPeriod = option.id)}
+              >
+                {option.label}
+              </button>
+            {/each}
+          </div>
+          <div class="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs transition-colors {chartMetric === 'tokens' ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5'}"
+              aria-pressed={chartMetric === "tokens"}
+              onclick={() => (chartMetric = "tokens")}
+            >
+              Tokens
+            </button>
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs transition-colors {chartMetric === 'cost' ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5'}"
+              aria-pressed={chartMetric === "cost"}
+              onclick={() => (chartMetric = "cost")}
+            >
+              成本
+            </button>
+          </div>
         </div>
-      {/if}
+        <UsageBarChart bars={chartBars} granularity={chartPeriod} metric={chartMetric} />
+      </section>
+
+      <UsageDetailTable
+        title={detailConfig.title}
+        labelColumn={detailConfig.labelColumn}
+        rows={detailConfig.rows}
+        rowLabel={detailConfig.rowLabel}
+        emptyLabel={detailConfig.emptyLabel}
+      />
 
       <p class="mt-4 text-[10px] leading-relaxed text-white/30">
-        成本为基于 LiteLLM 定价的估算值，可能与实际账单有偏差。Cursor IDE 用量不在 ccusage 支持范围内。
+        成本为估算值，可能与实际账单有偏差。Cursor IDE 用量暂不支持统计。
       </p>
     {/if}
   </div>
