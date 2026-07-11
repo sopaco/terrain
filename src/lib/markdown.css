@@ -72,7 +72,7 @@
   padding: 0.75rem 1rem;
   border-left: 3px solid rgba(99, 102, 241, 0.55);
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 0 0.5rem 0.5rem 0;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   color: rgba(255, 255, 255, 0.75);
 }
 
@@ -80,7 +80,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875em;
   padding: 0.15em 0.4em;
-  border-radius: 0.35rem;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.08);
   color: #c4b5fd;
 }
@@ -88,7 +88,7 @@
 .markdown-body pre {
   overflow-x: auto;
   padding: 1rem 1.125rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.35);
 }
@@ -138,13 +138,13 @@
 
 .markdown-body img {
   max-width: 100%;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 
 .markdown-body .mermaid-wrap {
   margin: 1.25rem 0;
   padding: 1rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
   overflow-x: auto;
@@ -165,7 +165,7 @@
 
 .markdown-body .source-ref {
   cursor: pointer;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   background: rgba(99, 102, 241, 0.2);
   padding: 0 0.25rem;
   color: #c7d2fe;
@@ -196,7 +196,7 @@
 
 .markdown-body .mermaid-pending {
   margin: 1.25rem 0;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   border: 1px dashed rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
@@ -222,7 +222,7 @@
 
 .markdown-body .mermaid-fallback {
   margin: 1.25rem 0;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(251, 191, 36, 0.25);
   background: rgba(251, 191, 36, 0.06);
   overflow: hidden;

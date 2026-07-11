@@ -131,7 +131,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-xl);
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
     overflow: hidden;
