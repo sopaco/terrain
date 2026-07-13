@@ -1,4 +1,6 @@
 <script lang="ts">
+    import ChevronIcon from "./icons/ChevronIcon.svelte";
+
     export interface OverviewActionItem {
         id: string;
         priority: number;
@@ -95,7 +97,11 @@
                 aria-expanded={moreOpen}
                 onclick={() => (moreOpen = !moreOpen)}
             >
-                <span class="text-white/30">{moreOpen ? "▾" : "▸"}</span>
+                <ChevronIcon
+                    direction={moreOpen ? "down" : "right"}
+                    size={12}
+                    class="shrink-0 text-white/30"
+                />
                 还有 {secondary.length} 项待处理
             </button>
 

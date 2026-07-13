@@ -1,6 +1,7 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
+  import { Check } from "@lucide/svelte";
   import {
     createSddSession,
     deleteSddSession,
@@ -338,7 +339,11 @@
                       : "bg-white/10 text-white/50"
                   }`}
                 >
-                  {phaseInfo.ready ? "✓" : i + 1}
+                  {#if phaseInfo.ready}
+                    <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+                  {:else}
+                    {i + 1}
+                  {/if}
                 </div>
                 <div class="min-w-0 flex-1">
                   <h3 class="font-medium">{phaseInfo.label}</h3>

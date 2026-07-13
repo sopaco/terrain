@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ToolCallRecord } from "../types";
   import { formatDuration, formatTime } from "../timeFormat";
+  import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   import { TOOL_LABELS, TOOL_STATUS_LABELS } from "../terminology";
 
@@ -70,7 +71,7 @@
       class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-white/[0.03]"
       onclick={() => (panelOpen = !panelOpen)}
     >
-      <span class="text-white/35">{panelOpen ? "▾" : "▸"}</span>
+      <ChevronIcon direction={panelOpen ? "down" : "right"} size={12} class="shrink-0 text-white/35" />
       <span class="font-medium text-white/70">
         {toolCalls.length} tool {toolCalls.length === 1 ? "call" : "calls"}
       </span>
@@ -89,7 +90,9 @@
               class="flex w-full items-start gap-2 px-2.5 py-2 text-left text-xs hover:bg-white/[0.03]"
               onclick={() => toggleItem(call.id)}
             >
-              <span class="mt-0.5 text-white/30">{open ? "▾" : "▸"}</span>
+              <span class="mt-0.5 inline-flex shrink-0 text-white/30">
+                <ChevronIcon direction={open ? "down" : "right"} size={12} />
+              </span>
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-medium text-indigo-200/90">{label(call.name)}</span>

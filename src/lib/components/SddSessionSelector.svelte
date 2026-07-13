@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { Plus, Trash2 } from "@lucide/svelte";
   import type { SddSessionInfo } from "../types";
+  import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
     sessions: SddSessionInfo[];
@@ -90,7 +92,7 @@
         {active?.title ?? "选择或新建需求…"}
       </span>
     </span>
-    <span class="shrink-0 text-white/40">{open ? "▴" : "▾"}</span>
+    <ChevronIcon direction={open ? "up" : "down"} size={14} />
   </button>
 
   {#if open}
@@ -123,14 +125,12 @@
             </button>
             <button
               type="button"
-              class="shrink-0 rounded-lg px-2 text-white/35 hover:bg-red-500/10 hover:text-red-300"
+              class="inline-flex shrink-0 items-center justify-center rounded-lg px-2 text-white/35 hover:bg-red-500/10 hover:text-red-300"
               title="删除此需求及全部产出"
               aria-label={`删除 ${session.title}`}
               onclick={(e) => confirmDelete(session, e)}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-              </svg>
+              <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
             </button>
           </li>
         {:else}
@@ -159,10 +159,11 @@
         {:else}
           <button
             type="button"
-            class="w-full rounded-lg border border-dashed border-white/15 px-3 py-2 text-xs text-indigo-300 hover:border-indigo-500/40 hover:bg-indigo-500/5"
+            class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 px-3 py-2 text-xs text-indigo-300 hover:border-indigo-500/40 hover:bg-indigo-500/5"
             onclick={() => (showCreate = true)}
           >
-            + 新建 SDD 需求
+            <Plus size={12} strokeWidth={2} aria-hidden="true" />
+            新建 SDD 需求
           </button>
         {/if}
       </div>

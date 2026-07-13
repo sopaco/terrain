@@ -9,6 +9,7 @@
     import type { UsagePeriodEntry, UsageSnapshot } from "../types";
     import UsageBarChart, { type UsageBarPoint } from "./UsageBarChart.svelte";
     import UsageDetailTable from "./UsageDetailTable.svelte";
+    import CloseButton from "./icons/CloseButton.svelte";
     import SlideDrawer from "./SlideDrawer.svelte";
 
     type ChartPeriod = "day" | "month" | "year";
@@ -230,14 +231,7 @@
             >
                 {loading ? "刷新中" : "刷新"}
             </button>
-            <button
-                type="button"
-                class="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
-                aria-label="关闭"
-                onclick={onclose}
-            >
-                ✕
-            </button>
+            <CloseButton onclick={onclose} class="px-2.5 py-1.5 text-xs" />
         </div>
     </header>
 

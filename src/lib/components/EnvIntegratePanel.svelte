@@ -5,6 +5,7 @@
   import type { EnvIntegrationStatus, EnvPlan, EnvStatus } from "../types";
   import { TERMS } from "../terminology";
   import EnvPlanPanel from "./EnvPlanPanel.svelte";
+  import HelpButton from "./icons/HelpButton.svelte";
 
   interface Props {
     repoPath: string | null;
@@ -317,15 +318,11 @@
           {applying ? "集成中…" : `集成所选 (${applyCount})`}
         </button>
         {#if canApply}
-          <button
-            type="button"
-            class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 text-xs text-white/45 hover:border-indigo-400/50 hover:text-indigo-200"
-            title="查看执行计划详情"
-            aria-label="执行计划说明"
+          <HelpButton
             onclick={() => (planHelpOpen = true)}
-          >
-            ?
-          </button>
+            title="查看执行计划详情"
+            ariaLabel="执行计划说明"
+          />
         {/if}
       </div>
       {#if progressMessage}

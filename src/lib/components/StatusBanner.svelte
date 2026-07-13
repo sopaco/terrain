@@ -1,6 +1,7 @@
 <script lang="ts">
   export type StatusKind = "idle" | "loading" | "progress" | "success" | "error";
 
+  import { Check, CircleAlert } from "@lucide/svelte";
   import { STATUS_CHIP_LABELS } from "../terminology";
 
   interface Props {
@@ -27,15 +28,15 @@
   class={`status-banner flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${chipStyles[kind]}`}
   title={detail ?? message}
 >
-  <div class="flex shrink-0 items-center gap-1.5 pt-px">
+  <div class="flex shrink-0 items-center gap-1.5">
     {#if kind === "loading" || kind === "progress"}
       <span
         class="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-current border-t-transparent"
       ></span>
     {:else if kind === "success"}
-      <span class="text-[10px]">✓</span>
+      <Check size={12} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
     {:else if kind === "error"}
-      <span class="text-[10px]">!</span>
+      <CircleAlert size={12} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
     {/if}
     <span class="whitespace-nowrap font-medium uppercase tracking-wide opacity-70">{labels[kind]}</span>
   </div>

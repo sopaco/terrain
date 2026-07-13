@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { HumanDocEntry } from "../types";
   import { generateLabel, TERMS, UI_MESSAGES } from "../terminology";
+  import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
     docs: HumanDocEntry[];
@@ -258,8 +259,12 @@
         aria-expanded={isOpen(node.id, fallbackOpen)}
         title={node.id}
       >
-        <span class="w-3 shrink-0 text-center text-[10px] text-white/35">
-          {isOpen(node.id, fallbackOpen) ? "▾" : "▸"}
+        <span class="inline-flex w-3 shrink-0 items-center justify-center text-white/35">
+          <ChevronIcon
+            direction={isOpen(node.id, fallbackOpen) ? "down" : "right"}
+            size={12}
+            class="shrink-0"
+          />
         </span>
         <span
           class={`min-w-0 flex-1 truncate ${

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { BookOpen, Compass } from "@lucide/svelte";
+
   type IconKind = "compass" | "book";
 
   interface Props {
@@ -32,22 +34,6 @@
   }: Props = $props();
 </script>
 
-{#snippet iconSvg(kind: IconKind)}
-  {#if kind === "compass"}
-    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M14.5 9.5 10 14l4.5-4.5Z" fill="currentColor" stroke="none" />
-      <path d="m10 14 1.5 4.5L14.5 14" />
-    </svg>
-  {:else}
-    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-      <path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H18v18H7.5A2.5 2.5 0 0 1 5 18.5V5.5Z" />
-      <path d="M5 5.5A2.5 2.5 0 0 0 7.5 3H18" />
-      <path d="M9 7h6M9 11h6" />
-    </svg>
-  {/if}
-{/snippet}
-
 <div
   class={`flex flex-col p-4 ${
     nested
@@ -62,7 +48,11 @@
       }`}
       aria-hidden="true"
     >
-      {@render iconSvg(icon)}
+      {#if icon === "compass"}
+        <Compass size={20} strokeWidth={1.75} />
+      {:else}
+        <BookOpen size={20} strokeWidth={1.75} />
+      {/if}
     </span>
     <div class="min-w-0 flex-1">
       <div class="flex items-start justify-between gap-2">

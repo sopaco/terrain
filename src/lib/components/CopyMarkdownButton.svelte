@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Check } from "@lucide/svelte";
+
   interface Props {
     copied?: boolean;
     copying?: boolean;
@@ -24,15 +26,7 @@
   {onclick}
 >
   {#if copied}
-    <svg class="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3.5 8.5L6.5 11.5L12.5 4.5"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
+    <Check size={12} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
     已复制
   {:else if copying}
     <span

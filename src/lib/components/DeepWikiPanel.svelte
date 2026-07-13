@@ -1,6 +1,7 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
+  import { Check } from "@lucide/svelte";
   import { askKnowledge, readDocument } from "../api";
   import { parseAskSlashCommand } from "../askSlashCommands";
   import {
@@ -584,15 +585,7 @@
             : 'border-red-400/35 bg-red-500/20 text-red-100'}"
         >
           {#if copyToast.ok}
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M3.5 8.5L6.5 11.5L12.5 4.5"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <Check size={16} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
           {/if}
           {copyToast.text}
         </div>

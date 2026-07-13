@@ -1,5 +1,6 @@
 <script lang="ts">
   import { GLOSSARY } from "../glossary";
+  import CloseButton from "./icons/CloseButton.svelte";
   import ModalShell from "./ModalShell.svelte";
 
   interface Props {
@@ -16,14 +17,7 @@
       <h2 id="help-title" class="text-base font-semibold text-white/95">术语说明</h2>
       <p class="mt-0.5 text-xs text-white/45">Terrain 常用概念速查</p>
     </div>
-    <button
-      type="button"
-      class="rounded-lg border border-white/10 px-2.5 py-1 text-sm text-white/60 hover:bg-white/5"
-      onclick={onclose}
-      aria-label="关闭"
-    >
-      ✕
-    </button>
+    <CloseButton onclick={onclose} class="py-1 text-sm" />
   </header>
   <div class="flex-1 overflow-y-auto px-5 py-4">
     <dl class="space-y-4">

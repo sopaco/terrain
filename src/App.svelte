@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { Check, CircleX, Folder, Settings } from "@lucide/svelte";
     import { open } from "@tauri-apps/plugin-dialog";
     import { listen } from "@tauri-apps/api/event";
     import AskBar from "./lib/components/AskBar.svelte";
@@ -13,6 +14,7 @@
     import ProjectSelector from "./lib/components/ProjectSelector.svelte";
     import SddWorkflowPanel from "./lib/components/SddWorkflowPanel.svelte";
     import HelpPanel from "./lib/components/HelpPanel.svelte";
+    import HelpButton from "./lib/components/icons/HelpButton.svelte";
     import SettingsPanel from "./lib/components/SettingsPanel.svelte";
     import UsageMonitor from "./lib/components/UsageMonitor.svelte";
     import StatusBanner from "./lib/components/StatusBanner.svelte";
@@ -859,23 +861,21 @@
                 />
             {/if}
             <UsageMonitor />
-            <button
-                type="button"
-                class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
-                title="术语说明"
-                aria-label="术语说明"
+            <HelpButton
                 onclick={() => (project.helpOpen = true)}
-            >
-                ?
-            </button>
+                title="术语说明"
+                ariaLabel="术语说明"
+                variant="toolbar"
+            />
             <button
                 type="button"
-                class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
                 title="设置"
                 aria-label="Settings"
                 onclick={() => (project.settingsOpen = true)}
             >
-                ⚙ 设置
+                <Settings size={14} strokeWidth={2} aria-hidden="true" />
+                设置
             </button>
         </div>
     </header>
@@ -1037,21 +1037,63 @@
                         class="mt-auto border-t border-white/10 px-3 py-2 text-[10px] text-white/35"
                     >
                         <div
-                            class="truncate"
+                            class="flex items-center gap-1 truncate"
                             title={project.knowledgeRoot ||
                                 project.selectedRepoPath ||
                                 "—"}
                         >
-                            📁 {project.knowledgeRoot ||
-                                (project.selectedRepoPath
-                                    ? `${project.selectedRepoPath}/.terrain`
-                                    : "—")}
+                            <Folder
+                                size={10}
+                                strokeWidth={2}
+                                class="shrink-0 text-white/35"
+                                aria-hidden="true"
+                            />
+                            <span class="truncate">
+                                {project.knowledgeRoot ||
+                                    (project.selectedRepoPath
+                                        ? `${project.selectedRepoPath}/.terrain`
+                                        : "—")}
+                            </span>
                         </div>
-                        <div class="mt-1">
-                            ACP {project.acpOk ? "✓" : "✗"}{#if hybridNativeLlm}
-                                · LLM {project.llmStatus?.ready
-                                    ? "✓"
-                                    : "✗"}{/if}
+                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span class="inline-flex items-center gap-1">
+                                ACP
+                                {#if project.acpOk}
+                                    <Check
+                                        size={10}
+                                        strokeWidth={2.5}
+                                        class="text-emerald-400"
+                                        aria-hidden="true"
+                                    />
+                                {:else}
+                                    <CircleX
+                                        size={10}
+                                        strokeWidth={2.5}
+                                        class="text-rose-400"
+                                        aria-hidden="true"
+                                    />
+                                {/if}
+                            </span>
+                            {#if hybridNativeLlm}
+                                <span class="inline-flex items-center gap-1">
+                                    LLM
+                                    {#if project.llmStatus?.ready}
+                                        <Check
+                                            size={10}
+                                            strokeWidth={2.5}
+                                            class="text-emerald-400"
+                                            aria-hidden="true"
+                                        />
+                                    {:else}
+                                        <CircleX
+                                            size={10}
+                                            strokeWidth={2.5}
+                                            class="text-rose-400"
+                                            aria-hidden="true"
+                                        />
+                                    {/if}
+                                </span>
+                            {/if}
                         </div>
                     </div>
                 </aside>

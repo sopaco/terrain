@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ChevronDown } from "@lucide/svelte";
   import type { TocHeading } from "../markdownToc";
 
   interface Props {
@@ -80,18 +81,12 @@
     >
       <span class="article-toc-title">本页目录</span>
       <span class="article-toc-count">{headings.length}</span>
-      <svg
-        class={`article-toc-chevron ${expanded ? "expanded" : ""}`}
-        viewBox="0 0 20 20"
-        fill="currentColor"
+      <ChevronDown
+        size={16}
+        strokeWidth={2}
+        class={`article-toc-chevron shrink-0 text-white/45 ${expanded ? "expanded" : ""}`}
         aria-hidden="true"
-      >
-        <path
-          fill-rule="evenodd"
-          d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-          clip-rule="evenodd"
-        />
-      </svg>
+      />
     </button>
 
     {#if expanded}
@@ -173,11 +168,7 @@
   }
 
   .article-toc-chevron {
-    width: 1rem;
-    height: 1rem;
-    color: rgba(255, 255, 255, 0.45);
     transition: transform 0.2s ease;
-    flex-shrink: 0;
   }
 
   .article-toc-chevron.expanded {

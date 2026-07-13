@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { EnvPlan } from "../types";
+  import CloseButton from "./icons/CloseButton.svelte";
   import ModalShell from "./ModalShell.svelte";
 
   interface Props {
@@ -27,14 +28,7 @@
         {/if}
       </p>
     </div>
-    <button
-      type="button"
-      class="shrink-0 rounded-lg border border-white/10 px-2.5 py-1 text-sm text-white/60 hover:bg-white/5"
-      onclick={onclose}
-      aria-label="关闭"
-    >
-      ✕
-    </button>
+    <CloseButton onclick={onclose} class="py-1 text-sm" />
   </header>
 
   <div class="flex-1 overflow-y-auto px-5 py-4">

@@ -7,6 +7,8 @@
   } from "./OverviewActionBanner.svelte";
   import OverviewKnowledgeCard from "./OverviewKnowledgeCard.svelte";
   import ReadinessHelpPanel from "./ReadinessHelpPanel.svelte";
+  import ChevronIcon from "./icons/ChevronIcon.svelte";
+  import HelpButton from "./icons/HelpButton.svelte";
 
   interface Props {
     overview: ProjectOverview | null;
@@ -478,18 +480,15 @@
         <div class="space-y-5 rounded-2xl border border-white/8 bg-[#14171c] p-5">
           <div class="grid gap-5 sm:grid-cols-2">
             <div>
-              <div class="flex items-baseline justify-between gap-2">
-                <div class="flex items-center gap-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1">
                   <span class="text-xs text-white/40">就绪度</span>
-                  <button
-                    type="button"
-                    class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/15 text-[10px] text-white/45 hover:border-indigo-400/50 hover:text-indigo-200"
-                    title="查看各项知识资产就绪情况"
-                    aria-label="就绪度说明"
+                  <HelpButton
                     onclick={() => (readinessHelpOpen = true)}
-                  >
-                    ?
-                  </button>
+                    title="查看各项知识资产就绪情况"
+                    ariaLabel="就绪度说明"
+                    size={24}
+                  />
                 </div>
                 <span class="text-2xl font-semibold tabular-nums text-white/90">
                   {readyCount}<span class="text-base font-normal text-white/35">/{assetTotal}</span>
@@ -505,17 +504,14 @@
 
             <div>
               <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-1">
                   <span class="text-xs text-white/40">新鲜度</span>
-                  <button
-                    type="button"
-                    class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/15 text-[10px] text-white/45 hover:border-indigo-400/50 hover:text-indigo-200"
-                    title="了解新鲜度如何计算及本项目的偏离原因"
-                    aria-label="知识新鲜度说明"
+                  <HelpButton
                     onclick={() => (freshnessHelpOpen = true)}
-                  >
-                    ?
-                  </button>
+                    title="了解新鲜度如何计算及本项目的偏离原因"
+                    ariaLabel="知识新鲜度说明"
+                    size={24}
+                  />
                 </div>
                 {#if freshnessLoading && !freshness}
                   <span class="text-xs text-white/35">计算中…</span>
@@ -662,10 +658,14 @@
       {#if overview.repo_path || knowledgePath}
         <details class="group rounded-2xl border border-white/8 bg-[#14171c]">
           <summary
-            class="cursor-pointer list-none px-5 py-3.5 text-sm font-medium text-white/70 marker:content-none [&::-webkit-details-marker]:hidden"
+            class="flex cursor-pointer list-none items-center gap-1.5 px-5 py-3.5 text-sm font-medium text-white/70 marker:content-none [&::-webkit-details-marker]:hidden"
           >
-            <span class="text-white/35 group-open:hidden">▸</span>
-            <span class="hidden text-white/35 group-open:inline">▾</span>
+            <span class="inline-flex shrink-0 text-white/35 group-open:hidden">
+              <ChevronIcon direction="right" size={14} />
+            </span>
+            <span class="hidden shrink-0 text-white/35 group-open:inline-flex">
+              <ChevronIcon direction="down" size={14} />
+            </span>
             路径信息
           </summary>
           <div class="space-y-2 border-t border-white/8 px-5 py-4">
