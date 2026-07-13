@@ -820,7 +820,7 @@
     >
         <div class="flex min-w-0 shrink items-center gap-3">
             <div class="shrink-0">
-                <h1 class="text-base font-semibold tracking-tight">Terrain</h1>
+                <h1 class="text-base font-semibold tracking-tight">项目</h1>
             </div>
 
             <ProjectSelector
@@ -1055,7 +1055,9 @@
                                         : "—")}
                             </span>
                         </div>
-                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <div
+                            class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5"
+                        >
                             <span class="inline-flex items-center gap-1">
                                 ACP
                                 {#if project.acpOk}
