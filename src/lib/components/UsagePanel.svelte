@@ -18,9 +18,16 @@
         open: boolean;
         onclose: () => void;
         initialSnapshot?: UsageSnapshot | null;
+        /** 独立窗口模式：不使用 SlideDrawer，占满整窗 */
+        standalone?: boolean;
     }
 
-    let { open, onclose, initialSnapshot = null }: Props = $props();
+    let {
+        open,
+        onclose,
+        initialSnapshot = null,
+        standalone = false,
+    }: Props = $props();
 
     let snapshot = $state<UsageSnapshot | null>(null);
     let loading = $state(false);
@@ -29,7 +36,7 @@
     let chartMetric = $state<"tokens" | "cost">("tokens");
 
     $effect(() => {
-        if (open) {
+        if (open || standalone) {
             if (initialSnapshot) snapshot = initialSnapshot;
             void refresh(true);
         }
@@ -172,12 +179,7 @@
     ];
 </script>
 
-<SlideDrawer
-    {open}
-    {onclose}
-    ariaLabel="开发者 Token 用量"
-    widthClass="w-[min(92vw,44rem)]"
->
+{#snippet panelBody()}
     <header
         class="flex shrink-0 flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
     >
@@ -231,7 +233,9 @@
             >
                 {loading ? "刷新中" : "刷新"}
             </button>
-            <CloseButton onclick={onclose} class="px-2.5 py-1.5 text-xs" />
+            {#if !standalone}
+                <CloseButton onclick={onclose} class="px-2.5 py-1.5 text-xs" />
+            {/if}
         </div>
     </header>
 
@@ -391,4 +395,22 @@
             </p>
         {/if}
     </div>
-</SlideDrawer>
+{/snippet}
+
+{#if standalone}
+    <div
+        class="flex h-screen flex-col bg-[#10131a] text-white"
+        aria-label="开发者 Token 用量"
+    >
+        {@render panelBody()}
+    </div>
+{:else}
+    <SlideDrawer
+        {open}
+        {onclose}
+        ariaLabel="开发者 Token 用量"
+        widthClass="w-[min(92vw,44rem)]"
+    >
+        {@render panelBody()}
+    </SlideDrawer>
+{/if}

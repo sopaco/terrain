@@ -1,6 +1,7 @@
 mod bundled_tools;
 mod commands;
 mod preset_skills;
+mod tray;
 
 use terrain_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
 use terrain_core::KnowledgePaths;
@@ -73,6 +74,7 @@ pub fn run() {
         .setup(|app| {
             preset_skills::init_app_preset_skills(app.handle());
             bundled_tools::init_app_bundled_tools(app.handle());
+            tray::init(app)?;
             Ok(())
         })
         .manage(state)
@@ -121,6 +123,9 @@ pub fn run() {
             commands::usage_probe_cmd,
             commands::usage_snapshot_cmd,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Terrain");
+        .build(tauri::generate_context!())
+        .expect("error while running Terrain")
+        .run(|app_handle, event| {
+            tray::handle_run_event(app_handle, &event);
+        });
 }
