@@ -53,7 +53,11 @@
         citationToSourceSlice,
         createPendingSourceSlice,
     } from "./lib/resolveSource";
-    import { setStatus, status } from "./lib/stores/status.svelte";
+    import {
+        setStatus,
+        STATUS_AUTO_DISMISS_MS,
+        status,
+    } from "./lib/stores/status.svelte";
     import {
         chatSessions,
         deepWikiSources,
@@ -134,7 +138,12 @@
             } else {
                 await refreshKnowledgeRoot();
             }
-            setStatus(`已索引 ${project.projects.length} 个项目`, "success");
+            setStatus(
+                `已索引 ${project.projects.length} 个项目`,
+                "success",
+                null,
+                STATUS_AUTO_DISMISS_MS,
+            );
         } catch (e) {
             setStatus(String(e), "error");
         }
@@ -282,7 +291,12 @@
                 project.selectedRepoPath = null;
             }
         }
-        setStatus(`项目：${item.name}`, "idle", item.slug);
+        setStatus(
+            `项目：${item.name}`,
+            "idle",
+            item.slug,
+            STATUS_AUTO_DISMISS_MS,
+        );
         void loadHumanDocs(item.slug);
         void loadProjectOverview(item.slug);
         void refreshKnowledgeRoot(item.slug);
@@ -861,12 +875,6 @@
                 />
             {/if}
             <UsageMonitor />
-            <HelpButton
-                onclick={() => (project.helpOpen = true)}
-                title="术语说明"
-                ariaLabel="术语说明"
-                variant="toolbar"
-            />
             <button
                 type="button"
                 class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
@@ -877,6 +885,12 @@
                 <Settings size={14} strokeWidth={2} aria-hidden="true" />
                 设置
             </button>
+            <HelpButton
+                onclick={() => (project.helpOpen = true)}
+                title="术语说明"
+                ariaLabel="术语说明"
+                variant="toolbar"
+            />
         </div>
     </header>
 
