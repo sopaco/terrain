@@ -46,6 +46,7 @@ source: .
   - .claude/
     - settings.local.json
     - skills/
+    - launch.json
   - Cargo.lock
   - bun.lock
   - README.md

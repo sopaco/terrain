@@ -25,8 +25,10 @@
   } from "../types";
   import { formatTime } from "../timeFormat";
   import { assistantMessageMarkdown, assistantStepsMarkdown } from "../assistantMarkdown";
-  import { copyTextToClipboard } from "../clipboard";
+  import { renderAskSharePng, formatUnknownError } from "../askShareImage";
+  import { copyPngBlobToClipboard, copyTextToClipboard } from "../clipboard";
   import { CHAT_PHASE_LABELS, UI_MESSAGES } from "../terminology";
+  import CopyImageButton from "./CopyImageButton.svelte";
   import CopyMarkdownButton from "./CopyMarkdownButton.svelte";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
@@ -83,9 +85,12 @@
   let streamPhase = $state<ChatPhase>("thinking");
   let copyingMarkdownKey = $state<string | null>(null);
   let copiedMarkdownKey = $state<string | null>(null);
+  let copyingImageKey = $state<string | null>(null);
+  let copiedImageKey = $state<string | null>(null);
   let copyToast = $state<{ text: string; ok: boolean } | null>(null);
 
   let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
+  let copiedImageResetTimer: ReturnType<typeof setTimeout> | undefined;
   let copyToastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sourceOpen = $derived(Boolean(sourceSlice));
@@ -208,6 +213,30 @@
     }, 2200);
   }
 
+  function markImageCopied(key: string) {
+    clearTimeout(copiedImageResetTimer);
+    copiedImageKey = key;
+    copiedImageResetTimer = setTimeout(() => {
+      if (copiedImageKey === key) {
+        copiedImageKey = null;
+      }
+    }, 2200);
+  }
+
+  function questionBeforeIndex(index: number): string | null {
+    for (let j = index - 1; j >= 0; j -= 1) {
+      if (messages[j].role === "user") return messages[j].content.trim();
+    }
+    return null;
+  }
+
+  function lastUserQuestion(): string | null {
+    for (let j = messages.length - 1; j >= 0; j -= 1) {
+      if (messages[j].role === "user") return messages[j].content.trim();
+    }
+    return null;
+  }
+
   async function copyMarkdown(key: string, markdown: string) {
     const body = markdown.trim();
     if (!body || copyingMarkdownKey) return;
@@ -218,9 +247,31 @@
       markCopied(key);
       showCopyToast("已复制到剪贴板");
     } catch (e) {
-      showCopyToast(`复制失败：${e}`, false);
+      showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
     } finally {
       copyingMarkdownKey = null;
+    }
+  }
+
+  async function copyImage(key: string, question: string | null, answerMarkdown: string) {
+    const q = question?.trim();
+    const answer = answerMarkdown.trim();
+    if (!q || !answer || copyingImageKey) return;
+
+    copyingImageKey = key;
+    try {
+      const blob = await renderAskSharePng({
+        question: q,
+        answerMarkdown: answer,
+        projectName: projectName ?? projectSlug,
+      });
+      await copyPngBlobToClipboard(blob);
+      markImageCopied(key);
+      showCopyToast("图片已复制到剪贴板");
+    } catch (e) {
+      showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
+    } finally {
+      copyingImageKey = null;
     }
   }
 
@@ -670,11 +721,19 @@
                   {/if}
                   {#if msg.role === "assistant" && assistantMessageMarkdown(msg)}
                     {@const copyKey = `done-${msg.timestamp ?? i}`}
-                    <CopyMarkdownButton
-                      copied={copiedMarkdownKey === copyKey}
-                      copying={copyingMarkdownKey === copyKey}
-                      onclick={() => void copyMarkdown(copyKey, assistantMessageMarkdown(msg))}
-                    />
+                    <div class="flex shrink-0 items-center gap-1.5">
+                      <CopyImageButton
+                        copied={copiedImageKey === copyKey}
+                        copying={copyingImageKey === copyKey}
+                        onclick={() =>
+                          void copyImage(copyKey, questionBeforeIndex(i), assistantMessageMarkdown(msg))}
+                      />
+                      <CopyMarkdownButton
+                        copied={copiedMarkdownKey === copyKey}
+                        copying={copyingMarkdownKey === copyKey}
+                        onclick={() => void copyMarkdown(copyKey, assistantMessageMarkdown(msg))}
+                      />
+                    </div>
                   {/if}
                 </div>
               {/if}
@@ -735,11 +794,23 @@
                     <span></span>
                   {/if}
                   {#if assistantStepsMarkdown(streamSteps)}
-                    <CopyMarkdownButton
-                      copied={copiedMarkdownKey === "streaming"}
-                      copying={copyingMarkdownKey === "streaming"}
-                      onclick={() => void copyMarkdown("streaming", assistantStepsMarkdown(streamSteps))}
-                    />
+                    <div class="flex shrink-0 items-center gap-1.5">
+                      <CopyImageButton
+                        copied={copiedImageKey === "streaming"}
+                        copying={copyingImageKey === "streaming"}
+                        onclick={() =>
+                          void copyImage(
+                            "streaming",
+                            lastUserQuestion(),
+                            assistantStepsMarkdown(streamSteps),
+                          )}
+                      />
+                      <CopyMarkdownButton
+                        copied={copiedMarkdownKey === "streaming"}
+                        copying={copyingMarkdownKey === "streaming"}
+                        onclick={() => void copyMarkdown("streaming", assistantStepsMarkdown(streamSteps))}
+                      />
+                    </div>
                   {/if}
                 </div>
               {/if}
