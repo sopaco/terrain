@@ -42,3 +42,4 @@ packages/codegraph/darwin-arm64/node
 **/.sdd-agent
 
 .codegraph
+.claude/
