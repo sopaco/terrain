@@ -40,11 +40,17 @@ export function setStatus(
   status.message = message;
   status.kind = kind;
   status.detail = detail;
-  if (autoDismissMs != null && autoDismissMs > 0) {
+  const dismissMs =
+    autoDismissMs !== undefined
+      ? autoDismissMs
+      : kind === "success"
+        ? STATUS_AUTO_DISMISS_MS
+        : undefined;
+  if (dismissMs != null && dismissMs > 0) {
     dismissTimer = setTimeout(() => {
       if (generation === dismissGeneration) {
         clearStatus();
       }
-    }, autoDismissMs);
+    }, dismissMs);
   }
 }

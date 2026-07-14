@@ -94,3 +94,4 @@ source: .
     - app.css
     - App.svelte
     - lib/
+    - UsageWindow.svelte

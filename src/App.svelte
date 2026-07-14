@@ -141,8 +141,6 @@
             setStatus(
                 `已索引 ${project.projects.length} 个项目`,
                 "success",
-                null,
-                STATUS_AUTO_DISMISS_MS,
             );
         } catch (e) {
             setStatus(String(e), "error");
