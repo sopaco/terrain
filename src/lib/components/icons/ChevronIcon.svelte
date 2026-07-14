@@ -12,7 +12,7 @@
   let {
     direction = "right",
     size = 14,
-    class: className = "shrink-0 text-white/40",
+    class: className = "shrink-0 text-tr-ink-3",
   }: Props = $props();
 </script>
 

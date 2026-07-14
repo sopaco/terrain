@@ -18,13 +18,13 @@
   ariaLabelledby="env-plan-title"
   dialogClass="max-w-[min(92vw,520px)] max-h-[min(85vh,640px)]"
 >
-  <header class="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+  <header class="flex shrink-0 items-start justify-between gap-3 border-b border-tr-border-strong px-5 py-4">
     <div class="min-w-0">
-      <h2 id="env-plan-title" class="text-base font-semibold text-white/95">执行计划</h2>
-      <p class="mt-0.5 text-xs text-white/45">
+      <h2 id="env-plan-title" class="text-base font-semibold text-tr-ink">执行计划</h2>
+      <p class="mt-0.5 text-xs text-tr-ink-3">
         本次集成将按以下顺序执行
         {#if plan}
-          <span class="font-medium text-white/70">（{plan.steps.length} 步）</span>
+          <span class="font-medium text-tr-ink-2">（{plan.steps.length} 步）</span>
         {/if}
       </p>
     </div>
@@ -35,19 +35,19 @@
     {#if plan && plan.steps.length > 0}
       <ol class="space-y-2">
         {#each plan.steps as step, i}
-          <li class="flex gap-3 text-sm text-white/70">
-            <span class="shrink-0 tabular-nums text-white/35">{i + 1}.</span>
+          <li class="flex gap-3 text-sm text-tr-ink-2">
+            <span class="shrink-0 tabular-nums text-tr-ink-3">{i + 1}.</span>
             <span>{step.action}</span>
           </li>
         {/each}
       </ol>
       {#if plan.skipped.length > 0}
-        <p class="mt-4 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-xs text-white/40">
+        <p class="mt-4 rounded-lg border border-tr-border bg-tr-elevated px-3 py-2 text-xs text-tr-ink-3">
           跳过：{plan.skipped.join("；")}
         </p>
       {/if}
     {:else}
-      <p class="text-sm text-white/45">暂无执行步骤。</p>
+      <p class="text-sm text-tr-ink-3">暂无执行步骤。</p>
     {/if}
   </div>
 </ModalShell>

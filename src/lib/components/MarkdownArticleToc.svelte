@@ -84,7 +84,7 @@
       <ChevronDown
         size={16}
         strokeWidth={2}
-        class={`article-toc-chevron shrink-0 text-white/45 ${expanded ? "expanded" : ""}`}
+        class={`article-toc-chevron shrink-0 text-tr-ink-3 ${expanded ? "expanded" : ""}`}
         aria-hidden="true"
       />
     </button>
@@ -127,8 +127,8 @@
     flex-direction: column;
     min-height: 0;
     border-radius: var(--radius-xl);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--color-tr-border);
+    background: var(--color-tr-elevated);
     overflow: hidden;
   }
 
@@ -139,8 +139,8 @@
     width: 100%;
     padding: 0.625rem 0.75rem;
     border: none;
-    background: rgba(255, 255, 255, 0.02);
-    color: rgba(255, 255, 255, 0.75);
+    background: transparent;
+    color: var(--color-tr-ink-2);
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -149,8 +149,8 @@
   }
 
   .article-toc-header:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.92);
+    background: var(--color-tr-raised);
+    color: var(--color-tr-ink);
   }
 
   .article-toc-title {
@@ -161,8 +161,8 @@
   .article-toc-count {
     font-size: 0.625rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.35);
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-tr-ink-3);
+    background: var(--color-tr-raised);
     border-radius: 9999px;
     padding: 0.1rem 0.4rem;
   }
@@ -196,7 +196,7 @@
     text-align: left;
     border: none;
     background: transparent;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-tr-ink-3);
     font-size: 0.75rem;
     line-height: 1.45;
     padding: 0.3rem 0.75rem 0.3rem calc(0.75rem + var(--indent, 0rem));
@@ -209,13 +209,13 @@
   }
 
   .article-toc-link:hover {
-    color: rgba(255, 255, 255, 0.82);
-    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-tr-ink-2);
+    background: var(--color-tr-raised);
   }
 
   .article-toc-link.active {
-    color: #c7d2fe;
-    border-left-color: #818cf8;
-    background: rgba(99, 102, 241, 0.12);
+    color: var(--color-tr-accent);
+    border-left-color: var(--color-tr-accent);
+    background: var(--color-tr-accent-soft);
   }
 </style>

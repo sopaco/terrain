@@ -48,8 +48,8 @@
 
 <button
   type="button"
-  class="hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-white/5 sm:inline-flex
-    {loading ? 'border-white/10 text-white/40' : hasData ? 'border-indigo-500/35 bg-indigo-500/[0.06] text-indigo-100/90' : 'border-white/10 text-white/50'}"
+  class="hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated sm:inline-flex
+    {loading ? 'border-tr-border-strong text-tr-ink-3' : hasData ? 'border-tr-accent-soft-strong bg-tr-accent-soft text-tr-on-accent' : 'border-tr-border-strong text-tr-ink-3'}"
   title="开发者 Token 用量（{periodLabel}）"
   aria-label="开发者 Token 用量，{periodLabel}"
   disabled={loading && !snapshot}
@@ -58,7 +58,7 @@
   <ChartColumn
     size={14}
     strokeWidth={2}
-    class="shrink-0 {hasData ? 'text-indigo-300/90' : 'text-white/45'}"
+    class="shrink-0 {hasData ? 'text-tr-accent' : 'text-tr-ink-3'}"
     aria-hidden="true"
   />
   {#if loading && !snapshot}

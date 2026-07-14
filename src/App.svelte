@@ -826,15 +826,68 @@
     });
 </script>
 
-<div class="flex h-screen flex-col">
-    <header
-        class="relative z-50 flex shrink-0 items-center gap-3 overflow-x-auto border-b border-white/10 bg-[#14171c] px-4 py-2.5"
+<div class="flex h-screen">
+    <aside
+        class="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-tr-border bg-tr-surface py-3"
     >
-        <div class="flex min-w-0 shrink items-center gap-3">
-            <div class="shrink-0">
-                <h1 class="text-base font-semibold tracking-tight">项目</h1>
-            </div>
+        <div
+            class="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-tr-accent to-tr-page text-tr-on-accent"
+            title="Terrain"
+            aria-hidden="true"
+        >
+            <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                class="h-[18px] w-[18px]"
+                ><path d="M3 19h18L15 6l-3.5 6.5L9 9 3 19z" /></svg
+            >
+        </div>
 
+        <MainNavTabs
+            active={project.activeTab}
+            disabled={!project.selectedSlug && project.projects.length === 0}
+            onchange={(tab) => {
+                project.activeTab = tab;
+                if (
+                    tab === "knowledge" &&
+                    !project.selectedSlug &&
+                    project.projects.length > 0
+                ) {
+                    void selectProject(project.projects[0]);
+                }
+            }}
+        />
+
+        <div class="flex-1"></div>
+
+        <div
+            class="flex flex-col items-center gap-1.5 border-t border-tr-border pt-2"
+        >
+            <button
+                type="button"
+                class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 hover:bg-tr-elevated"
+                title="设置"
+                aria-label="Settings"
+                onclick={() => (project.settingsOpen = true)}
+            >
+                <Settings size={16} strokeWidth={2} aria-hidden="true" />
+            </button>
+            <HelpButton
+                onclick={() => (project.helpOpen = true)}
+                title="术语说明"
+                ariaLabel="术语说明"
+                variant="toolbar"
+                class="!h-9 !w-9"
+            />
+        </div>
+    </aside>
+
+    <div class="flex min-h-0 flex-1 flex-col">
+        <header
+            class="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-tr-border bg-tr-page px-4 py-2"
+        >
             <ProjectSelector
                 projects={project.projects}
                 selectedSlug={project.selectedSlug}
@@ -847,66 +900,33 @@
                 onopenFolder={openProjectFolder}
             />
 
-            <MainNavTabs
-                active={project.activeTab}
-                disabled={!project.selectedSlug &&
-                    project.projects.length === 0}
-                onchange={(tab) => {
-                    project.activeTab = tab;
-                    if (
-                        tab === "knowledge" &&
-                        !project.selectedSlug &&
-                        project.projects.length > 0
-                    ) {
-                        void selectProject(project.projects[0]);
-                    }
-                }}
+            <div class="ml-auto flex shrink-0 items-center gap-2">
+                {#if showStatusBar}
+                    <StatusBanner
+                        message={status.message}
+                        kind={status.kind}
+                        detail={status.detail}
+                    />
+                {/if}
+                <UsageMonitor />
+            </div>
+        </header>
+
+        {#if showTaskProgressBar && project.selectedSlug}
+            <TaskProgressBar
+                projectSlug={project.selectedSlug}
+                stage={project.initBusy ? "初始化" : lithoProgressParts.stage}
+                message={project.initBusy && project.initProgress
+                    ? project.initProgress
+                    : lithoProgressParts.message}
             />
-        </div>
+        {/if}
 
-        <div class="ml-auto flex shrink-0 items-center gap-2">
-            {#if showStatusBar}
-                <StatusBanner
-                    message={status.message}
-                    kind={status.kind}
-                    detail={status.detail}
-                />
-            {/if}
-            <UsageMonitor />
-            <button
-                type="button"
-                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/70 hover:bg-white/5"
-                title="设置"
-                aria-label="Settings"
-                onclick={() => (project.settingsOpen = true)}
-            >
-                <Settings size={14} strokeWidth={2} aria-hidden="true" />
-                设置
-            </button>
-            <HelpButton
-                onclick={() => (project.helpOpen = true)}
-                title="术语说明"
-                ariaLabel="术语说明"
-                variant="toolbar"
-            />
-        </div>
-    </header>
-
-    {#if showTaskProgressBar && project.selectedSlug}
-        <TaskProgressBar
-            projectSlug={project.selectedSlug}
-            stage={project.initBusy ? "初始化" : lithoProgressParts.stage}
-            message={project.initBusy && project.initProgress
-                ? project.initProgress
-                : lithoProgressParts.message}
-        />
-    {/if}
-
-    <div
-        class="flex min-h-0 flex-1 flex-col"
-        class:hidden={project.activeTab !== "overview"}
-    >
-        <ProjectOverviewPanel
+        <div
+            class="flex min-h-0 flex-1 flex-col"
+            class:hidden={project.activeTab !== "overview"}
+        >
+            <ProjectOverviewPanel
             overview={project.projectOverview}
             loading={project.overviewLoading}
             acpOk={project.acpOk}
@@ -987,17 +1007,17 @@
     >
         {#if project.activeTab === "knowledge"}
             <div
-                class="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#14171c]/80 px-4 py-2"
+                class="flex shrink-0 items-center gap-2 border-b border-tr-border-strong bg-tr-surface/80 px-4 py-2"
             >
                 <input
                     id="search-input"
-                    class="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+                    class="min-w-0 flex-1 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-1.5 text-sm outline-none focus:border-tr-accent"
                     placeholder={`搜索${TERMS.knowledgeTab}… (⌘K)`}
                     bind:value={project.query}
                 />
                 <button
                     type="button"
-                    class="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-50"
+                    class="shrink-0 rounded-lg bg-tr-elevated px-3 py-1.5 text-sm hover:bg-tr-raised disabled:opacity-50"
                     disabled={project.docLoading}
                     onclick={runSearch}
                 >
@@ -1005,11 +1025,11 @@
                 </button>
                 {#if project.selectedSlug}
                     <div
-                        class="flex shrink-0 items-center gap-2 border-l border-white/10 pl-3"
+                        class="flex shrink-0 items-center gap-2 border-l border-tr-border-strong pl-3"
                     >
                         <button
                             type="button"
-                            class="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs hover:bg-white/5 disabled:opacity-50"
+                            class="rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs hover:bg-tr-elevated disabled:opacity-50"
                             disabled={repackBusy ||
                                 lithoBusy ||
                                 !project.selectedRepoPath}
@@ -1019,7 +1039,7 @@
                         </button>
                         <button
                             type="button"
-                            class="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs hover:bg-white/5 disabled:opacity-50"
+                            class="rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs hover:bg-tr-elevated disabled:opacity-50"
                             disabled={repackBusy ||
                                 lithoBusy ||
                                 !project.selectedRepoPath ||
@@ -1037,7 +1057,7 @@
 
             <div class="flex min-h-0 flex-1">
                 <aside
-                    class="flex w-60 shrink-0 flex-col border-r border-white/10 bg-[#14171c]"
+                    class="flex w-60 shrink-0 flex-col border-r border-tr-border-strong bg-tr-surface"
                 >
                     <HumanDocTree
                         docs={project.humanDocs}
@@ -1046,7 +1066,7 @@
                         onselect={openHumanDoc}
                     />
                     <div
-                        class="mt-auto border-t border-white/10 px-3 py-2 text-[10px] text-white/35"
+                        class="mt-auto border-t border-tr-border-strong px-3 py-2 text-[10px] text-tr-ink-3"
                     >
                         <div
                             class="flex items-center gap-1 truncate"
@@ -1057,7 +1077,7 @@
                             <Folder
                                 size={10}
                                 strokeWidth={2}
-                                class="shrink-0 text-white/35"
+                                class="shrink-0 text-tr-ink-3"
                                 aria-hidden="true"
                             />
                             <span class="truncate">
@@ -1076,14 +1096,14 @@
                                     <Check
                                         size={10}
                                         strokeWidth={2.5}
-                                        class="text-emerald-400"
+                                        class="text-tr-good"
                                         aria-hidden="true"
                                     />
                                 {:else}
                                     <CircleX
                                         size={10}
                                         strokeWidth={2.5}
-                                        class="text-rose-400"
+                                        class="text-tr-critical"
                                         aria-hidden="true"
                                     />
                                 {/if}
@@ -1095,14 +1115,14 @@
                                         <Check
                                             size={10}
                                             strokeWidth={2.5}
-                                            class="text-emerald-400"
+                                            class="text-tr-good"
                                             aria-hidden="true"
                                         />
                                     {:else}
                                         <CircleX
                                             size={10}
                                             strokeWidth={2.5}
-                                            class="text-rose-400"
+                                            class="text-tr-critical"
                                             aria-hidden="true"
                                         />
                                     {/if}
@@ -1115,10 +1135,10 @@
                 <main class="flex min-w-0 flex-1 flex-col">
                     {#if project.docLoading}
                         <div
-                            class="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-white/40"
+                            class="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-tr-ink-3"
                         >
                             <span
-                                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent"
+                                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
                             ></span>
                             <span>{UI_MESSAGES.loadingDocument}</span>
                         </div>
@@ -1137,14 +1157,14 @@
                                         <li>
                                             <button
                                                 type="button"
-                                                class="mb-2 w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left hover:bg-white/[0.06]"
+                                                class="mb-2 w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-4 py-3 text-left hover:bg-tr-raised"
                                                 onclick={() => openHit(hit)}
                                             >
                                                 <div
                                                     class="flex items-center gap-2"
                                                 >
                                                     <span
-                                                        class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase"
+                                                        class="rounded bg-tr-elevated px-1.5 py-0.5 text-[10px] uppercase"
                                                         >{hit.doc_type}</span
                                                     >
                                                     <span class="font-medium"
@@ -1153,7 +1173,7 @@
                                                     >
                                                 </div>
                                                 <p
-                                                    class="mt-1 text-sm text-white/50"
+                                                    class="mt-1 text-sm text-tr-ink-3"
                                                 >
                                                     {hit.snippet}
                                                 </p>
@@ -1163,9 +1183,9 @@
                                 </ul>
                             {:else}
                                 <div
-                                    class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-white/40"
+                                    class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-tr-ink-3"
                                 >
-                                    <p class="text-lg text-white/60">
+                                    <p class="text-lg text-tr-ink-2">
                                         {project.selectedSlug
                                             ? "从左侧目录选择文档"
                                             : "添加或选择项目以浏览知识资产"}
@@ -1194,6 +1214,7 @@
                 </main>
             </div>
         {/if}
+    </div>
     </div>
 </div>
 

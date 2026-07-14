@@ -80,7 +80,7 @@
   ></div>
 
   <section
-    class="mm-overlay-drawer fixed inset-y-0 flex flex-col border-white/10 bg-[#10131a] shadow-2xl {panelPositionClass} {widthClass} {panelClass}"
+    class="mm-overlay-drawer fixed inset-y-0 flex flex-col border-tr-border-strong bg-tr-page shadow-2xl {panelPositionClass} {widthClass} {panelClass}"
     class:is-presented={presented}
     style:z-index={zPanel}
     aria-label={ariaLabel}

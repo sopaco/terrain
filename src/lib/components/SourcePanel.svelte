@@ -21,19 +21,19 @@
   role="complementary"
   aria-label="Source"
 >
-  <div class="flex items-center justify-between border-b border-white/10 px-3 py-2">
-    <span class="text-xs font-medium uppercase tracking-wide text-white/40">
+  <div class="flex items-center justify-between border-b border-tr-border-strong px-3 py-2">
+    <span class="text-xs font-medium uppercase tracking-wide text-tr-ink-3">
       {slice.format === "markdown" ? "Document" : "Source"}
     </span>
     <button
       type="button"
-      class="text-xs text-white/40 hover:text-white/70"
+      class="text-xs text-tr-ink-3 hover:text-tr-ink-2"
       onclick={onclose}
     >
       关闭
     </button>
   </div>
-  <div class="border-b border-white/10 px-3 py-2 text-xs text-white/50">
+  <div class="border-b border-tr-border-strong px-3 py-2 text-xs text-tr-ink-3">
     <div class="truncate font-mono" title={slice.file_path}>{slice.file_path}</div>
     {#if slice.format !== "markdown"}
       {#if slice.focus_line}
@@ -54,23 +54,23 @@
     >
       <div class="flex items-center gap-3">
         <div
-          class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-indigo-400/30 border-t-indigo-300"
+          class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-tr-accent-soft-strong border-t-tr-accent"
         ></div>
-        <p class="text-sm text-white/60">正在加载…</p>
+        <p class="text-sm text-tr-ink-2">正在加载…</p>
       </div>
       <div class="space-y-2">
         {#each Array.from({ length: 8 }, (_, i) => i) as i (i)}
           <div
-            class="h-3 animate-pulse rounded bg-white/[0.06]"
+            class="h-3 animate-pulse rounded bg-tr-raised"
             style:width="{55 + (i % 4) * 10}%"
           ></div>
         {/each}
       </div>
     </div>
   {:else if errored}
-    <div class="flex-1 overflow-y-auto p-4 text-sm text-red-300/90">
+    <div class="flex-1 overflow-y-auto p-4 text-sm text-tr-critical">
       <p class="font-medium">无法加载源文件</p>
-      <p class="mt-2 whitespace-pre-wrap text-white/50">{slice.content}</p>
+      <p class="mt-2 whitespace-pre-wrap text-tr-ink-3">{slice.content}</p>
     </div>
   {:else if slice.format === "markdown"}
     <div class="flex-1 overflow-y-auto p-4">

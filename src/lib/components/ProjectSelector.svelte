@@ -69,7 +69,7 @@
   <button
     type="button"
     bind:this={triggerEl}
-    class="flex max-w-[220px] items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-left text-sm hover:bg-white/10"
+    class="flex max-w-[220px] items-center gap-2 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-1.5 text-left text-sm hover:bg-tr-elevated"
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="listbox"
@@ -88,7 +88,7 @@
       role="presentation"
     ></div>
     <div
-      class="fixed z-[201] w-80 overflow-hidden rounded-lg border border-white/10 bg-[#1a1e26] shadow-xl"
+      class="fixed z-[201] w-80 overflow-hidden rounded-lg border border-tr-border-strong bg-tr-raised shadow-xl"
       style="top: {menuTop}px; left: {menuLeft}px;"
       role="listbox"
     >
@@ -97,8 +97,8 @@
           <li class="mx-1 flex items-stretch gap-1">
             <button
               type="button"
-              class={`flex min-w-0 flex-1 items-center rounded px-3 py-2 text-left text-sm hover:bg-white/5 ${
-                selectedSlug === project.slug ? "bg-indigo-500/15 text-indigo-100" : ""
+              class={`flex min-w-0 flex-1 items-center rounded px-3 py-2 text-left text-sm hover:bg-tr-elevated ${
+                selectedSlug === project.slug ? "bg-tr-accent-soft-strong text-tr-on-accent" : ""
               }`}
               onclick={() => onselect(project)}
               role="option"
@@ -109,7 +109,7 @@
             {#if project.repo_path && onopenFolder}
               <button
                 type="button"
-                class="inline-flex shrink-0 items-center justify-center rounded px-2 text-white/40 hover:bg-white/5 hover:text-white/80"
+                class="inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink-2"
                 title="打开仓库目录"
                 aria-label={`Open folder for ${project.name}`}
                 onclick={(e) => {
@@ -123,7 +123,7 @@
             {#if onremove}
               <button
                 type="button"
-                class="inline-flex shrink-0 items-center justify-center rounded px-2 text-white/40 hover:bg-red-500/10 hover:text-red-300"
+                class="inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 hover:bg-tr-critical-soft hover:text-tr-critical"
                 title="从列表移除"
                 aria-label={`从列表移除 ${project.name}`}
                 onclick={(e) => confirmRemove(project, e)}
@@ -133,13 +133,13 @@
             {/if}
           </li>
         {:else}
-          <li class="px-3 py-4 text-sm text-white/40">尚无项目，请添加仓库。</li>
+          <li class="px-3 py-4 text-sm text-tr-ink-3">尚无项目，请添加仓库。</li>
         {/each}
       </ul>
-      <div class="border-t border-white/10 p-2">
+      <div class="border-t border-tr-border-strong p-2">
         <button
           type="button"
-          class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+          class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-tr-accent px-3 py-2 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
           disabled={addBusy}
           onclick={onadd}
         >

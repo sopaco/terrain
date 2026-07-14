@@ -11,10 +11,10 @@
 
   const buttonClass = $derived(
     copied
-      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 scale-105"
+      ? "border-tr-good/35 bg-tr-good-soft text-tr-good scale-105"
       : copying
-        ? "cursor-wait border-white/10 bg-white/[0.03] text-white/45 opacity-70"
-        : "border-white/10 bg-white/[0.03] text-white/45 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-200",
+        ? "cursor-wait border-tr-border-strong bg-tr-elevated text-tr-ink-3 opacity-70"
+        : "border-tr-border-strong bg-tr-elevated text-tr-ink-3 hover:border-tr-accent-soft-strong hover:bg-tr-accent-soft hover:text-tr-accent-hover",
   );
 </script>
 
@@ -30,7 +30,7 @@
     已复制
   {:else if copying}
     <span
-      class="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-white/30 border-t-white/80"
+      class="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-tr-border-strong border-t-white/80"
       aria-hidden="true"
     ></span>
     复制中…

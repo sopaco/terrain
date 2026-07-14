@@ -87,21 +87,21 @@
   onclick={(e) => e.target === e.currentTarget && onclose()}
   role="presentation"
 >
-  <header class="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-3">
-    <span class="text-sm font-medium text-white/80">Mermaid 图表</span>
+  <header class="flex shrink-0 items-center gap-2 border-b border-tr-border-strong px-4 py-3">
+    <span class="text-sm font-medium text-tr-ink-2">Mermaid 图表</span>
     <div class="flex-1"></div>
     <button
       type="button"
-      class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5"
+      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated"
       onclick={zoomOut}
       title="缩小 (-)"
     >
       −
     </button>
-    <span class="min-w-[3rem] text-center text-xs text-white/50">{Math.round(scale * 100)}%</span>
+    <span class="min-w-[3rem] text-center text-xs text-tr-ink-3">{Math.round(scale * 100)}%</span>
     <button
       type="button"
-      class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5"
+      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated"
       onclick={zoomIn}
       title="放大 (+)"
     >
@@ -109,7 +109,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5"
+      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated"
       onclick={resetView}
       title="重置视图 (0)"
     >
@@ -117,7 +117,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/5 disabled:opacity-50"
+      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated disabled:opacity-50"
       disabled={copying}
       onclick={copyImage}
     >
@@ -125,7 +125,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+      class="rounded-lg border border-tr-border-strong px-3 py-1 text-xs hover:bg-tr-elevated"
       onclick={onclose}
     >
       关闭
@@ -133,7 +133,7 @@
   </header>
 
   {#if copyStatus}
-    <p class="shrink-0 border-b border-white/5 px-4 py-1.5 text-xs text-white/60">{copyStatus}</p>
+    <p class="shrink-0 border-b border-tr-border px-4 py-1.5 text-xs text-tr-ink-2">{copyStatus}</p>
   {/if}
 
   <div
@@ -153,7 +153,7 @@
     </div>
   </div>
 
-  <p class="shrink-0 border-t border-white/10 px-4 py-2 text-center text-xs text-white/40">
+  <p class="shrink-0 border-t border-tr-border-strong px-4 py-2 text-center text-xs text-tr-ink-3">
     Drag to pan · Scroll to zoom · Esc to close
   </p>
 </div>

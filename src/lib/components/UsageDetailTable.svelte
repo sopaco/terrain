@@ -33,13 +33,13 @@
 </script>
 
 <section>
-  <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-white/40">{title}</h3>
+  <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-tr-ink-3">{title}</h3>
   {#if rows.length === 0}
-    <p class="py-6 text-center text-sm text-white/45">{emptyLabel}</p>
+    <p class="py-6 text-center text-sm text-tr-ink-3">{emptyLabel}</p>
   {:else}
-    <div class="overflow-x-auto rounded-xl border border-white/10">
+    <div class="overflow-x-auto rounded-xl border border-tr-border-strong">
       <table class="w-full min-w-[36rem] text-left text-xs">
-        <thead class="border-b border-white/10 bg-white/[0.03] text-white/45">
+        <thead class="border-b border-tr-border-strong bg-tr-elevated text-tr-ink-3">
           <tr>
             <th class="px-3 py-2 font-medium">{labelColumn}</th>
             <th class="px-3 py-2 font-medium">Agent</th>
@@ -51,15 +51,15 @@
         </thead>
         <tbody>
           {#each rows as row}
-            <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-              <td class="px-3 py-2 text-white/80">{rowLabel(row)}</td>
-              <td class="px-3 py-2 text-white/55">{agentsLabel(row)}</td>
-              <td class="px-3 py-2 text-right text-white/70">{formatTokens(row.input_tokens)}</td>
-              <td class="px-3 py-2 text-right text-white/70">{formatTokens(row.output_tokens)}</td>
-              <td class="px-3 py-2 text-right text-white/50">
+            <tr class="border-b border-tr-border last:border-0 hover:bg-tr-elevated">
+              <td class="px-3 py-2 text-tr-ink-2">{rowLabel(row)}</td>
+              <td class="px-3 py-2 text-tr-ink-2">{agentsLabel(row)}</td>
+              <td class="px-3 py-2 text-right text-tr-ink-2">{formatTokens(row.input_tokens)}</td>
+              <td class="px-3 py-2 text-right text-tr-ink-2">{formatTokens(row.output_tokens)}</td>
+              <td class="px-3 py-2 text-right text-tr-ink-3">
                 {formatTokens(row.cache_creation_tokens + row.cache_read_tokens)}
               </td>
-              <td class="px-3 py-2 text-right text-indigo-200/90">{formatCost(row.total_cost_usd)}</td>
+              <td class="px-3 py-2 text-right text-tr-accent">{formatCost(row.total_cost_usd)}</td>
             </tr>
           {/each}
         </tbody>

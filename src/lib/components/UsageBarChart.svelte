@@ -107,11 +107,11 @@
 </script>
 
 {#if bars.length === 0}
-  <div class="flex h-40 items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] text-sm text-white/40">
+  <div class="flex h-40 items-center justify-center rounded-xl border border-tr-border-strong bg-tr-elevated text-sm text-tr-ink-3">
     {emptyLabel}
   </div>
 {:else}
-  <div class="rounded-xl border border-white/10 bg-white/[0.02] px-3 pb-3 pt-3">
+  <div class="rounded-xl border border-tr-border-strong bg-tr-elevated px-3 pb-3 pt-3">
     <div class="overflow-x-auto">
       <div
         class="flex items-end"
@@ -142,15 +142,15 @@
             >
               <div
                 class="w-full rounded-t transition-colors {active
-                  ? 'bg-indigo-400'
-                  : 'bg-indigo-500/80 group-hover:bg-indigo-400'}"
+                  ? 'bg-tr-accent-hover'
+                  : 'bg-tr-accent/80 group-hover:bg-tr-accent-hover'}"
                 style:height="{h}px"
               ></div>
             </div>
             <span
-              class="mt-1 block w-full truncate text-center text-[9px] leading-tight text-white/50 transition-colors {active
-                ? 'text-white/80'
-                : 'group-hover:text-white/70'} {useRotatedLabels ? '-rotate-[42deg] origin-top' : ''}"
+              class="mt-1 block w-full truncate text-center text-[9px] leading-tight text-tr-ink-3 transition-colors {active
+                ? 'text-tr-ink-2'
+                : 'group-hover:text-tr-ink-2'} {useRotatedLabels ? '-rotate-[42deg] origin-top' : ''}"
               title={fullLabel(bar.label)}
             >
               {axisLabel(bar.label)}
@@ -162,28 +162,28 @@
 
     <div
       class="mt-3 rounded-lg border px-3 py-2.5 text-xs transition-colors {hoveredBar
-        ? 'border-indigo-500/30 bg-indigo-500/[0.08]'
-        : 'border-white/10 bg-black/20'}"
+        ? 'border-tr-accent-soft-strong bg-tr-accent-soft'
+        : 'border-tr-border-strong bg-tr-page'}"
       aria-live="polite"
     >
       {#if hoveredBar}
-        <p class="font-medium text-white/90">{fullLabel(hoveredBar.label)}</p>
-        <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-white/70">
+        <p class="font-medium text-tr-ink">{fullLabel(hoveredBar.label)}</p>
+        <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-tr-ink-2">
           <span>
-            <span class="text-white/40">Tokens</span>
+            <span class="text-tr-ink-3">Tokens</span>
             {formatTokens(hoveredBar.tokens)}
           </span>
           <span>
-            <span class="text-white/40">成本</span>
+            <span class="text-tr-ink-3">成本</span>
             {formatCost(hoveredBar.cost)}
           </span>
           <span>
-            <span class="text-white/40">当前指标</span>
+            <span class="text-tr-ink-3">当前指标</span>
             {metric === "cost" ? formatCost(hoveredBar.cost) : formatTokens(hoveredBar.tokens)}
           </span>
         </div>
       {:else}
-        <p class="text-white/40">将鼠标移到柱体上查看该时段用量与成本</p>
+        <p class="text-tr-ink-3">将鼠标移到柱体上查看该时段用量与成本</p>
       {/if}
     </div>
   </div>

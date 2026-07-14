@@ -572,7 +572,7 @@
     ontransitionend={onDrawerTransitionEnd}
   >
     {#if showChat}
-    <div class="relative flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-white/10 bg-[#12151c] shadow-2xl">
+    <div class="relative flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-tr-border-strong bg-tr-surface shadow-2xl">
     {#if copyToast}
       <div
         class="pointer-events-none absolute inset-x-0 top-3 z-[70] flex justify-center px-4"
@@ -581,8 +581,8 @@
       >
         <div
           class="copy-toast flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl backdrop-blur-md {copyToast.ok
-            ? 'border-emerald-400/35 bg-emerald-500/20 text-emerald-100'
-            : 'border-red-400/35 bg-red-500/20 text-red-100'}"
+            ? 'border-tr-good/35 bg-tr-good-soft text-tr-good'
+            : 'border-tr-critical/35 bg-tr-critical/20 text-tr-on-critical'}"
         >
           {#if copyToast.ok}
             <Check size={16} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
@@ -591,21 +591,21 @@
         </div>
       </div>
     {/if}
-    <header class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3">
+    <header class="flex shrink-0 items-center gap-3 border-b border-tr-border-strong px-4 py-3">
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold">DeepWiki</h2>
-        <p class="truncate text-xs text-white/40">
+        <p class="truncate text-xs text-tr-ink-3">
           {projectName ?? projectSlug ?? UI_MESSAGES.noProject} · 可继续追问
         </p>
       </div>
       {#if busy}
-        <span class="rounded-full bg-indigo-500/20 px-2 py-1 text-xs text-indigo-200">
+        <span class="rounded-full bg-tr-accent-soft-strong px-2 py-1 text-xs text-tr-accent">
           {phaseLabel}
         </span>
       {/if}
       <button
         type="button"
-        class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
         disabled={busy || messages.length === 0}
         onclick={clearHistory}
       >
@@ -613,7 +613,7 @@
       </button>
       <button
         type="button"
-        class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5"
+        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated"
         onclick={onclose}
       >
         Close
@@ -630,17 +630,17 @@
           {#each messages as msg, i (msg.timestamp ?? `msg-${i}`)}
             <div
               class={`rounded-xl px-4 py-3 ${
-                msg.role === "user" ? "bg-indigo-600/25" : "bg-white/[0.04]"
+                msg.role === "user" ? "bg-tr-accent/25" : "bg-tr-elevated"
               }`}
             >
-              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-white/40">
+              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-tr-ink-3">
                 <span>{msg.role === "user" ? "You" : "Terrain"}</span>
                 {#if msg.timestamp}
-                  <span class="normal-case text-white/30">{formatTime(msg.timestamp)}</span>
+                  <span class="normal-case text-tr-ink-3">{formatTime(msg.timestamp)}</span>
                 {/if}
               </div>
               {#if msg.role === "user"}
-                <p class="whitespace-pre-wrap text-sm leading-relaxed text-white/90">{msg.content}</p>
+                <p class="whitespace-pre-wrap text-sm leading-relaxed text-tr-ink">{msg.content}</p>
               {:else}
                 {#if msg.steps?.length}
                   {#each msg.steps as step, i (i)}
@@ -662,9 +662,9 @@
                 {/if}
               {/if}
               {#if formatUsageLine(msg.usage) || (msg.role === "assistant" && assistantMessageMarkdown(msg))}
-                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-tr-border pt-2">
                   {#if formatUsageLine(msg.usage)}
-                    <p class="text-[10px] text-white/35">{formatUsageLine(msg.usage)}</p>
+                    <p class="text-[10px] text-tr-ink-3">{formatUsageLine(msg.usage)}</p>
                   {:else}
                     <span></span>
                   {/if}
@@ -679,18 +679,18 @@
                 </div>
               {/if}
               {#if msg.citations?.length}
-                <div class="mt-4 space-y-1.5 border-t border-white/5 pt-3">
-                  <p class="text-[10px] uppercase tracking-wide text-white/35">Sources</p>
+                <div class="mt-4 space-y-1.5 border-t border-tr-border pt-3">
+                  <p class="text-[10px] uppercase tracking-wide text-tr-ink-3">Sources</p>
                   {#each msg.citations as c}
                     <button
                       type="button"
-                      class="block w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-left text-xs hover:bg-white/5"
+                      class="block w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-left text-xs hover:bg-tr-elevated"
                       onclick={() => openCitation(c)}
                     >
-                      <span class="text-white/40">{c.kind}</span>
-                      <div class="font-medium text-indigo-200">{c.title}</div>
+                      <span class="text-tr-ink-3">{c.kind}</span>
+                      <div class="font-medium text-tr-accent">{c.title}</div>
                       {#if c.excerpt}
-                        <p class="mt-0.5 line-clamp-2 text-white/50">{c.excerpt}</p>
+                        <p class="mt-0.5 line-clamp-2 text-tr-ink-3">{c.excerpt}</p>
                       {/if}
                     </button>
                   {/each}
@@ -700,15 +700,15 @@
           {/each}
 
           {#if busy}
-            <div class="rounded-xl bg-white/[0.04] px-4 py-3">
-              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-white/40">
+            <div class="rounded-xl bg-tr-elevated px-4 py-3">
+              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-tr-ink-3">
                 <span>Terrain</span>
-                <span class="normal-case text-indigo-200/80">{phaseLabel}</span>
+                <span class="normal-case text-tr-accent">{phaseLabel}</span>
               </div>
               {#if streamSteps.length === 0}
                 <div class="mb-3 flex items-center gap-2">
-                  <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-transparent"></span>
-                  <span class="text-xs text-white/50">{phaseLabel}</span>
+                  <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"></span>
+                  <span class="text-xs text-tr-ink-3">{phaseLabel}</span>
                 </div>
               {:else}
                 {#each streamSteps as step, i (i)}
@@ -728,9 +728,9 @@
                 {/each}
               {/if}
               {#if streamingUsageLine || assistantStepsMarkdown(streamSteps)}
-                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-tr-border pt-2">
                   {#if streamingUsageLine}
-                    <p class="text-[10px] text-white/35">{streamingUsageLine}</p>
+                    <p class="text-[10px] text-tr-ink-3">{streamingUsageLine}</p>
                   {:else}
                     <span></span>
                   {/if}
@@ -745,21 +745,21 @@
               {/if}
             </div>
           {:else if messages.length === 0}
-            <p class="text-center text-sm text-white/35">
+            <p class="text-center text-sm text-tr-ink-3">
               Ask about architecture, workflows, or APIs. Citations appear below each answer.
             </p>
           {/if}
           {#if citationError}
-            <p class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            <p class="rounded-lg border border-tr-critical/30 bg-tr-critical-soft px-3 py-2 text-xs text-tr-critical">
               {citationError}
             </p>
           {/if}
           </div>
         </div>
 
-        <div class="shrink-0 border-t border-white/10 p-4">
+        <div class="shrink-0 border-t border-tr-border-strong p-4">
           <textarea
-            class="mb-2 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            class="mb-2 w-full resize-none rounded-xl border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             rows="2"
             placeholder={UI_MESSAGES.askFollowUpPlaceholder}
             bind:value={input}
@@ -770,7 +770,7 @@
           ></textarea>
           <button
             type="button"
-            class="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+            class="w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
             disabled={!projectSlug || busy}
             onclick={send}
           >
@@ -784,7 +784,7 @@
     {#if sourceRailMounted && visibleSourceSlice}
       <aside class="mm-source-rail" aria-hidden={!sourceOpen}>
         <div
-          class="mm-source-rail-panel flex flex-col bg-[#10131a]"
+          class="mm-source-rail-panel flex flex-col bg-tr-page"
           class:is-presented={sourceRailPresented}
           ontransitionend={onSourceRailTransitionEnd}
         >

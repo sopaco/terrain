@@ -181,11 +181,11 @@
 
 {#snippet panelBody()}
     <header
-        class="flex shrink-0 flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+        class="flex shrink-0 flex-col gap-3 border-b border-tr-border-strong px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
     >
         <div class="flex min-w-0 items-center gap-2.5">
             <div
-                class="flex shrink-0 items-center justify-center rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-1.5 text-indigo-300/90"
+                class="flex shrink-0 items-center justify-center rounded-lg border border-tr-accent-soft-strong bg-tr-accent-soft p-1.5 text-tr-accent"
             >
                 <ChartColumn size={16} strokeWidth={2} aria-hidden="true" />
             </div>
@@ -197,17 +197,17 @@
         </div>
         <div class="flex flex-wrap items-center gap-2 sm:justify-end">
             <div
-                class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1"
+                class="flex items-center gap-1.5 rounded-lg border border-tr-border-strong bg-tr-elevated px-2 py-1"
                 role="group"
                 aria-label="顶栏显示维度"
             >
-                <span class="text-[10px] text-white/40">顶栏</span>
+                <span class="text-[10px] text-tr-ink-3">顶栏</span>
                 <button
                     type="button"
                     class="rounded-md px-2 py-0.5 text-xs transition-colors {badgePeriod ===
                     'day'
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-white/60 hover:bg-white/5'}"
+                        ? 'bg-tr-accent text-white'
+                        : 'text-tr-ink-2 hover:bg-tr-elevated'}"
                     aria-pressed={badgePeriod === "day"}
                     onclick={() => selectBadgePeriod("day")}
                 >
@@ -217,8 +217,8 @@
                     type="button"
                     class="rounded-md px-2 py-0.5 text-xs transition-colors {badgePeriod ===
                     'month'
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-white/60 hover:bg-white/5'}"
+                        ? 'bg-tr-accent text-white'
+                        : 'text-tr-ink-2 hover:bg-tr-elevated'}"
                     aria-pressed={badgePeriod === "month"}
                     onclick={() => selectBadgePeriod("month")}
                 >
@@ -227,7 +227,7 @@
             </div>
             <button
                 type="button"
-                class="rounded-lg border border-white/10 px-2.5 min-w-14 py-1.5 text-xs text-white/70 hover:bg-white/5 disabled:opacity-40"
+                class="rounded-lg border border-tr-border-strong px-2.5 min-w-14 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated disabled:opacity-40"
                 disabled={loading}
                 onclick={() => void refresh(true)}
             >
@@ -241,16 +241,16 @@
 
     <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {#if loading && !snapshot}
-            <div class="flex items-center gap-2 py-8 text-sm text-white/50">
+            <div class="flex items-center gap-2 py-8 text-sm text-tr-ink-3">
                 <span
-                    class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-transparent"
+                    class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
                 ></span>
                 正在读取本地用量日志…
             </div>
         {:else if snapshot}
             {#if error}
                 <div
-                    class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90"
+                    class="mb-4 rounded-lg border border-tr-watch/30 bg-tr-watch-soft px-3 py-2 text-sm text-tr-watch"
                 >
                     {error}
                 </div>
@@ -263,16 +263,16 @@
                         (badgePeriod === "month" && card.label === "本月")}
                     <div
                         class="rounded-xl border p-3 {highlighted
-                            ? 'border-indigo-500/35 bg-indigo-500/[0.08]'
-                            : 'border-white/10 bg-white/[0.03]'}"
+                            ? 'border-tr-accent-soft-strong bg-tr-accent-soft'
+                            : 'border-tr-border-strong bg-tr-elevated'}"
                     >
                         <p
-                            class="text-[10px] uppercase tracking-wide text-white/40"
+                            class="text-[10px] uppercase tracking-wide text-tr-ink-3"
                         >
                             {card.label}
                             {#if highlighted}
                                 <span
-                                    class="ml-1 normal-case text-indigo-300/80"
+                                    class="ml-1 normal-case text-tr-accent"
                                     >· 顶栏</span
                                 >
                             {/if}
@@ -280,7 +280,7 @@
                         <p class="mt-1 text-lg font-semibold text-white">
                             {formatCost(card.totals.total_cost_usd)}
                         </p>
-                        <p class="mt-0.5 text-xs text-white/45">
+                        <p class="mt-0.5 text-xs text-tr-ink-3">
                             {formatTokens(card.totals.total_tokens)} tokens
                         </p>
                     </div>
@@ -289,29 +289,29 @@
 
             <section class="mb-5">
                 <h3
-                    class="mb-2 text-xs font-medium uppercase tracking-wide text-white/40"
+                    class="mb-2 text-xs font-medium uppercase tracking-wide text-tr-ink-3"
                 >
                     数据来源
                 </h3>
                 <ul class="space-y-2">
                     {#each snapshot.probe.sources as source}
                         <li
-                            class="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs"
+                            class="flex items-center justify-between gap-3 rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-xs"
                         >
                             <div class="flex min-w-0 items-center gap-2">
                                 <span
                                     class="inline-block h-1.5 w-1.5 shrink-0 rounded-full {source.detected
-                                        ? 'bg-emerald-400'
-                                        : 'bg-white/20'}"
+                                        ? 'bg-tr-good'
+                                        : 'bg-tr-raised'}"
                                 ></span>
-                                <span class="font-medium text-white/85"
+                                <span class="font-medium text-tr-ink-2"
                                     >{source.label}</span
                                 >
                             </div>
                             <span
                                 class="shrink-0 {source.detected
-                                    ? 'text-emerald-300/80'
-                                    : 'text-white/40'}"
+                                    ? 'text-tr-good'
+                                    : 'text-tr-ink-3'}"
                             >
                                 {source.detected ? "已安装" : "未检测到"}
                             </span>
@@ -319,7 +319,7 @@
                     {/each}
                 </ul>
                 {#if snapshot.generated_at}
-                    <p class="mt-2 text-[10px] text-white/30">
+                    <p class="mt-2 text-[10px] text-tr-ink-3">
                         {#if snapshot.cached}缓存数据 ·
                         {/if}更新于 {formatTime(snapshot.generated_at)}
                     </p>
@@ -331,15 +331,15 @@
                     class="mb-3 flex flex-wrap items-center justify-between gap-2"
                 >
                     <div
-                        class="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-0.5"
+                        class="flex gap-1 rounded-lg border border-tr-border-strong bg-tr-elevated p-0.5"
                     >
                         {#each chartPeriodOptions as option}
                             <button
                                 type="button"
                                 class="rounded-md px-3 py-1.5 text-xs transition-colors {chartPeriod ===
                                 option.id
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-white/60 hover:bg-white/5'}"
+                                    ? 'bg-tr-accent text-white'
+                                    : 'text-tr-ink-2 hover:bg-tr-elevated'}"
                                 aria-pressed={chartPeriod === option.id}
                                 onclick={() => (chartPeriod = option.id)}
                             >
@@ -348,14 +348,14 @@
                         {/each}
                     </div>
                     <div
-                        class="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-0.5"
+                        class="flex gap-1 rounded-lg border border-tr-border-strong bg-tr-elevated p-0.5"
                     >
                         <button
                             type="button"
                             class="rounded-md px-2.5 py-1 text-xs transition-colors {chartMetric ===
                             'tokens'
-                                ? 'bg-white/10 text-white'
-                                : 'text-white/50 hover:bg-white/5'}"
+                                ? 'bg-tr-elevated text-white'
+                                : 'text-tr-ink-3 hover:bg-tr-elevated'}"
                             aria-pressed={chartMetric === "tokens"}
                             onclick={() => (chartMetric = "tokens")}
                         >
@@ -365,8 +365,8 @@
                             type="button"
                             class="rounded-md px-2.5 py-1 text-xs transition-colors {chartMetric ===
                             'cost'
-                                ? 'bg-white/10 text-white'
-                                : 'text-white/50 hover:bg-white/5'}"
+                                ? 'bg-tr-elevated text-white'
+                                : 'text-tr-ink-3 hover:bg-tr-elevated'}"
                             aria-pressed={chartMetric === "cost"}
                             onclick={() => (chartMetric = "cost")}
                         >
@@ -389,7 +389,7 @@
                 emptyLabel={detailConfig.emptyLabel}
             />
 
-            <p class="mt-4 text-[10px] leading-relaxed text-white/30">
+            <p class="mt-4 text-[10px] leading-relaxed text-tr-ink-3">
                 成本为估算值，可能与实际账单有偏差。Cursor IDE
                 用量暂不支持统计。
             </p>
@@ -399,7 +399,7 @@
 
 {#if standalone}
     <div
-        class="flex h-screen flex-col bg-[#10131a] text-white"
+        class="flex h-screen flex-col bg-tr-page text-white"
         aria-label="开发者 Token 用量"
     >
         {@render panelBody()}

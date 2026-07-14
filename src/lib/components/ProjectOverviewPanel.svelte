@@ -1,5 +1,7 @@
 <script lang="ts">
+    import { Check, CircleCheck, Copy, FolderOpen } from "@lucide/svelte";
     import type { ProjectOverview, StaleProjectSummary } from "../types";
+    import { copyTextToClipboard } from "../clipboard";
     import {
         generateLabel,
         SHORT_TERMS,
@@ -12,7 +14,6 @@
     } from "./OverviewActionBanner.svelte";
     import OverviewKnowledgeCard from "./OverviewKnowledgeCard.svelte";
     import ReadinessHelpPanel from "./ReadinessHelpPanel.svelte";
-    import ChevronIcon from "./icons/ChevronIcon.svelte";
     import HelpButton from "./icons/HelpButton.svelte";
 
     interface Props {
@@ -80,6 +81,7 @@
     let remarkEditing = $state(false);
     let remarkDraft = $state("");
     let remarkSaving = $state(false);
+    let copiedPath = $state<string | null>(null);
 
     const readyCount = $derived(
         overview?.asset_health.filter((a) => a.ready).length ?? 0,
@@ -89,6 +91,17 @@
 
     const readinessPercent = $derived(
         assetTotal > 0 ? Math.round((readyCount / assetTotal) * 100) : 0,
+    );
+
+    const assetChecklist = $derived(
+        overview?.asset_health.map((a) => ({
+            label: a.label,
+            ready: a.ready,
+        })) ?? [],
+    );
+
+    const structuredAsset = $derived(
+        overview?.asset_health.find((a) => a.track === "structured") ?? null,
     );
 
     const needsAssetInit = $derived(
@@ -116,6 +129,12 @@
     const freshness = $derived(overview?.freshness ?? null);
 
     const freshnessScore = $derived(freshness?.overall_score ?? null);
+
+    function freshnessTone(score: number): "good" | "watch" | "critical" {
+        if (score >= 80) return "good";
+        if (score >= 50) return "watch";
+        return "critical";
+    }
 
     const needsGenerationSetup = $derived(
         (hybridNativeLlm && !llmReady) || !acpOk,
@@ -208,31 +227,13 @@
         })),
     );
 
-    function freshnessBarClass(score: number): string {
-        if (score >= 80) return "bg-emerald-500";
-        if (score >= 50) return "bg-amber-500";
-        return "bg-rose-500";
-    }
-
-    function freshnessTextClass(score: number): string {
-        if (score >= 80) return "text-emerald-200";
-        if (score >= 50) return "text-amber-200";
-        return "text-rose-200";
-    }
-
     function freshnessBadgeClass(
         score: number,
         stale?: boolean | null,
     ): string {
-        if (!stale && score >= 80) return "bg-emerald-500/15 text-emerald-200";
-        if (score >= 50) return "bg-amber-500/15 text-amber-200";
-        return "bg-rose-500/15 text-rose-200";
-    }
-
-    function readinessBarClass(percent: number): string {
-        if (percent >= 100) return "bg-emerald-500";
-        if (percent >= 50) return "bg-amber-500";
-        return "bg-rose-500";
+        if (!stale && score >= 80) return "bg-tr-good-soft text-tr-good";
+        if (score >= 50) return "bg-tr-watch-soft text-tr-watch";
+        return "bg-tr-critical-soft text-tr-critical";
     }
 
     function formatSyncedAt(value?: string | null): string {
@@ -336,36 +337,66 @@
             remarkSaving = false;
         }
     }
+
+    async function copyPath(path: string) {
+        try {
+            await copyTextToClipboard(path);
+            copiedPath = path;
+            window.setTimeout(() => {
+                if (copiedPath === path) copiedPath = null;
+            }, 1500);
+        } catch {
+            /* clipboard unavailable — silently ignore */
+        }
+    }
 </script>
 
-{#snippet pathRow(label: string, path: string)}
-    <button
-        type="button"
-        class="group flex w-full items-center justify-between gap-3 rounded-lg border border-white/8 bg-black/20 px-3 py-2.5 text-left transition-colors hover:border-indigo-500/30 hover:bg-indigo-500/[0.06]"
-        onclick={() => onOpenPath?.(path)}
-        title={`在 Finder 中打开：${path}`}
-    >
-        <div class="min-w-0">
-            <span class="text-xs text-white/40">{label}</span>
-            <p
-                class="truncate font-mono text-xs text-indigo-200/90 group-hover:text-indigo-100"
-            >
-                {path}
-            </p>
-        </div>
-        <span class="shrink-0 text-xs text-white/25 group-hover:text-indigo-300"
-            >打开</span
+{#snippet metaRow(label: string, path: string)}
+    <div class="flex items-center gap-2 text-[11.5px]">
+        <span class="w-16 shrink-0 text-tr-ink-3">{label}</span>
+        <span
+            class="min-w-0 flex-1 truncate font-mono text-tr-ink-2"
+            title={path}>{path}</span
         >
-    </button>
+        <button
+            type="button"
+            class="shrink-0 rounded-md p-1 text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink"
+            title="复制"
+            aria-label={`复制${label}`}
+            onclick={() => copyPath(path)}
+        >
+            {#if copiedPath === path}
+                <Check
+                    size={12}
+                    strokeWidth={2.5}
+                    class="text-tr-good"
+                    aria-hidden="true"
+                />
+            {:else}
+                <Copy size={12} strokeWidth={2} aria-hidden="true" />
+            {/if}
+        </button>
+        {#if onOpenPath}
+            <button
+                type="button"
+                class="shrink-0 rounded-md p-1 text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink"
+                title="在 Finder 中打开"
+                aria-label={`打开${label}`}
+                onclick={() => onOpenPath(path)}
+            >
+                <FolderOpen size={12} strokeWidth={2} aria-hidden="true" />
+            </button>
+        {/if}
+    </div>
 {/snippet}
 
-<div class="flex h-full flex-col overflow-y-auto bg-[#0c0e12]">
+<div class="flex h-full flex-col overflow-y-auto bg-tr-page">
     {#if loading}
         <div
-            class="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-white/40"
+            class="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-tr-ink-3"
         >
             <span
-                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent"
+                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
             ></span>
             <span>加载项目概览…</span>
         </div>
@@ -374,16 +405,16 @@
             class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-6 py-10"
         >
             <section
-                class="rounded-2xl border border-white/8 bg-[#14171c] px-6 py-8"
+                class="rounded-2xl border border-tr-border bg-tr-surface px-6 py-8"
             >
-                <h2 class="text-xl font-semibold text-white/90">
+                <h2 class="text-xl font-semibold text-tr-ink">
                     欢迎使用 Terrain
                 </h2>
-                <p class="mt-2 text-sm leading-relaxed text-white/45">
+                <p class="mt-2 text-sm leading-relaxed text-tr-ink-2">
                     添加本地仓库后将自动完成索引与知识资产生成，可在本页查看状态并进入知识库阅读。
                 </p>
                 {#if staleProjects.length === 0}
-                    <p class="mt-4 text-xs text-white/35">
+                    <p class="mt-4 text-xs text-tr-ink-3">
                         通过顶部项目选择器添加本地仓库；若索引失败，添加后可在本页初始化。
                     </p>
                 {/if}
@@ -391,7 +422,7 @@
 
             {#if staleProjects.length > 0}
                 <section class="space-y-3">
-                    <h3 class="text-sm font-medium text-white/55">
+                    <h3 class="text-sm font-medium text-tr-ink-2">
                         检测到知识库数据丢失
                     </h3>
                     <OverviewActionBanner
@@ -402,12 +433,12 @@
             {/if}
         </div>
     {:else}
-        <div class="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
+        <div class="mx-auto w-full max-w-6xl space-y-7 px-6 py-8">
             <!-- Project header -->
             <header class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0 flex-1">
                     <h2
-                        class="break-words text-xl font-semibold tracking-tight text-white/95"
+                        class="break-words text-xl font-semibold tracking-tight text-tr-ink"
                     >
                         {overview.name}
                     </h2>
@@ -415,7 +446,7 @@
                     {#if remarkEditing}
                         <div class="mt-2 space-y-2">
                             <textarea
-                                class="w-full resize-y rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-sm text-white/80 placeholder:text-white/30 focus:border-indigo-500/40 focus:outline-none"
+                                class="w-full resize-y rounded-xl border border-tr-border-strong bg-tr-surface px-3 py-2 text-sm text-tr-ink placeholder:text-tr-ink-3 focus:border-tr-accent focus:outline-none"
                                 rows="2"
                                 placeholder="填写项目备注，将保存至 .terrain/project-note.md"
                                 bind:value={remarkDraft}
@@ -423,7 +454,7 @@
                             <div class="flex flex-wrap gap-2">
                                 <button
                                     type="button"
-                                    class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium hover:bg-indigo-500 disabled:opacity-50"
+                                    class="rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent hover:bg-tr-accent-hover disabled:opacity-50"
                                     disabled={remarkSaving ||
                                         !onSaveProjectRemark}
                                     onclick={saveRemark}
@@ -432,7 +463,7 @@
                                 </button>
                                 <button
                                     type="button"
-                                    class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/60 hover:bg-white/5"
+                                    class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated"
                                     disabled={remarkSaving}
                                     onclick={cancelRemarkEdit}
                                 >
@@ -441,22 +472,22 @@
                             </div>
                         </div>
                     {:else}
-                        <div class="mt-1 flex items-start gap-2">
+                        <div class="mt-2 flex items-center gap-2">
                             {#if overview.project_remark}
-                                <p
-                                    class="text-sm leading-relaxed text-white/55"
+                                <span
+                                    class="inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-tr-border bg-tr-elevated px-2.5 py-1 text-xs text-tr-ink-2"
                                 >
                                     {overview.project_remark}
-                                </p>
+                                </span>
                             {:else}
-                                <p class="text-sm text-white/30">
+                                <p class="text-sm text-tr-ink-3">
                                     添加项目备注，便于团队识别此仓库
                                 </p>
                             {/if}
                             {#if onSaveProjectRemark}
                                 <button
                                     type="button"
-                                    class="shrink-0 rounded-md border border-white/10 px-2 py-0.5 text-[11px] text-white/45 hover:bg-white/5 hover:text-white/70"
+                                    class="shrink-0 text-[11px] text-tr-ink-3 hover:text-tr-accent"
                                     onclick={startRemarkEdit}
                                 >
                                     编辑
@@ -465,46 +496,51 @@
                         </div>
                     {/if}
 
-                    <p class="mt-2 text-xs text-white/40">
-                        最后同步 {formatSyncedAt(overview.synced_at)}
+                    <p
+                        class="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-tr-ink-3 [font-variant-numeric:tabular-nums]"
+                    >
+                        <span
+                            >最后同步 {formatSyncedAt(overview.synced_at)}</span
+                        >
                         {#if overview.collectors.length}
-                            <span class="text-white/25">
-                                · {overview.collectors.join(" · ")}</span
-                            >
+                            <span class="text-tr-ink-4">·</span>
+                            <span>{overview.collectors.join(" · ")}</span>
                         {/if}
-                        <span class="text-white/25"> · </span>
-                        <span class="font-mono text-white/30"
+                        <span class="text-tr-ink-4">·</span>
+                        <span class="font-mono text-tr-ink-3"
                             >{overview.slug}</span
                         >
+                        {#if freshness?.current_git_head}
+                            <span class="text-tr-ink-4">·</span>
+                            <code
+                                class="rounded bg-tr-elevated px-1.5 py-0.5 font-mono text-[11px] text-tr-ink-2"
+                                >{freshness.current_git_head}</code
+                            >
+                        {/if}
+                        {#if freshness?.working_tree_dirty}
+                            <span class="text-tr-ink-4">·</span>
+                            <span class="text-tr-watch">工作区有未提交修改</span
+                            >
+                        {/if}
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500"
-                        onclick={onOpenAsk}
-                    >
-                        提问 Ask
-                    </button>
                     {#if overview.repo_path && onOpenPath}
                         <button
                             type="button"
-                            class="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5"
+                            class="rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 hover:bg-tr-elevated"
                             onclick={() => onOpenPath(overview.repo_path)}
                         >
                             打开仓库
                         </button>
                     {/if}
-                    {#if freshness?.overall_stale && onQuickRefresh}
-                        <button
-                            type="button"
-                            class="rounded-xl border border-rose-500/30 px-4 py-2 text-sm text-rose-200/90 hover:bg-rose-500/10 disabled:opacity-50"
-                            disabled={quickRefreshBusy || initBusy}
-                            onclick={onQuickRefresh}
-                        >
-                            {quickRefreshBusy ? "保鲜中…" : "快速保鲜"}
-                        </button>
-                    {/if}
+                    <button
+                        type="button"
+                        class="rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent hover:bg-tr-accent-hover"
+                        onclick={onOpenAsk}
+                    >
+                        提问 Ask
+                    </button>
                 </div>
             </header>
 
@@ -518,255 +554,298 @@
                 />
             {/if}
 
-            <!-- 知识资产域 -->
-            <section class="space-y-3">
-                <div>
-                    <h3 class="text-sm font-medium text-white/70">知识资产</h3>
-                    <p class="mt-0.5 text-xs text-white/40">
-                        仓库内 <code class="text-white/55">.terrain/</code> 的完整性与时效
-                    </p>
+            <!-- 状态一览：就绪度 + 新鲜度 -->
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div
+                    class="relative overflow-hidden rounded-xl border border-tr-border bg-tr-surface py-4 pl-5 pr-4"
+                >
+                    <span
+                        class={`absolute inset-y-0 left-0 w-[3px] ${readyCount >= assetTotal ? "bg-tr-good" : "bg-tr-watch"}`}
+                        aria-hidden="true"
+                    ></span>
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-tr-ink-2">结构就绪度</span
+                            >
+                            <HelpButton
+                                onclick={() => (readinessHelpOpen = true)}
+                                title="查看各项知识资产就绪情况"
+                                ariaLabel="就绪度说明"
+                                size={14}
+                            />
+                        </div>
+                        <span
+                            class="text-2xl font-semibold [font-variant-numeric:tabular-nums] text-tr-ink"
+                        >
+                            {readyCount}<span
+                                class="text-sm font-normal text-tr-ink-3"
+                                >/{assetTotal}</span
+                            >
+                        </span>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-1.5">
+                        {#each assetChecklist as item}
+                            <span
+                                class={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] ${
+                                    item.ready
+                                        ? "bg-tr-good-soft text-tr-good"
+                                        : "bg-tr-elevated text-tr-ink-3"
+                                }`}
+                            >
+                                {#if item.ready}
+                                    <CircleCheck
+                                        size={11}
+                                        strokeWidth={2}
+                                        aria-hidden="true"
+                                    />
+                                {/if}
+                                {item.label}
+                            </span>
+                        {/each}
+                    </div>
                 </div>
 
                 <div
-                    class="space-y-5 rounded-2xl border border-white/8 bg-[#14171c] p-5"
+                    class="relative overflow-hidden rounded-xl border border-tr-border bg-tr-surface py-4 pl-5 pr-4"
                 >
-                    <div class="grid gap-5 sm:grid-cols-2">
-                        <div>
-                            <div
-                                class="flex items-center justify-between gap-2"
+                    <span
+                        class={`absolute inset-y-0 left-0 w-[3px] ${
+                            freshnessScore == null
+                                ? "bg-tr-border-strong"
+                                : freshnessTone(freshnessScore) === "good"
+                                  ? "bg-tr-good"
+                                  : freshnessTone(freshnessScore) === "watch"
+                                    ? "bg-tr-watch"
+                                    : "bg-tr-critical"
+                        }`}
+                        aria-hidden="true"
+                    ></span>
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-tr-ink-2">知识新鲜度</span
                             >
-                                <div class="flex items-center gap-1">
-                                    <span class="text-xs text-white/40"
-                                        >就绪度</span
-                                    >
-                                    <HelpButton
-                                        onclick={() =>
-                                            (readinessHelpOpen = true)}
-                                        title="查看各项知识资产就绪情况"
-                                        ariaLabel="就绪度说明"
-                                        size={18}
-                                    />
-                                </div>
-                                <span
-                                    class="text-2xl font-semibold tabular-nums text-white/90"
-                                >
-                                    {readyCount}<span
-                                        class="text-base font-normal text-white/35"
-                                        >/{assetTotal}</span
-                                    >
-                                </span>
-                            </div>
-                            <div
-                                class="mt-2 h-2 overflow-hidden rounded-full bg-white/8"
-                            >
-                                <div
-                                    class={`h-full rounded-full transition-all ${readinessBarClass(readinessPercent)}`}
-                                    style={`width: ${readinessPercent}%`}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div
-                                class="flex items-center justify-between gap-2"
-                            >
-                                <div class="flex items-center gap-1">
-                                    <span class="text-xs text-white/40"
-                                        >新鲜度</span
-                                    >
-                                    <HelpButton
-                                        onclick={() =>
-                                            (freshnessHelpOpen = true)}
-                                        title="了解新鲜度如何计算及本项目的偏离原因"
-                                        ariaLabel="知识新鲜度说明"
-                                        size={18}
-                                    />
-                                </div>
-                                {#if freshnessLoading && !freshness}
-                                    <span class="text-xs text-white/35"
-                                        >计算中…</span
-                                    >
-                                {:else if freshnessScore != null}
-                                    <span
-                                        class={`text-2xl font-semibold tabular-nums ${freshnessTextClass(freshnessScore)}`}
-                                    >
-                                        {freshnessScore}
-                                        <span
-                                            class="text-base font-normal text-white/35"
-                                            >/100</span
-                                        >
-                                    </span>
-                                {:else}
-                                    <span class="text-sm text-white/45">—</span>
-                                {/if}
-                            </div>
-
-                            {#if freshnessLoading && !freshness}
-                                <div
-                                    class="mt-2 h-2 animate-pulse rounded-full bg-white/10"
-                                    role="status"
-                                    aria-live="polite"
-                                ></div>
-                            {:else if freshnessScore != null}
-                                <div
-                                    class="mt-2 h-2 overflow-hidden rounded-full bg-white/8"
-                                >
-                                    <div
-                                        class={`h-full rounded-full transition-all ${freshnessBarClass(freshnessScore)}`}
-                                        style={`width: ${freshnessScore}%`}
-                                    ></div>
-                                </div>
-                                <p class="mt-1.5 text-[11px] text-white/30">
-                                    {#if freshnessLoading}
-                                        更新中…
-                                    {:else if freshness?.is_git_repo && freshness.current_git_head}
-                                        基于 Git 提交对比 · HEAD {freshness.current_git_head}
-                                        {#if freshness.working_tree_dirty}
-                                            · 工作区有未提交修改
-                                        {/if}
-                                    {:else if freshness && !freshness.is_git_repo}
-                                        未检测到 Git，分数按知识资产同步时间估算
-                                    {/if}
-                                </p>
-                            {/if}
-                        </div>
-                    </div>
-
-                    <div class="border-t border-white/8 pt-5">
-                        <h4 class="text-xs font-medium text-white/55">
-                            阅读与生成
-                        </h4>
-                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                            <OverviewKnowledgeCard
-                                nested
-                                title={SHORT_TERMS.agentKnowledge}
-                                subtitle="模块地图、核心流程与技术选型，供 Agent 与问答使用"
-                                meta={overview.agent_context.ready
-                                    ? `${overview.agent_context.section_count} 个章节`
-                                    : "尚未生成"}
-                                ready={overview.agent_context.ready}
-                                icon="compass"
-                                primaryLabel={overview.agent_context.ready
-                                    ? "打开"
-                                    : generateLabel(
-                                          TERMS.agentKnowledge,
-                                          agentContextBusy,
-                                      )}
-                                onPrimary={overview.agent_context.ready
-                                    ? onOpenArchitectureDoc
-                                    : onGenerateAgentContext}
-                                primaryDisabled={overview.agent_context.ready
-                                    ? !onOpenArchitectureDoc
-                                    : agentContextBusy ||
-                                      !llmReady ||
-                                      !onGenerateAgentContext}
-                                secondaryLabel={overview.agent_context.ready
-                                    ? agentContextBusy
-                                        ? "生成中…"
-                                        : "重新生成"
-                                    : undefined}
-                                onSecondary={overview.agent_context.ready
-                                    ? onGenerateAgentContext
-                                    : undefined}
-                                secondaryDisabled={agentContextBusy ||
-                                    !llmReady}
-                            />
-                            <OverviewKnowledgeCard
-                                nested
-                                title={SHORT_TERMS.humanKnowledge}
-                                subtitle="Litho C4 文档，从 1.概述 开始阅读"
-                                meta={humanKnowledgeMeta(overview)}
-                                ready={overview.litho.human_docs_complete}
-                                icon="book"
-                                primaryLabel={overview.litho.human_docs_complete
-                                    ? "打开"
-                                    : generateLabel(
-                                          TERMS.humanKnowledge,
-                                          lithoBusy,
-                                      )}
-                                onPrimary={overview.litho.human_docs_complete
-                                    ? onOpenHumanOverview
-                                    : onGenerateHuman}
-                                primaryDisabled={overview.litho
-                                    .human_docs_complete
-                                    ? !onOpenHumanOverview
-                                    : lithoBusy || !acpOk || !onGenerateHuman}
+                            <HelpButton
+                                onclick={() => (freshnessHelpOpen = true)}
+                                title="了解新鲜度如何计算及本项目的偏离原因"
+                                ariaLabel="知识新鲜度说明"
+                                size={14}
                             />
                         </div>
+                        {#if freshnessLoading && !freshness}
+                            <span class="text-xs text-tr-ink-3">计算中…</span>
+                        {:else if freshnessScore != null}
+                            <span
+                                class={`text-2xl font-semibold [font-variant-numeric:tabular-nums] ${
+                                    freshnessTone(freshnessScore) === "good"
+                                        ? "text-tr-good"
+                                        : freshnessTone(freshnessScore) ===
+                                            "watch"
+                                          ? "text-tr-watch"
+                                          : "text-tr-critical"
+                                }`}
+                            >
+                                {freshnessScore}
+                                <span class="text-sm font-normal text-tr-ink-3"
+                                    >/100</span
+                                >
+                            </span>
+                        {:else}
+                            <span class="text-sm text-tr-ink-3">—</span>
+                        {/if}
                     </div>
 
-                    {#if needsGenerationSetup}
+                    {#if freshnessLoading && !freshness}
                         <div
-                            class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3"
+                            class="mt-3 h-1.5 animate-pulse rounded-full bg-tr-elevated"
+                            role="status"
+                            aria-live="polite"
+                        ></div>
+                    {:else if freshnessScore != null}
+                        <div
+                            class="mt-3 h-1.5 overflow-hidden rounded-full bg-tr-elevated"
                         >
-                            <p class="text-xs text-white/45">
-                                生成知识资产需要 Terrain 生成能力：
-                                {#if hybridNativeLlm && !llmReady}
-                                    <span class="text-amber-200/90"
-                                        >LLM 未配置</span
-                                    >
-                                {/if}
-                                {#if hybridNativeLlm && !llmReady && !acpOk}
-                                    <span class="text-white/30"> · </span>
-                                {/if}
-                                {#if !acpOk}
-                                    <span class="text-amber-200/90"
-                                        >ACP 未连接</span
-                                    >
-                                {/if}
-                            </p>
-                            {#if onOpenSettings}
-                                <button
-                                    type="button"
-                                    class="shrink-0 text-xs text-indigo-300/90 hover:text-indigo-200"
-                                    onclick={onOpenSettings}
-                                >
-                                    前往设置
-                                </button>
-                            {/if}
+                            <div
+                                class={`h-full rounded-full transition-all ${
+                                    freshnessTone(freshnessScore) === "good"
+                                        ? "bg-tr-good"
+                                        : freshnessTone(freshnessScore) ===
+                                            "watch"
+                                          ? "bg-tr-watch"
+                                          : "bg-tr-critical"
+                                }`}
+                                style={`width: ${freshnessScore}%`}
+                            ></div>
                         </div>
+                        <p class="mt-2 text-[11px] text-tr-ink-3">
+                            {#if freshnessLoading}
+                                更新中…
+                            {:else if freshness?.is_git_repo && freshness.current_git_head}
+                                基于 Git 提交对比 · HEAD {freshness.current_git_head}
+                                {#if freshness.working_tree_dirty}
+                                    · 工作区有未提交修改
+                                {/if}
+                            {:else if freshness && !freshness.is_git_repo}
+                                未检测到 Git，分数按知识资产同步时间估算
+                            {/if}
+                        </p>
                     {/if}
                 </div>
+            </div>
+
+            <!-- 知识资产域 -->
+            <section class="space-y-3">
+                <div>
+                    <h3 class="text-sm font-medium text-tr-ink-2">知识资产</h3>
+                    <p class="mt-0.5 text-xs text-tr-ink-3">
+                        仓库内 <code class="text-tr-ink-2">.terrain/</code> 的三种读取方式，按用途区分
+                    </p>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <OverviewKnowledgeCard
+                        title={SHORT_TERMS.agentKnowledge}
+                        subtitle="模块地图、架构与流程等，供 Agent 与问答使用"
+                        meta={overview.agent_context.ready
+                            ? `${overview.agent_context.section_count} 个章节`
+                            : "尚未生成"}
+                        ready={overview.agent_context.ready}
+                        icon="compass"
+                        primaryLabel={overview.agent_context.ready
+                            ? "打开"
+                            : generateLabel(
+                                  TERMS.agentKnowledge,
+                                  agentContextBusy,
+                              )}
+                        onPrimary={overview.agent_context.ready
+                            ? onOpenArchitectureDoc
+                            : onGenerateAgentContext}
+                        primaryDisabled={overview.agent_context.ready
+                            ? !onOpenArchitectureDoc
+                            : agentContextBusy ||
+                              !llmReady ||
+                              !onGenerateAgentContext}
+                        secondaryLabel={overview.agent_context.ready
+                            ? agentContextBusy
+                                ? "生成中…"
+                                : "重新生成"
+                            : undefined}
+                        onSecondary={overview.agent_context.ready
+                            ? onGenerateAgentContext
+                            : undefined}
+                        secondaryDisabled={agentContextBusy || !llmReady}
+                    />
+                    <OverviewKnowledgeCard
+                        title={SHORT_TERMS.humanKnowledge}
+                        subtitle="Litho C4 文档，从 1.概述 开始阅读"
+                        meta={humanKnowledgeMeta(overview)}
+                        ready={overview.litho.human_docs_complete}
+                        icon="book"
+                        primaryLabel={overview.litho.human_docs_complete
+                            ? "打开"
+                            : generateLabel(TERMS.humanKnowledge, lithoBusy)}
+                        onPrimary={overview.litho.human_docs_complete
+                            ? onOpenHumanOverview
+                            : onGenerateHuman}
+                        primaryDisabled={overview.litho.human_docs_complete
+                            ? !onOpenHumanOverview
+                            : lithoBusy || !acpOk || !onGenerateHuman}
+                    />
+                    {#if structuredAsset}
+                        {@const structuredAction =
+                            assetPrimaryAction(structuredAsset)}
+                        <OverviewKnowledgeCard
+                            title="结构化条目"
+                            subtitle="terrain-meta.json 派生的元数据，供工具消费"
+                            meta={structuredAsset.summary}
+                            ready={structuredAsset.ready}
+                            icon="list"
+                            primaryLabel={structuredAction?.label ?? "打开"}
+                            onPrimary={structuredAction?.onClick}
+                            primaryDisabled={structuredAction?.disabled ??
+                                !structuredAction}
+                        />
+                    {/if}
+                </div>
+
+                {#if needsGenerationSetup}
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tr-border bg-tr-surface px-4 py-3"
+                    >
+                        <p class="text-xs text-tr-ink-2">
+                            生成知识资产需要 Terrain 生成能力：
+                            {#if hybridNativeLlm && !llmReady}
+                                <span class="text-tr-watch">LLM 未配置</span>
+                            {/if}
+                            {#if hybridNativeLlm && !llmReady && !acpOk}
+                                <span class="text-tr-ink-4"> · </span>
+                            {/if}
+                            {#if !acpOk}
+                                <span class="text-tr-watch">ACP 未连接</span>
+                            {/if}
+                        </p>
+                        {#if onOpenSettings}
+                            <button
+                                type="button"
+                                class="shrink-0 text-xs text-tr-accent hover:text-tr-accent-hover"
+                                onclick={onOpenSettings}
+                            >
+                                前往设置
+                            </button>
+                        {/if}
+                    </div>
+                {/if}
             </section>
 
             <!-- Agent 工程环境域 -->
             <section class="space-y-3">
                 <div>
-                    <h3 class="text-sm font-medium text-white/70">
+                    <h3 class="text-sm font-medium text-tr-ink-2">
                         {TERMS.agentEnv}
                     </h3>
-                    <p class="mt-0.5 text-xs text-white/40">
+                    <p class="mt-0.5 text-xs text-tr-ink-3">
                         Skills、工具链与 AGENTS.md，供 Coding Agent 在仓库中协作
                     </p>
                 </div>
 
                 <div
-                    class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/8 bg-[#14171c] px-5 py-4"
+                    class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-tr-border bg-tr-surface px-5 py-4"
                 >
-                    <div class="min-w-0">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <p class="text-sm font-medium text-white/85">
-                                {overview.agent_env.summary}
-                            </p>
-                            <span
-                                class={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                    overview.agent_env.ready
-                                        ? "bg-emerald-500/15 text-emerald-200"
-                                        : "bg-white/8 text-white/45"
-                                }`}
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span
+                            class="text-lg font-semibold [font-variant-numeric:tabular-nums] text-tr-ink"
+                        >
+                            {overview.agent_env.integrated_count}<span
+                                class="text-sm font-normal text-tr-ink-3"
+                                >/{overview.agent_env.total_count}</span
                             >
-                                {overview.agent_env.ready ? "已集成" : "待配置"}
-                            </span>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="text-sm font-medium text-tr-ink">
+                                    {overview.agent_env.summary}
+                                </p>
+                                <span
+                                    class={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                        overview.agent_env.ready
+                                            ? "bg-tr-good-soft text-tr-good"
+                                            : "bg-tr-elevated text-tr-ink-3"
+                                    }`}
+                                >
+                                    {overview.agent_env.ready
+                                        ? "已集成"
+                                        : "待配置"}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-xs text-tr-ink-3">
+                                与知识资产生成无关，用于优化外部 Coding Agent
+                                在本仓库的工作体验。
+                            </p>
                         </div>
-                        <p class="mt-1 text-xs text-white/40">
-                            与知识资产生成无关，用于优化外部 Coding Agent
-                            在本仓库的工作体验。
-                        </p>
                     </div>
                     {#if onOpenEnv}
                         <button
                             type="button"
-                            class="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500"
+                            class="shrink-0 rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent hover:bg-tr-accent-hover"
                             onclick={onOpenEnv}
                         >
                             {overview.agent_env.ready ? "管理集成" : "前往配置"}
@@ -776,33 +855,16 @@
             </section>
 
             {#if overview.repo_path || knowledgePath}
-                <details
-                    class="group rounded-2xl border border-white/8 bg-[#14171c]"
+                <div
+                    class="flex flex-col gap-2 rounded-xl border border-tr-border bg-tr-surface px-4 py-3"
                 >
-                    <summary
-                        class="flex cursor-pointer list-none items-center gap-1.5 px-5 py-3.5 text-sm font-medium text-white/70 marker:content-none [&::-webkit-details-marker]:hidden"
-                    >
-                        <span
-                            class="inline-flex shrink-0 text-white/35 group-open:hidden"
-                        >
-                            <ChevronIcon direction="right" size={14} />
-                        </span>
-                        <span
-                            class="hidden shrink-0 text-white/35 group-open:inline-flex"
-                        >
-                            <ChevronIcon direction="down" size={14} />
-                        </span>
-                        路径信息
-                    </summary>
-                    <div class="space-y-2 border-t border-white/8 px-5 py-4">
-                        {#if overview.repo_path}
-                            {@render pathRow("仓库路径", overview.repo_path)}
-                        {/if}
-                        {#if knowledgePath}
-                            {@render pathRow("知识库路径", knowledgePath)}
-                        {/if}
-                    </div>
-                </details>
+                    {#if overview.repo_path}
+                        {@render metaRow("仓库路径", overview.repo_path)}
+                    {/if}
+                    {#if knowledgePath}
+                        {@render metaRow("知识库路径", knowledgePath)}
+                    {/if}
+                </div>
             {/if}
         </div>
     {/if}

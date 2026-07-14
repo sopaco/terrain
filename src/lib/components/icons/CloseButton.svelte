@@ -18,7 +18,7 @@
 
 <button
   type="button"
-  class="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 px-2.5 py-1 text-white/60 hover:bg-white/5 {className}"
+  class="inline-flex shrink-0 items-center justify-center rounded-lg border border-tr-border-strong px-2.5 py-1 text-tr-ink-2 hover:bg-tr-elevated {className}"
   {onclick}
   aria-label={label}
 >
