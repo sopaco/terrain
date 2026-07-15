@@ -48,11 +48,15 @@ pub fn init(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
 pub fn handle_run_event(app: &AppHandle, event: &RunEvent) {
     if let RunEvent::Reopen { .. } = event {
         show_main_window(app);
     }
 }
+
+#[cfg(not(target_os = "macos"))]
+pub fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {}
 
 fn attach_main_window_close_handler(app: &tauri::App) -> tauri::Result<()> {
     let Some(main_win) = app.get_webview_window(MAIN_WINDOW_ID) else {
