@@ -1,42 +1,46 @@
-# Litho 文档生成领域
+# Litho文档生成领域
 
-**模块路径**：`crates/terrain-agent/src/litho.rs`
-**生成日期**：2026-06-14
-**分析置信度**：9/10
+**模块路径**：`crates/terrain-agent/src/litho.rs` + `crates/terrain-core/src/assets/litho.rs`  
+**生成日期**：2026-07-15
 
 ---
 
 ## 这个模块在做什么
 
-Litho 文档生成是 Terrain 的"旗舰功能"——它编排了一个全自动流水线，通过 ACP Agent（OpenCode）分析源码目录，生成 C4 模型的架构文档。核心设计理念是"可恢复流水线"：研究中间产物持久化到文件系统，即使 LLM 调用中途超时，再次运行可以从断点继续。
+Litho 文档生成是 Terrain 将「冷冰冰的源码仓库」转化为「人类可读知识库」的核心流水线。它不直接在 Rust 里写 Markdown，而是扮演**编排者**的角色：规划输出路径、拼装 ACP Agent 提示词、轮询磁盘上的产出物，并在研究稿已就绪时自动切换到「仅编排」阶段，避免重复跑昂贵的 C4 研究。
 
-你可以把 Litho 比作"自动化的学术论文写作"：先阅读大量资料（源码扫描），整理笔记（研究产物），然后组织成一篇文章（编排输出）。如果写了一半中断了，笔记还在，下次可以从整理笔记的环节继续，不需要重新阅读。
+可以把这套机制理解成一条四阶段文档工厂——预处理 → C4 研究 → 编排合成 → 输出校验——其中 `terrain-core` 负责「合同与质检」，`terrain-agent` 负责「启动外部 Agent 并盯着进度条」。
 
 ---
 
 ## 核心功能点
 
-1. **准备阶段**——`prepare_litho_generation()`（`crates/terrain-agent/src/litho.rs:40`）构建 `LithoPlan`，生成 ACP Agent Prompt。这个过程是纯本地计算，不涉及 LLM。
+1. **生成计划与提示词拼装**——`plan_litho_generation`（`crates/terrain-core/src/assets/litho.rs:17-31`）解析 Litho skill 目录、人类输出目录与工作区路径，生成 `LithoPlan`；`build_litho_generation_prompt` 和 `build_litho_composition_prompt` 分别驱动全量四阶段与仅 phase 3/4 的续跑场景。
 
-2. **全流水线执行**——`run_litho_generation()`（`crates/terrain-agent/src/litho.rs:269`）协调完整的生成流程：检查就绪状态 → 选择流水线路径（研究+生成 / 仅编排）→ 输出验证。
+2. **研究完成度与产出质检**——`LITHO_CORE_RESEARCH_FILES` 定义六份核心研究稿；`litho_research_ready` 要求核心稿齐全且 `modules/` 下至少有一份模块深度报告；`litho_human_complete_with_research` 校验人类文档集完整性。
 
-3. **轮询检测**——`prompt_agent_with_doc_poll()`（`crates/terrain-agent/src/litho.rs:94`）每隔 3 秒检查研究目录和人类文档目录的写入进度。检测到"稳定状态"（连续 10 次无变化）或超时（默认 45 分钟）时自动终止。
+3. **ACP 驱动的异步生成**——`run_litho_generation`（`litho.rs:289-402`）是主入口：检查 skill 就绪、可选 `force_refresh` 清理旧产出、根据研究就绪状态决定走全量生成还是仅编排。
 
-4. **编排重试**——`run_composition_with_retries()`（`crates/terrain-agent/src/litho.rs:222`）最多 3 次编排重试，每次重新调用 ACP Agent 补齐缺失文档。
+4. **文档轮询与早停**——`prompt_agent_with_doc_poll`（`litho.rs:109-212`）在 Agent 会话进行的同时，每 3–6 秒统计 human/research 目录下的 `.md` 数量；完整文档集落盘且连续 10 次无变化时主动 abort 会话。
 
-5. **恢复支持**——`litho_research_ready()`（`crates/terrain-core/src/assets/litho.rs:113`）检测 6 个核心研究报告是否齐全。研究产物齐全时跳过预处理和研究，直接进入编排（节约 50%+ LLM token）。
+5. **编排阶段重试**——`run_composition_with_retries`（`litho.rs:242-285`）最多重试 3 次，直到 `litho_human_complete_with_research` 通过。
 
 ---
 
 ## 关键组件
 
+以下组件分工明确：`terrain-core` 管契约与质检，`terrain-agent` 管执行与进度。
+
 | 组件/类型 | 文件路径 | 核心职责 |
 |---------|---------|---------|
-| `LithoGenerationJob` | `crates/terrain-agent/src/litho.rs:18` | 生成作业描述（plan + prompt + acp_command + status） |
-| `LithoProgress` | `crates/terrain-agent/src/litho.rs:27` | 进度事件结构（stage + message） |
-| `LithoGenerationResult` | `crates/terrain-agent/src/litho.rs:33` | 生成结果（plan + response_excerpt + doc_count + complete） |
-| `prompt_agent_with_doc_poll()` | `crates/terrain-agent/src/litho.rs:94` | ACP Agent 调用 + 轮询等待（核心编排函数） |
-| `run_composition_with_retries()` | `crates/terrain-agent/src/litho.rs:222` | 编排阶段重试逻辑 |
+| `LithoPlan` / `plan_litho_generation` | `crates/terrain-core/src/assets/litho.rs:17-31` | 汇总 skill、仓库、人类输出与工作区路径 |
+| `build_litho_generation_prompt` | `crates/terrain-core/src/assets/litho.rs:34-50` | 四阶段全量生成的 ACP 提示词 |
+| `litho_research_ready` | `crates/terrain-core/src/assets/litho.rs:94-105` | 判断 C4 研究是否足以进入编排 |
+| `litho_human_complete_with_research` | `crates/terrain-core/src/assets/litho.rs:131-155` | 校验人类文档集是否完整 |
+| `prepare_litho_generation` | `crates/terrain-agent/src/litho.rs:45-68` | 组装 plan、prompt 与 ACP 启动命令 |
+| `prompt_agent_with_doc_poll` | `crates/terrain-agent/src/litho.rs:109-212` | 轮询磁盘产出并支持早停 |
+| `run_litho_generation` | `crates/terrain-agent/src/litho.rs:289-402` | 主异步入口，串联生成与编排 |
+| `litho_acp_config` | `crates/terrain-agent/src/litho.rs:405-423` | 注入 `TERRAIN_LITHO_*` 环境变量 |
 
 ---
 
@@ -44,60 +48,64 @@ Litho 文档生成是 Terrain 的"旗舰功能"——它编排了一个全自动
 
 ```mermaid
 flowchart TD
-    A["run_litho_generation()"] --> B["检查人类文档完整性"]
-    B -->|已完整| C["返回已有结果"]
-    B -->|不完整| D{"研究产物<br/>已就绪?"}
-    D -->|是| E["仅编排阶段<br/>run_composition_with_retries()"]
-    D -->|否| F["全流水线<br/>研究+生成"]
-    F --> G{"研究已产生<br/>但文档不完整?"}
-    G -->|是| E
-    G -->|否| C
-    E --> H{"重试 < 3次<br/>且文档不完整?"}
-    H -->|是| I["编排阶段<br/>composition"]
-    I --> H
-    H -->|否| C
+    A["UI / CLI 触发<br/>run_litho_generation"] --> B["prepare_litho_generation<br/>litho.rs:45"]
+    B --> C{"litho_research_ready?<br/>core litho.rs:94"}
+    C -->|否| D["build_litho_generation_prompt<br/>core litho.rs:34"]
+    C -->|是| E["run_composition_with_retries<br/>agent litho.rs:242"]
+    D --> F["prompt_agent_with_doc_poll<br/>agent litho.rs:109"]
+    F --> G["ACP Agent 写 research + human docs"]
+    G --> H{"human_complete?<br/>agent litho.rs:78"}
+    H -->|否且有研究稿| E
+    H -->|是| I["build_result<br/>agent litho.rs:92"]
+    E --> J["build_litho_composition_prompt<br/>core litho.rs:53"]
+    J --> F
+    I --> K["LithoGenerationResult"]
 ```
 
 **关键步骤说明**：
-1. 准备阶段：`prepare_litho_generation()` 在 `crates/terrain-agent/src/litho.rs:40` — 纯本地计算
-2. 全流水线路径：通过 ACP Agent 执行 SKILL.md 中定义的四阶段流水线
-3. 编排路径：仅执行 composition 和 output 阶段
-4. 轮询等待：每 3 秒检查一次，最多 45 分钟
+
+1. **计划阶段**：`plan_litho_generation` 通过 `resolve_litho_skill_dir` 定位 skill，失败时回退 `default_litho_skill_dir`。
+2. **全量生成**：Agent 被指示将研究稿写入 `TERRAIN_LITHO_WORKSPACE`，最终文档写入 `TERRAIN_HUMAN_OUTPUT_DIR`。
+3. **早停逻辑**：`human_complete` 连续稳定 10 次后 abort，墙钟超时默认 45 分钟。
 
 ---
 
 ## 关键接口与扩展点
 
-**核心接口**：`run_litho_generation(paths, project_slug, repo_path, acp_settings, on_progress)` — `on_progress` 让调用者（CLI/UI）实时掌握进度。
-
-**配置扩展**：
-- 超时时间：通过 `TERRAIN_LITHO_TIMEOUT_SECS` 环境变量调整
-- Skill 路径：通过 `TERRAIN_LITHO_SKILL` 环境变量自定义文档生成逻辑
-
-**容错机制**：
-- 墙钟超时 45 分钟自动中止
-- 稳定检测（10 次轮询无变化）提前结束等待
-- 编排最多重试 3 次
+- **Skill 目录**：通过 `resolve_litho_skill_dir` / `TERRAIN_LITHO_SKILL` 环境变量替换默认 preset skill。
+- **研究必备清单**：修改 `LITHO_CORE_RESEARCH_FILES` 可扩展「研究就绪」判定条件。
+- **人类文档清单**：`LITHO_REQUIRED_HUMAN_FILES` 控制完成度检查的文件集合。
 
 ---
 
 ## 与其他模块的交互
 
 | 交互模块 | 方向 | 接口/协议 | 说明 |
-|---------|------|---------|---------|
-| 知识资产管理 | 依赖 | `plan_litho_generation()`, `litho_research_ready()` | 使用资产模块的计划和检测功能 |
-| ACP 协议 | 依赖 | `acp_spawn_command()`, `build_acp_config()` | 通过 ACP 协议与 OpenCode 通信 |
-| 项目初始化 | 被依赖 | `run_litho_generation()` | 初始化流水线调用本模块生成人类文档 |
+|---------|------|---------|------|
+| ACP协议 | 依赖 | `build_acp_config`、`prompt_agent` | 长时文档生成委托外部 Agent |
+| 项目初始化 | 被依赖 | `run_litho_generation` | 初始化流程的子步骤 |
+| 知识资产管理 | 依赖 | `plan_litho_generation` | 路径规划与 skill 解析 |
+| Agent上下文 | 被依赖 | Litho 产出 `human/` | 上下文生成读取人类文档摘要 |
+
+---
+
+## 跨模块协作场景
+
+**在项目初始化中**：本模块在扫描完成后按需启动。`project_init.rs` 调用 `litho_human_complete_with_research` 判断是否需要运行；Litho 成功后 `force_refresh` Agent 上下文，确保新文档反映到 `context.md`。
+
+**在 Litho 断点续传中**：研究产物持久化在 `.litho-agent/` 后，再次触发时 `litho_research_ready` 为真，直接走 `run_composition_with_retries` 仅执行编排阶段，显著缩短二次运行时间。
 
 ---
 
 ## 性能考量
 
-- **轮询间隔**：3 秒，平衡检测精度和 IO 开销
-- **超时策略**：默认 45 分钟（2700 秒），大型项目可调整
-- **研究缓存**：研究产物持久化后，后续运行跳过预处理和研究阶段
-- **编排重试**：最多 3 次，避免无限重试浪费 token
+- **轮询而非阻塞**：`tokio::select!` 在 Agent 会话与定时轮询间切换，UI 能实时看到进度。
+- **自适应轮询间隔**：有产出变化时 3 秒一轮，稳定后降至 6 秒。
+- **跳过重复研究**：`litho_research_ready` 为真时直接走编排，避免重复 C4 分析。
+- **早停防挂起**：完整文档集落盘后主动终止 ACP 会话，以磁盘事实为准。
 
 ---
 
-> **分析置信度说明**：9/10 — 完整阅读了 litho.rs 全部 407 行源码，包含所有阶段逻辑和容错机制。
+## 实现亮点
+
+ACP 轮询早停机制是 Litho 稳定性的关键设计——不信任 Agent 的结束信号，而是以磁盘产出为唯一完成判据。连续 10 次轮询无变化且文档集完整时才 abort，既避免了 Agent 挂起，又给最后的文件写入留出缓冲时间。

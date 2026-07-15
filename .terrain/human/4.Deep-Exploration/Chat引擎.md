@@ -1,32 +1,29 @@
-# Chat 引擎领域
+# Chat引擎领域
 
-**模块路径**：`crates/terrain-agent/src/chat.rs`
-**生成日期**：2026-06-14
-**分析置信度**：9/10
+**模块路径**：`crates/terrain-agent/src/chat/`  
+**生成日期**：2026-07-15
 
 ---
 
 ## 这个模块在做什么
 
-Chat 引擎是 Terrain 的"对话大脑"——所有需要与 LLM 交互的场景都经过它。它管理 LLM 会话的生命周期，支持两种执行模式（Native LLM 和 ACP Agent），提供流式输出、工具调用追踪、引用提取等能力。DeepWiki 问答、Agent 上下文生成、SDD 的 LLM 阶段都依赖它。
+Chat 引擎是 Terrain「Ask」问答体验的心脏。它把用户的自然语言问题，路由到两种截然不同的执行后端：一是基于 ADK Runner 的**原生 LLM + 函数工具**模式，Agent 在进程内调用 `grep_agent_pack`、`read_agent_context` 等工具检索知识；二是**纯 ACP 模式**，把整个问答委托给外部 OpenCode Agent，通过 `terrain tools` CLI 子进程间接访问同一套知识资产。
 
-它的设计类似于"通用 AI 网关"：调用者只需说"我要问这个问题"或"我要执行这个任务"，ChatEngine 负责选择 LLM 后端、管理会话、处理工具调用、清理输出格式、提取引用——调用者只需要处理最终的答案和引用。
+无论哪条路径，引擎都负责三件大事：在提问前确保 agent pack / context 新鲜、把宏观/中观/微观三层上下文注入提示词、以及把流式事件翻译成前端可消费的 `ChatReply`。
 
 ---
 
 ## 核心功能点
 
-1. **双模式执行**——Native 模式直接调用本地/远程 LLM（通过 adk-rust Runner），ACP 模式调用 OpenCode 的 ACP 代理执行。通过 `AskExecution` 枚举选择。Native 模式用于轻量任务（问答、上下文生成），ACP 模式用于复杂任务（文档生成）。
+1. **双后端路由**——`ChatEngine::with_settings`（`mod.rs:72-103`）根据 `AgentExecution` 决定初始化 `NativeBackend` 还是仅校验 ACP 可用；`run_turn`（`158-195` 行）分流到 `run_turn_acp` 或 `run_turn_native`。
 
-2. **流式输出支持**——SSE 模式流式输出 LLM 回复，支持 `on_chunk` 回调逐文本块推送。
+2. **提问前资产保鲜**——`ask`（`113-155` 行）在绑定项目时检查 `agent_pack_fresh` 与 `agent_context_fresh`，过期则调用 `prepare_agent_assets_for_ask` 自动重建。
 
-3. **工具调用追踪**——`ToolCallTracker` 内部结构追踪每个工具调用的生命周期（Running→Ok/Error），记录开始/完成时间戳和耗时。支持流式 Partial 去重——同一个工具调用在不同 chunk 中更新参数时，只保留一个记录。
+3. **三层提示词注入**——`build_ask_prompt`（`prompt.rs:41-169`）按 Macro（架构概览）、Meso（`read_agent_context` 分段）、Micro（`grep_agent_pack`）组织规则。
 
-4. **会话管理**——adk-rust 的 `InMemorySessionService` 创建和恢复会话。会话通过 `session_id` 标识，`agent-ctx-*` 前缀的会话使用特殊上下文注入逻辑。
+4. **原生流式会话**——`run_turn_native`（`native.rs:127-292`）通过 ADK `Runner::run_str` 消费 SSE 事件流，用 `ToolCallTracker` 跟踪工具调用。
 
-5. **引用提取**——`search_citations()` 搜索知识库获取引用，`extract_source_citations()` + `merge_citations()` 从 LLM 回复中提取引用标注并合并。
-
-6. **自动资产准备**——Ask 模式下，如果项目的 repomix pack 或 context.md 缺失，自动触发生成。
+5. **引用合并**——两端均在答案生成后调用 `extract_source_citations` 与 `merge_citations`。
 
 ---
 
@@ -34,11 +31,14 @@ Chat 引擎是 Terrain 的"对话大脑"——所有需要与 LLM 交互的场�
 
 | 组件/类型 | 文件路径 | 核心职责 |
 |---------|---------|---------|
-| `ChatEngine` | `crates/terrain-agent/src/chat.rs:321` | 对话引擎主结构（配置 + 执行路径） |
-| `ChatReply` | `crates/terrain-agent/src/chat.rs:78` | 回复结构（answer + citations + tool_calls + usage） |
-| `ChatPhase` | `crates/terrain-agent/src/chat.rs:69` | 对话阶段枚举（Thinking/Tools/Generating/Streaming） |
-| `ToolCallTracker` | `crates/terrain-agent/src/chat.rs:86` | 工具调用追踪（去重、状态、耗时） |
-| `NativeBackend` | `crates/terrain-agent/src/chat.rs:316` | Native LLM 执行后端（adk-rust Runner） |
+| `ChatEngine` | `crates/terrain-agent/src/chat/mod.rs:53-229` | 对外统一的问答入口与后端选择 |
+| `build_ask_prompt` | `crates/terrain-agent/src/chat/prompt.rs:41-169` | 拼装 Macro/Meso/Micro 三层上下文提示词 |
+| `NativeBackend` | `crates/terrain-agent/src/chat/native.rs:43-87` | ADK Runner + InMemorySessionService |
+| `run_turn_native` | `crates/terrain-agent/src/chat/native.rs:127-292` | 流式消费 LLM 事件、跟踪工具、收集答案 |
+| `run_turn_acp` | `crates/terrain-agent/src/chat/acp.rs:18-134` | 委托外部 ACP Agent 完成问答 |
+| `ToolCallTracker` | `crates/terrain-agent/src/chat/tracker.rs:8-179` | 解析 FunctionCall/Response，去重 partial 调用 |
+| `ChatReply` / `ChatPhase` | `crates/terrain-agent/src/chat/types.rs:54-71` | 序列化给前端的回复结构与阶段枚举 |
+| `ModelAnswerCollector` | `crates/terrain-agent/src/chat/native.rs:321-390` | 工具执行后选取最终答案段落 |
 
 ---
 
@@ -46,56 +46,65 @@ Chat 引擎是 Terrain 的"对话大脑"——所有需要与 LLM 交互的场�
 
 ```mermaid
 flowchart TD
-    A["用户问题"] --> B{"ChatEngine.ask()"}
-    B --> C["资产准备检查<br/>ensure_agent_assets()"]
-    C --> D{"AskExecution?"}
-    D -->|Native| E["构建 Prompt<br/>build_ask_prompt()"]
-    D -->|ACP| F["构建 ACP Prompt<br/>build_ask_acp_prompt()"]
-    E --> G["adk-rust Runner<br/>流式事件"]
-    G --> H["ToolCallTracker<br/>工具追踪"]
-    H --> I["答案文本收集"]
-    I --> J["引用提取<br/>search_citations()"]
-    J --> K["ChatReply"]
-    F --> L["ACP Agent<br/>prompt_agent()"]
-    L --> J
+    A["ChatEngine::ask<br/>mod.rs:113"] --> B{"pack/context fresh?<br/>mod.rs:131-133"}
+    B -->|否| C["prepare_agent_assets_for_ask"]
+    B -->|是| D["run_turn<br/>mod.rs:158"]
+    D --> E{"execution_pure_acp?<br/>mod.rs:169"}
+    E -->|是| F["run_turn_acp<br/>chat/acp.rs:18"]
+    E -->|否| G["run_turn_native<br/>native.rs:127"]
+    G --> H["build_ask_prompt<br/>prompt.rs:41"]
+    H --> I["Runner::run_str<br/>native.rs:149"]
+    I --> J["ToolCallTracker::ingest_event<br/>tracker.rs:30"]
+    J --> K["ModelAnswerCollector<br/>native.rs:321"]
+    K --> L["sanitize_answer_text<br/>mod.rs:49"]
+    L --> M["merge_citations"]
+    M --> N["ChatReply"]
+    F --> O["prompt_agent + build_ask_acp_prompt"]
+    O --> N
 ```
-
-**关键步骤说明**：
-1. 资产准备：`ensure_agent_assets()` 确保 repomix pack 和 context.md 已就绪
-2. Prompt 构建：将用户问题 + 预加载的上下文数据组合为 Agent 输入
-3. 执行：Native 模式通过 adk-runner 流式执行，ACP 模式通过 `prompt_agent()` 同步执行
-4. 引用提取：从回答和搜索结果中提取源码引用，合并去重
 
 ---
 
 ## 关键接口与扩展点
 
-**核心接口**：`ChatEngine::ask(session_id, query, project, repo_path, on_chunk, on_tool_calls, on_phase, on_usage)` — 接受 4 个回调函数用于 UI 渲染。
-
-**扩展点**：`AskExecution` 枚举允许在 Native 和 ACP 模式间切换。Native 模式通过 `build_agent()` 自定义 Agent 配置和工具集。
+- **执行模式**：`AgentExecution::Acp` / `AcpNative` 控制是否混用 LLM 与 ACP。
+- **`ChatContextGenerator`**：实现 `AgentContextGenerator` trait，在 ADK Agent 构建时注入资产保鲜逻辑。
+- **Freshness 门控**：`macro_preload` 由 `resolve_freshness_summary` 决定，低分时 withheld 宏观概览。
 
 ---
 
 ## 与其他模块的交互
 
 | 交互模块 | 方向 | 接口/协议 | 说明 |
-|---------|------|---------|---------|
-| ACP 协议 | 依赖 | `acp_spawn_command()`, `build_acp_config()` | ACP 模式启动 OpenCode |
-| 知识资产管理 | 依赖 | `ensure_agent_assets()`, `build_context_overview()` | 资产就绪检查和上下文预加载 |
-| 全文搜索 | 依赖 | `KnowledgeSearch.search()` | 引用提取时搜索知识库 |
-| Agent 上下文 | 被依赖 | `ChatEngine.run_turn()` | Agent 上下文生成使用 ChatEngine 执行 LLM 调用 |
-| SDD 工作流 | 被依赖 | `ChatEngine.ask()` | SDD 的 LLM 阶段（需求/设计/审查）使用 ChatEngine |
-| 桌面 UI | 被依赖 | Tauri IPC 事件 | DeepWiki 面板使用 ChatEngine 进行 AI 问答 |
+|---------|------|---------|------|
+| ACP协议 | 依赖 | `build_acp_config` | 纯 ACP 模式问答 |
+| Agent上下文 | 依赖 | `read_agent_context`、`build_context_overview` | Macro/Meso 层数据来源 |
+| 知识资产管理 | 依赖 | `grep_repomix_pack`、`read_agent_pack_file` | Micro 层源码检索 |
+| 新鲜度追踪 | 依赖 | `resolve_freshness_summary` | 信任块与宏观预加载门控 |
+| SDD工作流 | 被依赖 | `ChatEngine::ask` | SDD 文档阶段复用 Chat 引擎 |
+| 源码引用 | 被依赖 | `extract_source_citations` | 回答中的可点击引用 |
+
+---
+
+## 跨模块协作场景
+
+**在 DeepWiki 问答中**：本模块是端到端路径的核心。`ask` 先通过新鲜度模块判断信任级别，再通过 Agent 上下文模块获取 Macro 层概览，最后通过知识资产模块的 grep/read 工具深入源码。
+
+**在 SDD 文档阶段中**：`run_sdd_llm_phase` 复用 `ChatEngine::ask`，session_id 格式为 `sdd-{project}-{session}-{phase}`，隔离各阶段 LLM 会话防止上下文污染。
+
+**在 Agent 上下文生成中**：特殊 session `agent-ctx-{slug}` 触发 `run_turn_native` 跳过 `build_ask_prompt`，避免 Ask 规则污染生成任务。
 
 ---
 
 ## 性能考量
 
-- **Native 模式**：adk-rust Runner 管理 LLM 会话，流式事件通过 tokio 异步管道推送给调用者
-- **ACP 模式**：ACP Agent 运行在独立子进程中，ChatEngine 同步等待结果
-- **会话缓存**：`AppState` 中缓存 `ChatEngine` 实例，配置无变化时复用（`src-tauri/src/lib.rs:42-45`）
-- **超时控制**：Native 模式 1200 秒超时（`ASK_TIMEOUT`），ACP 模式无独立超时（由 Litho 生成的时间控制在 45 分钟）
+- **宏观预加载减工具调用**：freshness 允许时，`build_context_overview` 直接注入 prompt，避免首轮 `read_agent_context` 往返。
+- **目录树截断**：`ASK_INJECT_DIR_TREE_MAX_CHARS = 2000`，防止 repomix 目录结构撑爆上下文窗口。
+- **流式输出**：工具执行期间静默收集文本，结束后只推送最终段。
+- **Partial 去重**：`ToolCallTracker` 合并流式 FunctionCall 碎片，避免 UI 工具列表闪烁。
 
 ---
 
-> **分析置信度说明**：9/10 — 完整阅读了 chat.rs 全部 1063 行源码，包含所有核心函数和测试用例。
+## 实现亮点
+
+`ModelAnswerCollector` 解决了工具调用场景下「最终答案选取」的难题——LLM 在工具执行前后可能输出多段文本，收集器在工具执行后优先取最后一段模型文本作为最终答案，避免把工具中间结果展示给用户。
