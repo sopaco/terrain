@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_fresh, agent_context_ready, agent_pack_fresh, maybe_pack_agent_assets,
+    agent_context_fresh, agent_pack_fresh, maybe_pack_agent_assets,
     resolve_project_repo_path, KnowledgePaths,
 };
 

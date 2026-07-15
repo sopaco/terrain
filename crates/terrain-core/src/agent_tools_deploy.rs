@@ -11,9 +11,12 @@ use std::fs;
 #[cfg(not(unix))]
 use std::io;
 use std::path::{Path, PathBuf};
+#[cfg(any(test, not(unix)))]
 use std::time::UNIX_EPOCH;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+#[cfg(any(test, not(unix)))]
+use serde::Deserialize;
 
 use crate::bundled_tools::{bundled_terrain_cli, bundled_rtk, ensure_bundled_tools_initialized};
 use crate::error::{CoreError, Result};

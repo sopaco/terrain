@@ -643,6 +643,7 @@ fn is_executable_file(path: &Path) -> bool {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 struct CcusageTotals {
     input_tokens: u64,
     output_tokens: u64,
@@ -687,18 +688,21 @@ struct CcusageModelBreakdown {
 #[derive(Debug, Deserialize)]
 struct CcusageDailyReport {
     daily: Vec<CcusageEntry>,
+    #[allow(dead_code)]
     totals: CcusageTotals,
 }
 
 #[derive(Debug, Deserialize)]
 struct CcusageMonthlyReport {
     monthly: Vec<CcusageEntry>,
+    #[allow(dead_code)]
     totals: CcusageTotals,
 }
 
 #[derive(Debug, Deserialize)]
 struct CcusageSessionReport {
     session: Vec<CcusageEntry>,
+    #[allow(dead_code)]
     totals: CcusageTotals,
 }
 

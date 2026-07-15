@@ -7,7 +7,7 @@ use terrain_agent::{
 };
 use terrain_core::{
     agent_context_fresh, agent_context_ready, compute_freshness, get_project_overview, list_stale_registry_projects,
-    plan_litho_generation, read_freshness_ledger, resolve_freshness_summary, write_project_remark,
+    plan_litho_generation, read_freshness_ledger, write_project_remark,
     FreshnessSummary, ProjectOverview, ProjectScanner, ProjectSummary, QuickRefreshResult,
     ScanReport, StaleProjectSummary,
 };
