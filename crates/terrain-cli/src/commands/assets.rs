@@ -41,6 +41,7 @@ pub async fn run(paths: &KnowledgePaths, command: AssetCommands) -> Result<()> {
                 &slug,
                 &repo,
                 &acp,
+                false,
                 |p| eprintln!("[{}] {}", p.stage, p.message),
             )
             .await?;

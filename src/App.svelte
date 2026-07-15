@@ -597,7 +597,7 @@
         }
     }
 
-    async function triggerHumanGeneration() {
+    async function triggerHumanGeneration(forceRefresh?: boolean) {
         if (!project.selectedRepoPath || !project.selectedSlug) {
             setStatus(UI_MESSAGES.selectProjectWithRepoPath, "error");
             return;
@@ -610,12 +610,19 @@
             return;
         }
         const slug = project.selectedSlug;
+        const force =
+            typeof forceRefresh === "boolean"
+                ? forceRefresh
+                : (project.projectOverview?.litho.human_docs_complete ??
+                  false);
         setProjectTask(slug, {
             lithoBusy: true,
-            lithoProgress: `正在生成 ${TERMS.humanKnowledge}（Litho）…`,
+            lithoProgress: force
+                ? `正在重新生成 ${TERMS.humanKnowledge}（Litho）…`
+                : `正在生成 ${TERMS.humanKnowledge}（Litho）…`,
         });
         try {
-            await runLithoGeneration(project.selectedRepoPath, slug);
+            await runLithoGeneration(project.selectedRepoPath, slug, force);
         } catch (e) {
             setStatus(String(e), "error");
             setProjectTask(slug, { lithoBusy: false, lithoProgress: "" });
@@ -942,7 +949,7 @@
             onOpenEnv={() => (project.activeTab = "env")}
             onOpenSettings={() => (project.settingsOpen = true)}
             onOpenAsk={() => openDeepWiki()}
-            onGenerateHuman={triggerHumanGeneration}
+            onGenerateHuman={() => void triggerHumanGeneration()}
             onGenerateAgentContext={triggerAgentContextGeneration}
             onRepack={packAgentForSelected}
             onInitializeProject={triggerProjectInitialization}
@@ -1032,19 +1039,9 @@
                             class="rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs hover:bg-tr-elevated disabled:opacity-50"
                             disabled={repackBusy ||
                                 lithoBusy ||
-                                !project.selectedRepoPath}
-                            onclick={packAgentForSelected}
-                        >
-                            {repackBusy ? "重建中…" : "重建源码索引"}
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs hover:bg-tr-elevated disabled:opacity-50"
-                            disabled={repackBusy ||
-                                lithoBusy ||
                                 !project.selectedRepoPath ||
                                 !project.acpOk}
-                            onclick={triggerHumanGeneration}
+                            onclick={() => void triggerHumanGeneration()}
                             title={!project.acpOk
                                 ? "请先在设置中配置 ACP 代理"
                                 : undefined}

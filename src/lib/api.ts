@@ -65,10 +65,15 @@ export const generateHumanDocs = (repoPath: string, projectSlug?: string) =>
     projectSlug: projectSlug || null,
   });
 
-export const runLithoGeneration = (repoPath: string, projectSlug?: string) =>
+export const runLithoGeneration = (
+  repoPath: string,
+  projectSlug?: string,
+  forceRefresh = false,
+) =>
   invoke<void>("run_litho_generation_cmd", {
     repoPath,
     projectSlug: projectSlug || null,
+    forceRefresh,
   });
 
 export const checkLlm = () => invoke<LlmStatus>("check_llm");

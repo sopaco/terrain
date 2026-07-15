@@ -749,6 +749,15 @@
                         primaryDisabled={overview.litho.human_docs_complete
                             ? !onOpenHumanOverview
                             : lithoBusy || !acpOk || !onGenerateHuman}
+                        secondaryLabel={overview.litho.human_docs_complete
+                            ? lithoBusy
+                                ? "生成中…"
+                                : "重新生成"
+                            : undefined}
+                        onSecondary={overview.litho.human_docs_complete
+                            ? onGenerateHuman
+                            : undefined}
+                        secondaryDisabled={lithoBusy || !acpOk}
                     />
                     {#if structuredAsset}
                         {@const structuredAction =
