@@ -5,12 +5,12 @@
       "header_line": 399
     },
     {
-      "path": "src/lib/components/ProjectOverviewPanel.svelte",
+      "path": "src/lib/components/DeepWikiPanel.svelte",
       "header_line": 1687
     },
     {
-      "path": "src/lib/components/DeepWikiPanel.svelte",
-      "header_line": 2581
+      "path": "src/lib/components/ProjectOverviewPanel.svelte",
+      "header_line": 2568
     },
     {
       "path": "src-tauri/src/lib.rs",
@@ -77,20 +77,20 @@
       "header_line": 5793
     },
     {
-      "path": "crates/terrain-core/src/assets/agent_context.rs",
+      "path": "package.json",
       "header_line": 5911
     },
     {
+      "path": "crates/terrain-core/src/assets/agent_context.rs",
+      "header_line": 5953
+    },
+    {
       "path": "env-catalog/skills/repomix-context-skill/SKILL.md",
-      "header_line": 5952
+      "header_line": 5994
     },
     {
       "path": "env-catalog/skills/rtk-skill/SKILL.md",
-      "header_line": 6041
-    },
-    {
-      "path": "package.json",
-      "header_line": 6259
+      "header_line": 6083
     },
     {
       "path": "src/lib/components/FreshnessHelpPanel.svelte",
@@ -309,192 +309,192 @@
       "header_line": 12870
     },
     {
-      "path": "src/lib/components/CopyMarkdownButton.svelte",
+      "path": "src/lib/clipboard.ts",
       "header_line": 12922
     },
     {
+      "path": "src/lib/components/CopyMarkdownButton.svelte",
+      "header_line": 12951
+    },
+    {
       "path": "src/lib/components/EnvPlanPanel.svelte",
-      "header_line": 12967
+      "header_line": 12996
     },
     {
       "path": "src/lib/components/MainNavTabs.svelte",
-      "header_line": 13025
+      "header_line": 13054
     },
     {
       "path": "src/lib/components/MermaidLightbox.svelte",
-      "header_line": 13082
+      "header_line": 13111
     },
     {
       "path": "src/lib/components/OverviewKnowledgeCard.svelte",
-      "header_line": 13246
+      "header_line": 13275
     },
     {
       "path": "src/lib/components/SlideDrawer.svelte",
-      "header_line": 13342
+      "header_line": 13371
     },
     {
       "path": "src/lib/knowledgeDoc.ts",
-      "header_line": 13440
+      "header_line": 13469
     },
     {
       "path": "src/lib/mergeFreshness.ts",
-      "header_line": 13487
+      "header_line": 13516
     },
     {
       "path": "src/lib/stores/status.svelte.ts",
-      "header_line": 13533
+      "header_line": 13562
     },
     {
       "path": "src-tauri/src/commands/env.rs",
-      "header_line": 13578
+      "header_line": 13607
     },
     {
       "path": "src-tauri/src/commands/mod.rs",
-      "header_line": 13603
+      "header_line": 13632
     },
     {
       "path": "crates/terrain-agent/src/agent_assets.rs",
-      "header_line": 13619
+      "header_line": 13648
     },
     {
       "path": "crates/terrain-agent/src/chat/acp.rs",
-      "header_line": 13665
+      "header_line": 13694
     },
     {
       "path": "crates/terrain-agent/src/chat/prompt.rs",
-      "header_line": 13683
+      "header_line": 13712
     },
     {
       "path": "crates/terrain-agent/src/chat/tracker.rs",
-      "header_line": 13703
+      "header_line": 13732
     },
     {
       "path": "crates/terrain-agent/src/env_optimize.rs",
-      "header_line": 13887
+      "header_line": 13916
     },
     {
       "path": "crates/terrain-agent/src/litho.rs",
-      "header_line": 13912
+      "header_line": 13941
     },
     {
       "path": "crates/terrain-agent/src/tools.rs",
-      "header_line": 14030
+      "header_line": 14059
     },
     {
       "path": "crates/terrain-cli/Cargo.toml",
-      "header_line": 14151
+      "header_line": 14180
     },
     {
       "path": "crates/terrain-cli/src/cli.rs",
-      "header_line": 14178
+      "header_line": 14207
     },
     {
       "path": "crates/terrain-cli/src/commands/env.rs",
-      "header_line": 14391
+      "header_line": 14420
     },
     {
       "path": "crates/terrain-cli/src/commands/tools.rs",
-      "header_line": 14409
+      "header_line": 14438
     },
     {
       "path": "crates/terrain-core/src/assets/litho.rs",
-      "header_line": 14417
+      "header_line": 14446
     },
     {
       "path": "crates/terrain-core/src/assets/pack_read.rs",
-      "header_line": 14468
+      "header_line": 14497
     },
     {
       "path": "crates/terrain-core/src/assets/sdd.rs",
-      "header_line": 14600
+      "header_line": 14629
     },
     {
       "path": "crates/terrain-core/src/ingest/git.rs",
-      "header_line": 14709
+      "header_line": 14738
     },
     {
       "path": "crates/terrain-core/src/ingest/openapi.rs",
-      "header_line": 14740
+      "header_line": 14769
     },
     {
       "path": "crates/terrain-core/src/path_portable.rs",
-      "header_line": 14779
+      "header_line": 14808
     },
     {
       "path": "crates/terrain-core/src/paths.rs",
-      "header_line": 14831
+      "header_line": 14860
     },
     {
       "path": "crates/terrain-core/src/process.rs",
-      "header_line": 15070
+      "header_line": 15099
     },
     {
       "path": "crates/terrain-core/src/registry.rs",
-      "header_line": 15090
+      "header_line": 15119
     },
     {
       "path": "crates/terrain-core/src/repo_walk.rs",
-      "header_line": 15182
+      "header_line": 15211
     },
     {
       "path": "crates/terrain-core/src/schema.rs",
-      "header_line": 15218
+      "header_line": 15247
     },
     {
       "path": "crates/terrain-core/src/ts_ipc.rs",
-      "header_line": 15756
+      "header_line": 15785
     },
     {
       "path": "crates/terrain-core/src/usage.rs",
-      "header_line": 15762
+      "header_line": 15791
     },
     {
       "path": "crates/terrain-ts-export/src/main.rs",
-      "header_line": 16071
+      "header_line": 16100
     },
     {
       "path": "index.html",
-      "header_line": 16091
+      "header_line": 16120
     },
     {
       "path": "npm/README.md",
-      "header_line": 16108
+      "header_line": 16137
     },
     {
       "path": "npm/packages/cli/bin/terrain.js",
-      "header_line": 16186
+      "header_line": 16215
     },
     {
       "path": "npm/packages/cli/package.json",
-      "header_line": 16225
+      "header_line": 16254
     },
     {
       "path": "npm/packages/rtk/bin/rtk.js",
-      "header_line": 16270
+      "header_line": 16299
     },
     {
       "path": "npm/packages/rtk/package.json",
-      "header_line": 16309
+      "header_line": 16338
     },
     {
       "path": "npm/scripts/lib/write-shim.mjs",
-      "header_line": 16354
+      "header_line": 16383
     },
     {
       "path": "npm/scripts/prepare-binaries.mjs",
-      "header_line": 16405
+      "header_line": 16434
     },
     {
       "path": "preset_skills/litho-documents-skill/references/phase4-output.md",
-      "header_line": 16503
+      "header_line": 16532
     },
     {
       "path": "src/lib/assistantSteps.ts",
-      "header_line": 16703
-    },
-    {
-      "path": "src/lib/clipboard.ts",
-      "header_line": 16800
+      "header_line": 16732
     },
     {
       "path": "src/lib/components/KnowledgeArticle.svelte",
@@ -1061,116 +1061,116 @@
       "header_line": 22649
     },
     {
-      "path": "src/lib/askSlashCommands.ts",
+      "path": "src/lib/askShareImage.ts",
       "header_line": 22668
     },
     {
+      "path": "src/lib/askSlashCommands.ts",
+      "header_line": 22739
+    },
+    {
       "path": "src/lib/assistantMarkdown.ts",
-      "header_line": 22687
-    },
-    {
-      "path": "src/lib/components/UsageMonitor.svelte",
-      "header_line": 22710
-    },
-    {
-      "path": "src/lib/constants.ts",
-      "header_line": 22766
-    },
-    {
-      "path": "src/lib/highlightSetup.ts",
-      "header_line": 22777
-    },
-    {
-      "path": "src/lib/ime.ts",
-      "header_line": 22865
-    },
-    {
-      "path": "src/lib/markdownToc.ts",
-      "header_line": 22877
-    },
-    {
-      "path": "src/lib/mermaid-utils.ts",
-      "header_line": 22972
-    },
-    {
-      "path": "src/lib/mermaidLoader.ts",
-      "header_line": 23047
-    },
-    {
-      "path": "src/lib/overlayMotion.ts",
-      "header_line": 23075
-    },
-    {
-      "path": "src/lib/sourceLanguage.ts",
-      "header_line": 23102
-    },
-    {
-      "path": "src/lib/stores/chat.svelte.ts",
-      "header_line": 23118
-    },
-    {
-      "path": "src/lib/stores/project.svelte.ts",
-      "header_line": 23139
-    },
-    {
-      "path": "src/lib/stores/usageDisplay.svelte.ts",
-      "header_line": 23177
-    },
-    {
-      "path": "src/lib/timeFormat.ts",
-      "header_line": 23202
-    },
-    {
-      "path": "src-tauri/binaries/.gitkeep",
-      "header_line": 23223
-    },
-    {
-      "path": "src-tauri/gen/schemas/acl-manifests.json",
-      "header_line": 23229
-    },
-    {
-      "path": "src-tauri/gen/schemas/desktop-schema.json",
-      "header_line": 23235
-    },
-    {
-      "path": "src-tauri/gen/schemas/macOS-schema.json",
-      "header_line": 25918
-    },
-    {
-      "path": "src-tauri/gen/schemas/windows-schema.json",
-      "header_line": 28601
-    },
-    {
-      "path": "src-tauri/icons/android/mipmap-anydpi-v26/ic_launcher.xml",
-      "header_line": 31284
-    },
-    {
-      "path": "src-tauri/icons/android/values/ic_launcher_background.xml",
-      "header_line": 31294
-    },
-    {
-      "path": "src-tauri/src/commands/usage.rs",
-      "header_line": 31303
-    },
-    {
-      "path": "src-tauri/src/preset_skills.rs",
-      "header_line": 31318
-    },
-    {
-      "path": "src-tauri/src/tray.rs",
-      "header_line": 31326
-    },
-    {
-      "path": "svelte.config.js",
-      "header_line": 31354
-    },
-    {
-      "path": "src/lib/askShareImage.ts",
-      "header_line": 31364
+      "header_line": 22758
     },
     {
       "path": "src/lib/components/CopyImageButton.svelte",
-      "header_line": 31435
+      "header_line": 22781
+    },
+    {
+      "path": "src/lib/components/UsageMonitor.svelte",
+      "header_line": 22831
+    },
+    {
+      "path": "src/lib/constants.ts",
+      "header_line": 22887
+    },
+    {
+      "path": "src/lib/highlightSetup.ts",
+      "header_line": 22898
+    },
+    {
+      "path": "src/lib/ime.ts",
+      "header_line": 22986
+    },
+    {
+      "path": "src/lib/markdownToc.ts",
+      "header_line": 22998
+    },
+    {
+      "path": "src/lib/mermaid-utils.ts",
+      "header_line": 23093
+    },
+    {
+      "path": "src/lib/mermaidLoader.ts",
+      "header_line": 23168
+    },
+    {
+      "path": "src/lib/overlayMotion.ts",
+      "header_line": 23196
+    },
+    {
+      "path": "src/lib/sourceLanguage.ts",
+      "header_line": 23223
+    },
+    {
+      "path": "src/lib/stores/chat.svelte.ts",
+      "header_line": 23239
+    },
+    {
+      "path": "src/lib/stores/project.svelte.ts",
+      "header_line": 23260
+    },
+    {
+      "path": "src/lib/stores/usageDisplay.svelte.ts",
+      "header_line": 23298
+    },
+    {
+      "path": "src/lib/timeFormat.ts",
+      "header_line": 23323
+    },
+    {
+      "path": "src-tauri/binaries/.gitkeep",
+      "header_line": 23344
+    },
+    {
+      "path": "src-tauri/gen/schemas/acl-manifests.json",
+      "header_line": 23350
+    },
+    {
+      "path": "src-tauri/gen/schemas/desktop-schema.json",
+      "header_line": 23356
+    },
+    {
+      "path": "src-tauri/gen/schemas/macOS-schema.json",
+      "header_line": 26039
+    },
+    {
+      "path": "src-tauri/gen/schemas/windows-schema.json",
+      "header_line": 28722
+    },
+    {
+      "path": "src-tauri/icons/android/mipmap-anydpi-v26/ic_launcher.xml",
+      "header_line": 31405
+    },
+    {
+      "path": "src-tauri/icons/android/values/ic_launcher_background.xml",
+      "header_line": 31415
+    },
+    {
+      "path": "src-tauri/src/commands/usage.rs",
+      "header_line": 31424
+    },
+    {
+      "path": "src-tauri/src/preset_skills.rs",
+      "header_line": 31439
+    },
+    {
+      "path": "src-tauri/src/tray.rs",
+      "header_line": 31447
+    },
+    {
+      "path": "svelte.config.js",
+      "header_line": 31475
     }
   ]
 }
