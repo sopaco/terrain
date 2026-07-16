@@ -4,6 +4,7 @@
     import { open } from "@tauri-apps/plugin-dialog";
     import { listen } from "@tauri-apps/api/event";
     import AskBar from "./lib/components/AskBar.svelte";
+    import AskCompletionNotice from "./lib/components/AskCompletionNotice.svelte";
     import DeepWikiPanel from "./lib/components/DeepWikiPanel.svelte";
     import HumanDocTree from "./lib/components/HumanDocTree.svelte";
     import EnvIntegratePanel from "./lib/components/EnvIntegratePanel.svelte";
@@ -48,6 +49,7 @@
         normalizeAgentExecution,
     } from "./lib/agentExecution";
     import { parseAskSlashCommand } from "./lib/askSlashCommands";
+    import { loadAskProjectState, startNewAskSession, switchAskSession } from "./lib/askSession";
     import { generateLabel, TERMS, UI_MESSAGES } from "./lib/terminology";
     import {
         citationToSourceSlice,
@@ -298,6 +300,7 @@
         void loadHumanDocs(item.slug);
         void loadProjectOverview(item.slug);
         void refreshKnowledgeRoot(item.slug);
+        void loadAskProjectState(item.slug);
     }
 
     async function openFolderPath(path: string) {
@@ -659,10 +662,14 @@
         }
     }
 
-    function clearChatHistory() {
+    async function startNewAskChat() {
         if (!project.selectedSlug) return;
-        updateChat(project.selectedSlug, () => []);
-        setStatus("对话历史已清空", "success");
+        try {
+            await startNewAskSession(project.selectedSlug);
+            setStatus("已新建对话", "success");
+        } catch (e) {
+            setStatus(String(e), "error");
+        }
     }
 
     function handleAskInput(q: string) {
@@ -670,8 +677,8 @@
             setStatus("请先选择项目", "error");
             return;
         }
-        if (parseAskSlashCommand(q)?.type === "clear") {
-            clearChatHistory();
+        if (parseAskSlashCommand(q)?.type === "new") {
+            void startNewAskChat();
             return;
         }
         openDeepWiki(q);
@@ -682,8 +689,8 @@
             setStatus("请先选择项目", "error");
             return;
         }
-        if (question && parseAskSlashCommand(question)?.type === "clear") {
-            clearChatHistory();
+        if (question && parseAskSlashCommand(question)?.type === "new") {
+            void startNewAskChat();
             project.deepWikiOpen = true;
             project.deepWikiInitialQuestion = null;
             return;
@@ -699,6 +706,23 @@
     function closeDeepWiki() {
         project.deepWikiOpen = false;
         project.deepWikiInitialQuestion = null;
+    }
+
+    async function openDeepWikiFromNotice(sessionId: string) {
+        if (!project.selectedSlug) return;
+        project.deepWikiOpen = true;
+        project.deepWikiInitialQuestion = null;
+        if (sessionId) {
+            try {
+                await switchAskSession(
+                    project.selectedSlug,
+                    sessionId,
+                    currentMessages,
+                );
+            } catch (e) {
+                setStatus(String(e), "error");
+            }
+        }
     }
 
     async function runSearch() {
@@ -1205,7 +1229,8 @@
                         placeholder={project.activeDoc
                             ? `就「${project.activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
                             : "就当前项目提问…"}
-                        onclear={clearChatHistory}
+                        onclear={() => void startNewAskChat()}
+                        onopen={() => openDeepWiki()}
                         onask={handleAskInput}
                     />
                 </main>
@@ -1215,7 +1240,7 @@
     </div>
 </div>
 
-{#if project.deepWikiOpen}
+{#if project.selectedSlug}
     <DeepWikiPanel
         open={project.deepWikiOpen}
         projectSlug={project.selectedSlug}
@@ -1236,6 +1261,11 @@
         onopenDoc={openDocPath}
     />
 {/if}
+
+<AskCompletionNotice
+    repoPath={project.selectedRepoPath}
+    onOpenAsk={openDeepWikiFromNotice}
+/>
 
 {#if project.settingsOpen}
     <SettingsPanel

@@ -1,8 +1,14 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
-  import { Check } from "@lucide/svelte";
-  import { askKnowledge, readDocument } from "../api";
+  import { Check, MessageSquarePlus } from "@lucide/svelte";
+  import { askKnowledge, deleteAskSession, loadAskMessages, readDocument } from "../api";
+  import {
+    ensureAskSessionForQuestion,
+    persistAskMessages,
+    startNewAskSession,
+    switchAskSession,
+  } from "../askSession";
   import { parseAskSlashCommand } from "../askSlashCommands";
   import {
     appendStepText,
@@ -33,6 +39,14 @@
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
+  import AskSessionSelector from "./AskSessionSelector.svelte";
+  import {
+    activeAskSessionIds,
+    askSessionLists,
+    setActiveAskSessionId,
+    setAskSessions,
+    showAskCompletionNotice,
+  } from "../stores/chat.svelte";
   import {
     handleDismissTransitionEnd,
     prefersReducedMotion,
@@ -88,6 +102,20 @@
   let copyingImageKey = $state<string | null>(null);
   let copiedImageKey = $state<string | null>(null);
   let copyToast = $state<{ text: string; ok: boolean } | null>(null);
+  let sessionMenuOpen = $state(false);
+  let sessionBusy = $state(false);
+  let currentSessionId = $state<string | null>(null);
+
+  const askSessions = $derived(
+    projectSlug ? (askSessionLists[projectSlug] ?? []) : [],
+  );
+  const activeSessionId = $derived(
+    projectSlug ? (activeAskSessionIds[projectSlug] ?? null) : null,
+  );
+
+  $effect(() => {
+    currentSessionId = activeSessionId;
+  });
 
   let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
   let copiedImageResetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -318,6 +346,21 @@
     stickToBottom = isNearBottom(el);
   }
 
+  function sessionTitle(): string {
+    if (!projectSlug || !currentSessionId) return lastUserQuestion()?.slice(0, 10) ?? "Ask";
+    const session = askSessions.find((s) => s.id === currentSessionId);
+    return session?.title ?? lastUserQuestion()?.slice(0, 10) ?? "Ask";
+  }
+
+  async function persistCurrentMessages(nextMessages: ChatMessage[]) {
+    if (!projectSlug || !currentSessionId) return;
+    try {
+      await persistAskMessages(projectSlug, currentSessionId, nextMessages);
+    } catch (e) {
+      console.error("Failed to persist ask messages", e);
+    }
+  }
+
   function completeAssistantTurn(payload: {
     answer: string;
     citations: SourceCitation[];
@@ -333,8 +376,8 @@
       "已完成知识库检索，但未收到最终文本回复。请查看上方工具调用结果。"
 
     try {
-      onmessageschange((prev) => [
-        ...prev,
+      const nextMessages: ChatMessage[] = [
+        ...messages,
         {
           role: "assistant",
           content: finalContent,
@@ -344,7 +387,18 @@
           timestamp: payload.completedAt ?? Date.now(),
           usage: payload.usage ?? streamingUsage ?? undefined,
         },
-      ]);
+      ];
+      onmessageschange(() => nextMessages);
+      void persistCurrentMessages(nextMessages);
+
+      if (!open && projectSlug && currentSessionId) {
+        showAskCompletionNotice({
+          projectSlug,
+          sessionId: currentSessionId,
+          title: sessionTitle(),
+          answerMarkdown: finalContent,
+        });
+      }
     } catch (e) {
       console.error("Failed to save assistant message", e);
     } finally {
@@ -461,18 +515,66 @@
     };
   });
 
-  function clearHistory() {
-    if (busy) return;
-    onmessageschange(() => []);
-    showCopyToast("对话历史已清空");
+  async function handleNewSession() {
+    if (!projectSlug || busy || sessionBusy) return;
+    sessionBusy = true;
+    try {
+      await startNewAskSession(projectSlug);
+      sessionMenuOpen = false;
+      showCopyToast("已新建对话");
+    } catch (e) {
+      showCopyToast(`新建对话失败：${e}`, false);
+    } finally {
+      sessionBusy = false;
+    }
+  }
+
+  async function handleSelectSession(sessionId: string) {
+    if (!projectSlug || busy || sessionId === currentSessionId) {
+      sessionMenuOpen = false;
+      return;
+    }
+    sessionBusy = true;
+    try {
+      await switchAskSession(projectSlug, sessionId, messages);
+      sessionMenuOpen = false;
+    } catch (e) {
+      showCopyToast(`切换对话失败：${e}`, false);
+    } finally {
+      sessionBusy = false;
+    }
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    if (!projectSlug || busy) return;
+    sessionBusy = true;
+    try {
+      const sessions = await deleteAskSession(projectSlug, sessionId);
+      setAskSessions(projectSlug, sessions);
+      if (currentSessionId === sessionId) {
+        const next = sessions[0]?.id ?? null;
+        setActiveAskSessionId(projectSlug, next);
+        if (next) {
+          const loaded = await loadAskMessages(projectSlug, next);
+          onmessageschange(() => loaded);
+        } else {
+          onmessageschange(() => []);
+        }
+      }
+      sessionMenuOpen = false;
+    } catch (e) {
+      showCopyToast(`删除对话失败：${e}`, false);
+    } finally {
+      sessionBusy = false;
+    }
   }
 
   async function sendQuestion(q: string) {
     if (!q.trim() || busy || !projectSlug) return;
 
     const slash = parseAskSlashCommand(q);
-    if (slash?.type === "clear") {
-      clearHistory();
+    if (slash?.type === "new") {
+      await handleNewSession();
       input = "";
       return;
     }
@@ -481,10 +583,20 @@
     const requestId = crypto.randomUUID();
     const requestRepo = repoPath;
 
-    onmessageschange((prev) => [
-      ...prev,
+    if (!projectSlug) return;
+
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = await ensureAskSessionForQuestion(projectSlug, question);
+      currentSessionId = sessionId;
+    }
+
+    const userMessages: ChatMessage[] = [
+      ...messages,
       { role: "user", content: question, timestamp: Date.now() },
-    ]);
+    ];
+    onmessageschange(() => userMessages);
+    void persistAskMessages(projectSlug, sessionId, userMessages);
     input = "";
     busy = true;
     stickToBottom = true;
@@ -585,6 +697,10 @@
       void send();
     }
     if (e.key === "Escape") {
+      if (sessionMenuOpen) {
+        sessionMenuOpen = false;
+        return;
+      }
       onclose();
     }
   }
@@ -656,12 +772,26 @@
       {/if}
       <button
         type="button"
-        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={busy || messages.length === 0}
-        onclick={clearHistory}
+        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
+        disabled={busy || sessionBusy || !projectSlug}
+        onclick={() => void handleNewSession()}
+        aria-label="新建对话"
+        title="新建对话"
       >
-        Clear
+        <MessageSquarePlus size={16} strokeWidth={2} aria-hidden="true" />
       </button>
+      {#if projectSlug}
+        <AskSessionSelector
+          sessions={askSessions}
+          activeSessionId={currentSessionId}
+          open={sessionMenuOpen}
+          creating={sessionBusy}
+          ontoggle={() => (sessionMenuOpen = !sessionMenuOpen)}
+          onselect={handleSelectSession}
+          oncreate={handleNewSession}
+          ondelete={handleDeleteSession}
+        />
+      {/if}
       <button
         type="button"
         class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated"

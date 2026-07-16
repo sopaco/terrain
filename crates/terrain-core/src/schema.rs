@@ -517,6 +517,16 @@ impl SddPhase {
     #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AskSessionInfo {
+    pub id: String,
+    pub title: String,
+    /// Last assistant reply date (`YYYY-MM-DD`).
+    pub last_replied_at: String,
+}
+
+    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+    #[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SddSessionInfo {
     pub id: String,
     pub title: String,

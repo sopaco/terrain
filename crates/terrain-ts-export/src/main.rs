@@ -47,6 +47,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(&out)?;
 
     terrain_core::ProjectOverview::export_all_to(&out)?;
+    terrain_core::AskSessionInfo::export_all_to(&out)?;
     terrain_core::EnvStatus::export_all_to(&out)?;
     terrain_core::ProjectSummary::export_all_to(&out)?;
     terrain_core::SearchHit::export_all_to(&out)?;

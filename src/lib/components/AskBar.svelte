@@ -8,6 +8,7 @@
     disabledReason?: string | null;
     placeholder?: string;
     onask: (question: string) => void;
+    onopen?: () => void;
     onclear?: () => void;
   }
 
@@ -16,6 +17,7 @@
     disabledReason = null,
     placeholder = UI_MESSAGES.askPlaceholder,
     onask,
+    onopen,
     onclear,
   }: Props = $props();
 
@@ -26,13 +28,23 @@
     if (composing) return;
     const q = input.trim();
     if (!q || disabled) return;
-    if (parseAskSlashCommand(q)?.type === "clear") {
+    if (parseAskSlashCommand(q)?.type === "new") {
       onclear?.();
       input = "";
       return;
     }
     onask(q);
     input = "";
+  }
+
+  function onAskButtonClick() {
+    if (composing || disabled) return;
+    const q = input.trim();
+    if (!q) {
+      onopen?.();
+      return;
+    }
+    submit();
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -66,7 +78,7 @@
         type="button"
         class="my-0.5 shrink-0 self-stretch rounded-xl bg-tr-accent px-5 text-sm font-medium text-white transition-colors hover:bg-tr-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
         {disabled}
-        onclick={submit}
+        onclick={onAskButtonClick}
       >
         Ask
       </button>

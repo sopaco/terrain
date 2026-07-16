@@ -1,3 +1,4 @@
+mod ask;
 mod assets;
 mod chat;
 mod env;
@@ -34,6 +35,7 @@ pub fn init_paths() -> KnowledgePaths {
     paths
 }
 
+pub use ask::*;
 pub use assets::*;
 pub use chat::*;
 pub use env::*;

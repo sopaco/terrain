@@ -11,6 +11,7 @@ export type { AgentPackMeta } from "./AgentPackMeta";
 export type { AgentPackReport } from "./AgentPackReport";
 export type { AgentPackSummary } from "./AgentPackSummary";
 export type { AskKnowledgeReply } from "./AskKnowledgeReply";
+export type { AskSessionInfo } from "./AskSessionInfo";
 export type { AssetGenerator } from "./AssetGenerator";
 export type { AssetTrackHealth } from "./AssetTrackHealth";
 export type { ChatPhase } from "./ChatPhase";

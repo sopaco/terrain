@@ -1,4 +1,5 @@
 mod agent_context;
+mod ask;
 mod context_layers;
 mod env;
 mod litho;
@@ -45,6 +46,12 @@ pub use project_meta::{
     MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile, META_FILENAME,
 };
 pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
+pub use ask::{
+    clear_active_ask_session, create_ask_session, delete_ask_session, discard_ask_session,
+    get_active_ask_session, list_ask_sessions,
+    load_ask_messages, resolve_ask_session_id, save_ask_messages, set_active_ask_session,
+    title_from_question,
+};
 pub use sdd::{
     build_sdd_llm_prompt, build_sdd_phase_prompt, create_sdd_session, delete_sdd_session,
     get_active_sdd_session, get_sdd_status, list_sdd_sessions, new_session_id, plan_sdd_workflow,
