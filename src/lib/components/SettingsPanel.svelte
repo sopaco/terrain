@@ -227,15 +227,15 @@
   }
 </script>
 
-<ModalShell {open} {onclose} dialogClass="max-w-[min(560px,92vw)] bg-[#161a22]">
-  <header class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+<ModalShell {open} {onclose} dialogClass="max-w-[min(560px,92vw)] bg-tr-surface">
+  <header class="flex items-center justify-between border-b border-tr-border-strong px-5 py-4">
       <div>
         <h2 class="text-base font-semibold">设置</h2>
-        <p class="text-xs text-white/40">ACP 代理与执行模式（保存至 ~/.terrain/settings.json）</p>
+        <p class="text-xs text-tr-ink-3">ACP 代理与执行模式（保存至 ~/.terrain/settings.json）</p>
       </div>
       <button
         type="button"
-        class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5"
+        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated"
         onclick={onclose}
       >
         关闭
@@ -244,9 +244,9 @@
 
     <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
       <label class="block space-y-1.5">
-        <span class="text-xs font-medium text-white/55">执行模式</span>
+        <span class="text-xs font-medium text-tr-ink-2">执行模式</span>
         <select
-          class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+          class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
           value={agentExecution}
           onchange={(e) =>
             (agentExecution = (e.currentTarget as HTMLSelectElement).value as AgentExecution)}
@@ -257,15 +257,13 @@
       </label>
 
       <div
-        class="rounded-lg border border-l-2 px-3.5 py-2.5 text-[11px] leading-[1.65] {pureAcp
-          ? 'border-sky-500/15 border-l-sky-400/70 bg-sky-500/[0.08] text-sky-50/60'
-          : 'border-violet-500/15 border-l-violet-400/70 bg-violet-500/[0.08] text-violet-50/60'}"
+        class="rounded-lg border border-l-2 border-tr-accent-soft border-l-tr-accent bg-tr-accent-soft px-3.5 py-2.5 text-[11px] leading-[1.65] text-tr-ink-2"
         role="note"
       >
         {#if pureAcp}
           <p>
             问答、Litho、SDD、Agent 上下文等全部由外部 ACP 代理处理，只需配置下方 ACP 命令，无需填写
-            Native LLM。默认 <code class="rounded bg-black/20 px-1 py-0.5 text-sky-100/70">opencode acp</code>。
+            Native LLM。默认 <code class="rounded bg-tr-page px-1 py-0.5 text-tr-accent">opencode acp</code>。
           </p>
         {:else}
           <p>
@@ -274,13 +272,13 @@
         {/if}
       </div>
 
-      <div class="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-        <h3 class="text-sm font-medium text-white/80">ACP 代理</h3>
+      <div class="space-y-3 rounded-xl border border-tr-border-strong bg-tr-elevated p-4">
+        <h3 class="text-sm font-medium text-tr-ink-2">ACP 代理</h3>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-white/55">Binary（PATH 上的可执行文件）</span>
+          <span class="text-xs font-medium text-tr-ink-2">Binary（PATH 上的可执行文件）</span>
           <input
-            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="text"
             autocapitalize="off"
             autocorrect="off"
@@ -293,9 +291,9 @@
         </label>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-white/55">参数（跟在 binary 后）</span>
+          <span class="text-xs font-medium text-tr-ink-2">参数（跟在 binary 后）</span>
           <input
-            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="text"
             autocapitalize="off"
             autocorrect="off"
@@ -308,9 +306,9 @@
         </label>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-white/55">完整命令覆盖（可选，优先于 binary + args）</span>
+          <span class="text-xs font-medium text-tr-ink-2">完整命令覆盖（可选，优先于 binary + args）</span>
           <input
-            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="text"
             autocapitalize="off"
             autocorrect="off"
@@ -324,27 +322,27 @@
 
         <button
           type="button"
-          class="w-full rounded-lg border border-white/10 py-2 text-xs hover:bg-white/5 disabled:opacity-50"
+          class="w-full rounded-lg border border-tr-border-strong py-2 text-xs hover:bg-tr-elevated disabled:opacity-50"
           disabled={saving}
           onclick={testAcp}
         >
           检测 ACP 代理
         </button>
         {#if acpTestOk === true}
-          <p class="text-[11px] text-emerald-300/80">检测通过</p>
+          <p class="text-[11px] text-tr-good">检测通过</p>
         {:else if acpTestOk === false}
-          <p class="text-[11px] text-amber-300/80">未检测到，请检查 binary 或 command</p>
+          <p class="text-[11px] text-tr-watch">未检测到，请检查 binary 或 command</p>
         {/if}
       </div>
 
       {#if !pureAcp}
-        <div class="space-y-3 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.04] p-4">
-          <h3 class="text-sm font-medium text-white/80">Native LLM</h3>
+        <div class="space-y-3 rounded-xl border border-tr-accent-soft-strong bg-tr-accent-soft p-4">
+          <h3 class="text-sm font-medium text-tr-ink-2">Native LLM</h3>
 
           <label class="block space-y-1.5">
-            <span class="text-xs font-medium text-white/55">Provider</span>
+            <span class="text-xs font-medium text-tr-ink-2">Provider</span>
             <select
-              class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
               value={provider}
               onchange={(e) => (provider = (e.currentTarget as HTMLSelectElement).value as ProviderId)}
             >
@@ -355,9 +353,9 @@
           </label>
 
           <label class="block space-y-1.5">
-            <span class="text-xs font-medium text-white/55">Model</span>
+            <span class="text-xs font-medium text-tr-ink-2">Model</span>
             <input
-              class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
               value={current.model}
               oninput={(e) => patchCurrent({ model: (e.currentTarget as HTMLInputElement).value })}
               placeholder="e.g. stepfun-ai/step-3.7-flash"
@@ -366,10 +364,10 @@
 
           {#if provider !== "ollama"}
             <label class="block space-y-1.5">
-              <span class="text-xs font-medium text-white/55">API Key</span>
+              <span class="text-xs font-medium text-tr-ink-2">API Key</span>
               <input
                 type="password"
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
                 value={current.api_key}
                 oninput={(e) => patchCurrent({ api_key: (e.currentTarget as HTMLInputElement).value })}
                 placeholder={provider === "lmstudio" ? "lm-studio" : "nvapi-…"}
@@ -378,9 +376,9 @@
             </label>
 
             <label class="block space-y-1.5">
-              <span class="text-xs font-medium text-white/55">Base URL</span>
+              <span class="text-xs font-medium text-tr-ink-2">Base URL</span>
               <input
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
                 value={current.base_url}
                 oninput={(e) => patchCurrent({ base_url: (e.currentTarget as HTMLInputElement).value })}
                 placeholder="https://integrate.api.nvidia.com/v1"
@@ -390,9 +388,9 @@
 
           {#if provider === "ollama"}
             <label class="block space-y-1.5">
-              <span class="text-xs font-medium text-white/55">Ollama Host</span>
+              <span class="text-xs font-medium text-tr-ink-2">Ollama Host</span>
               <input
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
                 value={current.ollama_host}
                 oninput={(e) =>
                   patchCurrent({ ollama_host: (e.currentTarget as HTMLInputElement).value })}
@@ -403,34 +401,34 @@
 
           <button
             type="button"
-            class="w-full rounded-lg border border-white/10 py-2 text-xs hover:bg-white/5 disabled:opacity-50"
+            class="w-full rounded-lg border border-tr-border-strong py-2 text-xs hover:bg-tr-elevated disabled:opacity-50"
             disabled={saving}
             onclick={testConnection}
           >
             测试 LLM 连接
           </button>
           {#if llmTestOk === true}
-            <p class="text-[11px] text-emerald-300/80">连接正常</p>
+            <p class="text-[11px] text-tr-good">连接正常</p>
           {:else if llmTestOk === false}
-            <p class="text-[11px] text-amber-300/80">{llmTestDetail ?? "连接失败，请检查配置"}</p>
+            <p class="text-[11px] text-tr-watch">{llmTestDetail ?? "连接失败，请检查配置"}</p>
           {/if}
         </div>
       {/if}
 
-      <p class="text-[11px] leading-relaxed text-white/35">
+      <p class="text-[11px] leading-relaxed text-tr-ink-3">
         每个 Provider 的配置会分别保存到 ~/.terrain/settings.json。
         仅在没有设置文件时，才会读取 `.env` 中的默认值。
       </p>
 
       {#if error}
-        <p class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</p>
+        <p class="rounded-lg border border-tr-critical/30 bg-tr-critical-soft px-3 py-2 text-xs text-tr-critical">{error}</p>
       {/if}
     </div>
 
-    <footer class="border-t border-white/10 px-5 py-4">
+    <footer class="border-t border-tr-border-strong px-5 py-4">
       <button
         type="button"
-        class="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+        class="w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
         disabled={saving}
         onclick={() => save(true)}
       >

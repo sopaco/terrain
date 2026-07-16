@@ -8,6 +8,7 @@
     disabledReason?: string | null;
     placeholder?: string;
     onask: (question: string) => void;
+    onopen?: () => void;
     onclear?: () => void;
   }
 
@@ -16,6 +17,7 @@
     disabledReason = null,
     placeholder = UI_MESSAGES.askPlaceholder,
     onask,
+    onopen,
     onclear,
   }: Props = $props();
 
@@ -26,13 +28,23 @@
     if (composing) return;
     const q = input.trim();
     if (!q || disabled) return;
-    if (parseAskSlashCommand(q)?.type === "clear") {
+    if (parseAskSlashCommand(q)?.type === "new") {
       onclear?.();
       input = "";
       return;
     }
     onask(q);
     input = "";
+  }
+
+  function onAskButtonClick() {
+    if (composing || disabled) return;
+    const q = input.trim();
+    if (!q) {
+      onopen?.();
+      return;
+    }
+    submit();
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -43,17 +55,17 @@
   }
 </script>
 
-<div class="border-t border-white/10 bg-[#0f1115]/95 px-4 py-4 backdrop-blur-sm">
+<div class="border-t border-tr-border-strong bg-tr-page/95 px-4 py-4 backdrop-blur-sm">
   <div class="mx-auto max-w-3xl">
     <div
-      class={`flex items-stretch gap-2 rounded-2xl border bg-[#14171c] p-1.5 shadow-lg transition-colors ${
+      class={`flex items-stretch gap-2 rounded-2xl border bg-tr-surface p-1.5 shadow-lg transition-colors ${
         disabled
-          ? "border-white/10 opacity-60"
-          : "border-white/10 focus-within:border-indigo-500/70 focus-within:ring-2 focus-within:ring-indigo-500/20"
+          ? "border-tr-border-strong opacity-60"
+          : "border-tr-border-strong focus-within:border-tr-accent focus-within:ring-2 focus-within:ring-tr-accent-soft-strong"
       }`}
     >
       <textarea
-        class="min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed outline-none placeholder:text-white/35 disabled:cursor-not-allowed"
+        class="min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed outline-none placeholder:text-tr-ink-3 disabled:cursor-not-allowed"
         rows="1"
         {placeholder}
         bind:value={input}
@@ -64,17 +76,17 @@
       ></textarea>
       <button
         type="button"
-        class="my-0.5 shrink-0 self-stretch rounded-xl bg-indigo-600 px-5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+        class="my-0.5 shrink-0 self-stretch rounded-xl bg-tr-accent px-5 text-sm font-medium text-white transition-colors hover:bg-tr-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
         {disabled}
-        onclick={submit}
+        onclick={onAskButtonClick}
       >
         Ask
       </button>
     </div>
     {#if disabled && disabledReason}
-      <p class="mt-2 text-center text-xs text-white/35">{disabledReason}</p>
+      <p class="mt-2 text-center text-xs text-tr-ink-3">{disabledReason}</p>
     {:else}
-      <p class="mt-2 text-center text-[11px] text-white/30">
+      <p class="mt-2 text-center text-[11px] text-tr-ink-3">
         Enter 发送 · Shift+Enter 换行 · 中文输入法选词后再按 Enter
       </p>
     {/if}

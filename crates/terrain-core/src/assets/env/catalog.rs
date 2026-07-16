@@ -1,8 +1,30 @@
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use serde::Deserialize;
 
 use crate::error::{CoreError, Result};
+
+static CATALOG: OnceLock<EnvCatalog> = OnceLock::new();
+
+fn load_catalog_from_disk() -> Result<EnvCatalog> {
+    let path = env_catalog_root().join("catalog.json");
+    let raw = std::fs::read_to_string(&path).map_err(|e| {
+        CoreError::InvalidDoc(format!("cannot read env catalog {}: {e}", path.display()))
+    })?;
+    serde_json::from_str(&raw).map_err(|e| {
+        CoreError::InvalidDoc(format!("invalid env catalog {}: {e}", path.display()))
+    })
+}
+
+pub fn load_catalog() -> Result<EnvCatalog> {
+    if let Some(catalog) = CATALOG.get() {
+        return Ok(catalog.clone());
+    }
+    let catalog = load_catalog_from_disk()?;
+    let _ = CATALOG.set(catalog.clone());
+    Ok(catalog)
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EnvCatalog {
@@ -63,16 +85,6 @@ pub fn env_catalog_root() -> PathBuf {
         return PathBuf::from(root);
     }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../env-catalog")
-}
-
-pub fn load_catalog() -> Result<EnvCatalog> {
-    let path = env_catalog_root().join("catalog.json");
-    let raw = std::fs::read_to_string(&path).map_err(|e| {
-        CoreError::InvalidDoc(format!("cannot read env catalog {}: {e}", path.display()))
-    })?;
-    serde_json::from_str(&raw).map_err(|e| {
-        CoreError::InvalidDoc(format!("invalid env catalog {}: {e}", path.display()))
-    })
 }
 
 pub fn resolve_skill_source(catalog_root: &Path, item: &IntegrationDef) -> PathBuf {

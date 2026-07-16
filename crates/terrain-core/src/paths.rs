@@ -181,6 +181,23 @@ impl KnowledgePaths {
         self.project_dir(project_slug).join(".sdd-agent")
     }
 
+    /// Local Ask history root (`~/.terrain/ask/{slug}/`) — not versioned with the repo.
+    pub fn ask_local_root(&self, project_slug: &str) -> PathBuf {
+        registry::registry_dir().join("ask").join(project_slug)
+    }
+
+    pub fn ask_sessions_dir(&self, project_slug: &str) -> PathBuf {
+        self.ask_local_root(project_slug).join("sessions")
+    }
+
+    pub fn ask_active_session_path(&self, project_slug: &str) -> PathBuf {
+        self.ask_local_root(project_slug).join("active.json")
+    }
+
+    pub fn ask_workspace_dir(&self, project_slug: &str, session_id: &str) -> PathBuf {
+        self.ask_sessions_dir(project_slug).join(session_id)
+    }
+
     /// True when `path` is under the local SDD store (`~/.terrain/sdd/`).
     pub fn is_sdd_local_path(&self, path: &Path) -> bool {
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());

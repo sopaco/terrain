@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Terrain",
         "width": 1200,
         "height": 800,

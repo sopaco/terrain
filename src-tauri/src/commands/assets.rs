@@ -79,6 +79,7 @@ pub async fn run_litho_generation_cmd(
     state: State<'_, AppState>,
     repo_path: String,
     project_slug: Option<String>,
+    force_refresh: Option<bool>,
 ) -> Result<(), String> {
     validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
@@ -96,9 +97,16 @@ pub async fn run_litho_generation_cmd(
     };
 
     let acp = resolved_acp_settings();
-    let result = run_litho_generation(&paths, &slug, &repo_path, &acp, emit_progress)
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = run_litho_generation(
+        &paths,
+        &slug,
+        &repo_path,
+        &acp,
+        force_refresh.unwrap_or(false),
+        emit_progress,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     app.emit(
         "litho-done",

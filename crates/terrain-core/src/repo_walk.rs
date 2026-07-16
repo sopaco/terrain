@@ -1,10 +1,17 @@
 //! Gitignore-aware repository traversal aligned with each repo's `.gitignore`.
 
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use ignore::gitignore::Gitignore;
 use ignore::WalkBuilder;
 use ignore::Match;
+
+use std::sync::LazyLock;
+
+static GITIGNORE_CACHE: LazyLock<Mutex<HashMap<PathBuf, (Option<std::time::SystemTime>, Gitignore)>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub const META_DISCOVER_MAX_DEPTH: usize = 6;
 
@@ -26,13 +33,29 @@ fn allow_meta_discover_entry(path: &Path) -> bool {
     !is_under_git_dir(path) && !is_terrain_knowledge(path)
 }
 
-/// Build a matcher from `{repo}/.gitignore` (same rules as discovery walks).
+/// Build a matcher from `{repo}/.gitignore` (cached by repo path + `.gitignore` mtime).
 pub fn build_repo_gitignore(repo: &Path) -> Gitignore {
     let gi = repo.join(".gitignore");
-    if !gi.is_file() {
-        return Gitignore::empty();
+    let mtime = gi.metadata().ok().and_then(|m| m.modified().ok());
+    let key = repo.to_path_buf();
+    if let Ok(guard) = GITIGNORE_CACHE.lock() {
+        if let Some((cached_mtime, ig)) = guard.get(&key) {
+            if cached_mtime == &mtime {
+                return ig.clone();
+            }
+        }
     }
-    Gitignore::new(gi).0
+
+    let ig = if gi.is_file() {
+        Gitignore::new(gi).0
+    } else {
+        Gitignore::empty()
+    };
+
+    if let Ok(mut guard) = GITIGNORE_CACHE.lock() {
+        guard.insert(key, (mtime, ig.clone()));
+    }
+    ig
 }
 
 /// Whether `path` should be excluded when resolving meta inputs (gitignore + knowledge dir).

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { HumanDocEntry } from "../types";
   import { generateLabel, TERMS, UI_MESSAGES } from "../terminology";
+  import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
     docs: HumanDocEntry[];
@@ -226,10 +227,10 @@
 {#snippet docButton(doc: HumanDocEntry, depth: number)}
   <button
     type="button"
-    class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] leading-snug transition-colors hover:bg-white/5 ${
+    class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] leading-snug transition-colors hover:bg-tr-elevated ${
       activePath === doc.path
-        ? "bg-indigo-500/20 font-medium text-indigo-100"
-        : "text-white/65"
+        ? "bg-tr-accent-soft-strong font-medium text-tr-on-accent"
+        : "text-tr-ink-2"
     }`}
     style={`padding-left: ${rowIndent(depth)}`}
     onclick={() => onselect(doc)}
@@ -250,25 +251,29 @@
     <div>
       <button
         type="button"
-        class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] leading-snug transition-colors hover:bg-white/5 ${
-          deepFolder && node.depth > 0 ? "text-violet-300/80" : "text-white/65"
+        class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] leading-snug transition-colors hover:bg-tr-elevated ${
+          deepFolder && node.depth > 0 ? "text-tr-accent" : "text-tr-ink-2"
         }`}
         style={`padding-left: ${rowIndent(node.depth)}`}
         onclick={() => toggle(node.id, fallbackOpen)}
         aria-expanded={isOpen(node.id, fallbackOpen)}
         title={node.id}
       >
-        <span class="w-3 shrink-0 text-center text-[10px] text-white/35">
-          {isOpen(node.id, fallbackOpen) ? "▾" : "▸"}
+        <span class="inline-flex w-3 shrink-0 items-center justify-center text-tr-ink-3">
+          <ChevronIcon
+            direction={isOpen(node.id, fallbackOpen) ? "down" : "right"}
+            size={12}
+            class="shrink-0"
+          />
         </span>
         <span
           class={`min-w-0 flex-1 truncate ${
-            deepFolder && node.depth > 0 ? "text-violet-200/90" : ""
+            deepFolder && node.depth > 0 ? "text-tr-accent" : ""
           }`}
         >
           {node.label}
         </span>
-        <span class="shrink-0 text-[10px] text-white/25">{nodeCount(node)}</span>
+        <span class="shrink-0 text-[10px] text-tr-ink-4">{nodeCount(node)}</span>
       </button>
 
       {#if isOpen(node.id, fallbackOpen)}
@@ -286,16 +291,16 @@
 {/snippet}
 
 <div class="flex min-h-0 flex-1 flex-col">
-  <div class="border-b border-white/10 px-3 py-2.5">
+  <div class="border-b border-tr-border-strong px-3 py-2.5">
     <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold text-white/70">文档目录</span>
+      <span class="text-xs font-semibold text-tr-ink-2">文档目录</span>
       {#if loading}
-        <span class="inline-flex items-center gap-1.5 text-[10px] text-sky-300/90">
+        <span class="inline-flex items-center gap-1.5 text-[10px] text-tr-accent">
           <span class="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent"></span>
           {UI_MESSAGES.loadingDocs}
         </span>
       {:else}
-        <span class="text-[10px] text-white/30">{docs.length} 篇</span>
+        <span class="text-[10px] text-tr-ink-3">{docs.length} 篇</span>
       {/if}
     </div>
   </div>
@@ -304,14 +309,14 @@
     {#if loading && docs.length === 0}
       <div class="space-y-2 px-1 py-2">
         {#each Array(4) as _}
-          <div class="h-7 animate-pulse rounded-md bg-white/5"></div>
+          <div class="h-7 animate-pulse rounded-md bg-tr-elevated"></div>
         {/each}
       </div>
     {:else if sections.length > 0}
       <div class="space-y-3">
         {#each sections as [section, sectionDocs]}
           <div>
-            <p class="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+            <p class="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-tr-ink-3">
               {SECTION_LABELS[section] ?? section}
             </p>
             <div class="space-y-1">
@@ -323,8 +328,8 @@
         {/each}
       </div>
     {:else if !loading}
-      <p class="px-2 py-4 text-xs leading-relaxed text-white/35">
-        尚无{TERMS.humanKnowledge}。请在工具栏点击 <span class="text-white/55">{generateLabel(TERMS.humanKnowledge, false)}</span>。
+      <p class="px-2 py-4 text-xs leading-relaxed text-tr-ink-3">
+        尚无{TERMS.humanKnowledge}。请在工具栏点击 <span class="text-tr-ink-2">{generateLabel(TERMS.humanKnowledge, false)}</span>。
       </p>
     {/if}
   </div>

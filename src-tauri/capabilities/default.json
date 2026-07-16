@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Main window capability for Terrain",
-  "windows": ["main"],
+  "windows": ["main", "usage"],
   "remote": {
     "urls": ["http://localhost:1420"]
   },

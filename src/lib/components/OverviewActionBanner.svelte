@@ -1,4 +1,6 @@
 <script lang="ts">
+    import ChevronIcon from "./icons/ChevronIcon.svelte";
+
     export interface OverviewActionItem {
         id: string;
         priority: number;
@@ -26,61 +28,63 @@
     const primary = $derived(sorted[0] ?? null);
     const secondary = $derived(sorted.slice(1));
 
-    const accentBar: Record<OverviewActionItem["accent"], string> = {
-        rose: "bg-rose-500",
-        amber: "bg-amber-500",
-        violet: "bg-violet-500",
+    const accentTint: Record<OverviewActionItem["accent"], string> = {
+        rose: "bg-tr-critical-soft border-tr-critical/30",
+        amber: "bg-tr-watch-soft border-tr-watch/30",
+        violet: "bg-tr-accent-soft border-tr-accent-soft-strong",
+    };
+
+    const accentIconTint: Record<OverviewActionItem["accent"], string> = {
+        rose: "bg-tr-critical/20 text-tr-critical",
+        amber: "bg-tr-watch/20 text-tr-watch",
+        violet: "bg-tr-accent-soft text-tr-accent",
     };
 
     const accentButton: Record<OverviewActionItem["accent"], string> = {
-        rose: "bg-rose-600 hover:bg-rose-500",
-        amber: "bg-amber-600 hover:bg-amber-500",
-        violet: "bg-violet-600 hover:bg-violet-500",
+        rose: "bg-tr-critical text-tr-on-critical hover:opacity-90",
+        amber: "bg-tr-watch text-tr-on-watch hover:opacity-90",
+        violet: "bg-tr-accent text-tr-on-accent hover:bg-tr-accent-hover",
     };
 </script>
 
 {#snippet actionRow(item: OverviewActionItem, compact = false)}
     <div
-        class="flex overflow-hidden rounded-r-xl border border-white/8 bg-[#14171c]"
+        class={`flex items-center gap-3 rounded-xl border px-4 ${compact ? "py-3" : "py-3.5"} ${accentTint[item.accent]}`}
     >
-        <div
-            class={`w-1 shrink-0 self-stretch ${accentBar[item.accent]}`}
+        <span
+            class={`h-7 w-7 shrink-0 rounded-lg ${accentIconTint[item.accent]}`}
             aria-hidden="true"
-        ></div>
-        <div class={`min-w-0 flex-1 ${compact ? "px-4 py-3" : "px-5 py-4"}`}>
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div class="min-w-0">
-                    <p class="text-sm font-medium text-white/90">
-                        {item.title}
-                    </p>
-                    <p class="mt-1 text-xs leading-relaxed text-white/50">
-                        {item.detail}
-                    </p>
-                    {#if item.hint}
-                        <p class="mt-2 text-[11px] text-white/40">
-                            {item.hint}
-                        </p>
-                    {/if}
-                    {#if progressNote}
-                        <p class="mt-2 text-xs text-indigo-200/80">
-                            {progressNote}
-                        </p>
-                    {/if}
-                </div>
-                {#if item.onAction}
-                    <button
-                        type="button"
-                        class={`shrink-0 rounded-xl px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${accentButton[item.accent]}`}
-                        disabled={item.disabled || item.busy}
-                        onclick={item.onAction}
-                    >
-                        {item.busy
-                            ? (item.busyLabel ?? "处理中…")
-                            : item.actionLabel}
-                    </button>
-                {/if}
-            </div>
+        ></span>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-tr-ink">
+                {item.title}
+            </p>
+            <p class="mt-0.5 text-xs leading-relaxed text-tr-ink-2">
+                {item.detail}
+            </p>
+            {#if item.hint}
+                <p class="mt-1.5 text-[11px] text-tr-ink-3">
+                    {item.hint}
+                </p>
+            {/if}
+            {#if progressNote}
+                <p class="mt-1.5 text-xs text-tr-accent">
+                    {progressNote}
+                </p>
+            {/if}
         </div>
+        {#if item.onAction}
+            <button
+                type="button"
+                class={`shrink-0 rounded-lg px-3.5 py-2 text-xs font-medium disabled:opacity-50 ${accentButton[item.accent]}`}
+                disabled={item.disabled || item.busy}
+                onclick={item.onAction}
+            >
+                {item.busy
+                    ? (item.busyLabel ?? "处理中…")
+                    : item.actionLabel}
+            </button>
+        {/if}
     </div>
 {/snippet}
 
@@ -91,11 +95,15 @@
         {#if secondary.length > 0}
             <button
                 type="button"
-                class="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs text-white/45 transition-colors hover:text-white/65"
+                class="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
                 aria-expanded={moreOpen}
                 onclick={() => (moreOpen = !moreOpen)}
             >
-                <span class="text-white/30">{moreOpen ? "▾" : "▸"}</span>
+                <ChevronIcon
+                    direction={moreOpen ? "down" : "right"}
+                    size={12}
+                    class="shrink-0 text-tr-ink-3"
+                />
                 还有 {secondary.length} 项待处理
             </button>
 

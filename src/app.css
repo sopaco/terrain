@@ -1,5 +1,61 @@
 @import "tailwindcss";
 
+/* Sharper UI: ~50% smaller radii than Tailwind defaults */
+@theme {
+  --radius-xs: 0.0625rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.75rem;
+  --radius-4xl: 1rem;
+}
+
+/*
+ * Design tokens ("tr-" = Terrain), used across the whole app — not just the
+ * overview page. Semantic layers, distinct from the default Tailwind palette:
+ * - bg layers: page < surface < elevated < raised
+ * - ink scale: 4-step text hierarchy instead of ad-hoc white/NN opacities
+ * - accent: single interactive hue (deep teal), separate from status hues
+ * - on-* : text color paired with a *solid* fill of that hue (kept apart
+ *   from the hue itself so a solid button's label never has to guess).
+ */
+@theme {
+  --color-tr-page: #0a0d10;
+  --color-tr-surface: #12161b;
+  --color-tr-elevated: #181d23;
+  --color-tr-raised: #1e2530;
+
+  --color-tr-border: rgba(255, 255, 255, 0.08);
+  --color-tr-border-strong: rgba(255, 255, 255, 0.14);
+
+  --color-tr-ink: #e8ecef;
+  --color-tr-ink-2: #a2acb5;
+  --color-tr-ink-3: #6c7680;
+  --color-tr-ink-4: #454c54;
+
+  /* Deep teal — dark enough that light text sits on it comfortably. */
+  --color-tr-accent: #1f8f84;
+  --color-tr-accent-hover: #2aa89b;
+  --color-tr-accent-soft: rgba(31, 143, 132, 0.16);
+  --color-tr-accent-soft-strong: rgba(31, 143, 132, 0.3);
+  --color-tr-on-accent: #f3fbfa;
+
+  --color-tr-good: #5fb37e;
+  --color-tr-good-soft: rgba(95, 179, 126, 0.14);
+  --color-tr-on-good: #f4fbf6;
+
+  /* Amber stays light — pair with dark ink, not on-* light text. */
+  --color-tr-watch: #d9a441;
+  --color-tr-watch-soft: rgba(217, 164, 65, 0.14);
+  --color-tr-on-watch: #2a1c04;
+
+  --color-tr-critical: #c1503a;
+  --color-tr-critical-soft: rgba(193, 80, 58, 0.16);
+  --color-tr-on-critical: #fdf4f2;
+}
+
 :root {
   color-scheme: light dark;
   font-family:
@@ -13,8 +69,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0f1115;
-  color: #e8eaed;
+  background: var(--color-tr-page);
+  color: var(--color-tr-ink);
 }
 
 @layer base {

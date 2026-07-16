@@ -6,10 +6,25 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, Result};
+
+struct RegistryCache {
+    mtime: Option<SystemTime>,
+    entries: Vec<RegistryEntry>,
+}
+
+static REGISTRY_CACHE: Mutex<Option<RegistryCache>> = Mutex::new(None);
+
+fn invalidate_registry_cache() {
+    if let Ok(mut guard) = REGISTRY_CACHE.lock() {
+        *guard = None;
+    }
+}
 
 const REGISTRY_FILE: &str = "registry.json";
 
@@ -57,11 +72,42 @@ pub fn knowledge_root_for_repo(repo_path: &Path) -> PathBuf {
 pub fn load_registry() -> Result<Vec<RegistryEntry>> {
     let path = registry_path();
     if !path.is_file() {
+        if let Ok(mut guard) = REGISTRY_CACHE.lock() {
+            *guard = Some(RegistryCache {
+                mtime: None,
+                entries: Vec::new(),
+            });
+        }
         return Ok(Vec::new());
     }
+
+    let mtime = std::fs::metadata(&path).ok().and_then(|m| m.modified().ok());
+    if let Ok(guard) = REGISTRY_CACHE.lock() {
+        if let Some(cache) = guard.as_ref() {
+            if cache.mtime == mtime {
+                return Ok(cache.entries.clone());
+            }
+        }
+    }
+
     let raw = std::fs::read_to_string(&path)?;
     let file: RegistryFile = serde_json::from_str(&raw)?;
-    Ok(file.projects)
+    let entries = file.projects;
+    if let Ok(mut guard) = REGISTRY_CACHE.lock() {
+        *guard = Some(RegistryCache {
+            mtime,
+            entries: entries.clone(),
+        });
+    }
+    Ok(entries)
+}
+
+/// Slug → repository path map (single registry read via cache).
+pub fn registry_repo_map() -> Result<HashMap<String, String>> {
+    Ok(load_registry()?
+        .into_iter()
+        .map(|e| (e.slug, e.repo_path))
+        .collect())
 }
 
 pub fn save_registry(entries: &[RegistryEntry]) -> Result<()> {
@@ -74,6 +120,7 @@ pub fn save_registry(entries: &[RegistryEntry]) -> Result<()> {
     };
     let json = serde_json::to_string_pretty(&file)?;
     std::fs::write(path, json)?;
+    invalidate_registry_cache();
     Ok(())
 }
 
@@ -122,11 +169,7 @@ pub fn knowledge_root_for_slug(slug: &str) -> Option<PathBuf> {
 }
 
 pub fn repo_path_for_slug(slug: &str) -> Option<String> {
-    load_registry()
-        .ok()?
-        .into_iter()
-        .find(|e| e.slug == slug)
-        .map(|e| e.repo_path)
+    registry_repo_map().ok()?.get(slug).cloned()
 }
 
 /// Registered projects whose repo `.terrain/index.md` is missing (e.g. data was deleted).

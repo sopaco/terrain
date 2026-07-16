@@ -589,6 +589,63 @@ pub fn compute_freshness(
     Ok(summary)
 }
 
+/// Return cached freshness when Git HEAD/dirty and asset timestamps still match the ledger.
+pub fn resolve_freshness_summary(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> Result<FreshnessSummary> {
+    let repo_path = resolve_project_repo_path(paths, project_slug, Some(repo_path))
+        .unwrap_or_else(|_| repo_path.to_string());
+
+    if let Some(ledger) = read_freshness_ledger(paths, project_slug) {
+        if freshness_ledger_still_valid(paths, project_slug, &ledger, &repo_path) {
+            return Ok(ledger.summary);
+        }
+    }
+
+    compute_freshness(paths, project_slug, &repo_path)
+}
+
+/// Fast validity: HEAD/dirty unchanged and no asset meta newer than the ledger.
+fn freshness_ledger_still_valid(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    ledger: &FreshnessLedger,
+    repo_path: &str,
+) -> bool {
+    let repo = Path::new(repo_path);
+    if !repo.join(".git").exists() {
+        return false;
+    }
+    let Some(head) = git_output(repo, &["rev-parse", "HEAD"]) else {
+        return false;
+    };
+    if ledger.baseline.git_head.as_deref() != Some(head.as_str()) {
+        return false;
+    }
+    let dirty = git_output(repo, &["status", "--porcelain"])
+        .map(|s| working_tree_dirty_excluding_knowledge(&s))
+        .unwrap_or(false);
+    if ledger.baseline.dirty != dirty {
+        return false;
+    }
+
+    let ledger_at = &ledger.last_computed_at;
+    if let Ok(pack_meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) {
+        if pack_meta.synced_at.as_str() > ledger_at.as_str() {
+            return false;
+        }
+    }
+    if let Ok(ctx_meta) = read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)) {
+        if ctx_meta.generated_at.as_str() > ledger_at.as_str() {
+            return false;
+        }
+    }
+
+    true
+}
+
 /// Format trust rules block for Ask / Agent prompts.
 pub fn format_freshness_trust_block(summary: &FreshnessSummary) -> String {
     format!(
@@ -651,6 +708,75 @@ fn working_tree_dirty_excluding_knowledge(porcelain: &str) -> bool {
     })
 }
 
+/// Independent, git-based staleness check for the CodeGraph index.
+///
+/// CodeGraph's own `<cg> status` can report "up to date" while the index is
+/// actually behind HEAD (observed: index untouched for 10 days while 24
+/// commits changed source files, `status` still said fresh). This computes
+/// drift purely from `.codegraph/codegraph.db` mtime vs `git log --since`,
+/// independent of whatever CodeGraph's own bookkeeping claims.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CodegraphDriftReport {
+    pub index_present: bool,
+    pub index_synced_at: Option<String>,
+    pub commits_after_index: u32,
+    pub changed_files: Vec<String>,
+    pub likely_stale: bool,
+}
+
+pub fn codegraph_drift(repo_path: &str) -> CodegraphDriftReport {
+    let repo = Path::new(repo_path);
+    let db_path = repo.join(".codegraph/codegraph.db");
+    let Ok(meta) = std::fs::metadata(&db_path) else {
+        return CodegraphDriftReport {
+            index_present: false,
+            index_synced_at: None,
+            commits_after_index: 0,
+            changed_files: Vec::new(),
+            likely_stale: false,
+        };
+    };
+    let Ok(modified) = meta.modified() else {
+        return CodegraphDriftReport {
+            index_present: true,
+            index_synced_at: None,
+            commits_after_index: 0,
+            changed_files: Vec::new(),
+            likely_stale: false,
+        };
+    };
+    let synced_at: DateTime<Utc> = modified.into();
+    let since = synced_at.to_rfc3339();
+
+    let commit_count = git_output(repo, &["log", "--since", &since, "--pretty=format:%H"])
+        .map(|s| s.lines().filter(|l| !l.trim().is_empty()).count() as u32)
+        .unwrap_or(0);
+
+    let changed_files: Vec<String> = git_output(
+        repo,
+        &["log", "--since", &since, "--name-only", "--pretty=format:"],
+    )
+    .map(|s| {
+        s.lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !is_knowledge_output_path(l))
+            .map(str::to_string)
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .take(20)
+            .collect()
+    })
+    .unwrap_or_default();
+
+    CodegraphDriftReport {
+        index_present: true,
+        index_synced_at: Some(since),
+        commits_after_index: commit_count,
+        likely_stale: commit_count > 0 && !changed_files.is_empty(),
+        changed_files,
+    }
+}
+
 fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
     let output = crate::process::command("git")
         .args(args)
@@ -672,6 +798,8 @@ fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
 
     #[test]
@@ -709,6 +837,99 @@ mod tests {
         // Regression: git_output must not trim() porcelain — first line loses leading status space.
         let corrupted_first_line = "M .terrain/agent/context.md\n";
         assert!(!working_tree_dirty_excluding_knowledge(corrupted_first_line));
+    }
+
+    fn git_in(repo: &Path, args: &[&str]) {
+        let status = crate::process::command("git")
+            .args(args)
+            .current_dir(repo)
+            .status()
+            .expect("git must be available in test environment");
+        assert!(status.success(), "git {:?} failed in {}", args, repo.display());
+    }
+
+    #[test]
+    fn codegraph_drift_missing_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let report = codegraph_drift(&dir.path().display().to_string());
+        assert!(!report.index_present);
+        assert_eq!(report.commits_after_index, 0);
+        assert!(!report.likely_stale);
+        assert!(report.changed_files.is_empty());
+    }
+
+    #[test]
+    fn codegraph_drift_not_stale_when_index_is_current() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        std::fs::create_dir_all(repo.join("src")).unwrap();
+        std::fs::write(repo.join("src/a.rs"), "fn a() {}\n").unwrap();
+        git_in(repo, &["init"]);
+        git_in(repo, &["config", "user.email", "terrain@test"]);
+        git_in(repo, &["config", "user.name", "terrain"]);
+        git_in(repo, &["add", "."]);
+        git_in(repo, &["commit", "-m", "init"]);
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+        std::fs::write(repo.join(".codegraph/codegraph.db"), b"sqlite").unwrap();
+
+        let report = codegraph_drift(&repo.display().to_string());
+        assert!(report.index_present);
+        assert!(!report.likely_stale);
+        assert_eq!(report.commits_after_index, 0);
+    }
+
+    #[test]
+    fn codegraph_drift_stale_when_source_changes_after_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        std::fs::create_dir_all(repo.join("src")).unwrap();
+        std::fs::write(repo.join("src/a.rs"), "fn a() {}\n").unwrap();
+        git_in(repo, &["init"]);
+        git_in(repo, &["config", "user.email", "terrain@test"]);
+        git_in(repo, &["config", "user.name", "terrain"]);
+        git_in(repo, &["add", "."]);
+        git_in(repo, &["commit", "-m", "init"]);
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+        std::fs::write(repo.join(".codegraph/codegraph.db"), b"sqlite").unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::fs::write(repo.join("src/b.rs"), "fn b() {}\n").unwrap();
+        git_in(repo, &["add", "src/b.rs"]);
+        git_in(repo, &["commit", "-m", "add b"]);
+
+        let report = codegraph_drift(&repo.display().to_string());
+        assert!(report.index_present);
+        assert!(report.likely_stale);
+        assert!(report.commits_after_index > 0);
+        assert!(report.changed_files.iter().any(|p| p == "src/b.rs"));
+    }
+
+    #[test]
+    fn codegraph_drift_ignores_knowledge_only_commits() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        std::fs::create_dir_all(repo.join("src")).unwrap();
+        std::fs::write(repo.join("src/a.rs"), "fn a() {}\n").unwrap();
+        git_in(repo, &["init"]);
+        git_in(repo, &["config", "user.email", "terrain@test"]);
+        git_in(repo, &["config", "user.name", "terrain"]);
+        git_in(repo, &["add", "."]);
+        git_in(repo, &["commit", "-m", "init"]);
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+        std::fs::write(repo.join(".codegraph/codegraph.db"), b"sqlite").unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::fs::create_dir_all(repo.join(".terrain/agent")).unwrap();
+        std::fs::write(repo.join(".terrain/agent/context.md"), "# ctx\n").unwrap();
+        git_in(repo, &["add", ".terrain/agent/context.md"]);
+        git_in(repo, &["commit", "-m", "refresh context"]);
+
+        let report = codegraph_drift(&repo.display().to_string());
+        assert!(report.index_present);
+        assert!(report.commits_after_index > 0);
+        assert!(!report.likely_stale);
+        assert!(report.changed_files.is_empty());
     }
 
     #[test]

@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { Folder, Plus, X } from "@lucide/svelte";
   import type { ProjectSummary } from "../types";
   import { UI_MESSAGES } from "../terminology";
+  import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
     projects: ProjectSummary[];
@@ -67,7 +69,7 @@
   <button
     type="button"
     bind:this={triggerEl}
-    class="flex max-w-[220px] items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-left text-sm hover:bg-white/10"
+    class="flex max-w-[220px] items-center gap-2 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-1.5 text-left text-sm hover:bg-tr-elevated"
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="listbox"
@@ -75,7 +77,7 @@
     <span class="min-w-0 flex-1 truncate font-medium">
       {selected?.name ?? UI_MESSAGES.selectProject}
     </span>
-    <span class="shrink-0 text-white/40">{open ? "▴" : "▾"}</span>
+    <ChevronIcon direction={open ? "up" : "down"} size={14} />
   </button>
 
   {#if open}
@@ -86,7 +88,7 @@
       role="presentation"
     ></div>
     <div
-      class="fixed z-[201] w-80 overflow-hidden rounded-lg border border-white/10 bg-[#1a1e26] shadow-xl"
+      class="fixed z-[201] w-80 overflow-hidden rounded-lg border border-tr-border-strong bg-tr-raised shadow-xl"
       style="top: {menuTop}px; left: {menuLeft}px;"
       role="listbox"
     >
@@ -95,8 +97,8 @@
           <li class="mx-1 flex items-stretch gap-1">
             <button
               type="button"
-              class={`flex min-w-0 flex-1 items-center rounded px-3 py-2 text-left text-sm hover:bg-white/5 ${
-                selectedSlug === project.slug ? "bg-indigo-500/15 text-indigo-100" : ""
+              class={`flex min-w-0 flex-1 items-center rounded px-3 py-2 text-left text-sm hover:bg-tr-elevated ${
+                selectedSlug === project.slug ? "bg-tr-accent-soft-strong text-tr-on-accent" : ""
               }`}
               onclick={() => onselect(project)}
               role="option"
@@ -107,7 +109,7 @@
             {#if project.repo_path && onopenFolder}
               <button
                 type="button"
-                class="shrink-0 rounded px-2 text-white/40 hover:bg-white/5 hover:text-white/80"
+                class="inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink-2"
                 title="打开仓库目录"
                 aria-label={`Open folder for ${project.name}`}
                 onclick={(e) => {
@@ -115,37 +117,34 @@
                   onopenFolder(project);
                 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
-                </svg>
+                <Folder size={16} strokeWidth={2} aria-hidden="true" />
               </button>
             {/if}
             {#if onremove}
               <button
                 type="button"
-                class="shrink-0 rounded px-2 text-white/40 hover:bg-red-500/10 hover:text-red-300"
+                class="inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 hover:bg-tr-critical-soft hover:text-tr-critical"
                 title="从列表移除"
                 aria-label={`从列表移除 ${project.name}`}
                 onclick={(e) => confirmRemove(project, e)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-                </svg>
+                <X size={14} strokeWidth={2} aria-hidden="true" />
               </button>
             {/if}
           </li>
         {:else}
-          <li class="px-3 py-4 text-sm text-white/40">尚无项目，请添加仓库。</li>
+          <li class="px-3 py-4 text-sm text-tr-ink-3">尚无项目，请添加仓库。</li>
         {/each}
       </ul>
-      <div class="border-t border-white/10 p-2">
+      <div class="border-t border-tr-border-strong p-2">
         <button
           type="button"
-          class="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+          class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-tr-accent px-3 py-2 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
           disabled={addBusy}
           onclick={onadd}
         >
-          {addBusy ? "正在添加并初始化…" : "+ 添加并初始化仓库"}
+          <Plus size={14} strokeWidth={2} aria-hidden="true" />
+          {addBusy ? "正在添加并初始化…" : "添加并初始化仓库"}
         </button>
       </div>
     </div>

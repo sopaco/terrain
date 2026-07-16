@@ -1,7 +1,8 @@
 use anyhow::{Context, Result};
 use terrain_core::{
-    build_context_overview, extract_context_section, grep_file, read_agent_pack_file,
-    read_doc_at_in_project, split_context_sections, AgentPackMeta, KnowledgePaths,
+    build_context_overview, codegraph_drift, extract_context_section, grep_file,
+    read_agent_pack_file, read_doc_at_in_project, resolve_freshness_summary,
+    resolve_project_repo_path, split_context_sections, AgentPackMeta, KnowledgePaths,
     KnowledgeSearch, SearchOptions, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 
@@ -78,6 +79,19 @@ pub fn run(paths: &KnowledgePaths, command: ToolsCommands) -> Result<()> {
         ToolsCommands::ReadDoc { project, path } => {
             let doc = read_doc_at_in_project(paths, &path, Some(&project))?;
             print_json(&doc)
+        }
+        ToolsCommands::Freshness { project } => {
+            let repo_path = resolve_project_repo_path(paths, &project, None)
+                .with_context(|| format!("resolve repo path for project '{project}'"))?;
+            let summary = resolve_freshness_summary(paths, &project, &repo_path)
+                .with_context(|| format!("compute freshness for project '{project}'"))?;
+            print_json(&summary)
+        }
+        ToolsCommands::CodegraphDrift { project } => {
+            let repo_path = resolve_project_repo_path(paths, &project, None)
+                .with_context(|| format!("resolve repo path for project '{project}'"))?;
+            let report = codegraph_drift(&repo_path);
+            print_json(&report)
         }
     }
 }

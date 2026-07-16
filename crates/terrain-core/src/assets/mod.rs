@@ -1,4 +1,5 @@
 mod agent_context;
+mod ask;
 mod context_layers;
 mod env;
 mod litho;
@@ -11,7 +12,8 @@ mod sdd;
 mod repomix;
 
 pub use agent_context::{
-    agent_context_ready, build_agent_context_prompt, read_agent_context_status, write_agent_context,
+    agent_context_fresh, agent_context_ready, build_agent_context_prompt, read_agent_context_status,
+    write_agent_context,
 };
 pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{
@@ -33,14 +35,23 @@ pub use litho::{
     plan_litho_generation, LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
 };
 pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
-pub use pack_read::{agent_pack_ready, read_agent_pack_file, AgentPackFileContent};
+pub use pack_read::{
+    agent_pack_ready, read_agent_pack_file, read_pack_text_cached, AgentPackFileContent,
+};
 pub use project_meta::{
-    collect_knowledge_dir_inputs, collect_project_meta, discover_meta_files,
+    collect_knowledge_dir_inputs, collect_project_meta, count_knowledge_markdown_files,
+    discover_meta_files,
     format_meta_bundle_for_prompt, has_repo_meta_configured, meta_inputs_ready,
     meta_inputs_status, persist_meta_inputs, CollectedMetaInput, MetaInputSpec,
     MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile, META_FILENAME,
 };
 pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
+pub use ask::{
+    clear_active_ask_session, create_ask_session, delete_ask_session, discard_ask_session,
+    get_active_ask_session, list_ask_sessions,
+    load_ask_messages, resolve_ask_session_id, save_ask_messages, set_active_ask_session,
+    title_from_question,
+};
 pub use sdd::{
     build_sdd_llm_prompt, build_sdd_phase_prompt, create_sdd_session, delete_sdd_session,
     get_active_sdd_session, get_sdd_status, list_sdd_sessions, new_session_id, plan_sdd_workflow,
@@ -49,7 +60,7 @@ pub use sdd::{
 pub use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 
 #[cfg(feature = "repomix")]
-pub use repomix::{pack_agent_assets, AgentPackReport};
+pub use repomix::{agent_pack_fresh, maybe_pack_agent_assets, pack_agent_assets, AgentPackReport};
 
 use crate::paths::KnowledgePaths;
 use crate::schema::LithoPlan;

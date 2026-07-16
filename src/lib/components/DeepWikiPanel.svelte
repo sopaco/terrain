@@ -1,7 +1,14 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
-  import { askKnowledge, readDocument } from "../api";
+  import { Check, MessageSquarePlus } from "@lucide/svelte";
+  import { askKnowledge, deleteAskSession, loadAskMessages, readDocument } from "../api";
+  import {
+    ensureAskSessionForQuestion,
+    persistAskMessages,
+    startNewAskSession,
+    switchAskSession,
+  } from "../askSession";
   import { parseAskSlashCommand } from "../askSlashCommands";
   import {
     appendStepText,
@@ -24,12 +31,22 @@
   } from "../types";
   import { formatTime } from "../timeFormat";
   import { assistantMessageMarkdown, assistantStepsMarkdown } from "../assistantMarkdown";
-  import { copyTextToClipboard } from "../clipboard";
+  import { renderAskSharePng, formatUnknownError } from "../askShareImage";
+  import { copyPngBlobToClipboard, copyTextToClipboard } from "../clipboard";
   import { CHAT_PHASE_LABELS, UI_MESSAGES } from "../terminology";
+  import CopyImageButton from "./CopyImageButton.svelte";
   import CopyMarkdownButton from "./CopyMarkdownButton.svelte";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
+  import AskSessionSelector from "./AskSessionSelector.svelte";
+  import {
+    activeAskSessionIds,
+    askSessionLists,
+    setActiveAskSessionId,
+    setAskSessions,
+    showAskCompletionNotice,
+  } from "../stores/chat.svelte";
   import {
     handleDismissTransitionEnd,
     prefersReducedMotion,
@@ -82,9 +99,26 @@
   let streamPhase = $state<ChatPhase>("thinking");
   let copyingMarkdownKey = $state<string | null>(null);
   let copiedMarkdownKey = $state<string | null>(null);
+  let copyingImageKey = $state<string | null>(null);
+  let copiedImageKey = $state<string | null>(null);
   let copyToast = $state<{ text: string; ok: boolean } | null>(null);
+  let sessionMenuOpen = $state(false);
+  let sessionBusy = $state(false);
+  let currentSessionId = $state<string | null>(null);
+
+  const askSessions = $derived(
+    projectSlug ? (askSessionLists[projectSlug] ?? []) : [],
+  );
+  const activeSessionId = $derived(
+    projectSlug ? (activeAskSessionIds[projectSlug] ?? null) : null,
+  );
+
+  $effect(() => {
+    currentSessionId = activeSessionId;
+  });
 
   let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
+  let copiedImageResetTimer: ReturnType<typeof setTimeout> | undefined;
   let copyToastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sourceOpen = $derived(Boolean(sourceSlice));
@@ -207,6 +241,30 @@
     }, 2200);
   }
 
+  function markImageCopied(key: string) {
+    clearTimeout(copiedImageResetTimer);
+    copiedImageKey = key;
+    copiedImageResetTimer = setTimeout(() => {
+      if (copiedImageKey === key) {
+        copiedImageKey = null;
+      }
+    }, 2200);
+  }
+
+  function questionBeforeIndex(index: number): string | null {
+    for (let j = index - 1; j >= 0; j -= 1) {
+      if (messages[j].role === "user") return messages[j].content.trim();
+    }
+    return null;
+  }
+
+  function lastUserQuestion(): string | null {
+    for (let j = messages.length - 1; j >= 0; j -= 1) {
+      if (messages[j].role === "user") return messages[j].content.trim();
+    }
+    return null;
+  }
+
   async function copyMarkdown(key: string, markdown: string) {
     const body = markdown.trim();
     if (!body || copyingMarkdownKey) return;
@@ -217,9 +275,31 @@
       markCopied(key);
       showCopyToast("已复制到剪贴板");
     } catch (e) {
-      showCopyToast(`复制失败：${e}`, false);
+      showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
     } finally {
       copyingMarkdownKey = null;
+    }
+  }
+
+  async function copyImage(key: string, question: string | null, answerMarkdown: string) {
+    const q = question?.trim();
+    const answer = answerMarkdown.trim();
+    if (!q || !answer || copyingImageKey) return;
+
+    copyingImageKey = key;
+    try {
+      const blob = await renderAskSharePng({
+        question: q,
+        answerMarkdown: answer,
+        projectName: projectName ?? projectSlug,
+      });
+      await copyPngBlobToClipboard(blob);
+      markImageCopied(key);
+      showCopyToast("图片已复制到剪贴板");
+    } catch (e) {
+      showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
+    } finally {
+      copyingImageKey = null;
     }
   }
 
@@ -266,6 +346,21 @@
     stickToBottom = isNearBottom(el);
   }
 
+  function sessionTitle(): string {
+    if (!projectSlug || !currentSessionId) return lastUserQuestion()?.slice(0, 10) ?? "Ask";
+    const session = askSessions.find((s) => s.id === currentSessionId);
+    return session?.title ?? lastUserQuestion()?.slice(0, 10) ?? "Ask";
+  }
+
+  async function persistCurrentMessages(nextMessages: ChatMessage[]) {
+    if (!projectSlug || !currentSessionId) return;
+    try {
+      await persistAskMessages(projectSlug, currentSessionId, nextMessages);
+    } catch (e) {
+      console.error("Failed to persist ask messages", e);
+    }
+  }
+
   function completeAssistantTurn(payload: {
     answer: string;
     citations: SourceCitation[];
@@ -281,8 +376,8 @@
       "已完成知识库检索，但未收到最终文本回复。请查看上方工具调用结果。"
 
     try {
-      onmessageschange((prev) => [
-        ...prev,
+      const nextMessages: ChatMessage[] = [
+        ...messages,
         {
           role: "assistant",
           content: finalContent,
@@ -292,7 +387,18 @@
           timestamp: payload.completedAt ?? Date.now(),
           usage: payload.usage ?? streamingUsage ?? undefined,
         },
-      ]);
+      ];
+      onmessageschange(() => nextMessages);
+      void persistCurrentMessages(nextMessages);
+
+      if (!open && projectSlug && currentSessionId) {
+        showAskCompletionNotice({
+          projectSlug,
+          sessionId: currentSessionId,
+          title: sessionTitle(),
+          answerMarkdown: finalContent,
+        });
+      }
     } catch (e) {
       console.error("Failed to save assistant message", e);
     } finally {
@@ -409,18 +515,66 @@
     };
   });
 
-  function clearHistory() {
-    if (busy) return;
-    onmessageschange(() => []);
-    showCopyToast("对话历史已清空");
+  async function handleNewSession() {
+    if (!projectSlug || busy || sessionBusy) return;
+    sessionBusy = true;
+    try {
+      await startNewAskSession(projectSlug);
+      sessionMenuOpen = false;
+      showCopyToast("已新建对话");
+    } catch (e) {
+      showCopyToast(`新建对话失败：${e}`, false);
+    } finally {
+      sessionBusy = false;
+    }
+  }
+
+  async function handleSelectSession(sessionId: string) {
+    if (!projectSlug || busy || sessionId === currentSessionId) {
+      sessionMenuOpen = false;
+      return;
+    }
+    sessionBusy = true;
+    try {
+      await switchAskSession(projectSlug, sessionId, messages);
+      sessionMenuOpen = false;
+    } catch (e) {
+      showCopyToast(`切换对话失败：${e}`, false);
+    } finally {
+      sessionBusy = false;
+    }
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    if (!projectSlug || busy) return;
+    sessionBusy = true;
+    try {
+      const sessions = await deleteAskSession(projectSlug, sessionId);
+      setAskSessions(projectSlug, sessions);
+      if (currentSessionId === sessionId) {
+        const next = sessions[0]?.id ?? null;
+        setActiveAskSessionId(projectSlug, next);
+        if (next) {
+          const loaded = await loadAskMessages(projectSlug, next);
+          onmessageschange(() => loaded);
+        } else {
+          onmessageschange(() => []);
+        }
+      }
+      sessionMenuOpen = false;
+    } catch (e) {
+      showCopyToast(`删除对话失败：${e}`, false);
+    } finally {
+      sessionBusy = false;
+    }
   }
 
   async function sendQuestion(q: string) {
     if (!q.trim() || busy || !projectSlug) return;
 
     const slash = parseAskSlashCommand(q);
-    if (slash?.type === "clear") {
-      clearHistory();
+    if (slash?.type === "new") {
+      await handleNewSession();
       input = "";
       return;
     }
@@ -429,10 +583,20 @@
     const requestId = crypto.randomUUID();
     const requestRepo = repoPath;
 
-    onmessageschange((prev) => [
-      ...prev,
+    if (!projectSlug) return;
+
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = await ensureAskSessionForQuestion(projectSlug, question);
+      currentSessionId = sessionId;
+    }
+
+    const userMessages: ChatMessage[] = [
+      ...messages,
       { role: "user", content: question, timestamp: Date.now() },
-    ]);
+    ];
+    onmessageschange(() => userMessages);
+    void persistAskMessages(projectSlug, sessionId, userMessages);
     input = "";
     busy = true;
     stickToBottom = true;
@@ -533,6 +697,10 @@
       void send();
     }
     if (e.key === "Escape") {
+      if (sessionMenuOpen) {
+        sessionMenuOpen = false;
+        return;
+      }
       onclose();
     }
   }
@@ -571,7 +739,7 @@
     ontransitionend={onDrawerTransitionEnd}
   >
     {#if showChat}
-    <div class="relative flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-white/10 bg-[#12151c] shadow-2xl">
+    <div class="relative flex w-[min(760px,92vw)] shrink-0 flex-col border-l border-tr-border-strong bg-tr-surface shadow-2xl">
     {#if copyToast}
       <div
         class="pointer-events-none absolute inset-x-0 top-3 z-[70] flex justify-center px-4"
@@ -580,47 +748,53 @@
       >
         <div
           class="copy-toast flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl backdrop-blur-md {copyToast.ok
-            ? 'border-emerald-400/35 bg-emerald-500/20 text-emerald-100'
-            : 'border-red-400/35 bg-red-500/20 text-red-100'}"
+            ? 'border-tr-good/35 bg-tr-good-soft text-tr-good'
+            : 'border-tr-critical/35 bg-tr-critical/20 text-tr-on-critical'}"
         >
           {#if copyToast.ok}
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M3.5 8.5L6.5 11.5L12.5 4.5"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <Check size={16} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
           {/if}
           {copyToast.text}
         </div>
       </div>
     {/if}
-    <header class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3">
+    <header class="flex shrink-0 items-center gap-3 border-b border-tr-border-strong px-4 py-3">
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold">DeepWiki</h2>
-        <p class="truncate text-xs text-white/40">
+        <p class="truncate text-xs text-tr-ink-3">
           {projectName ?? projectSlug ?? UI_MESSAGES.noProject} · 可继续追问
         </p>
       </div>
       {#if busy}
-        <span class="rounded-full bg-indigo-500/20 px-2 py-1 text-xs text-indigo-200">
+        <span class="rounded-full bg-tr-accent-soft-strong px-2 py-1 text-xs text-tr-accent">
           {phaseLabel}
         </span>
       {/if}
       <button
         type="button"
-        class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={busy || messages.length === 0}
-        onclick={clearHistory}
+        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
+        disabled={busy || sessionBusy || !projectSlug}
+        onclick={() => void handleNewSession()}
+        aria-label="新建对话"
+        title="新建对话"
       >
-        Clear
+        <MessageSquarePlus size={16} strokeWidth={2} aria-hidden="true" />
       </button>
+      {#if projectSlug}
+        <AskSessionSelector
+          sessions={askSessions}
+          activeSessionId={currentSessionId}
+          open={sessionMenuOpen}
+          creating={sessionBusy}
+          ontoggle={() => (sessionMenuOpen = !sessionMenuOpen)}
+          onselect={handleSelectSession}
+          oncreate={handleNewSession}
+          ondelete={handleDeleteSession}
+        />
+      {/if}
       <button
         type="button"
-        class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5"
+        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated"
         onclick={onclose}
       >
         Close
@@ -637,17 +811,17 @@
           {#each messages as msg, i (msg.timestamp ?? `msg-${i}`)}
             <div
               class={`rounded-xl px-4 py-3 ${
-                msg.role === "user" ? "bg-indigo-600/25" : "bg-white/[0.04]"
+                msg.role === "user" ? "bg-tr-accent/25" : "bg-tr-elevated"
               }`}
             >
-              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-white/40">
+              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-tr-ink-3">
                 <span>{msg.role === "user" ? "You" : "Terrain"}</span>
                 {#if msg.timestamp}
-                  <span class="normal-case text-white/30">{formatTime(msg.timestamp)}</span>
+                  <span class="normal-case text-tr-ink-3">{formatTime(msg.timestamp)}</span>
                 {/if}
               </div>
               {#if msg.role === "user"}
-                <p class="whitespace-pre-wrap text-sm leading-relaxed text-white/90">{msg.content}</p>
+                <p class="whitespace-pre-wrap text-sm leading-relaxed text-tr-ink">{msg.content}</p>
               {:else}
                 {#if msg.steps?.length}
                   {#each msg.steps as step, i (i)}
@@ -669,35 +843,43 @@
                 {/if}
               {/if}
               {#if formatUsageLine(msg.usage) || (msg.role === "assistant" && assistantMessageMarkdown(msg))}
-                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-tr-border pt-2">
                   {#if formatUsageLine(msg.usage)}
-                    <p class="text-[10px] text-white/35">{formatUsageLine(msg.usage)}</p>
+                    <p class="text-[10px] text-tr-ink-3">{formatUsageLine(msg.usage)}</p>
                   {:else}
                     <span></span>
                   {/if}
                   {#if msg.role === "assistant" && assistantMessageMarkdown(msg)}
                     {@const copyKey = `done-${msg.timestamp ?? i}`}
-                    <CopyMarkdownButton
-                      copied={copiedMarkdownKey === copyKey}
-                      copying={copyingMarkdownKey === copyKey}
-                      onclick={() => void copyMarkdown(copyKey, assistantMessageMarkdown(msg))}
-                    />
+                    <div class="flex shrink-0 items-center gap-1.5">
+                      <CopyImageButton
+                        copied={copiedImageKey === copyKey}
+                        copying={copyingImageKey === copyKey}
+                        onclick={() =>
+                          void copyImage(copyKey, questionBeforeIndex(i), assistantMessageMarkdown(msg))}
+                      />
+                      <CopyMarkdownButton
+                        copied={copiedMarkdownKey === copyKey}
+                        copying={copyingMarkdownKey === copyKey}
+                        onclick={() => void copyMarkdown(copyKey, assistantMessageMarkdown(msg))}
+                      />
+                    </div>
                   {/if}
                 </div>
               {/if}
               {#if msg.citations?.length}
-                <div class="mt-4 space-y-1.5 border-t border-white/5 pt-3">
-                  <p class="text-[10px] uppercase tracking-wide text-white/35">Sources</p>
+                <div class="mt-4 space-y-1.5 border-t border-tr-border pt-3">
+                  <p class="text-[10px] uppercase tracking-wide text-tr-ink-3">Sources</p>
                   {#each msg.citations as c}
                     <button
                       type="button"
-                      class="block w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-left text-xs hover:bg-white/5"
+                      class="block w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-left text-xs hover:bg-tr-elevated"
                       onclick={() => openCitation(c)}
                     >
-                      <span class="text-white/40">{c.kind}</span>
-                      <div class="font-medium text-indigo-200">{c.title}</div>
+                      <span class="text-tr-ink-3">{c.kind}</span>
+                      <div class="font-medium text-tr-accent">{c.title}</div>
                       {#if c.excerpt}
-                        <p class="mt-0.5 line-clamp-2 text-white/50">{c.excerpt}</p>
+                        <p class="mt-0.5 line-clamp-2 text-tr-ink-3">{c.excerpt}</p>
                       {/if}
                     </button>
                   {/each}
@@ -707,15 +889,15 @@
           {/each}
 
           {#if busy}
-            <div class="rounded-xl bg-white/[0.04] px-4 py-3">
-              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-white/40">
+            <div class="rounded-xl bg-tr-elevated px-4 py-3">
+              <div class="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide text-tr-ink-3">
                 <span>Terrain</span>
-                <span class="normal-case text-indigo-200/80">{phaseLabel}</span>
+                <span class="normal-case text-tr-accent">{phaseLabel}</span>
               </div>
               {#if streamSteps.length === 0}
                 <div class="mb-3 flex items-center gap-2">
-                  <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-transparent"></span>
-                  <span class="text-xs text-white/50">{phaseLabel}</span>
+                  <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"></span>
+                  <span class="text-xs text-tr-ink-3">{phaseLabel}</span>
                 </div>
               {:else}
                 {#each streamSteps as step, i (i)}
@@ -735,38 +917,50 @@
                 {/each}
               {/if}
               {#if streamingUsageLine || assistantStepsMarkdown(streamSteps)}
-                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-tr-border pt-2">
                   {#if streamingUsageLine}
-                    <p class="text-[10px] text-white/35">{streamingUsageLine}</p>
+                    <p class="text-[10px] text-tr-ink-3">{streamingUsageLine}</p>
                   {:else}
                     <span></span>
                   {/if}
                   {#if assistantStepsMarkdown(streamSteps)}
-                    <CopyMarkdownButton
-                      copied={copiedMarkdownKey === "streaming"}
-                      copying={copyingMarkdownKey === "streaming"}
-                      onclick={() => void copyMarkdown("streaming", assistantStepsMarkdown(streamSteps))}
-                    />
+                    <div class="flex shrink-0 items-center gap-1.5">
+                      <CopyImageButton
+                        copied={copiedImageKey === "streaming"}
+                        copying={copyingImageKey === "streaming"}
+                        onclick={() =>
+                          void copyImage(
+                            "streaming",
+                            lastUserQuestion(),
+                            assistantStepsMarkdown(streamSteps),
+                          )}
+                      />
+                      <CopyMarkdownButton
+                        copied={copiedMarkdownKey === "streaming"}
+                        copying={copyingMarkdownKey === "streaming"}
+                        onclick={() => void copyMarkdown("streaming", assistantStepsMarkdown(streamSteps))}
+                      />
+                    </div>
                   {/if}
                 </div>
               {/if}
             </div>
           {:else if messages.length === 0}
-            <p class="text-center text-sm text-white/35">
+            <p class="text-center text-sm text-tr-ink-3">
               Ask about architecture, workflows, or APIs. Citations appear below each answer.
             </p>
           {/if}
           {#if citationError}
-            <p class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            <p class="rounded-lg border border-tr-critical/30 bg-tr-critical-soft px-3 py-2 text-xs text-tr-critical">
               {citationError}
             </p>
           {/if}
           </div>
         </div>
 
-        <div class="shrink-0 border-t border-white/10 p-4">
+        <div class="shrink-0 border-t border-tr-border-strong p-4">
           <textarea
-            class="mb-2 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            class="mb-2 w-full resize-none rounded-xl border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             rows="2"
             placeholder={UI_MESSAGES.askFollowUpPlaceholder}
             bind:value={input}
@@ -777,7 +971,7 @@
           ></textarea>
           <button
             type="button"
-            class="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+            class="w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
             disabled={!projectSlug || busy}
             onclick={send}
           >
@@ -791,7 +985,7 @@
     {#if sourceRailMounted && visibleSourceSlice}
       <aside class="mm-source-rail" aria-hidden={!sourceOpen}>
         <div
-          class="mm-source-rail-panel flex flex-col bg-[#10131a]"
+          class="mm-source-rail-panel flex flex-col bg-tr-page"
           class:is-presented={sourceRailPresented}
           ontransitionend={onSourceRailTransitionEnd}
         >

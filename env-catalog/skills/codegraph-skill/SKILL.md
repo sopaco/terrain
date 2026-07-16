@@ -1,7 +1,7 @@
 ---
 name: codegraph-skill
 description: Use when a coding agent needs symbol relationships, callers, callees, or change impact. Guides CodeGraph CLI usage (not MCP).
-version: 1.2.0
+version: 1.3.0
 ---
 
 # CodeGraph Skill
@@ -54,6 +54,8 @@ Health check:
 <cg> status
 ```
 
+**`<cg> status` can lie ("up to date" when it is not).** Observed case: index untouched for 10 days while 24 commits changed source files, `status` still reported fresh, and `<cg> query` on a symbol added days earlier returned nothing. Do not treat `status` as authoritative on its own.
+
 ## CLI commands
 
 | Intent | Command |
@@ -70,10 +72,22 @@ Health check:
 ## Recommended workflow
 
 1. Read `.terrain/agent/context.md` (`terrain-knowledge-skill`)
-2. `<cg> query <SymbolName>` to locate definition
-3. `callers` / `callees` / `impact` for relationship questions
-4. `repomix-context-skill` for full source text of a specific file
-5. Use **`rtk-skill`** for any follow-up shell commands (tests, git)
+2. **Always** `<cg> sync` first — cheap, incremental, and removes the need to trust `status`'s own up-to-date claim
+3. `<cg> query <SymbolName>` to locate definition
+4. `callers` / `callees` / `impact` for relationship questions
+5. `repomix-context-skill` for full source text of a specific file
+6. Use **`rtk-skill`** for any follow-up shell commands (tests, git)
+
+## Independent staleness cross-check (mandatory before impact/callers analysis)
+
+Because `<cg> status` is not reliable, cross-check with Terrain's own git-based drift report before trusting `impact`/`callers`/`callees` results for anything safety-relevant (e.g. "is it safe to remove this function"):
+
+```bash
+~/.terrain/bin/terrain tools codegraph-drift --project <slug>
+# or: bunx @terrain-ai/cli tools codegraph-drift --project <slug>
+```
+
+This compares `.codegraph/codegraph.db`'s mtime against `git log --since` — independent of CodeGraph's own bookkeeping. If `likely_stale: true`, run `<cg> sync` and re-check before trusting query results.
 
 ## When to use vs other skills
 
@@ -92,7 +106,7 @@ Health check:
 
 ## Staleness
 
-If `<cg> status` shows pending files after your edits:
+If `<cg> status` shows pending files after your edits, or `terrain tools codegraph-drift` reports `likely_stale: true`:
 
 ```bash
 <cg> sync

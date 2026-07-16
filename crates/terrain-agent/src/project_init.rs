@@ -124,9 +124,15 @@ pub async fn run_project_initialization(
                 stage: "human_docs".into(),
                 message: "正在生成人类友好的知识库（Litho）…".into(),
             });
-            let result =
-                run_litho_generation(paths, &project_slug, repo_path, acp, &on_litho_progress)
-                    .await?;
+            let result = run_litho_generation(
+                paths,
+                &project_slug,
+                repo_path,
+                acp,
+                false,
+                &on_litho_progress,
+            )
+            .await?;
             human_doc_count = result.human_doc_count;
             human_docs_complete = result.human_docs_complete;
             litho_ran = true;

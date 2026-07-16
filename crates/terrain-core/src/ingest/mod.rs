@@ -14,9 +14,6 @@ use crate::paths::KnowledgePaths;
 use crate::registry;
 use crate::schema::SyncMeta;
 
-#[cfg(feature = "repomix")]
-use crate::assets::pack_agent_assets;
-
     #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
@@ -35,6 +32,8 @@ pub struct AgentPackSummary {
     pub total_files: usize,
     pub total_tokens: usize,
     pub output_path: String,
+    #[serde(default)]
+    pub pack_skipped: bool,
 }
 
 pub struct ProjectScanner {
@@ -76,12 +75,15 @@ impl ProjectScanner {
 
         #[cfg(feature = "repomix")]
         let agent_pack = {
-            let pack = pack_agent_assets(&self.paths, &slug, repo_path).await?;
-            collectors.push("repomix".into());
+            let pack = crate::assets::maybe_pack_agent_assets(&self.paths, &slug, repo_path).await?;
+            if !pack.skipped {
+                collectors.push("repomix".into());
+            }
             Some(AgentPackSummary {
                 total_files: pack.total_files,
                 total_tokens: pack.total_tokens,
                 output_path: pack.output_path,
+                pack_skipped: pack.skipped,
             })
         };
 

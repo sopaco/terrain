@@ -1,7 +1,7 @@
 .markdown-body {
   font-size: 0.9375rem;
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-tr-ink);
   word-wrap: break-word;
 }
 
@@ -17,7 +17,7 @@
 .markdown-body h6 {
   font-weight: 600;
   line-height: 1.35;
-  color: rgba(255, 255, 255, 0.96);
+  color: var(--color-tr-ink);
   scroll-margin-top: 1.5rem;
 }
 
@@ -25,14 +25,14 @@
   font-size: 1.875rem;
   margin: 2rem 0 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--color-tr-border);
 }
 
 .markdown-body h2 {
   font-size: 1.5rem;
   margin: 1.75rem 0 0.875rem;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--color-tr-border);
 }
 
 .markdown-body h3 {
@@ -70,33 +70,33 @@
 
 .markdown-body blockquote {
   padding: 0.75rem 1rem;
-  border-left: 3px solid rgba(99, 102, 241, 0.55);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 0 0.5rem 0.5rem 0;
-  color: rgba(255, 255, 255, 0.75);
+  border-left: 3px solid var(--color-tr-accent);
+  background: var(--color-tr-elevated);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  color: var(--color-tr-ink-2);
 }
 
 .markdown-body code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875em;
   padding: 0.15em 0.4em;
-  border-radius: 0.35rem;
-  background: rgba(255, 255, 255, 0.08);
-  color: #c4b5fd;
+  border-radius: var(--radius-md);
+  background: var(--color-tr-elevated);
+  color: var(--color-tr-accent);
 }
 
 .markdown-body pre {
   overflow-x: auto;
   padding: 1rem 1.125rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-tr-border);
+  background: var(--color-tr-page);
 }
 
 .markdown-body pre code {
   padding: 0;
   background: transparent;
-  color: #e2e8f0;
+  color: var(--color-tr-ink);
   font-size: 0.8125rem;
   line-height: 1.65;
 }
@@ -111,50 +111,50 @@
 .markdown-body th,
 .markdown-body td {
   padding: 0.625rem 0.875rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-tr-border-strong);
   text-align: left;
 }
 
 .markdown-body th {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-tr-elevated);
   font-weight: 600;
 }
 
 .markdown-body hr {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-tr-border-strong);
   margin: 2rem 0;
 }
 
 .markdown-body a {
-  color: #a5b4fc;
+  color: var(--color-tr-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .markdown-body a:hover {
-  color: #c7d2fe;
+  color: var(--color-tr-accent-hover);
 }
 
 .markdown-body img {
   max-width: 100%;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 
 .markdown-body .mermaid-wrap {
   margin: 1.25rem 0;
   padding: 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-tr-border);
+  background: var(--color-tr-elevated);
   overflow-x: auto;
   cursor: zoom-in;
   transition: border-color 0.15s, background 0.15s;
 }
 
 .markdown-body .mermaid-wrap:hover {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(99, 102, 241, 0.06);
+  border-color: var(--color-tr-accent-soft-strong);
+  background: var(--color-tr-accent-soft);
 }
 
 .markdown-body .mermaid-wrap svg {
@@ -165,16 +165,17 @@
 
 .markdown-body .source-ref {
   cursor: pointer;
-  border-radius: 0.25rem;
-  background: rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-sm);
+  background: var(--color-tr-accent-soft-strong);
   padding: 0 0.25rem;
-  color: #c7d2fe;
+  color: var(--color-tr-accent);
   border: none;
   font: inherit;
 }
 
 .markdown-body .source-ref:hover {
-  background: rgba(99, 102, 241, 0.35);
+  /* deliberately more saturated than --color-tr-accent-soft-strong for a clear hover step */
+  background: rgba(31, 143, 132, 0.42);
 }
 
 .markdown-body .source-ref-inline {
@@ -196,9 +197,9 @@
 
 .markdown-body .mermaid-pending {
   margin: 1.25rem 0;
-  border-radius: 0.75rem;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-xl);
+  border: 1px dashed var(--color-tr-border-strong);
+  background: var(--color-tr-elevated);
   overflow: hidden;
 }
 
@@ -209,8 +210,8 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--color-tr-ink-3);
+  border-bottom: 1px solid var(--color-tr-border);
 }
 
 .markdown-body .mermaid-pending pre {
@@ -222,9 +223,9 @@
 
 .markdown-body .mermaid-fallback {
   margin: 1.25rem 0;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  background: rgba(251, 191, 36, 0.06);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(217, 164, 65, 0.32);
+  background: var(--color-tr-watch-soft);
   overflow: hidden;
 }
 
@@ -232,13 +233,13 @@
   margin: 0;
   padding: 0.625rem 0.875rem;
   font-size: 0.75rem;
-  color: rgba(253, 230, 138, 0.95);
-  border-bottom: 1px solid rgba(251, 191, 36, 0.15);
+  color: var(--color-tr-watch);
+  border-bottom: 1px solid rgba(217, 164, 65, 0.2);
 }
 
 .markdown-body .mermaid-fallback pre {
   margin: 0;
   border: none;
   border-radius: 0;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-tr-page);
 }

@@ -3,6 +3,7 @@ import type {
   AgentContextGenerationResult,
   AgentPackReport,
   AskKnowledgeReply,
+  AskSessionInfo,
   EnvApplyResult,
   EnvPlan,
   EnvStatus,
@@ -25,7 +26,11 @@ import type {
   SearchHit,
   SourceSlice,
   StaleProjectSummary,
+  UsageDetailLevel,
+  UsageProbeResult,
+  UsageSnapshot,
 } from "./types";
+import type { ChatMessage } from "./types";
 
 export const listProjects = () => invoke<ProjectSummary[]>("list_projects");
 
@@ -62,10 +67,15 @@ export const generateHumanDocs = (repoPath: string, projectSlug?: string) =>
     projectSlug: projectSlug || null,
   });
 
-export const runLithoGeneration = (repoPath: string, projectSlug?: string) =>
+export const runLithoGeneration = (
+  repoPath: string,
+  projectSlug?: string,
+  forceRefresh = false,
+) =>
   invoke<void>("run_litho_generation_cmd", {
     repoPath,
     projectSlug: projectSlug || null,
+    forceRefresh,
   });
 
 export const checkLlm = () => invoke<LlmStatus>("check_llm");
@@ -106,6 +116,43 @@ export const askKnowledge = (
     repoPath: repoPath || null,
     requestId: requestId ?? crypto.randomUUID(),
   });
+
+export const listAskSessions = (projectSlug: string) =>
+  invoke<AskSessionInfo[]>("list_ask_sessions_cmd", { projectSlug });
+
+export const loadAskMessages = (projectSlug: string, sessionId: string) =>
+  invoke<ChatMessage[]>("load_ask_messages_cmd", { projectSlug, sessionId });
+
+export const saveAskMessages = (
+  projectSlug: string,
+  sessionId: string,
+  messages: ChatMessage[],
+  firstQuestion?: string | null,
+) =>
+  invoke<AskSessionInfo>("save_ask_messages_cmd", {
+    projectSlug,
+    sessionId,
+    messages,
+    firstQuestion: firstQuestion ?? null,
+  });
+
+export const createAskSession = (projectSlug: string, question: string) =>
+  invoke<AskSessionInfo>("create_ask_session_cmd", { projectSlug, question });
+
+export const setActiveAskSession = (projectSlug: string, sessionId: string) =>
+  invoke<AskSessionInfo[]>("set_active_ask_session_cmd", { projectSlug, sessionId });
+
+export const deleteAskSession = (projectSlug: string, sessionId: string) =>
+  invoke<AskSessionInfo[]>("delete_ask_session_cmd", { projectSlug, sessionId });
+
+export const discardAskSession = (projectSlug: string, sessionId: string) =>
+  invoke<AskSessionInfo[]>("discard_ask_session_cmd", { projectSlug, sessionId });
+
+export const clearActiveAskSession = (projectSlug: string) =>
+  invoke<void>("clear_active_ask_session_cmd", { projectSlug });
+
+export const getActiveAskSession = (projectSlug: string) =>
+  invoke<string | null>("get_active_ask_session_cmd", { projectSlug });
 
 export const searchKnowledge = (query: string, project?: string) =>
   invoke<SearchHit[]>("search_knowledge", {
@@ -205,3 +252,8 @@ export const runEnvIntegration = (
   reinstallIds: string[] = [],
 ) =>
   invoke<EnvApplyResult>("run_env_integration_cmd", { repoPath, selectedIds, reinstallIds });
+
+export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
+
+export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefresh = false) =>
+  invoke<UsageSnapshot>("usage_snapshot_cmd", { detail, forceRefresh });

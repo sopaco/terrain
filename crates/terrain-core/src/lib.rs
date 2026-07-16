@@ -21,23 +21,30 @@ pub mod agent_tools_deploy;
 pub mod bundled_tools;
 pub mod shell_path;
 pub mod source;
+pub mod usage;
 #[macro_use]
 mod ts_ipc;
 
 pub use assets::{
-    agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
+    agent_context_fresh, agent_context_ready, agent_pack_ready, build_agent_context_prompt, build_context_overview,
     build_generation_plan, build_litho_composition_prompt, build_litho_generation_prompt,
-    build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, create_sdd_session,
-    delete_sdd_session, default_agent_arch_skill_dir, default_litho_skill_dir, default_sdd_skill_dir,
+    build_sdd_llm_prompt, build_sdd_phase_prompt, collect_project_meta, clear_active_ask_session,
+    create_ask_session, create_sdd_session, delete_ask_session, delete_sdd_session,
+    discard_ask_session, default_agent_arch_skill_dir, default_litho_skill_dir, default_sdd_skill_dir,
     discover_meta_files,
-    enforce_context_max_size, extract_context_section, get_active_sdd_session, get_env_status,
+    enforce_context_max_size, extract_context_section, get_active_ask_session, get_active_sdd_session,
+    get_env_status,
     get_sdd_status, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
     invalidate_env_status_cache, invalidate_env_status_cache_for_repo,
     litho_human_complete, litho_human_complete_with_research, litho_research_ready,
-    apply_env_integration, collect_knowledge_dir_inputs, count_markdown_in_dir, meta_inputs_ready,
-    meta_inputs_status, list_sdd_sessions, plan_env_integration, plan_litho_generation,
+    apply_env_integration, collect_knowledge_dir_inputs, count_knowledge_markdown_files,
+    count_markdown_in_dir, meta_inputs_ready,
+    meta_inputs_status, list_ask_sessions, list_sdd_sessions, load_ask_messages,
+    plan_env_integration, plan_litho_generation,
     plan_sdd_workflow, patch_agents_md, persist_meta_inputs, read_agent_context_status,
-    read_agent_pack_file, resolve_litho_skill_dir, resolve_sdd_session_id, resolve_sdd_skill_dir, save_sdd_output, sdd_phase_output_path, set_active_sdd_session, split_context_sections,
+    read_agent_pack_file, read_pack_text_cached, resolve_ask_session_id, resolve_litho_skill_dir,
+    resolve_sdd_session_id, resolve_sdd_skill_dir, save_ask_messages, save_sdd_output,
+    sdd_phase_output_path, set_active_ask_session, set_active_sdd_session, split_context_sections,
     summarize_agent_env_light, write_agent_context,
     LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
     EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
@@ -46,13 +53,14 @@ pub use assets::{
     AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 #[cfg(feature = "repomix")]
-pub use assets::{pack_agent_assets, AgentPackReport};
+pub use assets::{agent_pack_fresh, maybe_pack_agent_assets, pack_agent_assets, AgentPackReport};
 pub use citations::{extract_source_citations, merge_citations};
 pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_doc, render_markdown, write_doc};
 pub use error::{CoreError, Result};
 pub use freshness::{
-    compute_freshness, format_freshness_trust_block, git_snapshot, read_freshness_ledger,
-    write_freshness_ledger, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
+    codegraph_drift, compute_freshness, format_freshness_trust_block, git_snapshot,
+    read_freshness_ledger, resolve_freshness_summary, write_freshness_ledger, CodegraphDriftReport,
+    FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
 };
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
 pub use ingest::{AgentPackSummary, ProjectScanner, ScanReport};
@@ -82,7 +90,7 @@ pub use schema::{
     HumanDocEntry,
     InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, QuickRefreshResult,
     RouteMeta, SddPhase,
-    SddPhaseInfo, SddPhaseResult, SddPlan, SddSessionInfo, SddStatus, SourceCitation, SourceSlice, SyncMeta,
+    SddPhaseInfo, SddPhaseResult, SddPlan, AskSessionInfo, SddSessionInfo, SddStatus, SourceCitation, SourceSlice, SyncMeta,
     TokenHeavyFile,
 };
 pub use search::{
@@ -101,4 +109,8 @@ pub use shell_path::{
     augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,
 };
 pub use process::{async_command, command as process_command, hide_console, hide_console_async};
+pub use usage::{
+    load_usage_snapshot, probe_usage_sources, UsageDetailLevel, UsageModelBreakdown,
+    UsagePeriodEntry, UsageProbeResult, UsageSnapshot, UsageSourceStatus, UsageTotals,
+};
 pub use source::{read_source_slice, resolve_source_citation};

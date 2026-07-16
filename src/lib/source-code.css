@@ -3,7 +3,7 @@
 .source-code-viewer {
   flex: 1;
   overflow: auto;
-  background: #10131a;
+  background: var(--color-tr-page);
 }
 
 .source-code-viewer table {
@@ -16,16 +16,16 @@
 }
 
 .source-code-viewer tr:hover td.line-code {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-tr-elevated);
 }
 
 .source-code-viewer tr.focus-line td.line-code {
-  background: rgba(99, 102, 241, 0.15);
-  box-shadow: inset 3px 0 0 #818cf8;
+  background: var(--color-tr-accent-soft-strong);
+  box-shadow: inset 3px 0 0 var(--color-tr-accent);
 }
 
 .source-code-viewer tr.focus-line td.line-num {
-  color: rgba(199, 210, 254, 0.85);
+  color: var(--color-tr-ink);
 }
 
 .source-code-viewer td {
@@ -43,9 +43,9 @@
   padding: 0 0.75rem 0 0.5rem;
   text-align: right;
   user-select: none;
-  color: rgba(255, 255, 255, 0.22);
-  background: #10131a;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--color-tr-ink-4);
+  background: var(--color-tr-page);
+  border-right: 1px solid var(--color-tr-border);
 }
 
 .source-code-viewer td.line-code {

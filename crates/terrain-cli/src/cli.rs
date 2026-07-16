@@ -113,6 +113,16 @@ pub enum ToolsCommands {
         #[arg(long)]
         path: String,
     },
+    /// Recompute (if stale) and return the knowledge freshness ledger for a project
+    Freshness {
+        #[arg(long)]
+        project: String,
+    },
+    /// Git-based staleness check for the CodeGraph index, independent of `codegraph status`
+    CodegraphDrift {
+        #[arg(long)]
+        project: String,
+    },
 }
 
 #[derive(Subcommand)]

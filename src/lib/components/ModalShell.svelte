@@ -75,7 +75,7 @@
     style:z-index={zDialog}
   >
     <div
-      class="mm-overlay-modal pointer-events-auto flex max-h-[min(90vh,720px)] w-full max-w-[min(92vw,560px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1a1e26] shadow-2xl {dialogClass}"
+      class="mm-overlay-modal pointer-events-auto flex max-h-[min(90vh,720px)] w-full max-w-[min(92vw,560px)] flex-col overflow-hidden rounded-2xl border border-tr-border-strong bg-tr-raised shadow-2xl {dialogClass}"
       class:is-presented={presented}
       role="dialog"
       aria-modal="true"

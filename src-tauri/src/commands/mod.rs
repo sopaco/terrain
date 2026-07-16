@@ -1,3 +1,4 @@
+mod ask;
 mod assets;
 mod chat;
 mod env;
@@ -6,6 +7,7 @@ mod payloads;
 mod project;
 mod sdd;
 mod settings;
+mod usage;
 
 use terrain_agent::{
     knowledge_paths_from_env, load_model_settings, resolve_acp_settings, AcpSettings,
@@ -33,6 +35,7 @@ pub fn init_paths() -> KnowledgePaths {
     paths
 }
 
+pub use ask::*;
 pub use assets::*;
 pub use chat::*;
 pub use env::*;
@@ -40,3 +43,4 @@ pub use knowledge::*;
 pub use project::*;
 pub use sdd::*;
 pub use settings::*;
+pub use usage::*;

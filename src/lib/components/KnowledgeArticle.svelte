@@ -27,7 +27,7 @@
 <div class="knowledge-article-scroll flex-1 overflow-y-auto" bind:this={scrollRoot}>
   <div class="knowledge-article-layout">
     <article class="knowledge-article-body" bind:this={contentRoot}>
-      <div class="mb-3 flex items-center gap-2 text-xs text-white/40">
+      <div class="mb-3 flex items-center gap-2 text-xs text-tr-ink-3">
         <span class="truncate" title={path}>{path}</span>
       </div>
       <MarkdownViewer {body} {repoPath} {onSourceClick} {headingIds} />

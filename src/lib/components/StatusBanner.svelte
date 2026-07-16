@@ -1,6 +1,7 @@
 <script lang="ts">
   export type StatusKind = "idle" | "loading" | "progress" | "success" | "error";
 
+  import { Check, CircleAlert } from "@lucide/svelte";
   import { STATUS_CHIP_LABELS } from "../terminology";
 
   interface Props {
@@ -12,11 +13,11 @@
   let { message, kind = "idle", detail = null }: Props = $props();
 
   const chipStyles: Record<StatusKind, string> = {
-    idle: "border-white/10 bg-white/5 text-white/55",
-    loading: "border-sky-500/30 bg-sky-500/10 text-sky-200",
-    progress: "border-amber-500/30 bg-amber-500/10 text-amber-100",
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-    error: "border-rose-500/30 bg-rose-500/10 text-rose-200",
+    idle: "border-tr-border-strong bg-tr-elevated text-tr-ink-2",
+    loading: "border-tr-accent-soft-strong bg-tr-accent-soft text-tr-accent",
+    progress: "border-tr-watch/30 bg-tr-watch-soft text-tr-watch",
+    success: "border-tr-good/35 bg-tr-good-soft text-tr-good",
+    error: "border-tr-critical/30 bg-tr-critical-soft text-tr-critical",
   };
 
   const labels = STATUS_CHIP_LABELS;
@@ -27,15 +28,15 @@
   class={`status-banner flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${chipStyles[kind]}`}
   title={detail ?? message}
 >
-  <div class="flex shrink-0 items-center gap-1.5 pt-px">
+  <div class="flex shrink-0 items-center gap-1.5">
     {#if kind === "loading" || kind === "progress"}
       <span
         class="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-current border-t-transparent"
       ></span>
     {:else if kind === "success"}
-      <span class="text-[10px]">✓</span>
+      <Check size={12} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
     {:else if kind === "error"}
-      <span class="text-[10px]">!</span>
+      <CircleAlert size={12} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
     {/if}
     <span class="whitespace-nowrap font-medium uppercase tracking-wide opacity-70">{labels[kind]}</span>
   </div>

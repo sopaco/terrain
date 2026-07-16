@@ -14,6 +14,8 @@
 | 符号关系 | `codegraph-skill`；检查 `~/.terrain/bin/codegraph` 是否存在（见 codegraph-skill） |
 | git/test/build | `rtk-skill`；检查 `~/.terrain/bin/rtk` 是否存在（见 rtk-skill） |
 | ACP 知识查询 | `~/.terrain/bin/terrain tools …` |
+| 知识保鲜重算（自愈，勿只读静态 JSON） | `~/.terrain/bin/terrain tools freshness --project <slug>` |
+| CodeGraph 独立过期检测（`<cg> status` 不可信时） | `~/.terrain/bin/terrain tools codegraph-drift --project <slug>` |
 
 ### Agent 工具解析（必读）
 

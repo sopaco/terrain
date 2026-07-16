@@ -1,8 +1,109 @@
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::SystemTime;
 
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, Result};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PackFileIndexEntry {
+    pub path: String,
+    pub header_line: usize,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct PackFileIndex {
+    files: Vec<PackFileIndexEntry>,
+}
+
+struct PackTextCacheEntry {
+    mtime: SystemTime,
+    len: u64,
+    text: String,
+}
+
+use std::sync::LazyLock;
+
+static PACK_TEXT_CACHE: LazyLock<Mutex<HashMap<String, PackTextCacheEntry>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Read repomix pack with in-process cache keyed by path + mtime.
+pub fn read_pack_text_cached(pack_path: &Path) -> Result<String> {
+    let key = pack_path.display().to_string();
+    let meta = std::fs::metadata(pack_path).map_err(|e| {
+        CoreError::InvalidDoc(format!("cannot stat pack {}: {e}", pack_path.display()))
+    })?;
+    let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+    let len = meta.len();
+
+    if let Ok(guard) = PACK_TEXT_CACHE.lock() {
+        if let Some(entry) = guard.get(&key) {
+            if entry.mtime == mtime && entry.len == len {
+                return Ok(entry.text.clone());
+            }
+        }
+    }
+
+    let text = std::fs::read_to_string(pack_path).map_err(|e| {
+        CoreError::InvalidDoc(format!("cannot read pack {}: {e}", pack_path.display()))
+    })?;
+
+    if let Ok(mut guard) = PACK_TEXT_CACHE.lock() {
+        guard.insert(
+            key,
+            PackTextCacheEntry {
+                mtime,
+                len,
+                text: text.clone(),
+            },
+        );
+    }
+
+    Ok(text)
+}
+
+pub fn pack_index_path(pack_path: &Path) -> PathBuf {
+    pack_path.with_extension("index.json")
+}
+
+pub fn write_pack_file_index(pack_path: &Path, pack_content: &str) -> Result<()> {
+    let index = build_pack_file_index(pack_content);
+    let path = pack_index_path(pack_path);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    crate::doc::write_json(path, &PackFileIndex { files: index })?;
+    Ok(())
+}
+
+pub fn build_pack_file_index(pack_content: &str) -> Vec<PackFileIndexEntry> {
+    let header_re = match Regex::new(r"^### (.+?) \(\d+ lines") {
+        Ok(re) => re,
+        Err(_) => return Vec::new(),
+    };
+    pack_content
+        .lines()
+        .enumerate()
+        .filter_map(|(idx, line)| {
+            let cap = header_re.captures(line)?;
+            let path = cap.get(1)?.as_str().replace("\\|", "|");
+            Some(PackFileIndexEntry {
+                path,
+                header_line: idx + 1,
+            })
+        })
+        .collect()
+}
+
+pub fn invalidate_pack_text_cache(pack_path: &Path) {
+    let key = pack_path.display().to_string();
+    if let Ok(mut guard) = PACK_TEXT_CACHE.lock() {
+        guard.remove(&key);
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentPackFileContent {
@@ -99,9 +200,7 @@ pub fn read_agent_pack_file(
     start_line: Option<u32>,
     end_line: Option<u32>,
 ) -> Result<AgentPackFileContent> {
-    let content = std::fs::read_to_string(pack_path).map_err(|e| {
-        CoreError::InvalidDoc(format!("cannot read pack {}: {e}", pack_path.display()))
-    })?;
+    let content = read_pack_text_cached(pack_path)?;
     read_agent_pack_file_from_text(&content, file_path, start_line, end_line)
 }
 

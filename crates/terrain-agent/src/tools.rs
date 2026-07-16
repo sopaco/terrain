@@ -3,7 +3,7 @@ use std::sync::Arc;
 use adk_core::{ErrorComponent, Tool};
 use adk_tool::FunctionTool;
 use terrain_core::{
-    agent_context_ready, agent_pack_ready, build_context_overview, compute_freshness,
+    agent_context_ready, agent_pack_ready, build_context_overview, resolve_freshness_summary,
     extract_context_section, split_context_sections, AgentPackMeta, FRESH_THRESHOLD,
     KnowledgePaths, KnowledgeSearch, SearchOptions, grep_repomix_pack, list_human_docs,
     read_agent_pack_file, read_json, resolve_project_repo_path, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
@@ -149,7 +149,7 @@ pub fn read_agent_context_tool(
 
                     let freshness_warning = resolve_project_repo_path(&paths, &params.project, None)
                         .ok()
-                        .and_then(|repo| compute_freshness(&paths, &params.project, &repo).ok())
+                        .and_then(|repo| resolve_freshness_summary(&paths, &params.project, &repo).ok())
                         .filter(|f| f.agent_context_score < FRESH_THRESHOLD)
                         .map(|f| {
                             format!(
@@ -313,7 +313,7 @@ pub fn grep_agent_pack_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                     }
 
                     let pack = paths.agent_pack_main(&params.project);
-                    let pack_text = std::fs::read_to_string(&pack).map_err(|e| {
+                    let pack_text = terrain_core::read_pack_text_cached(&pack).map_err(|e| {
                         map_core_err(terrain_core::CoreError::InvalidDoc(format!(
                             "cannot read {}: {e}",
                             pack.display()

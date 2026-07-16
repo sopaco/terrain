@@ -59,20 +59,13 @@ impl<'a> KnowledgeSearch<'a> {
 
             for entry in WalkDir::new(&root)
                 .into_iter()
+                .filter_entry(|e| search_should_descend(e.path()))
                 .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_file())
                 .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
             {
                 let path = entry.path();
-                if path
-                    .components()
-                    .any(|c| matches!(c.as_os_str().to_str(), Some("agent" | ".litho-agent" | ".sdd-agent")))
-                {
-                    // Allow agent/context.md; skip repomix and agent workspaces.
-                    if path.file_name().is_some_and(|n| n != "context.md") {
-                        continue;
-                    }
-                }
-                if path.file_name().is_some_and(|n| n == "repomix.md") {
+                if !search_includes_markdown(path) {
                     continue;
                 }
 
@@ -116,6 +109,7 @@ impl<'a> KnowledgeSearch<'a> {
     pub fn list_projects(&self) -> Result<Vec<ProjectSummary>> {
         let mut projects = Vec::new();
         let roots = self.paths.indexed_project_roots();
+        let repo_paths = crate::registry::registry_repo_map().unwrap_or_default();
 
         for (slug, root) in roots {
             let index = root.join("index.md");
@@ -128,7 +122,7 @@ impl<'a> KnowledgeSearch<'a> {
                 .source
                 .as_deref()
                 .and_then(|s| crate::path_portable::resolve_stored_repo_path(s, &slug))
-                .or_else(|| crate::registry::repo_path_for_slug(&slug));
+                .or_else(|| repo_paths.get(&slug).cloned());
             projects.push(ProjectSummary {
                 slug: slug.clone(),
                 name: doc.frontmatter.title.unwrap_or(slug),
@@ -153,19 +147,40 @@ pub struct ProjectSummary {
     pub repo_path: Option<String>,
 }
 
+fn search_should_descend(path: &Path) -> bool {
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if name == "repomix.md" {
+        return false;
+    }
+    !matches!(
+        name,
+        "agent" | ".litho-agent" | ".sdd-agent" | ".meta" | "env"
+    )
+}
+
+fn search_includes_markdown(path: &Path) -> bool {
+    if path.file_name().is_some_and(|n| n == "repomix.md") {
+        return false;
+    }
+    if path
+        .components()
+        .any(|c| matches!(c.as_os_str().to_str(), Some("agent" | ".litho-agent" | ".sdd-agent")))
+    {
+        return path.file_name().is_some_and(|n| n == "context.md");
+    }
+    true
+}
+
 fn score_match(query: &str, full: &str, body: &str, project: &str) -> u32 {
-    let full_l = full.to_lowercase();
-    let body_l = body.to_lowercase();
-    let project_l = project.to_lowercase();
     let mut score = 0;
 
-    if project_l.contains(query) {
+    if contains_ascii_insensitive(project, query) {
         score += 50;
     }
-    if full_l.contains(query) {
+    if contains_ascii_insensitive(full, query) {
         score += 30;
     }
-    if body_l.contains(query) {
+    if contains_ascii_insensitive(body, query) {
         score += 20;
     }
 
@@ -173,15 +188,25 @@ fn score_match(query: &str, full: &str, body: &str, project: &str) -> u32 {
         if token.len() < 2 {
             continue;
         }
-        if project_l.contains(token) {
+        if contains_ascii_insensitive(project, token) {
             score += 10;
         }
-        if full_l.contains(token) {
+        if contains_ascii_insensitive(full, token) {
             score += 5;
         }
     }
 
     score
+}
+
+fn contains_ascii_insensitive(haystack: &str, needle: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
 }
 
 #[cfg(test)]

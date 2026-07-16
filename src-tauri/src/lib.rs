@@ -1,6 +1,7 @@
 mod bundled_tools;
 mod commands;
 mod preset_skills;
+mod tray;
 
 use terrain_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
 use terrain_core::KnowledgePaths;
@@ -58,7 +59,6 @@ impl AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    terrain_core::augment_path_from_login_shell();
     terrain_agent::load_dotenv();
 
     tracing_subscriber::fmt()
@@ -74,6 +74,7 @@ pub fn run() {
         .setup(|app| {
             preset_skills::init_app_preset_skills(app.handle());
             bundled_tools::init_app_bundled_tools(app.handle());
+            tray::init(app)?;
             Ok(())
         })
         .manage(state)
@@ -116,10 +117,24 @@ pub fn run() {
             commands::run_sdd_phase_cmd,
             commands::run_agent_context_generation_cmd,
             commands::ask_knowledge_cmd,
+            commands::list_ask_sessions_cmd,
+            commands::load_ask_messages_cmd,
+            commands::save_ask_messages_cmd,
+            commands::create_ask_session_cmd,
+            commands::set_active_ask_session_cmd,
+            commands::delete_ask_session_cmd,
+            commands::discard_ask_session_cmd,
+            commands::clear_active_ask_session_cmd,
+            commands::get_active_ask_session_cmd,
             commands::get_env_status_cmd,
             commands::plan_env_integration_cmd,
             commands::run_env_integration_cmd,
+            commands::usage_probe_cmd,
+            commands::usage_snapshot_cmd,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Terrain");
+        .build(tauri::generate_context!())
+        .expect("error while running Terrain")
+        .run(|app_handle, event| {
+            tray::handle_run_event(app_handle, &event);
+        });
 }

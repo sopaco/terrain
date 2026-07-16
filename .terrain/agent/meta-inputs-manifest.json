@@ -1,6 +1,13 @@
 {
-  "collected_at": "2026-06-28T04:54:28.145372+00:00",
+  "collected_at": "2026-07-16T07:35:08.630672+00:00",
   "meta_files": [],
-  "input_count": 0,
-  "sources": []
+  "input_count": 1,
+  "sources": [
+    {
+      "label": "Private knowledge (.terrain/knowledge/00-glossary.md)",
+      "source": ".terrain/knowledge/00-glossary.md",
+      "chars": 290,
+      "truncated": false
+    }
+  ]
 }

@@ -189,6 +189,10 @@ fn env_cache_watch_paths(repo: &Path) -> Vec<PathBuf> {
         repo.join(".agents/skills/codegraph-skill/SKILL.md"),
         repo.join(".agents/skills/rtk-skill/SKILL.md"),
         repo.join(".agents/skills/repomix-context-skill/SKILL.md"),
+        repo.join(".claude/skills/terrain-knowledge-skill/SKILL.md"),
+        repo.join(".claude/skills/codegraph-skill/SKILL.md"),
+        repo.join(".claude/skills/rtk-skill/SKILL.md"),
+        repo.join(".claude/skills/repomix-context-skill/SKILL.md"),
         bin.join("rtk"),
         bin.join("codegraph"),
     ]
@@ -220,11 +224,12 @@ fn env_cache_put(key: String, fingerprint: u64, status: EnvStatus) {
 
 fn integration_is_ready(repo: &Path, def: &IntegrationDef) -> bool {
     match def.kind.as_str() {
-        "skill" => repo
-            .join(".agents/skills")
-            .join(skill_target_name(def))
-            .join("SKILL.md")
-            .is_file(),
+        "skill" => {
+            let name = skill_target_name(def);
+            super::apply::SKILL_DEPLOY_DIRS
+                .iter()
+                .all(|base| repo.join(base).join(&name).join("SKILL.md").is_file())
+        }
         "tool" => {
             let locked = bundled_tool_runtime_ready(def);
             match def.id.as_str() {
@@ -283,7 +288,10 @@ pub fn plan_env_integration(
                 id: def.id.clone(),
                 label: def.label.clone(),
                 kind: def.kind.clone(),
-                action: format!("复制 skill → .agents/skills/{}", skill_target_name(def)),
+                action: format!(
+                    "复制 skill → .agents/skills/{0} 与 .claude/skills/{0}",
+                    skill_target_name(def)
+                ),
             }),
             "tool" => {
                 if def.bundled {
@@ -440,14 +448,18 @@ fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<EnvIntegration
     let integrated = integration_is_ready(repo, def);
     let detail = match def.kind.as_str() {
         "skill" => {
-            let skill_file = repo
-                .join(".agents/skills")
-                .join(skill_target_name(def))
-                .join("SKILL.md");
-            if skill_file.is_file() {
-                format!("{}", skill_file.display())
-            } else {
+            let name = skill_target_name(def);
+            let missing: Vec<&str> = super::apply::SKILL_DEPLOY_DIRS
+                .iter()
+                .copied()
+                .filter(|base| !repo.join(base).join(&name).join("SKILL.md").is_file())
+                .collect();
+            if missing.is_empty() {
+                format!(".agents/skills/{name} · .claude/skills/{name}")
+            } else if missing.len() == super::apply::SKILL_DEPLOY_DIRS.len() {
                 "未注入".into()
+            } else {
+                format!("缺少 {}/{name}（重新集成以补齐）", missing.join(", "))
             }
         }
         "tool" => {
@@ -541,7 +553,13 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
 
 pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
     match def.id.as_str() {
-        "tool-bun" => command_succeeds("bun", &["--version"], repo),
+        "tool-bun" => {
+            if def.optional {
+                crate::shell_path::command_on_path("bun")
+            } else {
+                command_succeeds("bun", &["--version"], repo)
+            }
+        }
         "tool-rtk" => rtk_runtime_ready(),
         "tool-codegraph" => codegraph_index_ready(repo),
         _ => {
@@ -555,7 +573,7 @@ pub(crate) fn tool_check_passes(repo: &Path, def: &IntegrationDef) -> bool {
     }
 }
 
-fn rtk_runtime_ready() -> bool {
+pub(crate) fn rtk_runtime_ready() -> bool {
     let bin_dir = agent_bin_dir();
     for name in ["rtk", "rtk.exe"] {
         if bin_dir.join(name).is_file() {

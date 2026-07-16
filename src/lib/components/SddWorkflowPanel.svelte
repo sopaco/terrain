@@ -1,6 +1,7 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
+  import { Check } from "@lucide/svelte";
   import {
     createSddSession,
     deleteSddSession,
@@ -285,19 +286,19 @@
 </script>
 
 <div class="flex h-full min-h-0">
-  <div class="w-[420px] shrink-0 overflow-y-auto border-r border-white/10 bg-[#14171c] p-5">
+  <div class="w-[420px] shrink-0 overflow-y-auto border-r border-tr-border-strong bg-tr-surface p-5">
     {#if !projectSlug}
-      <div class="flex h-full flex-col items-center justify-center text-center text-sm text-white/40">
+      <div class="flex h-full flex-col items-center justify-center text-center text-sm text-tr-ink-3">
         <p>选择项目以开始 SDD 工作流</p>
       </div>
     {:else if loading && !status}
-      <div class="flex h-full items-center justify-center text-sm text-white/40">加载中…</div>
+      <div class="flex h-full items-center justify-center text-sm text-tr-ink-3">加载中…</div>
     {:else if status}
       <div class="mb-4">
         <h2 class="text-lg font-semibold">SDD 标准化工作流</h2>
-        <p class="mt-1 text-xs text-white/40">需求澄清 → 技术方案 → 代码生成 → Code Review</p>
+        <p class="mt-1 text-xs text-tr-ink-3">需求澄清 → 技术方案 → 代码生成 → Code Review</p>
         {#if !status.skill_ready}
-          <p class="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          <p class="mt-2 rounded-lg border border-tr-watch/30 bg-tr-watch-soft px-3 py-2 text-xs text-tr-watch">
             SDD Skill 未找到，部分 ACP 功能可能受限。
           </p>
         {/if}
@@ -315,7 +316,7 @@
       />
 
       {#if !status.active_session_id}
-        <p class="mb-4 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-white/45">
+        <p class="mb-4 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-3 text-xs text-tr-ink-3">
           从上方选择器新建 SDD 需求后，即可开始四阶段工作流。
         </p>
       {:else}
@@ -324,34 +325,38 @@
             <div
               class={`rounded-xl border p-4 transition-colors ${
                 phaseInfo.ready
-                  ? "border-emerald-500/25 bg-emerald-500/5"
+                  ? "border-tr-good/35 bg-tr-good-soft"
                   : busyPhase === phaseInfo.phase
-                    ? "border-indigo-500/40 bg-indigo-500/10"
-                    : "border-white/10 bg-white/[0.02]"
+                    ? "border-tr-accent-soft-strong bg-tr-accent-soft"
+                    : "border-tr-border-strong bg-tr-elevated"
               }`}
             >
               <div class="flex items-start gap-3">
                 <div
                   class={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     phaseInfo.ready
-                      ? "bg-emerald-500/20 text-emerald-200"
-                      : "bg-white/10 text-white/50"
+                      ? "bg-tr-good-soft text-tr-good"
+                      : "bg-tr-elevated text-tr-ink-3"
                   }`}
                 >
-                  {phaseInfo.ready ? "✓" : i + 1}
+                  {#if phaseInfo.ready}
+                    <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+                  {:else}
+                    {i + 1}
+                  {/if}
                 </div>
                 <div class="min-w-0 flex-1">
                   <h3 class="font-medium">{phaseInfo.label}</h3>
-                  <p class="mt-1 text-xs leading-relaxed text-white/45">
+                  <p class="mt-1 text-xs leading-relaxed text-tr-ink-3">
                     {phaseDescriptions[phaseInfo.phase]}
                   </p>
                   {#if phaseInfo.updated_at}
-                    <p class="mt-2 text-[10px] text-white/30">{phaseInfo.updated_at}</p>
+                    <p class="mt-2 text-[10px] text-tr-ink-3">{phaseInfo.updated_at}</p>
                   {/if}
 
                   {#if phaseInfo.phase === "requirements"}
                     <textarea
-                      class="mt-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs outline-none focus:border-indigo-500"
+                      class="mt-3 w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-xs outline-none focus:border-tr-accent"
                       rows="3"
                       placeholder="描述你的需求、背景或用户故事…"
                       bind:value={requirementInput}
@@ -362,7 +367,7 @@
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium hover:bg-indigo-500 disabled:opacity-40"
+                      class="rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-40"
                       disabled={!canRun(phaseInfo)}
                       onclick={() => runPhase(phaseInfo.phase)}
                     >
@@ -371,10 +376,10 @@
                     {#if phaseInfo.ready}
                       <button
                         type="button"
-                        class={`rounded-lg border px-3 py-1.5 text-xs hover:bg-white/5 ${
+                        class={`rounded-lg border px-3 py-1.5 text-xs hover:bg-tr-elevated ${
                           activeOutput === phaseInfo.output_path
-                            ? "border-indigo-500/40 bg-indigo-500/10"
-                            : "border-white/10"
+                            ? "border-tr-accent-soft-strong bg-tr-accent-soft"
+                            : "border-tr-border-strong"
                         }`}
                         onclick={() => viewOutput(phaseInfo.output_path, phaseInfo.phase)}
                       >
@@ -393,24 +398,24 @@
 
   <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
     {#if outputLoading}
-      <div class="flex flex-1 items-center justify-center text-sm text-white/40">加载文档…</div>
+      <div class="flex flex-1 items-center justify-center text-sm text-tr-ink-3">加载文档…</div>
     {:else if activeOutput}
-      <header class="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#14171c]/60 px-5 py-3">
+      <header class="flex shrink-0 items-center gap-2 border-b border-tr-border-strong bg-tr-surface/60 px-5 py-3">
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-white/80">{activePhaseLabel}</p>
-          <p class="truncate font-mono text-[10px] text-white/30">{activeOutput}</p>
+          <p class="text-sm font-medium text-tr-ink-2">{activePhaseLabel}</p>
+          <p class="truncate font-mono text-[10px] text-tr-ink-3">{activeOutput}</p>
         </div>
-        <div class="flex shrink-0 items-center gap-1 rounded-lg border border-white/10 p-0.5">
+        <div class="flex shrink-0 items-center gap-1 rounded-lg border border-tr-border-strong p-0.5">
           <button
             type="button"
-            class={`rounded-md px-2.5 py-1 text-xs ${viewMode === "preview" ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80"}`}
+            class={`rounded-md px-2.5 py-1 text-xs ${viewMode === "preview" ? "bg-tr-elevated text-white" : "text-tr-ink-3 hover:text-tr-ink-2"}`}
             onclick={() => (viewMode = "preview")}
           >
             预览
           </button>
           <button
             type="button"
-            class={`rounded-md px-2.5 py-1 text-xs ${viewMode === "edit" ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80"}`}
+            class={`rounded-md px-2.5 py-1 text-xs ${viewMode === "edit" ? "bg-tr-elevated text-white" : "text-tr-ink-3 hover:text-tr-ink-2"}`}
             onclick={() => (viewMode = "edit")}
           >
             编辑
@@ -419,7 +424,7 @@
         {#if viewMode === "edit"}
           <button
             type="button"
-            class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-40"
+            class="rounded-lg border border-tr-good/35 bg-tr-good-soft px-3 py-1.5 text-xs font-medium text-tr-good hover:bg-tr-good-soft/70 disabled:opacity-40"
             disabled={!dirty || saving}
             onclick={saveEdits}
           >
@@ -436,7 +441,7 @@
         {:else}
           <div class="flex h-full flex-col p-5">
             <textarea
-              class="min-h-0 flex-1 resize-none rounded-xl border border-white/10 bg-black/25 p-4 font-mono text-xs leading-relaxed outline-none focus:border-indigo-500"
+              class="min-h-0 flex-1 resize-none rounded-xl border border-tr-border-strong bg-tr-page p-4 font-mono text-xs leading-relaxed outline-none focus:border-tr-accent"
               bind:value={editBody}
               oninput={onEditInput}
             ></textarea>
@@ -444,16 +449,16 @@
         {/if}
       </div>
 
-      <footer class="shrink-0 border-t border-indigo-500/20 bg-indigo-500/[0.04] px-5 py-4">
+      <footer class="shrink-0 border-t border-tr-accent-soft-strong bg-tr-accent-soft px-5 py-4">
         <div class="mb-2 flex items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-medium text-white/70">人工修订（HITL）</p>
-            <p class="text-[10px] text-white/40">填写反馈后点击按钮，模型将基于当前文档与你的意见重新生成</p>
+            <p class="text-xs font-medium text-tr-ink-2">人工修订（HITL）</p>
+            <p class="text-[10px] text-tr-ink-3">填写反馈后点击按钮，模型将基于当前文档与你的意见重新生成</p>
           </div>
         </div>
         <textarea
           id="hitl-feedback"
-          class="mb-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs outline-none focus:border-indigo-500"
+          class="mb-3 w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-xs outline-none focus:border-tr-accent"
           rows="3"
           placeholder="例如：补充验收标准、调整技术选型、修正术语、缩小实现范围…"
           bind:value={hitlFeedback}
@@ -463,7 +468,7 @@
           {#if dirty}
             <button
               type="button"
-              class="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/70 hover:bg-white/5 disabled:opacity-40"
+              class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated disabled:opacity-40"
               disabled={saving || !!busyPhase}
               onclick={saveEdits}
             >
@@ -472,7 +477,7 @@
           {/if}
           <button
             type="button"
-            class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium hover:bg-indigo-500 disabled:opacity-40"
+            class="rounded-lg bg-tr-accent px-4 py-2 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-40"
             disabled={!!busyPhase || !hitlFeedback.trim()}
             onclick={submitHitlRevision}
           >
@@ -481,8 +486,8 @@
         </div>
       </footer>
     {:else}
-      <div class="flex h-full flex-col items-center justify-center gap-2 px-8 text-center text-white/40">
-        <p class="text-white/60">阶段输出将显示在这里</p>
+      <div class="flex h-full flex-col items-center justify-center gap-2 px-8 text-center text-tr-ink-3">
+        <p class="text-tr-ink-2">阶段输出将显示在这里</p>
         <p class="text-sm">完成任一阶段后点击「审核输出」，在下方提交修订反馈</p>
       </div>
     {/if}

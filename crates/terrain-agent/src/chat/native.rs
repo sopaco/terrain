@@ -247,12 +247,19 @@ impl super::ChatEngine {
             on_tool_calls(tool_tracker.records());
         }
 
-        let mut citations = self
-            .search_citations(query, project, repo_path)
-            .unwrap_or_else(|e| {
-                tracing::warn!(error = %e, "citation search failed; continuing without search hits");
-                Vec::new()
-            });
+        let mut citations = if tool_tracker
+            .records()
+            .iter()
+            .any(|r| matches!(r.name.as_str(), "grep_agent_pack" | "read_agent_pack_file" | "read_agent_context"))
+        {
+            extract_source_citations(&answer, repo_path)
+        } else {
+            self.search_citations(query, project, repo_path)
+                .unwrap_or_else(|e| {
+                    tracing::warn!(error = %e, "citation search failed; continuing without search hits");
+                    Vec::new()
+                })
+        };
         citations = merge_citations(citations, extract_source_citations(&answer, repo_path));
 
         if answer.trim().is_empty() {

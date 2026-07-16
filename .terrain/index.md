@@ -32,7 +32,6 @@ source: .
   - LICENSE
   - preset_skills/
     - litho-documents-skill/
-    - repomix-context-skill/
     - sdd-workflow-skill/
     - terrain-ask-skill/
     - agent-architecture-skill/
@@ -44,6 +43,10 @@ source: .
     - catalog.json
   - .agents/
     - skills/
+  - .claude/
+    - settings.local.json
+    - skills/
+    - launch.json
   - Cargo.lock
   - bun.lock
   - README.md
@@ -72,6 +75,7 @@ source: .
   - AGENTS.md
   - vite.config.ts
   - assets/
+    - app_icon_re.png
     - screenshots/
     - graph_knowledge_factory.webp
     - app-icon.png
@@ -91,3 +95,4 @@ source: .
     - app.css
     - App.svelte
     - lib/
+    - UsageWindow.svelte
