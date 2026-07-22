@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use terrain_core::SddPhase;
 
 #[derive(Parser)]
 #[command(
@@ -27,7 +28,18 @@ pub enum Commands {
     List,
     /// Scan a local Git repository into Markdown knowledge docs
     Scan {
-        /// Repository path (default: current Git workspace)
+        repo_path: Option<PathBuf>,
+        #[arg(long)]
+        slug: Option<String>,
+    },
+    /// Full project initialization (scan + Litho + agent context)
+    Init {
+        repo_path: Option<PathBuf>,
+        #[arg(long)]
+        slug: Option<String>,
+    },
+    /// Quick refresh (scan + repack + optional agent context; skips Litho)
+    Refresh {
         repo_path: Option<PathBuf>,
         #[arg(long)]
         slug: Option<String>,
@@ -42,6 +54,36 @@ pub enum Commands {
     },
     /// Read a document by path
     Read { path: String },
+    /// Project registry and overview
+    Project {
+        #[command(subcommand)]
+        command: ProjectCommands,
+    },
+    /// LLM and ACP settings
+    Settings {
+        #[command(subcommand)]
+        command: SettingsCommands,
+    },
+    /// DeepWiki knowledge Q&A
+    Ask {
+        #[command(subcommand)]
+        command: AskCommands,
+    },
+    /// SDD standardized development workflow
+    Sdd {
+        #[command(subcommand)]
+        command: SddCommands,
+    },
+    /// Token usage monitoring
+    Usage {
+        #[command(subcommand)]
+        command: UsageCommands,
+    },
+    /// Read live repository source slices
+    Source {
+        #[command(subcommand)]
+        command: SourceCommands,
+    },
     /// CLI tools for ACP-mode Ask agents (JSON output)
     Tools {
         #[command(subcommand)]
@@ -60,15 +102,141 @@ pub enum Commands {
 }
 
 #[derive(Subcommand)]
+pub enum ProjectCommands {
+    /// Project overview (freshness, doc counts, paths)
+    Overview {
+        #[arg(long)]
+        project: String,
+    },
+    /// Save a project remark
+    Remark {
+        #[arg(long)]
+        project: String,
+        remark: String,
+    },
+    /// Remove a project from the registry (does not delete .terrain/)
+    Remove {
+        #[arg(long)]
+        project: String,
+    },
+    /// List registry projects whose repos are missing or moved
+    ListStale,
+    /// Read cached freshness ledger without recomputing
+    FreshnessCached {
+        #[arg(long)]
+        project: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SettingsCommands {
+    /// Show effective model settings
+    Get,
+    /// Save model settings from a JSON file
+    Set {
+        /// Path to JSON file matching ModelSettings schema
+        file: PathBuf,
+    },
+    /// Check LLM connectivity
+    CheckLlm,
+    /// Check ACP agent availability
+    CheckAcp,
+}
+
+#[derive(Subcommand)]
+pub enum AskCommands {
+    /// Ask a question against project knowledge
+    Query {
+        query: String,
+        #[arg(long)]
+        project: Option<String>,
+        /// Emit NDJSON stream events (chunk, tool_calls, phase, usage, done)
+        #[arg(long)]
+        stream: bool,
+    },
+    /// List Ask sessions for a project
+    SessionsList {
+        #[arg(long)]
+        project: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SddCommands {
+    /// SDD workflow status for a project
+    Status {
+        #[arg(long)]
+        project: String,
+    },
+    /// Run an SDD phase
+    Run {
+        #[arg(long)]
+        project: String,
+        #[arg(long)]
+        repo_path: Option<PathBuf>,
+        #[arg(long, value_enum)]
+        phase: SddPhaseArg,
+        #[arg(long)]
+        session_id: Option<String>,
+        #[arg(long)]
+        input: Option<String>,
+    },
+}
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+pub enum SddPhaseArg {
+    Requirements,
+    TechDesign,
+    CodeGen,
+    CodeReview,
+}
+
+impl From<SddPhaseArg> for SddPhase {
+    fn from(value: SddPhaseArg) -> Self {
+        match value {
+            SddPhaseArg::Requirements => SddPhase::Requirements,
+            SddPhaseArg::TechDesign => SddPhase::TechDesign,
+            SddPhaseArg::CodeGen => SddPhase::CodeGen,
+            SddPhaseArg::CodeReview => SddPhase::CodeReview,
+        }
+    }
+}
+
+#[derive(Subcommand)]
+pub enum UsageCommands {
+    /// Probe configured usage data sources
+    Probe,
+    /// Load usage snapshot
+    Snapshot {
+        #[arg(long, default_value = "summary")]
+        detail: String,
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SourceCommands {
+    /// Read a slice from the live repository
+    Read {
+        #[arg(long)]
+        repo_path: Option<PathBuf>,
+        #[arg(long)]
+        file: String,
+        #[arg(long)]
+        start_line: u32,
+        #[arg(long)]
+        end_line: u32,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum ToolsCommands {
-    /// List indexed projects
     ListProjects,
-    /// Repomix pack metadata for a project
     PackMeta {
         #[arg(long)]
         project: String,
     },
-    /// Grep agent/repomix.md
     GrepPack {
         #[arg(long)]
         project: String,
@@ -79,7 +247,6 @@ pub enum ToolsCommands {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Read a file section from the repomix pack
     ReadPackFile {
         #[arg(long)]
         project: String,
@@ -90,14 +257,12 @@ pub enum ToolsCommands {
         #[arg(long)]
         end_line: Option<u32>,
     },
-    /// Read agent/context.md (optional section)
     ReadContext {
         #[arg(long)]
         project: String,
         #[arg(long)]
         section: Option<String>,
     },
-    /// Full-text search knowledge docs
     Search {
         #[arg(long)]
         query: String,
@@ -106,19 +271,16 @@ pub enum ToolsCommands {
         #[arg(long, default_value_t = 10)]
         limit: usize,
     },
-    /// Read a human or agent doc by project-relative path
     ReadDoc {
         #[arg(long)]
         project: String,
         #[arg(long)]
         path: String,
     },
-    /// Recompute (if stale) and return the knowledge freshness ledger for a project
     Freshness {
         #[arg(long)]
         project: String,
     },
-    /// Git-based staleness check for the CodeGraph index, independent of `codegraph status`
     CodegraphDrift {
         #[arg(long)]
         project: String,
@@ -127,36 +289,37 @@ pub enum ToolsCommands {
 
 #[derive(Subcommand)]
 pub enum AssetCommands {
-    /// Pack agent context with repomix-core → {repo}/.terrain/agent/repomix.md
     PackAgent {
         repo_path: PathBuf,
         #[arg(long)]
         slug: Option<String>,
     },
-    /// Print Litho skill paths and output dirs for Agent-driven human doc generation
     PlanLitho {
         repo_path: PathBuf,
         #[arg(long)]
         slug: Option<String>,
     },
-    /// Show full asset generation plan (Litho + Repomix)
+    PrepareLitho {
+        repo_path: PathBuf,
+        #[arg(long)]
+        slug: Option<String>,
+    },
     Plan {
         repo_path: PathBuf,
         #[arg(long)]
         slug: Option<String>,
     },
-    /// Run Litho human doc generation via OpenCode ACP
     RunLitho {
         repo_path: PathBuf,
         #[arg(long)]
         slug: Option<String>,
+        #[arg(long)]
+        force: bool,
     },
-    /// List human-facing Litho docs for a project
     ListHuman {
         #[arg(long)]
         project: String,
     },
-    /// Grep the Repomix agent pack for a project
     GrepPack {
         #[arg(long)]
         project: String,
@@ -166,22 +329,18 @@ pub enum AssetCommands {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Generate agent/context.md (architecture context for Ask mode)
     AgentContext {
         repo_path: PathBuf,
         #[arg(long)]
         slug: Option<String>,
-        /// Regenerate even when context.md already exists
         #[arg(long)]
         force: bool,
     },
-    /// Register a repository and point knowledge storage to {repo}/.terrain/
     Register {
         repo_path: PathBuf,
         #[arg(long)]
         slug: Option<String>,
     },
-    /// Re-sanitize last-agent-context-raw.md from debug dir into context.md
     RepairContext {
         #[arg(long)]
         slug: String,
@@ -192,25 +351,21 @@ pub enum AssetCommands {
 
 #[derive(Subcommand)]
 pub enum EnvCommands {
-    /// Show integration status for a repository
     Status {
-        /// Repository path (default: current Git workspace)
         repo_path: Option<PathBuf>,
     },
-    /// Preview integration plan
     Plan {
-        /// Repository path (default: current Git workspace)
         repo_path: Option<PathBuf>,
-        /// Integration IDs (default: all non-optional + unintegrated)
         #[arg(long, value_delimiter = ',')]
         ids: Option<Vec<String>>,
+        #[arg(long, value_delimiter = ',')]
+        reinstall: Option<Vec<String>>,
     },
-    /// Apply selected integrations
     Apply {
-        /// Repository path (default: current Git workspace)
         repo_path: Option<PathBuf>,
-        /// Integration IDs to apply (default: all)
         #[arg(long, value_delimiter = ',')]
         ids: Option<Vec<String>>,
+        #[arg(long, value_delimiter = ',')]
+        reinstall: Option<Vec<String>>,
     },
 }

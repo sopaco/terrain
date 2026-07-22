@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use terrain_core::{
     agent_context_ready, agent_pack_ready, build_agent_context_prompt, pack_agent_assets,
-    prepare_model_markdown, write_agent_context, AgentContextMeta, KnowledgePaths,
+    prepare_model_markdown, write_agent_context, AgentContextGenerationResult, AgentContextMeta,
+    KnowledgePaths,
 };
 
 use crate::acp::{
@@ -12,15 +13,6 @@ use crate::acp::{
 };
 use crate::chat::ChatEngine;
 use crate::settings::AcpSettings;
-
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct AgentContextGenerationResult {
-    pub output_path: String,
-    pub meta: AgentContextMeta,
-    pub response_excerpt: String,
-}
 
 /// Generate `agent/context.md` — architecture-level context for agents (not source code).
 pub async fn run_agent_context_generation(

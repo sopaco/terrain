@@ -14,7 +14,7 @@ pub fn search_knowledge(
     project: Option<String>,
     limit: Option<usize>,
 ) -> Result<Vec<SearchHit>, String> {
-    KnowledgeSearch::new(&state.paths)
+    KnowledgeSearch::new(state.paths())
         .search(
             &query,
             SearchOptions {
@@ -28,7 +28,7 @@ pub fn search_knowledge(
 
 #[tauri::command]
 pub fn read_document(state: State<'_, AppState>, path: String) -> Result<KnowledgeDoc, String> {
-    read_doc_at(&state.paths, &path).map_err(|e| e.to_string())
+    read_doc_at(state.paths(), &path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -36,7 +36,7 @@ pub fn list_human_docs_cmd(
     state: State<'_, AppState>,
     project_slug: String,
 ) -> Result<Vec<HumanDocEntry>, String> {
-    list_human_docs(&state.paths, &project_slug).map_err(|e| e.to_string())
+    list_human_docs(state.paths(), &project_slug).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -59,7 +59,7 @@ pub fn resolve_source_citation_cmd(
     repo_path: Option<String>,
 ) -> Result<SourceSlice, String> {
     resolve_source_citation(
-        &state.paths,
+        state.paths(),
         &project_slug,
         repo_path.as_deref(),
         &file_path,

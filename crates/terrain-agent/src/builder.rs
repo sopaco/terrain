@@ -5,7 +5,7 @@ use std::sync::Arc;
 use adk_agent::LlmAgentBuilder;
 use adk_core::Agent;
 use adk_core::Llm;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 #[cfg(feature = "opencode")]
 use adk_acp::AcpAgentTool;
@@ -237,13 +237,3 @@ pub fn knowledge_root_from_env() -> KnowledgePaths {
     knowledge_paths_from_env()
 }
 
-pub fn validate_repo_path(repo_path: &str) -> Result<()> {
-    let path = Path::new(repo_path);
-    if !path.exists() {
-        bail!("repository path does not exist: {repo_path}");
-    }
-    if !path.is_dir() {
-        bail!("repository path is not a directory: {repo_path}");
-    }
-    Ok(())
-}

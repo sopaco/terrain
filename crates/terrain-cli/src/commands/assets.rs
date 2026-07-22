@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use terrain_agent::{
-    agent_execution_ready, execution_uses_native_llm, resolve_acp_settings, resolve_model_config,
-    run_agent_context_generation, run_litho_generation, ChatEngine,
+    agent_execution_ready, execution_uses_native_llm, prepare_litho_generation, resolve_acp_settings,
+    resolve_model_config, run_agent_context_generation, run_litho_generation, ChatEngine,
 };
 use terrain_core::{
     build_generation_plan, grep_file, list_human_docs, pack_agent_assets, plan_litho_generation,
@@ -27,12 +27,19 @@ pub async fn run(paths: &KnowledgePaths, command: AssetCommands) -> Result<()> {
             let plan = plan_litho_generation(paths, &slug, &repo_path);
             print_json(&plan)
         }
+        AssetCommands::PrepareLitho { repo_path, slug } => {
+            let slug = slug_from(&repo_path, slug);
+            let repo = repo_path.display().to_string();
+            let acp = resolve_acp_settings();
+            let job = prepare_litho_generation(paths, &slug, &repo, &acp);
+            print_json(&job)
+        }
         AssetCommands::Plan { repo_path, slug } => {
             let slug = slug_from(&repo_path, slug);
             let plan = build_generation_plan(paths, &slug, &repo_path.display().to_string());
             print_json(&plan)
         }
-        AssetCommands::RunLitho { repo_path, slug } => {
+        AssetCommands::RunLitho { repo_path, slug, force } => {
             let slug = slug_from(&repo_path, slug);
             let repo = repo_path.display().to_string();
             let acp = resolve_acp_settings();
@@ -41,7 +48,7 @@ pub async fn run(paths: &KnowledgePaths, command: AssetCommands) -> Result<()> {
                 &slug,
                 &repo,
                 &acp,
-                false,
+                force,
                 |p| eprintln!("[{}] {}", p.stage, p.message),
             )
             .await?;

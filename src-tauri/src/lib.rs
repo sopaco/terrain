@@ -3,57 +3,30 @@ mod commands;
 mod preset_skills;
 mod tray;
 
-use terrain_agent::{ChatEngine, ModelConfig, load_model_settings, resolve_acp_settings, resolve_model_config};
+use terrain_agent::{ModelConfig, Runtime};
 use terrain_core::KnowledgePaths;
-use std::sync::{Arc, RwLock};
-use tokio::sync::Mutex;
 
 pub struct AppState {
-    pub paths: KnowledgePaths,
-    model_config: RwLock<ModelConfig>,
-    pub chat: Mutex<Option<Arc<ChatEngine>>>,
+    pub runtime: Runtime,
 }
 
 impl AppState {
     pub fn new(paths: KnowledgePaths) -> Self {
         Self {
-            paths,
-            model_config: RwLock::new(resolve_model_config()),
-            chat: Mutex::new(None),
+            runtime: Runtime::new(paths),
         }
     }
 
-    pub fn get_model_config(&self) -> ModelConfig {
-        self.model_config
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
+    pub fn paths(&self) -> &KnowledgePaths {
+        &self.runtime.paths
+    }
+
+    pub fn model_config(&self) -> ModelConfig {
+        self.runtime.model_config()
     }
 
     pub fn set_model_config(&self, config: ModelConfig) {
-        *self.model_config
-            .write()
-            .unwrap_or_else(|e| e.into_inner()) = config;
-    }
-
-    pub async fn chat_engine(&self) -> Result<Arc<ChatEngine>, String> {
-        let config = self.get_model_config();
-        let acp = load_model_settings()
-            .map(|s| s.acp)
-            .unwrap_or_else(resolve_acp_settings);
-        let mut guard = self.chat.lock().await;
-        if let Some(engine) = guard.as_ref() {
-            if engine.model_config() == &config && engine.acp_settings() == &acp {
-                return Ok(engine.clone());
-            }
-            *guard = None;
-        }
-        let engine = Arc::new(
-            ChatEngine::with_settings(self.paths.clone(), config, acp)
-                .map_err(|e| e.to_string())?,
-        );
-        *guard = Some(engine.clone());
-        Ok(engine)
+        self.runtime.set_model_config(config);
     }
 }
 
