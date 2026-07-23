@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use terrain_core::{
     agent_context_ready, agent_pack_ready, build_agent_context_prompt, pack_agent_assets,
-    prepare_model_markdown, write_agent_context, AgentContextGenerationResult, AgentContextMeta,
+    prepare_model_markdown, write_agent_context, AgentContextGenerationResult,
     KnowledgePaths,
 };
 

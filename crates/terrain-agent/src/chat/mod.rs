@@ -6,7 +6,7 @@ mod tracker;
 mod types;
 
 pub use types::{
-    ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus,
+    ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord,
 };
 
 use std::time::Duration;
@@ -110,6 +110,7 @@ impl ChatEngine {
         &self.model_config
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn ask(
         &self,
         session_id: &str,
@@ -155,6 +156,7 @@ impl ChatEngine {
     }
 
     /// Run one agent turn without preparing agent assets (used by context generation).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn run_turn(
         &self,
         session_id: &str,

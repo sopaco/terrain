@@ -15,6 +15,7 @@ use super::types::{
 };
 
 impl super::ChatEngine {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn run_turn_acp(
         &self,
         session_id: &str,
@@ -47,7 +48,7 @@ impl super::ChatEngine {
             completed_at: None,
             duration_ms: None,
         };
-        on_tool_calls(&[acp_record.clone()]);
+        on_tool_calls(std::slice::from_ref(&acp_record));
 
         let repo = normalize_repo_hint(repo_path)
             .map(str::to_string)
@@ -115,7 +116,7 @@ impl super::ChatEngine {
             .unwrap_or_default();
         citations = merge_citations(
             citations,
-            extract_source_citations(&answer, repo_path.as_deref()),
+            extract_source_citations(&answer, repo_path),
         );
 
         let answer = if answer.trim().is_empty() {

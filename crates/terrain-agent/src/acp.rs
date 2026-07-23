@@ -38,11 +38,10 @@ pub fn acp_spawn_command(settings: &AcpSettings) -> String {
     {
         return cmd.trim().to_string();
     }
-    if let Ok(cmd) = std::env::var("TERRAIN_ACP_COMMAND") {
-        if !cmd.trim().is_empty() {
+    if let Ok(cmd) = std::env::var("TERRAIN_ACP_COMMAND")
+        && !cmd.trim().is_empty() {
             return cmd.trim().to_string();
         }
-    }
     format!("{} {}", acp_binary(settings), acp_args(settings))
 }
 
@@ -158,10 +157,12 @@ pub(crate) fn acp_command_parts(settings: &AcpSettings) -> (String, Vec<String>)
 /// Serialize an ACP stdio configuration as JSON for the adk-acp SDK.
 ///
 /// The SDK's `AcpAgent::from_str` accepts either a shell-command string or a JSON
-/// object.  On Windows the shell-command path is broken because:
-///   1. `shell_words::split` treats `\` as a POSIX escape, stripping it from paths.
-///   2. `;` in `PATH` (and other env values) is interpreted as a shell command
-///      separator, truncating the command.
+/// object. On Windows the shell-command path is broken because:
+///
+/// 1. `shell_words::split` treats `\` as a POSIX escape, stripping it from paths.
+/// 2. `;` in `PATH` (and other env values) is interpreted as a shell command
+///    separator, truncating the command.
+///
 /// Using the JSON form bypasses shell parsing entirely; `tokio::process::Command`
 /// receives the binary path and args verbatim.
 pub(crate) fn acp_config_json(

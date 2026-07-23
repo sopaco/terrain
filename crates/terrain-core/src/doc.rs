@@ -61,11 +61,10 @@ fn infer_frontmatter(path: &Path, body: &str) -> DocFrontmatter {
 fn infer_project_slug(path: &Path) -> String {
     if let Some(repo) = repo_parent_of_terrain(path) {
         let repo_s = repo.display().to_string();
-        if let Ok(entries) = crate::registry::load_registry() {
-            if let Some(entry) = entries.iter().find(|e| e.repo_path == repo_s) {
+        if let Ok(entries) = crate::registry::load_registry()
+            && let Some(entry) = entries.iter().find(|e| e.repo_path == repo_s) {
                 return entry.slug.clone();
             }
-        }
         if let Some(name) = repo.file_name().and_then(|s| s.to_str()) {
             return name.to_string();
         }

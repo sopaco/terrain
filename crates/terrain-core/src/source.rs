@@ -23,11 +23,10 @@ fn is_path_within_repo(file: &Path, repo: &Path) -> bool {
         return true;
     }
     // macOS: /var → /private/var while repo may be under /Users/...
-    if let Ok(stripped) = file.strip_prefix("/private") {
-        if stripped.starts_with(&repo) {
+    if let Ok(stripped) = file.strip_prefix("/private")
+        && stripped.starts_with(&repo) {
             return true;
         }
-    }
     false
 }
 
@@ -175,8 +174,8 @@ fn try_resolve_knowledge_markdown(
     let project_rel = project_relative_knowledge_path(project_slug, file_path);
     if project_rel == "agent/context.md" {
         let context_path = paths.agent_context_main(project_slug);
-        if context_path.is_file() {
-            if let Ok(body) = std::fs::read_to_string(&context_path) {
+        if context_path.is_file()
+            && let Ok(body) = std::fs::read_to_string(&context_path) {
                 return Some(Ok(SourceSlice {
                     repo_path: repo_path.unwrap_or("").to_string(),
                     file_path: project_rel,
@@ -185,11 +184,10 @@ fn try_resolve_knowledge_markdown(
                     content: body,
                 }));
             }
-        }
     }
 
-    if project_rel.starts_with("human/") || project_rel == "agent/context.md" {
-        if let Ok(body) = read_human_doc(paths, project_slug, &project_rel) {
+    if (project_rel.starts_with("human/") || project_rel == "agent/context.md")
+        && let Ok(body) = read_human_doc(paths, project_slug, &project_rel) {
             return Some(Ok(SourceSlice {
                 repo_path: repo_path.unwrap_or("").to_string(),
                 file_path: project_rel,
@@ -198,7 +196,6 @@ fn try_resolve_knowledge_markdown(
                 content: body,
             }));
         }
-    }
 
     for rel in knowledge_doc_relative_candidates(project_slug, file_path) {
         if let Ok(doc) = read_doc_at_in_project(paths, &rel, Some(project_slug)) {
@@ -378,12 +375,11 @@ pub fn resolve_source_citation(
         return agent_pack_index_slice(paths, project_slug, repo_path);
     }
 
-    if !is_source_code_path(file_path) {
-        if let Some(result) = try_resolve_knowledge_markdown(paths, project_slug, file_path, repo_path)
+    if !is_source_code_path(file_path)
+        && let Some(result) = try_resolve_knowledge_markdown(paths, project_slug, file_path, repo_path)
         {
             return result;
         }
-    }
 
     let path_candidates = source_path_candidates(project_slug, file_path);
     let repos = repo_path_candidates(paths, project_slug, repo_path);
@@ -411,7 +407,7 @@ pub fn resolve_source_citation(
 
     if let Some(slice) = try_live_source_slice_with_candidates(
         &repos,
-        &[pack_file.matched_path.clone()],
+        std::slice::from_ref(&pack_file.matched_path),
         start_line,
         end_line,
     ) {

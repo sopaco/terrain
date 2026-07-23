@@ -41,12 +41,12 @@ pub async fn run(
                     project.as_deref(),
                     repo_path.as_deref(),
                     |event| {
-                        if let Ok(line) = serde_json::to_string(&event) {
-                            if let Ok(_guard) = write_lock.lock() {
-                                let mut stdout = io::stdout();
-                                let _ = writeln!(stdout, "{line}");
-                                let _ = stdout.flush();
-                            }
+                        if let Ok(line) = serde_json::to_string(&event)
+                            && let Ok(_guard) = write_lock.lock()
+                        {
+                            let mut stdout = io::stdout();
+                            let _ = writeln!(stdout, "{line}");
+                            let _ = stdout.flush();
                         }
                     },
                 )

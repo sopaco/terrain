@@ -2,10 +2,11 @@ use terrain_core::{
     list_human_docs, read_doc_at, read_source_slice, resolve_source_citation, HumanDocEntry,
     KnowledgeDoc, KnowledgeSearch, SearchHit, SearchOptions, SourceSlice,
 };
-use terrain_agent::validate_repo_path;
 use tauri::State;
 
 use crate::AppState;
+
+use super::util::{map_core_err, validate_repo};
 
 #[tauri::command]
 pub fn search_knowledge(
@@ -46,7 +47,7 @@ pub fn read_source_slice_cmd(
     start_line: u32,
     end_line: u32,
 ) -> Result<SourceSlice, String> {
-    read_source_slice(&repo_path, &file_path, start_line, end_line).map_err(|e| e.to_string())
+    map_core_err(read_source_slice(&repo_path, &file_path, start_line, end_line))
 }
 
 #[tauri::command]
@@ -71,7 +72,7 @@ pub fn resolve_source_citation_cmd(
 
 #[tauri::command]
 pub fn open_repo_folder_cmd(path: String) -> Result<(), String> {
-    validate_repo_path(&path).map_err(|e| e.to_string())?;
+    validate_repo(&path)?;
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")

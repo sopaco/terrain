@@ -10,6 +10,7 @@ use crate::chat::ChatEngine;
 use crate::settings::AcpSettings;
 
 /// Run a single SDD workflow phase.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_sdd_phase(
     paths: &KnowledgePaths,
     engine: Option<Arc<ChatEngine>>,

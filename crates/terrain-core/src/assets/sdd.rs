@@ -45,8 +45,8 @@ pub fn list_sdd_sessions(paths: &KnowledgePaths, project_slug: &str) -> Vec<SddS
         }
         let id = entry.file_name().to_string_lossy().into_owned();
         let meta_path = session_meta_path(&sessions_dir, &id);
-        if let Ok(raw) = std::fs::read_to_string(&meta_path) {
-            if let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw) {
+        if let Ok(raw) = std::fs::read_to_string(&meta_path)
+            && let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw) {
                 sessions.push(SddSessionInfo {
                     id: meta.id,
                     title: meta.title,
@@ -55,7 +55,6 @@ pub fn list_sdd_sessions(paths: &KnowledgePaths, project_slug: &str) -> Vec<SddS
                 });
                 continue;
             }
-        }
         sessions.push(SddSessionInfo {
             id: id.clone(),
             title: id,

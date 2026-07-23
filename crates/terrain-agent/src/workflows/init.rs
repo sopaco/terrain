@@ -11,6 +11,7 @@ use crate::chat::ChatEngine;
 use crate::model::{llm_status, ModelConfig};
 use crate::settings::AcpSettings;
 
+#[allow(clippy::too_many_arguments)]
 async fn run_agent_context_if_needed(
     paths: &KnowledgePaths,
     model_config: &ModelConfig,

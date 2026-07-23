@@ -1,15 +1,16 @@
 use terrain_core::{
-    apply_env_integration, get_env_status, plan_env_integration, validate_repo_path,
-    EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus,
+    apply_env_integration, get_env_status, plan_env_integration, EnvApplyProgress, EnvApplyResult,
+    EnvPlan, EnvStatus,
 };
 use tauri::{AppHandle, Emitter};
 
 use super::payloads::{EnvOptDonePayload, EnvOptProgressPayload};
+use super::util::{map_core_err, validate_repo};
 
 #[tauri::command]
 pub fn get_env_status_cmd(repo_path: String) -> Result<EnvStatus, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
-    get_env_status(std::path::Path::new(&repo_path)).map_err(|e| e.to_string())
+    let path = validate_repo(&repo_path)?;
+    map_core_err(get_env_status(&path))
 }
 
 #[tauri::command]
@@ -18,13 +19,8 @@ pub fn plan_env_integration_cmd(
     selected_ids: Vec<String>,
     reinstall_ids: Vec<String>,
 ) -> Result<EnvPlan, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
-    plan_env_integration(
-        std::path::Path::new(&repo_path),
-        &selected_ids,
-        &reinstall_ids,
-    )
-    .map_err(|e| e.to_string())
+    let path = validate_repo(&repo_path)?;
+    map_core_err(plan_env_integration(&path, &selected_ids, &reinstall_ids))
 }
 
 #[tauri::command]
@@ -34,7 +30,7 @@ pub async fn run_env_integration_cmd(
     selected_ids: Vec<String>,
     reinstall_ids: Vec<String>,
 ) -> Result<EnvApplyResult, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    let path = validate_repo(&repo_path)?;
     let repo = repo_path.clone();
 
     let emit = |p: EnvApplyProgress| {
@@ -48,14 +44,9 @@ pub async fn run_env_integration_cmd(
         );
     };
 
-    let result = apply_env_integration(
-        std::path::Path::new(&repo_path),
-        &selected_ids,
-        &reinstall_ids,
-        emit,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    let result = apply_env_integration(&path, &selected_ids, &reinstall_ids, emit)
+        .await
+        .map_err(|e| e.to_string())?;
 
     app.emit(
         "env-opt-done",

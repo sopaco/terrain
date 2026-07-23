@@ -209,62 +209,6 @@ fn contains_ascii_insensitive(haystack: &str, needle: &str) -> bool {
         .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
 }
 
-#[cfg(test)]
-mod read_doc_tests {
-    use super::*;
-    use crate::registry::registry_test_lock;
-    use crate::schema::{DocFrontmatter, DocType};
-    use crate::write_doc;
-
-    struct RegistryTestGuard {
-        _lock: std::sync::MutexGuard<'static, ()>,
-        _registry_dir: tempfile::TempDir,
-    }
-
-    fn test_setup(slug: &str) -> (KnowledgePaths, String, RegistryTestGuard) {
-        let lock = registry_test_lock();
-        let registry_dir = tempfile::tempdir().unwrap();
-        let registry_file = registry_dir.path().join("registry.json");
-        unsafe {
-            std::env::set_var("TERRAIN_REGISTRY_FILE", &registry_file);
-        }
-        let repo = registry_dir.path().join("repo");
-        std::fs::create_dir_all(&repo).unwrap();
-        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
-        let paths = KnowledgePaths::new();
-        paths.ensure_project_layout(slug).unwrap();
-        (
-            paths,
-            slug.to_string(),
-            RegistryTestGuard {
-                _lock: lock,
-                _registry_dir: registry_dir,
-            },
-        )
-    }
-
-    #[test]
-    fn resolves_project_relative_human_doc() {
-        let (paths, slug, _guard) = test_setup("read-doc-test-proj");
-        let human_dir = paths.human_docs_dir(&slug);
-        let doc_path = human_dir.join("1.概述.md");
-        let fm = DocFrontmatter {
-            doc_type: DocType::Human,
-            project: slug.clone(),
-            title: Some("概述".into()),
-            source: None,
-            refs: vec![],
-            deps: vec![],
-            extra: Default::default(),
-            module: None,
-        };
-        write_doc(&doc_path, &fm, "# 概述\n\nHello").unwrap();
-
-        let doc = read_doc_at_in_project(&paths, "human/1.概述.md", Some(&slug)).unwrap();
-        assert!(doc.body.contains("Hello"));
-    }
-}
-
 fn snippet(body: &str, query: &str) -> String {
     let query = query.split_whitespace().next().unwrap_or(query);
     let body_l = body.to_lowercase();
@@ -319,11 +263,10 @@ pub fn read_doc_at_in_project(
 
     let rel = trimmed.trim_start_matches("./").trim_start_matches('/');
 
-    if let Some(slug) = project_slug {
-        if let Ok(root) = paths.try_project_dir(slug) {
+    if let Some(slug) = project_slug
+        && let Ok(root) = paths.try_project_dir(slug) {
             push(root.join(rel), &mut candidates);
         }
-    }
 
     if let Some(root) = paths.workspace_knowledge_root() {
         push(root.join(rel), &mut candidates);
@@ -342,4 +285,60 @@ pub fn read_doc_at_in_project(
     Err(crate::error::CoreError::InvalidDoc(format!(
         "document not found: {rel_or_abs}"
     )))
+}
+
+#[cfg(test)]
+mod read_doc_tests {
+    use super::*;
+    use crate::registry::registry_test_lock;
+    use crate::schema::{DocFrontmatter, DocType};
+    use crate::write_doc;
+
+    struct RegistryTestGuard {
+        _lock: std::sync::MutexGuard<'static, ()>,
+        _registry_dir: tempfile::TempDir,
+    }
+
+    fn test_setup(slug: &str) -> (KnowledgePaths, String, RegistryTestGuard) {
+        let lock = registry_test_lock();
+        let registry_dir = tempfile::tempdir().unwrap();
+        let registry_file = registry_dir.path().join("registry.json");
+        unsafe {
+            std::env::set_var("TERRAIN_REGISTRY_FILE", &registry_file);
+        }
+        let repo = registry_dir.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        (
+            paths,
+            slug.to_string(),
+            RegistryTestGuard {
+                _lock: lock,
+                _registry_dir: registry_dir,
+            },
+        )
+    }
+
+    #[test]
+    fn resolves_project_relative_human_doc() {
+        let (paths, slug, _guard) = test_setup("read-doc-test-proj");
+        let human_dir = paths.human_docs_dir(&slug);
+        let doc_path = human_dir.join("1.概述.md");
+        let fm = DocFrontmatter {
+            doc_type: DocType::Human,
+            project: slug.clone(),
+            title: Some("概述".into()),
+            source: None,
+            refs: vec![],
+            deps: vec![],
+            extra: Default::default(),
+            module: None,
+        };
+        write_doc(&doc_path, &fm, "# 概述\n\nHello").unwrap();
+
+        let doc = read_doc_at_in_project(&paths, "human/1.概述.md", Some(&slug)).unwrap();
+        assert!(doc.body.contains("Hello"));
+    }
 }

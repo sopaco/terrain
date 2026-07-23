@@ -1,5 +1,5 @@
 use terrain_agent::{
-    ask_knowledge, execution_pure_acp, run_sdd_phase, validate_repo_path, AskStreamEvent, ChatReply,
+    ask_knowledge, execution_pure_acp, run_sdd_phase, AskStreamEvent, ChatReply,
 };
 use terrain_core::{
     ipc_string, resolve_sdd_session_id, SddPhase, SddPhaseResult, SddStatus,
@@ -12,6 +12,7 @@ use super::payloads::{
     ChatChunkPayload, ChatDonePayload, ChatPhasePayload, ChatToolCallsPayload, ChatUsagePayload,
     SddDonePayload, SddProgressPayload,
 };
+use super::util::validate_repo;
 use super::{resolved_acp_settings, slugify_repo};
 
 #[tauri::command]
@@ -101,7 +102,7 @@ pub async fn run_sdd_phase_cmd(
     phase: SddPhase,
     user_input: Option<String>,
 ) -> Result<SddPhaseResult, String> {
-    validate_repo_path(&repo_path).map_err(ipc_string)?;
+    validate_repo(&repo_path).map_err(ipc_string)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let paths = state.paths();
     let session_id = session_id

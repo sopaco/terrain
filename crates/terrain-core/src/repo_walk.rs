@@ -10,8 +10,9 @@ use ignore::Match;
 
 use std::sync::LazyLock;
 
-static GITIGNORE_CACHE: LazyLock<Mutex<HashMap<PathBuf, (Option<std::time::SystemTime>, Gitignore)>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+type GitignoreCache = Mutex<HashMap<PathBuf, (Option<std::time::SystemTime>, Gitignore)>>;
+
+static GITIGNORE_CACHE: LazyLock<GitignoreCache> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub const META_DISCOVER_MAX_DEPTH: usize = 6;
 
@@ -38,13 +39,11 @@ pub fn build_repo_gitignore(repo: &Path) -> Gitignore {
     let gi = repo.join(".gitignore");
     let mtime = gi.metadata().ok().and_then(|m| m.modified().ok());
     let key = repo.to_path_buf();
-    if let Ok(guard) = GITIGNORE_CACHE.lock() {
-        if let Some((cached_mtime, ig)) = guard.get(&key) {
-            if cached_mtime == &mtime {
+    if let Ok(guard) = GITIGNORE_CACHE.lock()
+        && let Some((cached_mtime, ig)) = guard.get(&key)
+            && cached_mtime == &mtime {
                 return ig.clone();
             }
-        }
-    }
 
     let ig = if gi.is_file() {
         Gitignore::new(gi).0
@@ -111,7 +110,7 @@ mod tests {
 
         let names: Vec<_> = discover_repo_walk(repo)
             .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().map_or(false, |ft| ft.is_file()))
+            .filter(|e| e.file_type().is_some_and(|ft| ft.is_file()))
             .filter_map(|e| {
                 e.path()
                     .file_name()

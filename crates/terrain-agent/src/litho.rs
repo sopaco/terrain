@@ -81,6 +81,7 @@ fn build_result(
 
 /// Run Litho document generation via OpenCode ACP.
 #[cfg(feature = "opencode")]
+#[allow(clippy::too_many_arguments)]
 async fn prompt_agent_with_doc_poll(
     config: adk_acp::AcpAgentConfig,
     prompt: String,

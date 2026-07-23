@@ -1,6 +1,6 @@
 use terrain_agent::{
-    run_project_initialization, run_quick_refresh, validate_repo_path, LithoGenerationResult,
-    LithoProgress, ProjectInitProgress,
+    run_project_initialization, run_quick_refresh, LithoGenerationResult, LithoProgress,
+    ProjectInitProgress,
 };
 use terrain_core::{
     compute_freshness, get_project_overview, list_stale_registry_projects, plan_litho_generation,
@@ -14,6 +14,7 @@ use crate::AppState;
 use super::payloads::{
     LithoDonePayload, LithoProgressPayload, ProjectInitDonePayload, ProjectInitProgressPayload,
 };
+use super::util::{map_core_err, validate_repo};
 use super::{resolved_acp_settings, slugify_repo};
 
 #[tauri::command]
@@ -29,7 +30,7 @@ pub async fn scan_project(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<ScanReport, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let scanner = ProjectScanner::new(state.paths().clone());
     scanner
         .scan_repo(&repo_path, project_slug.as_deref())
@@ -49,7 +50,7 @@ pub async fn initialize_project_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<ProjectInitResult, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let paths = state.paths().clone();
     let model_config = state.model_config();
@@ -162,7 +163,7 @@ pub fn compute_freshness_cmd(
         repo_path.as_deref(),
     )
     .map_err(|e| e.to_string())?;
-    compute_freshness(state.paths(), &project_slug, &repo).map_err(|e| e.to_string())
+    map_core_err(compute_freshness(state.paths(), &project_slug, &repo))
 }
 
 /// Last persisted freshness ledger (no git recompute) — for instant overview paint.
@@ -181,7 +182,7 @@ pub async fn run_quick_refresh_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<QuickRefreshResult, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let acp = resolved_acp_settings();
     let model_config = state.model_config();

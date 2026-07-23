@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use terrain_agent::{
     agent_execution_ready, execution_uses_native_llm, prepare_litho_generation,
-    run_agent_context_generation, run_litho_generation, validate_repo_path,
-    AgentContextGenerationResult, ChatEngine, LithoGenerationJob, LithoProgress,
+    run_agent_context_generation, run_litho_generation, AgentContextGenerationResult, ChatEngine,
+    LithoGenerationJob, LithoProgress,
 };
 use terrain_core::{
     build_generation_plan, pack_agent_assets, plan_litho_generation, AgentPackReport,
@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, State};
 use crate::AppState;
 
 use super::payloads::{LithoDonePayload, LithoProgressPayload};
+use super::util::validate_repo;
 use super::{resolved_acp_settings, slugify_repo};
 
 #[tauri::command]
@@ -22,7 +23,7 @@ pub async fn pack_agent_assets_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<AgentPackReport, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let report = pack_agent_assets(state.paths(), &slug, &repo_path)
         .await
@@ -37,12 +38,12 @@ pub fn plan_litho_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<LithoPlan, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    let path = validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     Ok(plan_litho_generation(
         state.paths(),
         &slug,
-        std::path::Path::new(&repo_path),
+        &path,
     ))
 }
 
@@ -52,7 +53,7 @@ pub fn plan_assets_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<AssetGenerationPlan, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     Ok(build_generation_plan(state.paths(), &slug, &repo_path))
 }
@@ -63,7 +64,7 @@ pub fn generate_human_docs_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<LithoGenerationJob, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     Ok(prepare_litho_generation(
         state.paths(),
@@ -81,7 +82,7 @@ pub async fn run_litho_generation_cmd(
     project_slug: Option<String>,
     force_refresh: Option<bool>,
 ) -> Result<(), String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let paths = state.paths().clone();
 
@@ -126,7 +127,7 @@ pub async fn run_agent_context_generation_cmd(
     repo_path: String,
     project_slug: Option<String>,
 ) -> Result<AgentContextGenerationResult, String> {
-    validate_repo_path(&repo_path).map_err(|e| e.to_string())?;
+    validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let acp = resolved_acp_settings();
     let model_config = state.model_config();

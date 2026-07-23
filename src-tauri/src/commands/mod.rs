@@ -6,6 +6,7 @@ mod project;
 mod sessions;
 mod settings;
 mod usage;
+mod util;
 mod workflows;
 
 use terrain_agent::{

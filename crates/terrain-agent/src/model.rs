@@ -6,7 +6,7 @@ use adk_model::openai::{OpenAIClient, OpenAIConfig};
 use anyhow::{Context, Result, bail};
 pub use terrain_core::LlmStatus;
 pub use terrain_core::settings::{
-    DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL, DEFAULT_LMSTUDIO_MODEL,
+    DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL,
     DEFAULT_OLLAMA_HOST, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,
 };
 

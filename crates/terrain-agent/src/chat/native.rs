@@ -124,6 +124,7 @@ impl super::ChatEngine {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn run_turn_native(
         &self,
         session_id: &str,
@@ -303,11 +304,10 @@ fn extract_event_text(event: &adk_core::Event) -> EventText {
             if !text.is_empty() {
                 visible.push_str(text);
             }
-        } else if let Some(text) = part.thinking_text() {
-            if !text.is_empty() {
+        } else if let Some(text) = part.thinking_text()
+            && !text.is_empty() {
                 thinking.push_str(text);
             }
-        }
     }
     EventText { visible, thinking }
 }

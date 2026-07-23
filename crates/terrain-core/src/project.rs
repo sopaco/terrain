@@ -160,34 +160,32 @@ pub fn resolve_project_repo_path(
     if let Some(repo) = crate::path_portable::normalize_repo_hint(hint) {
         return Ok(repo.to_string());
     }
-    if let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) {
-        if !meta.repo_path.is_empty() {
-            if let Some(repo) =
+    if let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug))
+        && !meta.repo_path.is_empty()
+            && let Some(repo) =
                 crate::path_portable::resolve_stored_repo_path(&meta.repo_path, project_slug)
             {
                 return Ok(repo);
             }
-        }
-    }
     if let Some(repo) = crate::registry::repo_path_for_slug(project_slug) {
         return Ok(repo);
     }
     let index_path = paths.project_index(project_slug);
     if index_path.is_file() {
         let doc = read_doc(&index_path)?;
-        if let Some(source) = doc.frontmatter.source.filter(|s| !s.is_empty()) {
-            if let Some(repo) =
+        if let Some(source) = doc.frontmatter.source.filter(|s| !s.is_empty())
+            && let Some(repo) =
                 crate::path_portable::resolve_stored_repo_path(&source, project_slug)
             {
                 return Ok(repo);
             }
-        }
     }
     Err(CoreError::ProjectNotFound(format!(
         "cannot resolve repository path for project '{project_slug}'"
     )))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_asset_health(
     paths: &KnowledgePaths,
     project_slug: &str,
@@ -401,10 +399,10 @@ fn parse_tech_stack(body: &str) -> Vec<String> {
 fn count_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<DocCounts> {
     Ok(DocCounts {
         human: count_human_docs(paths, project_slug),
-        interfaces: count_markdown_in_dir(&paths.project_dir(project_slug).join("interfaces")),
-        routes: count_markdown_in_dir(&paths.project_dir(project_slug).join("routes")),
-        modules: count_markdown_in_dir(&paths.project_dir(project_slug).join("modules")),
-        events: count_markdown_in_dir(&paths.project_dir(project_slug).join("events")),
+        interfaces: count_markdown_in_dir(paths.project_dir(project_slug).join("interfaces")),
+        routes: count_markdown_in_dir(paths.project_dir(project_slug).join("routes")),
+        modules: count_markdown_in_dir(paths.project_dir(project_slug).join("modules")),
+        events: count_markdown_in_dir(paths.project_dir(project_slug).join("events")),
     })
 }
 

@@ -135,7 +135,7 @@ pub struct UsageSnapshot {
 pub fn probe_usage_sources() -> UsageProbeResult {
     let launch = resolve_ccusage_launch();
     let available = launch.is_some();
-    let version = launch.as_ref().and_then(|l| read_ccusage_version(l));
+    let version = launch.as_ref().and_then(read_ccusage_version);
     UsageProbeResult {
         ccusage_available: available,
         ccusage_version: version,
@@ -146,11 +146,10 @@ pub fn probe_usage_sources() -> UsageProbeResult {
 
 /// Load usage snapshot (summary or full). Uses in-memory cache unless `force_refresh`.
 pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> UsageSnapshot {
-    if !force_refresh {
-        if let Some(cached) = read_cache(detail) {
+    if !force_refresh
+        && let Some(cached) = read_cache(detail) {
             return cached;
         }
-    }
 
     let probe = probe_usage_sources();
     let generated_at = now_ms();
@@ -547,11 +546,10 @@ fn count_matching_files_inner(
     for entry in read.flatten() {
         let path = entry.path();
         if path.is_file() {
-            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                if extensions.iter().any(|e| ext.eq_ignore_ascii_case(e)) {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str())
+                && extensions.iter().any(|e| ext.eq_ignore_ascii_case(e)) {
                     count = count.saturating_add(1);
                 }
-            }
         } else if path.is_dir() && depth < max_depth {
             count = count.saturating_add(count_matching_files_inner(
                 &path,

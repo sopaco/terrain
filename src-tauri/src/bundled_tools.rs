@@ -7,23 +7,22 @@ use tauri::{AppHandle, Manager};
 pub fn init_app_bundled_tools(app: &AppHandle) {
     let mut tools = terrain_core::discover_bundled_tools_from_packages();
 
-    if let Ok(exe) = tauri::process::current_binary(&app.env()) {
-        if let Some(parent) = exe.parent() {
-            if let Some(rtk) = resolve_sidecar_next_to_exe(parent, "rtk") {
-                tools.rtk = Some(rtk);
-            }
-            if let Some(cli) = resolve_sidecar_next_to_exe(parent, "terrain-cli") {
-                tools.terrain_cli = Some(cli);
-            }
+    if let Ok(exe) = tauri::process::current_binary(&app.env())
+        && let Some(parent) = exe.parent()
+    {
+        if let Some(rtk) = resolve_sidecar_next_to_exe(parent, "rtk") {
+            tools.rtk = Some(rtk);
+        }
+        if let Some(cli) = resolve_sidecar_next_to_exe(parent, "terrain-cli") {
+            tools.terrain_cli = Some(cli);
         }
     }
 
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        if let Some(codegraph) =
+    if let Ok(resource_dir) = app.path().resource_dir()
+        && let Some(codegraph) =
             find_codegraph_wrapper_under(&resource_dir.join("tools/codegraph"))
-        {
-            tools.codegraph = Some(codegraph);
-        }
+    {
+        tools.codegraph = Some(codegraph);
     }
 
     init_bundled_tools(tools);
