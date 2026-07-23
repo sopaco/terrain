@@ -2,1267 +2,1335 @@
   "files": [
     {
       "path": "src/App.svelte",
-      "header_line": 427
+      "header_line": 447
     },
     {
       "path": "src/lib/components/DeepWikiPanel.svelte",
-      "header_line": 1742
+      "header_line": 1762
     },
     {
       "path": "src/lib/components/ProjectOverviewPanel.svelte",
-      "header_line": 2753
+      "header_line": 2773
     },
     {
       "path": "src-tauri/src/lib.rs",
-      "header_line": 3656
-    },
-    {
-      "path": "AGENTS.md",
-      "header_line": 3692
+      "header_line": 3676
     },
     {
       "path": "crates/terrain-core/src/lib.rs",
-      "header_line": 3838
+      "header_line": 3712
+    },
+    {
+      "path": "AGENTS.md",
+      "header_line": 3854
     },
     {
       "path": "src/lib/types.ts",
-      "header_line": 3980
-    },
-    {
-      "path": "src/lib/api.ts",
       "header_line": 4000
     },
     {
-      "path": "src/lib/components/EnvIntegratePanel.svelte",
-      "header_line": 4264
-    },
-    {
-      "path": "src/lib/components/ProjectSelector.svelte",
-      "header_line": 4710
-    },
-    {
-      "path": "Cargo.toml",
-      "header_line": 4867
-    },
-    {
       "path": "crates/terrain-core/src/agent_tools_deploy.rs",
-      "header_line": 4923
+      "header_line": 4020
     },
     {
-      "path": "crates/terrain-core/src/freshness.rs",
-      "header_line": 5110
-    },
-    {
-      "path": "env-catalog/agents-md/tools.fragment",
-      "header_line": 5296
-    },
-    {
-      "path": "README.md",
-      "header_line": 5339
-    },
-    {
-      "path": "crates/terrain-core/src/assets/env/status.rs",
-      "header_line": 5696
-    },
-    {
-      "path": "env-catalog/agents-md/env-overview.fragment",
-      "header_line": 5904
-    },
-    {
-      "path": "env-catalog/catalog.json",
-      "header_line": 5919
-    },
-    {
-      "path": "env-catalog/skills/codegraph-skill/SKILL.md",
-      "header_line": 6032
-    },
-    {
-      "path": "package.json",
-      "header_line": 6150
-    },
-    {
-      "path": "src/lib/components/FreshnessHelpPanel.svelte",
-      "header_line": 6192
+      "path": "src/lib/api.ts",
+      "header_line": 4207
     },
     {
       "path": "src-tauri/src/commands/project.rs",
-      "header_line": 6582
+      "header_line": 4471
     },
     {
-      "path": "crates/terrain-core/src/assets/agent_context.rs",
-      "header_line": 6653
+      "path": "src/lib/components/EnvIntegratePanel.svelte",
+      "header_line": 4542
     },
     {
-      "path": "env-catalog/skills/repomix-context-skill/SKILL.md",
-      "header_line": 6694
+      "path": "src/lib/components/ProjectSelector.svelte",
+      "header_line": 4988
     },
     {
-      "path": "env-catalog/skills/rtk-skill/SKILL.md",
-      "header_line": 6783
+      "path": "Cargo.toml",
+      "header_line": 5145
     },
     {
-      "path": "src/lib/components/AskBar.svelte",
-      "header_line": 7001
+      "path": "README.md",
+      "header_line": 5201
     },
     {
-      "path": "src/lib/components/ReadinessHelpPanel.svelte",
-      "header_line": 7100
+      "path": "env-catalog/agents-md/tools.fragment",
+      "header_line": 5558
     },
     {
-      "path": "src/lib/components/SddWorkflowPanel.svelte",
-      "header_line": 7220
-    },
-    {
-      "path": "src/lib/components/UsagePanel.svelte",
-      "header_line": 7720
-    },
-    {
-      "path": "src/lib/glossary.ts",
-      "header_line": 8141
-    },
-    {
-      "path": "src-tauri/build.rs",
-      "header_line": 8152
-    },
-    {
-      "path": "src-tauri/tauri.conf.json",
-      "header_line": 8180
+      "path": "src/lib/components/FreshnessHelpPanel.svelte",
+      "header_line": 5601
     },
     {
       "path": "crates/terrain-agent/src/chat/mod.rs",
-      "header_line": 8227
+      "header_line": 5991
     },
     {
-      "path": "crates/terrain-cli/src/main.rs",
-      "header_line": 8421
+      "path": "crates/terrain-core/src/assets/agent_context.rs",
+      "header_line": 6187
     },
     {
       "path": "crates/terrain-core/src/assets/env/apply.rs",
-      "header_line": 8429
+      "header_line": 6228
     },
     {
-      "path": "crates/terrain-core/src/assets/mod.rs",
-      "header_line": 8491
+      "path": "env-catalog/agents-md/env-overview.fragment",
+      "header_line": 6290
     },
     {
-      "path": "env-catalog/agents-md/knowledge-guide.fragment",
-      "header_line": 8510
+      "path": "env-catalog/catalog.json",
+      "header_line": 6305
     },
     {
-      "path": "src/lib/components/HelpPanel.svelte",
-      "header_line": 8537
+      "path": "env-catalog/skills/codegraph-skill/SKILL.md",
+      "header_line": 6418
     },
     {
-      "path": "src/lib/components/HumanDocTree.svelte",
-      "header_line": 8578
+      "path": "package.json",
+      "header_line": 6536
     },
     {
-      "path": "src/lib/components/MarkdownArticleToc.svelte",
-      "header_line": 8919
+      "path": "src/lib/components/ReadinessHelpPanel.svelte",
+      "header_line": 6578
     },
     {
-      "path": "src/lib/components/MarkdownViewer.svelte",
-      "header_line": 9145
+      "path": "src/lib/components/UsagePanel.svelte",
+      "header_line": 6698
     },
     {
-      "path": "src/lib/markdown.css",
-      "header_line": 9331
-    },
-    {
-      "path": "src/lib/resolveSource.ts",
-      "header_line": 9581
-    },
-    {
-      "path": "src/lib/terminology.ts",
-      "header_line": 9692
-    },
-    {
-      "path": "vite.config.ts",
-      "header_line": 9700
-    },
-    {
-      "path": "crates/terrain-agent/src/acp.rs",
-      "header_line": 9757
-    },
-    {
-      "path": "crates/terrain-agent/src/builder.rs",
-      "header_line": 9833
-    },
-    {
-      "path": "crates/terrain-core/src/bundled_tools.rs",
-      "header_line": 9894
-    },
-    {
-      "path": "crates/terrain-core/src/ingest/mod.rs",
-      "header_line": 9973
-    },
-    {
-      "path": "crates/terrain-core/src/project.rs",
-      "header_line": 10076
-    },
-    {
-      "path": "crates/terrain-core/src/shell_path.rs",
-      "header_line": 10164
-    },
-    {
-      "path": "env-catalog/agents-md/skills.fragment",
-      "header_line": 10296
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/SKILL.md",
-      "header_line": 10311
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/references/phase3-composition.md",
-      "header_line": 10499
-    },
-    {
-      "path": "preset_skills/terrain-ask-skill/SKILL.md",
-      "header_line": 11227
-    },
-    {
-      "path": "src/app.css",
-      "header_line": 11330
-    },
-    {
-      "path": "src/lib/components/OverviewActionBanner.svelte",
-      "header_line": 11477
-    },
-    {
-      "path": "src/lib/components/SddSessionSelector.svelte",
-      "header_line": 11601
-    },
-    {
-      "path": "src/lib/components/SourcePanel.svelte",
-      "header_line": 11778
-    },
-    {
-      "path": "src/lib/components/StatusBanner.svelte",
-      "header_line": 11877
-    },
-    {
-      "path": "src/lib/components/ToolCallTrace.svelte",
-      "header_line": 11942
-    },
-    {
-      "path": "src-tauri/Cargo.toml",
-      "header_line": 12101
-    },
-    {
-      "path": "src-tauri/capabilities/default.json",
-      "header_line": 12144
-    },
-    {
-      "path": "src-tauri/gen/schemas/capabilities.json",
-      "header_line": 12179
-    },
-    {
-      "path": "src-tauri/src/bundled_tools.rs",
-      "header_line": 12185
+      "path": "src/lib/glossary.ts",
+      "header_line": 7119
     },
     {
       "path": "src-tauri/src/commands/mod.rs",
-      "header_line": 12193
+      "header_line": 7130
     },
     {
-      "path": "crates/terrain-agent/src/agent_assets.rs",
-      "header_line": 12209
+      "path": "crates/terrain-agent/src/acp.rs",
+      "header_line": 7146
     },
     {
-      "path": "crates/terrain-agent/src/chat/native.rs",
-      "header_line": 12255
+      "path": "crates/terrain-agent/src/builder.rs",
+      "header_line": 7222
     },
     {
       "path": "crates/terrain-agent/src/litho.rs",
-      "header_line": 12399
+      "header_line": 7283
     },
     {
-      "path": "crates/terrain-core/src/assets/env/catalog.rs",
-      "header_line": 12498
+      "path": "crates/terrain-cli/src/main.rs",
+      "header_line": 7382
     },
     {
-      "path": "crates/terrain-core/src/assets/project_meta.rs",
-      "header_line": 12580
+      "path": "crates/terrain-core/src/assets/mod.rs",
+      "header_line": 7390
     },
     {
-      "path": "crates/terrain-core/src/assets/repomix.rs",
-      "header_line": 12737
+      "path": "crates/terrain-core/src/bundled_tools.rs",
+      "header_line": 7409
     },
     {
-      "path": "crates/terrain-core/src/paths.rs",
-      "header_line": 12784
+      "path": "crates/terrain-core/src/ingest/mod.rs",
+      "header_line": 7488
     },
     {
-      "path": "crates/terrain-core/src/preset_skills.rs",
-      "header_line": 13040
+      "path": "crates/terrain-core/src/project.rs",
+      "header_line": 7590
     },
     {
-      "path": "crates/terrain-core/src/schema.rs",
-      "header_line": 13128
+      "path": "env-catalog/skills/repomix-context-skill/SKILL.md",
+      "header_line": 7678
     },
     {
-      "path": "crates/terrain-core/src/search.rs",
-      "header_line": 13675
+      "path": "env-catalog/skills/rtk-skill/SKILL.md",
+      "header_line": 7767
     },
     {
-      "path": "crates/terrain-core/src/source.rs",
-      "header_line": 13773
+      "path": "src/lib/components/AskBar.svelte",
+      "header_line": 7985
     },
     {
-      "path": "crates/terrain-core/src/usage.rs",
-      "header_line": 13940
+      "path": "src/lib/components/HelpPanel.svelte",
+      "header_line": 8084
     },
     {
-      "path": "crates/terrain-ts-export/src/main.rs",
-      "header_line": 14252
+      "path": "src/lib/components/MarkdownArticleToc.svelte",
+      "header_line": 8125
     },
     {
-      "path": "env-catalog/agent-tools.template.json",
-      "header_line": 14272
+      "path": "src/lib/components/SddWorkflowPanel.svelte",
+      "header_line": 8351
     },
     {
-      "path": "env-catalog/skills/terrain-knowledge-skill/SKILL.md",
-      "header_line": 14294
+      "path": "src/lib/terminology.ts",
+      "header_line": 8851
     },
     {
-      "path": "preset_skills/agent-architecture-skill/SKILL.md",
-      "header_line": 14389
+      "path": "src-tauri/build.rs",
+      "header_line": 8859
     },
     {
-      "path": "preset_skills/agent-context-skill/SKILL.md",
-      "header_line": 14490
-    },
-    {
-      "path": "preset_skills/sdd-workflow-skill/SKILL.md",
-      "header_line": 14538
-    },
-    {
-      "path": "src/lib/clipboard.ts",
-      "header_line": 14590
-    },
-    {
-      "path": "src/lib/components/CopyMarkdownButton.svelte",
-      "header_line": 14619
-    },
-    {
-      "path": "src/lib/components/EnvPlanPanel.svelte",
-      "header_line": 14664
-    },
-    {
-      "path": "src/lib/components/MainNavTabs.svelte",
-      "header_line": 14722
-    },
-    {
-      "path": "src/lib/components/MermaidLightbox.svelte",
-      "header_line": 14779
-    },
-    {
-      "path": "src/lib/components/OverviewKnowledgeCard.svelte",
-      "header_line": 14943
-    },
-    {
-      "path": "src/lib/components/SlideDrawer.svelte",
-      "header_line": 15039
-    },
-    {
-      "path": "src/lib/knowledgeDoc.ts",
-      "header_line": 15137
-    },
-    {
-      "path": "src/lib/mergeFreshness.ts",
-      "header_line": 15184
-    },
-    {
-      "path": "src/lib/stores/status.svelte.ts",
-      "header_line": 15230
+      "path": "src-tauri/src/bundled_tools.rs",
+      "header_line": 8887
     },
     {
       "path": "src-tauri/src/commands/assets.rs",
-      "header_line": 15275
+      "header_line": 8895
     },
     {
       "path": "src-tauri/src/commands/env.rs",
-      "header_line": 15329
+      "header_line": 8949
     },
     {
-      "path": "crates/terrain-agent/src/chat/acp.rs",
-      "header_line": 15354
+      "path": "src-tauri/tauri.conf.json",
+      "header_line": 8974
     },
     {
-      "path": "crates/terrain-agent/src/chat/prompt.rs",
-      "header_line": 15372
+      "path": "crates/terrain-agent/src/chat/native.rs",
+      "header_line": 9021
     },
     {
-      "path": "crates/terrain-agent/src/chat/tracker.rs",
-      "header_line": 15392
+      "path": "crates/terrain-core/src/assets/project_meta.rs",
+      "header_line": 9165
     },
     {
-      "path": "crates/terrain-agent/src/tools.rs",
-      "header_line": 15576
+      "path": "crates/terrain-core/src/paths.rs",
+      "header_line": 9322
     },
     {
-      "path": "crates/terrain-cli/Cargo.toml",
-      "header_line": 15697
+      "path": "crates/terrain-core/src/search.rs",
+      "header_line": 9577
     },
     {
-      "path": "crates/terrain-cli/src/cli.rs",
-      "header_line": 15724
+      "path": "crates/terrain-core/src/shell_path.rs",
+      "header_line": 9675
     },
     {
-      "path": "crates/terrain-cli/src/commands/assets.rs",
-      "header_line": 16100
+      "path": "crates/terrain-core/src/source.rs",
+      "header_line": 9807
     },
     {
-      "path": "crates/terrain-cli/src/commands/env.rs",
-      "header_line": 16129
+      "path": "crates/terrain-core/src/usage.rs",
+      "header_line": 9974
     },
     {
-      "path": "crates/terrain-cli/src/commands/tools.rs",
-      "header_line": 16144
+      "path": "crates/terrain-ts-export/src/main.rs",
+      "header_line": 10286
     },
     {
-      "path": "crates/terrain-core/src/assets/litho.rs",
-      "header_line": 16152
+      "path": "env-catalog/agents-md/knowledge-guide.fragment",
+      "header_line": 10306
     },
     {
-      "path": "crates/terrain-core/src/assets/pack_read.rs",
-      "header_line": 16203
+      "path": "preset_skills/terrain-ask-skill/SKILL.md",
+      "header_line": 10333
     },
     {
-      "path": "crates/terrain-core/src/assets/sdd.rs",
-      "header_line": 16335
+      "path": "src/lib/components/HumanDocTree.svelte",
+      "header_line": 10436
     },
     {
-      "path": "crates/terrain-core/src/ingest/git.rs",
-      "header_line": 16444
+      "path": "src/lib/components/MarkdownViewer.svelte",
+      "header_line": 10777
     },
     {
-      "path": "crates/terrain-core/src/ingest/openapi.rs",
-      "header_line": 16475
+      "path": "src/lib/components/OverviewActionBanner.svelte",
+      "header_line": 10963
     },
     {
-      "path": "crates/terrain-core/src/path_portable.rs",
-      "header_line": 16514
+      "path": "src/lib/components/SddSessionSelector.svelte",
+      "header_line": 11087
     },
     {
-      "path": "crates/terrain-core/src/process.rs",
-      "header_line": 16566
+      "path": "src/lib/components/SourcePanel.svelte",
+      "header_line": 11264
     },
     {
-      "path": "crates/terrain-core/src/registry.rs",
-      "header_line": 16586
+      "path": "src/lib/markdown.css",
+      "header_line": 11363
     },
     {
-      "path": "crates/terrain-core/src/repo_walk.rs",
-      "header_line": 16678
-    },
-    {
-      "path": "crates/terrain-core/src/ts_ipc.rs",
-      "header_line": 16714
-    },
-    {
-      "path": "index.html",
-      "header_line": 16720
-    },
-    {
-      "path": "npm/README.md",
-      "header_line": 16737
-    },
-    {
-      "path": "npm/packages/cli/bin/terrain.js",
-      "header_line": 16815
-    },
-    {
-      "path": "npm/packages/cli/package.json",
-      "header_line": 16854
-    },
-    {
-      "path": "npm/packages/rtk/bin/rtk.js",
-      "header_line": 16899
-    },
-    {
-      "path": "npm/packages/rtk/package.json",
-      "header_line": 16938
-    },
-    {
-      "path": "npm/scripts/lib/write-shim.mjs",
-      "header_line": 16983
-    },
-    {
-      "path": "npm/scripts/prepare-binaries.mjs",
-      "header_line": 17034
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/references/phase4-output.md",
-      "header_line": 17132
-    },
-    {
-      "path": "src/lib/askSlashCommands.ts",
-      "header_line": 17332
-    },
-    {
-      "path": "src/lib/assistantSteps.ts",
-      "header_line": 17351
-    },
-    {
-      "path": "src/lib/components/KnowledgeArticle.svelte",
-      "header_line": 17448
-    },
-    {
-      "path": "src/lib/components/ModalShell.svelte",
-      "header_line": 17516
-    },
-    {
-      "path": "src/lib/components/SourceCodeViewer.svelte",
-      "header_line": 17611
-    },
-    {
-      "path": "src/lib/components/SourceDrawer.svelte",
-      "header_line": 17675
-    },
-    {
-      "path": "src/lib/components/TaskProgressBar.svelte",
-      "header_line": 17701
-    },
-    {
-      "path": "src/lib/components/UsageBadge.svelte",
-      "header_line": 17757
-    },
-    {
-      "path": "src/lib/components/UsageBarChart.svelte",
-      "header_line": 17837
-    },
-    {
-      "path": "src/lib/components/UsageDetailTable.svelte",
-      "header_line": 18032
-    },
-    {
-      "path": "src/lib/components/icons/ChevronIcon.svelte",
-      "header_line": 18106
-    },
-    {
-      "path": "src/lib/components/icons/CloseButton.svelte",
-      "header_line": 18136
-    },
-    {
-      "path": "src/lib/components/icons/HelpButton.svelte",
-      "header_line": 18167
-    },
-    {
-      "path": "src/lib/markdownSanitize.ts",
-      "header_line": 18216
-    },
-    {
-      "path": "src/lib/source-code.css",
-      "header_line": 18342
-    },
-    {
-      "path": "src/lib/sourceRef.ts",
-      "header_line": 18492
-    },
-    {
-      "path": "src/lib/stores/chat.svelte.ts",
-      "header_line": 18548
-    },
-    {
-      "path": "src/lib/types.client.ts",
-      "header_line": 18603
-    },
-    {
-      "path": "src/main.ts",
-      "header_line": 18667
+      "path": "src/lib/resolveSource.ts",
+      "header_line": 11613
     },
     {
       "path": "src-tauri/src/commands/knowledge.rs",
-      "header_line": 18675
+      "header_line": 11724
     },
     {
-      "path": "src-tauri/src/commands/payloads.rs",
-      "header_line": 18723
+      "path": "vite.config.ts",
+      "header_line": 11772
     },
     {
-      "path": "src-tauri/src/commands/settings.rs",
-      "header_line": 18827
-    },
-    {
-      "path": "src-tauri/src/main.rs",
-      "header_line": 18873
-    },
-    {
-      "path": "src-tauri/src/tray.rs",
-      "header_line": 18881
-    },
-    {
-      "path": "tsconfig.json",
-      "header_line": 18913
-    },
-    {
-      "path": "LICENSE",
-      "header_line": 18934
-    },
-    {
-      "path": "README_zh.md",
-      "header_line": 18960
-    },
-    {
-      "path": "crates/agent-client-protocol-tokio-patched/CHANGELOG.md",
-      "header_line": 19317
-    },
-    {
-      "path": "crates/agent-client-protocol-tokio-patched/Cargo.toml",
-      "header_line": 19353
-    },
-    {
-      "path": "crates/agent-client-protocol-tokio-patched/Cargo.toml.orig",
-      "header_line": 19460
-    },
-    {
-      "path": "crates/agent-client-protocol-tokio-patched/README.md",
-      "header_line": 19493
-    },
-    {
-      "path": "crates/agent-client-protocol-tokio-patched/src/acp_agent.rs",
-      "header_line": 19558
-    },
-    {
-      "path": "crates/agent-client-protocol-tokio-patched/src/lib.rs",
-      "header_line": 19987
-    },
-    {
-      "path": "crates/terrain-agent/Cargo.toml",
-      "header_line": 20093
-    },
-    {
-      "path": "crates/terrain-agent/bindings/AcpSettings.ts",
-      "header_line": 20138
-    },
-    {
-      "path": "crates/terrain-agent/bindings/AgentContextGenerationResult.ts",
-      "header_line": 20146
-    },
-    {
-      "path": "crates/terrain-agent/bindings/AgentContextMeta.ts",
-      "header_line": 20154
-    },
-    {
-      "path": "crates/terrain-agent/bindings/AgentExecution.ts",
-      "header_line": 20164
-    },
-    {
-      "path": "crates/terrain-agent/bindings/AskKnowledgeReply.ts",
-      "header_line": 20172
-    },
-    {
-      "path": "crates/terrain-agent/bindings/ChatPhase.ts",
-      "header_line": 20180
-    },
-    {
-      "path": "crates/terrain-agent/bindings/ChatToolCallStatus.ts",
-      "header_line": 20188
-    },
-    {
-      "path": "crates/terrain-agent/bindings/CitationKind.ts",
-      "header_line": 20196
-    },
-    {
-      "path": "crates/terrain-agent/bindings/LithoGenerationJob.ts",
-      "header_line": 20204
-    },
-    {
-      "path": "crates/terrain-agent/bindings/LithoGenerationResult.ts",
-      "header_line": 20212
-    },
-    {
-      "path": "crates/terrain-agent/bindings/LithoPlan.ts",
-      "header_line": 20220
-    },
-    {
-      "path": "crates/terrain-agent/bindings/LlmStatus.ts",
-      "header_line": 20228
-    },
-    {
-      "path": "crates/terrain-agent/bindings/ModelSettings.ts",
-      "header_line": 20236
-    },
-    {
-      "path": "crates/terrain-agent/bindings/ProjectInitResult.ts",
-      "header_line": 20244
-    },
-    {
-      "path": "crates/terrain-agent/bindings/ProviderProfile.ts",
-      "header_line": 20252
-    },
-    {
-      "path": "crates/terrain-agent/bindings/SourceCitation.ts",
-      "header_line": 20260
-    },
-    {
-      "path": "crates/terrain-agent/bindings/TokenUsage.ts",
-      "header_line": 20268
-    },
-    {
-      "path": "crates/terrain-agent/bindings/ToolCallRecord.ts",
-      "header_line": 20276
+      "path": "crates/terrain-agent/src/agent_assets.rs",
+      "header_line": 11829
     },
     {
       "path": "crates/terrain-agent/src/agent_context.rs",
-      "header_line": 20286
+      "header_line": 11875
     },
     {
-      "path": "crates/terrain-agent/src/chat/types.rs",
-      "header_line": 20348
+      "path": "crates/terrain-agent/src/chat/acp.rs",
+      "header_line": 11937
     },
     {
-      "path": "crates/terrain-agent/src/compat_tool.rs",
-      "header_line": 20356
-    },
-    {
-      "path": "crates/terrain-agent/src/context_generator.rs",
-      "header_line": 20432
-    },
-    {
-      "path": "crates/terrain-agent/src/lib.rs",
-      "header_line": 20446
+      "path": "crates/terrain-agent/src/chat/tracker.rs",
+      "header_line": 11955
     },
     {
       "path": "crates/terrain-agent/src/sdd.rs",
-      "header_line": 20506
+      "header_line": 12136
     },
     {
-      "path": "crates/terrain-agent/src/throttle.rs",
-      "header_line": 20513
+      "path": "crates/terrain-agent/src/tools.rs",
+      "header_line": 12142
+    },
+    {
+      "path": "crates/terrain-cli/src/cli.rs",
+      "header_line": 12263
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/assets.rs",
+      "header_line": 12639
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/env.rs",
+      "header_line": 12668
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/catalog.rs",
+      "header_line": 12683
+    },
+    {
+      "path": "crates/terrain-core/src/assets/pack_read.rs",
+      "header_line": 12765
+    },
+    {
+      "path": "crates/terrain-core/src/assets/repomix.rs",
+      "header_line": 12897
+    },
+    {
+      "path": "crates/terrain-core/src/assets/sdd.rs",
+      "header_line": 12944
+    },
+    {
+      "path": "crates/terrain-core/src/path_portable.rs",
+      "header_line": 13053
+    },
+    {
+      "path": "crates/terrain-core/src/preset_skills.rs",
+      "header_line": 13105
+    },
+    {
+      "path": "crates/terrain-core/src/registry.rs",
+      "header_line": 13193
+    },
+    {
+      "path": "crates/terrain-core/src/repo_walk.rs",
+      "header_line": 13285
+    },
+    {
+      "path": "env-catalog/agent-tools.template.json",
+      "header_line": 13321
+    },
+    {
+      "path": "env-catalog/agents-md/skills.fragment",
+      "header_line": 13343
+    },
+    {
+      "path": "env-catalog/skills/terrain-knowledge-skill/SKILL.md",
+      "header_line": 13358
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/SKILL.md",
+      "header_line": 13453
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/references/phase3-composition.md",
+      "header_line": 13641
+    },
+    {
+      "path": "src/app.css",
+      "header_line": 14369
+    },
+    {
+      "path": "src/lib/components/CopyMarkdownButton.svelte",
+      "header_line": 14516
+    },
+    {
+      "path": "src/lib/components/EnvPlanPanel.svelte",
+      "header_line": 14561
+    },
+    {
+      "path": "src/lib/components/OverviewKnowledgeCard.svelte",
+      "header_line": 14619
+    },
+    {
+      "path": "src/lib/components/SlideDrawer.svelte",
+      "header_line": 14715
+    },
+    {
+      "path": "src/lib/components/StatusBanner.svelte",
+      "header_line": 14813
+    },
+    {
+      "path": "src/lib/components/ToolCallTrace.svelte",
+      "header_line": 14878
+    },
+    {
+      "path": "src/lib/mergeFreshness.ts",
+      "header_line": 15037
+    },
+    {
+      "path": "src/lib/stores/status.svelte.ts",
+      "header_line": 15083
+    },
+    {
+      "path": "src-tauri/Cargo.toml",
+      "header_line": 15128
+    },
+    {
+      "path": "src-tauri/capabilities/default.json",
+      "header_line": 15171
+    },
+    {
+      "path": "src-tauri/gen/schemas/capabilities.json",
+      "header_line": 15206
+    },
+    {
+      "path": "src-tauri/src/commands/settings.rs",
+      "header_line": 15212
+    },
+    {
+      "path": "crates/terrain-agent/src/chat/prompt.rs",
+      "header_line": 15258
+    },
+    {
+      "path": "crates/terrain-agent/src/chat/types.rs",
+      "header_line": 15278
+    },
+    {
+      "path": "crates/terrain-agent/src/lib.rs",
+      "header_line": 15286
     },
     {
       "path": "crates/terrain-agent/src/tool_schema.rs",
-      "header_line": 20681
-    },
-    {
-      "path": "crates/terrain-agent/src/tool_session_cache.rs",
-      "header_line": 20723
-    },
-    {
-      "path": "crates/terrain-cli/src/commands/knowledge.rs",
-      "header_line": 20780
-    },
-    {
-      "path": "crates/terrain-cli/src/commands/mod.rs",
-      "header_line": 20810
-    },
-    {
-      "path": "crates/terrain-cli/src/util.rs",
-      "header_line": 20818
-    },
-    {
-      "path": "crates/terrain-core/Cargo.toml",
-      "header_line": 20846
-    },
-    {
-      "path": "crates/terrain-core/bindings/AgentContextMeta.ts",
-      "header_line": 20882
-    },
-    {
-      "path": "crates/terrain-core/bindings/AgentContextStatus.ts",
-      "header_line": 20892
-    },
-    {
-      "path": "crates/terrain-core/bindings/AgentEnvStatus.ts",
-      "header_line": 20900
-    },
-    {
-      "path": "crates/terrain-core/bindings/AgentPackMeta.ts",
-      "header_line": 20908
-    },
-    {
-      "path": "crates/terrain-core/bindings/AgentPackReport.ts",
-      "header_line": 20920
-    },
-    {
-      "path": "crates/terrain-core/bindings/AgentPackSummary.ts",
-      "header_line": 20928
-    },
-    {
-      "path": "crates/terrain-core/bindings/AssetGenerator.ts",
-      "header_line": 20936
-    },
-    {
-      "path": "crates/terrain-core/bindings/AssetTrackHealth.ts",
-      "header_line": 20944
-    },
-    {
-      "path": "crates/terrain-core/bindings/CitationKind.ts",
-      "header_line": 20952
-    },
-    {
-      "path": "crates/terrain-core/bindings/DocCounts.ts",
-      "header_line": 20960
-    },
-    {
-      "path": "crates/terrain-core/bindings/DocType.ts",
-      "header_line": 20968
-    },
-    {
-      "path": "crates/terrain-core/bindings/EnvApplyResult.ts",
-      "header_line": 20976
-    },
-    {
-      "path": "crates/terrain-core/bindings/EnvIntegrationStatus.ts",
-      "header_line": 20984
-    },
-    {
-      "path": "crates/terrain-core/bindings/EnvPlan.ts",
-      "header_line": 20992
-    },
-    {
-      "path": "crates/terrain-core/bindings/EnvPlanStep.ts",
-      "header_line": 21000
-    },
-    {
-      "path": "crates/terrain-core/bindings/EnvStatus.ts",
-      "header_line": 21008
-    },
-    {
-      "path": "crates/terrain-core/bindings/FreshnessDriftFactor.ts",
-      "header_line": 21016
-    },
-    {
-      "path": "crates/terrain-core/bindings/FreshnessSummary.ts",
-      "header_line": 21026
-    },
-    {
-      "path": "crates/terrain-core/bindings/HumanDocEntry.ts",
-      "header_line": 21034
-    },
-    {
-      "path": "crates/terrain-core/bindings/IpcSourceSlice.ts",
-      "header_line": 21044
-    },
-    {
-      "path": "crates/terrain-core/bindings/LithoPlan.ts",
-      "header_line": 21052
-    },
-    {
-      "path": "crates/terrain-core/bindings/LithoStatus.ts",
-      "header_line": 21060
-    },
-    {
-      "path": "crates/terrain-core/bindings/ProjectOverview.ts",
-      "header_line": 21068
-    },
-    {
-      "path": "crates/terrain-core/bindings/ProjectSummary.ts",
-      "header_line": 21078
-    },
-    {
-      "path": "crates/terrain-core/bindings/QuickRefreshResult.ts",
-      "header_line": 21086
-    },
-    {
-      "path": "crates/terrain-core/bindings/ScanReport.ts",
-      "header_line": 21094
-    },
-    {
-      "path": "crates/terrain-core/bindings/SddPhase.ts",
-      "header_line": 21102
-    },
-    {
-      "path": "crates/terrain-core/bindings/SddPhaseInfo.ts",
-      "header_line": 21110
-    },
-    {
-      "path": "crates/terrain-core/bindings/SddPhaseResult.ts",
-      "header_line": 21118
-    },
-    {
-      "path": "crates/terrain-core/bindings/SddSessionInfo.ts",
-      "header_line": 21126
-    },
-    {
-      "path": "crates/terrain-core/bindings/SddStatus.ts",
-      "header_line": 21134
-    },
-    {
-      "path": "crates/terrain-core/bindings/SearchHit.ts",
-      "header_line": 21142
-    },
-    {
-      "path": "crates/terrain-core/bindings/SourceCitation.ts",
-      "header_line": 21150
-    },
-    {
-      "path": "crates/terrain-core/bindings/StaleProjectSummary.ts",
-      "header_line": 21158
-    },
-    {
-      "path": "crates/terrain-core/bindings/TokenHeavyFile.ts",
-      "header_line": 21166
-    },
-    {
-      "path": "crates/terrain-core/src/assets/ask.rs",
-      "header_line": 21174
-    },
-    {
-      "path": "crates/terrain-core/src/assets/context_layers.rs",
-      "header_line": 21305
-    },
-    {
-      "path": "crates/terrain-core/src/assets/env/agents_md.rs",
-      "header_line": 21374
-    },
-    {
-      "path": "crates/terrain-core/src/assets/env/mod.rs",
-      "header_line": 21394
-    },
-    {
-      "path": "crates/terrain-core/src/assets/query.rs",
-      "header_line": 21413
-    },
-    {
-      "path": "crates/terrain-core/src/citations.rs",
-      "header_line": 21458
-    },
-    {
-      "path": "crates/terrain-core/src/doc.rs",
-      "header_line": 21482
-    },
-    {
-      "path": "crates/terrain-core/src/error.rs",
-      "header_line": 21538
-    },
-    {
-      "path": "crates/terrain-core/src/human.rs",
-      "header_line": 21621
-    },
-    {
-      "path": "crates/terrain-core/src/model_text.rs",
-      "header_line": 21653
-    },
-    {
-      "path": "crates/terrain-core/src/platform.rs",
-      "header_line": 21749
-    },
-    {
-      "path": "crates/terrain-core/src/render.rs",
-      "header_line": 21797
-    },
-    {
-      "path": "crates/terrain-ts-export/Cargo.toml",
-      "header_line": 21842
-    },
-    {
-      "path": "npm/package.json",
-      "header_line": 21864
-    },
-    {
-      "path": "npm/packages/cli/README.md",
-      "header_line": 21886
-    },
-    {
-      "path": "npm/packages/cli-darwin-arm64/package.json",
-      "header_line": 21918
-    },
-    {
-      "path": "npm/packages/cli-win32-x64/bin/.gitkeep",
-      "header_line": 21952
-    },
-    {
-      "path": "npm/packages/cli-win32-x64/package.json",
-      "header_line": 21958
-    },
-    {
-      "path": "npm/packages/rtk/README.md",
-      "header_line": 21992
-    },
-    {
-      "path": "npm/packages/rtk-darwin-arm64/package.json",
-      "header_line": 22023
-    },
-    {
-      "path": "npm/packages/rtk-win32-x64/bin/.gitkeep",
-      "header_line": 22057
-    },
-    {
-      "path": "npm/packages/rtk-win32-x64/package.json",
-      "header_line": 22063
-    },
-    {
-      "path": "npm/scripts/lib/platform.mjs",
-      "header_line": 22097
-    },
-    {
-      "path": "npm/scripts/sync-version.mjs",
-      "header_line": 22111
-    },
-    {
-      "path": "npm/scripts/write-shims.mjs",
-      "header_line": 22146
-    },
-    {
-      "path": "packages/codegraph/darwin-arm64/.gitkeep",
-      "header_line": 22171
-    },
-    {
-      "path": "packages/codegraph/win32-x64/.gitkeep",
-      "header_line": 22177
-    },
-    {
-      "path": "packages/rtk/darwin-arm64/.gitkeep",
-      "header_line": 22183
-    },
-    {
-      "path": "packages/rtk/win32-x64/.gitkeep",
-      "header_line": 22189
-    },
-    {
-      "path": "packages/terrain/darwin-arm64/.gitkeep",
-      "header_line": 22195
-    },
-    {
-      "path": "packages/terrain/win32-x64/.gitkeep",
-      "header_line": 22201
-    },
-    {
-      "path": "preset_skills/agent-architecture-skill/terrain-meta.example.json",
-      "header_line": 22207
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/_meta.json",
-      "header_line": 22239
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/references/doc-templates.md",
-      "header_line": 22250
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/references/phase1-preprocessing.md",
-      "header_line": 22346
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/references/phase2-research.md",
-      "header_line": 22537
-    },
-    {
-      "path": "preset_skills/litho-documents-skill/skill-card.md",
-      "header_line": 23083
-    },
-    {
-      "path": "rust-toolchain.toml",
-      "header_line": 23134
-    },
-    {
-      "path": "scripts/cross-windows-terrain.sh",
-      "header_line": 23142
-    },
-    {
-      "path": "src/UsageWindow.svelte",
-      "header_line": 23185
-    },
-    {
-      "path": "src/lib/agentExecution.ts",
-      "header_line": 23195
-    },
-    {
-      "path": "src/lib/askSession.ts",
-      "header_line": 23214
-    },
-    {
-      "path": "src/lib/askShareImage.ts",
-      "header_line": 23328
-    },
-    {
-      "path": "src/lib/assistantMarkdown.ts",
-      "header_line": 23399
-    },
-    {
-      "path": "src/lib/components/AskCompletionNotice.svelte",
-      "header_line": 23422
-    },
-    {
-      "path": "src/lib/components/AskSessionSelector.svelte",
-      "header_line": 23520
-    },
-    {
-      "path": "src/lib/components/CopyImageButton.svelte",
-      "header_line": 23667
-    },
-    {
-      "path": "src/lib/components/UsageMonitor.svelte",
-      "header_line": 23717
-    },
-    {
-      "path": "src/lib/constants.ts",
-      "header_line": 23773
-    },
-    {
-      "path": "src/lib/highlightSetup.ts",
-      "header_line": 23784
-    },
-    {
-      "path": "src/lib/ime.ts",
-      "header_line": 23872
-    },
-    {
-      "path": "src/lib/markdownToc.ts",
-      "header_line": 23884
-    },
-    {
-      "path": "src/lib/mermaid-utils.ts",
-      "header_line": 23979
-    },
-    {
-      "path": "src/lib/mermaidLoader.ts",
-      "header_line": 24054
-    },
-    {
-      "path": "src/lib/overlayMotion.ts",
-      "header_line": 24082
-    },
-    {
-      "path": "src/lib/sourceLanguage.ts",
-      "header_line": 24109
-    },
-    {
-      "path": "src/lib/stores/project.svelte.ts",
-      "header_line": 24125
-    },
-    {
-      "path": "src/lib/stores/usageDisplay.svelte.ts",
-      "header_line": 24163
-    },
-    {
-      "path": "src/lib/timeFormat.ts",
-      "header_line": 24188
-    },
-    {
-      "path": "src-tauri/binaries/.gitkeep",
-      "header_line": 24209
-    },
-    {
-      "path": "src-tauri/gen/schemas/acl-manifests.json",
-      "header_line": 24215
-    },
-    {
-      "path": "src-tauri/gen/schemas/desktop-schema.json",
-      "header_line": 24221
-    },
-    {
-      "path": "src-tauri/gen/schemas/macOS-schema.json",
-      "header_line": 26904
-    },
-    {
-      "path": "src-tauri/gen/schemas/windows-schema.json",
-      "header_line": 29587
-    },
-    {
-      "path": "src-tauri/icons/android/mipmap-anydpi-v26/ic_launcher.xml",
-      "header_line": 32270
-    },
-    {
-      "path": "src-tauri/icons/android/values/ic_launcher_background.xml",
-      "header_line": 32280
-    },
-    {
-      "path": "src-tauri/src/commands/usage.rs",
-      "header_line": 32289
-    },
-    {
-      "path": "src-tauri/src/preset_skills.rs",
-      "header_line": 32304
-    },
-    {
-      "path": "svelte.config.js",
-      "header_line": 32312
-    },
-    {
-      "path": "crates/terrain-agent/src/runtime.rs",
-      "header_line": 32322
-    },
-    {
-      "path": "crates/terrain-agent/src/workflows/ask.rs",
-      "header_line": 32392
+      "header_line": 15346
     },
     {
       "path": "crates/terrain-agent/src/workflows/init.rs",
-      "header_line": 32421
-    },
-    {
-      "path": "crates/terrain-agent/src/workflows/mod.rs",
-      "header_line": 32450
-    },
-    {
-      "path": "crates/terrain-agent/src/workflows/quick_refresh.rs",
-      "header_line": 32468
+      "header_line": 15388
     },
     {
       "path": "crates/terrain-agent/src/workflows/sdd.rs",
-      "header_line": 32482
+      "header_line": 15417
+    },
+    {
+      "path": "crates/terrain-cli/Cargo.toml",
+      "header_line": 15475
     },
     {
       "path": "crates/terrain-cli/src/commands/ask.rs",
-      "header_line": 32540
+      "header_line": 15502
     },
     {
-      "path": "crates/terrain-cli/src/commands/init.rs",
-      "header_line": 32552
+      "path": "crates/terrain-cli/src/commands/mod.rs",
+      "header_line": 15514
     },
     {
-      "path": "crates/terrain-cli/src/commands/project.rs",
-      "header_line": 32574
+      "path": "crates/terrain-cli/src/commands/tools.rs",
+      "header_line": 15522
     },
     {
-      "path": "crates/terrain-cli/src/commands/sdd.rs",
-      "header_line": 32582
+      "path": "crates/terrain-cli/src/util.rs",
+      "header_line": 15530
     },
     {
-      "path": "crates/terrain-cli/src/commands/settings.rs",
-      "header_line": 32594
+      "path": "crates/terrain-core/src/assets/ask.rs",
+      "header_line": 15558
     },
     {
-      "path": "crates/terrain-cli/src/commands/source.rs",
-      "header_line": 32602
+      "path": "crates/terrain-core/src/assets/env/mod.rs",
+      "header_line": 15689
     },
     {
-      "path": "crates/terrain-cli/src/commands/usage.rs",
-      "header_line": 32610
+      "path": "crates/terrain-core/src/assets/litho.rs",
+      "header_line": 15708
     },
     {
-      "path": "crates/terrain-core/src/integrations/mod.rs",
-      "header_line": 32618
+      "path": "crates/terrain-core/src/doc.rs",
+      "header_line": 15759
     },
     {
-      "path": "crates/terrain-core/src/ipc/chat.rs",
-      "header_line": 32646
+      "path": "crates/terrain-core/src/error.rs",
+      "header_line": 15815
     },
     {
-      "path": "crates/terrain-core/src/ipc/mod.rs",
-      "header_line": 32721
+      "path": "crates/terrain-core/src/ingest/git.rs",
+      "header_line": 15898
     },
     {
-      "path": "crates/terrain-core/src/ipc/workflows.rs",
-      "header_line": 32736
+      "path": "crates/terrain-core/src/ingest/openapi.rs",
+      "header_line": 15929
     },
     {
-      "path": "crates/terrain-core/src/progress.rs",
-      "header_line": 32790
+      "path": "crates/terrain-core/src/model_text.rs",
+      "header_line": 15968
     },
     {
-      "path": "crates/terrain-core/src/prompts/mod.rs",
-      "header_line": 32844
+      "path": "crates/terrain-core/src/platform.rs",
+      "header_line": 16064
     },
     {
-      "path": "crates/terrain-core/src/repo.rs",
-      "header_line": 32853
+      "path": "crates/terrain-core/src/process.rs",
+      "header_line": 16112
     },
     {
-      "path": "crates/terrain-core/src/sessions/mod.rs",
-      "header_line": 32861
+      "path": "crates/terrain-core/src/ts_ipc.rs",
+      "header_line": 16132
     },
     {
-      "path": "src-tauri/src/commands/sessions.rs",
-      "header_line": 32873
+      "path": "npm/README.md",
+      "header_line": 16138
+    },
+    {
+      "path": "npm/packages/cli/bin/terrain.js",
+      "header_line": 16216
+    },
+    {
+      "path": "npm/packages/cli/package.json",
+      "header_line": 16255
+    },
+    {
+      "path": "npm/packages/rtk/bin/rtk.js",
+      "header_line": 16300
+    },
+    {
+      "path": "npm/packages/rtk/package.json",
+      "header_line": 16339
+    },
+    {
+      "path": "npm/scripts/lib/write-shim.mjs",
+      "header_line": 16384
+    },
+    {
+      "path": "npm/scripts/prepare-binaries.mjs",
+      "header_line": 16435
+    },
+    {
+      "path": "preset_skills/agent-architecture-skill/SKILL.md",
+      "header_line": 16533
+    },
+    {
+      "path": "preset_skills/agent-context-skill/SKILL.md",
+      "header_line": 16634
+    },
+    {
+      "path": "preset_skills/sdd-workflow-skill/SKILL.md",
+      "header_line": 16682
+    },
+    {
+      "path": "src/lib/askSlashCommands.ts",
+      "header_line": 16734
+    },
+    {
+      "path": "src/lib/clipboard.ts",
+      "header_line": 16753
+    },
+    {
+      "path": "src/lib/components/KnowledgeArticle.svelte",
+      "header_line": 16782
+    },
+    {
+      "path": "src/lib/components/MainNavTabs.svelte",
+      "header_line": 16850
+    },
+    {
+      "path": "src/lib/components/MermaidLightbox.svelte",
+      "header_line": 16907
+    },
+    {
+      "path": "src/lib/components/ModalShell.svelte",
+      "header_line": 17071
+    },
+    {
+      "path": "src/lib/components/SourceDrawer.svelte",
+      "header_line": 17166
+    },
+    {
+      "path": "src/lib/components/UsageBadge.svelte",
+      "header_line": 17192
+    },
+    {
+      "path": "src/lib/components/UsageBarChart.svelte",
+      "header_line": 17272
+    },
+    {
+      "path": "src/lib/components/UsageDetailTable.svelte",
+      "header_line": 17467
+    },
+    {
+      "path": "src/lib/components/icons/ChevronIcon.svelte",
+      "header_line": 17541
+    },
+    {
+      "path": "src/lib/components/icons/CloseButton.svelte",
+      "header_line": 17571
+    },
+    {
+      "path": "src/lib/components/icons/HelpButton.svelte",
+      "header_line": 17602
+    },
+    {
+      "path": "src/lib/knowledgeDoc.ts",
+      "header_line": 17651
+    },
+    {
+      "path": "src/lib/sourceRef.ts",
+      "header_line": 17698
+    },
+    {
+      "path": "src/lib/stores/chat.svelte.ts",
+      "header_line": 17754
+    },
+    {
+      "path": "src/lib/types.client.ts",
+      "header_line": 17809
+    },
+    {
+      "path": "src-tauri/src/commands/payloads.rs",
+      "header_line": 17873
     },
     {
       "path": "src-tauri/src/commands/workflows.rs",
-      "header_line": 32980
+      "header_line": 17977
+    },
+    {
+      "path": "src-tauri/src/tray.rs",
+      "header_line": 18008
+    },
+    {
+      "path": "README_zh.md",
+      "header_line": 18040
+    },
+    {
+      "path": "crates/agent-client-protocol-tokio-patched/CHANGELOG.md",
+      "header_line": 18397
+    },
+    {
+      "path": "crates/agent-client-protocol-tokio-patched/Cargo.toml",
+      "header_line": 18433
+    },
+    {
+      "path": "crates/agent-client-protocol-tokio-patched/Cargo.toml.orig",
+      "header_line": 18540
+    },
+    {
+      "path": "crates/agent-client-protocol-tokio-patched/README.md",
+      "header_line": 18573
+    },
+    {
+      "path": "crates/agent-client-protocol-tokio-patched/src/acp_agent.rs",
+      "header_line": 18638
+    },
+    {
+      "path": "crates/agent-client-protocol-tokio-patched/src/lib.rs",
+      "header_line": 19067
+    },
+    {
+      "path": "crates/terrain-agent/Cargo.toml",
+      "header_line": 19173
+    },
+    {
+      "path": "crates/terrain-agent/bindings/AcpSettings.ts",
+      "header_line": 19218
+    },
+    {
+      "path": "crates/terrain-agent/bindings/AgentContextGenerationResult.ts",
+      "header_line": 19226
+    },
+    {
+      "path": "crates/terrain-agent/bindings/AgentContextMeta.ts",
+      "header_line": 19234
+    },
+    {
+      "path": "crates/terrain-agent/bindings/AgentExecution.ts",
+      "header_line": 19244
+    },
+    {
+      "path": "crates/terrain-agent/bindings/AskKnowledgeReply.ts",
+      "header_line": 19252
+    },
+    {
+      "path": "crates/terrain-agent/bindings/ChatPhase.ts",
+      "header_line": 19260
+    },
+    {
+      "path": "crates/terrain-agent/bindings/ChatToolCallStatus.ts",
+      "header_line": 19268
+    },
+    {
+      "path": "crates/terrain-agent/bindings/CitationKind.ts",
+      "header_line": 19276
+    },
+    {
+      "path": "crates/terrain-agent/bindings/LithoGenerationJob.ts",
+      "header_line": 19284
+    },
+    {
+      "path": "crates/terrain-agent/bindings/LithoGenerationResult.ts",
+      "header_line": 19292
+    },
+    {
+      "path": "crates/terrain-agent/bindings/LithoPlan.ts",
+      "header_line": 19300
+    },
+    {
+      "path": "crates/terrain-agent/bindings/LlmStatus.ts",
+      "header_line": 19308
+    },
+    {
+      "path": "crates/terrain-agent/bindings/ModelSettings.ts",
+      "header_line": 19316
+    },
+    {
+      "path": "crates/terrain-agent/bindings/ProjectInitResult.ts",
+      "header_line": 19324
+    },
+    {
+      "path": "crates/terrain-agent/bindings/ProviderProfile.ts",
+      "header_line": 19332
+    },
+    {
+      "path": "crates/terrain-agent/bindings/SourceCitation.ts",
+      "header_line": 19340
+    },
+    {
+      "path": "crates/terrain-agent/bindings/TokenUsage.ts",
+      "header_line": 19348
+    },
+    {
+      "path": "crates/terrain-agent/bindings/ToolCallRecord.ts",
+      "header_line": 19356
+    },
+    {
+      "path": "crates/terrain-agent/src/compat_tool.rs",
+      "header_line": 19366
+    },
+    {
+      "path": "crates/terrain-agent/src/context_generator.rs",
+      "header_line": 19442
+    },
+    {
+      "path": "crates/terrain-agent/src/runtime.rs",
+      "header_line": 19456
+    },
+    {
+      "path": "crates/terrain-agent/src/throttle.rs",
+      "header_line": 19526
+    },
+    {
+      "path": "crates/terrain-agent/src/tool_session_cache.rs",
+      "header_line": 19694
+    },
+    {
+      "path": "crates/terrain-agent/src/workflows/ask.rs",
+      "header_line": 19751
+    },
+    {
+      "path": "crates/terrain-agent/src/workflows/mod.rs",
+      "header_line": 19780
+    },
+    {
+      "path": "crates/terrain-agent/src/workflows/quick_refresh.rs",
+      "header_line": 19798
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/init.rs",
+      "header_line": 19812
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/knowledge.rs",
+      "header_line": 19834
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/project.rs",
+      "header_line": 19864
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/sdd.rs",
+      "header_line": 19872
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/settings.rs",
+      "header_line": 19884
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/source.rs",
+      "header_line": 19892
+    },
+    {
+      "path": "crates/terrain-cli/src/commands/usage.rs",
+      "header_line": 19900
+    },
+    {
+      "path": "crates/terrain-core/Cargo.toml",
+      "header_line": 19908
+    },
+    {
+      "path": "crates/terrain-core/bindings/AgentContextMeta.ts",
+      "header_line": 19944
+    },
+    {
+      "path": "crates/terrain-core/bindings/AgentContextStatus.ts",
+      "header_line": 19954
+    },
+    {
+      "path": "crates/terrain-core/bindings/AgentEnvStatus.ts",
+      "header_line": 19962
+    },
+    {
+      "path": "crates/terrain-core/bindings/AgentPackMeta.ts",
+      "header_line": 19970
+    },
+    {
+      "path": "crates/terrain-core/bindings/AgentPackReport.ts",
+      "header_line": 19982
+    },
+    {
+      "path": "crates/terrain-core/bindings/AgentPackSummary.ts",
+      "header_line": 19990
+    },
+    {
+      "path": "crates/terrain-core/bindings/AssetGenerator.ts",
+      "header_line": 19998
+    },
+    {
+      "path": "crates/terrain-core/bindings/AssetTrackHealth.ts",
+      "header_line": 20006
+    },
+    {
+      "path": "crates/terrain-core/bindings/CitationKind.ts",
+      "header_line": 20014
+    },
+    {
+      "path": "crates/terrain-core/bindings/DocCounts.ts",
+      "header_line": 20022
+    },
+    {
+      "path": "crates/terrain-core/bindings/DocType.ts",
+      "header_line": 20030
+    },
+    {
+      "path": "crates/terrain-core/bindings/EnvApplyResult.ts",
+      "header_line": 20038
+    },
+    {
+      "path": "crates/terrain-core/bindings/EnvIntegrationStatus.ts",
+      "header_line": 20046
+    },
+    {
+      "path": "crates/terrain-core/bindings/EnvPlan.ts",
+      "header_line": 20054
+    },
+    {
+      "path": "crates/terrain-core/bindings/EnvPlanStep.ts",
+      "header_line": 20062
+    },
+    {
+      "path": "crates/terrain-core/bindings/EnvStatus.ts",
+      "header_line": 20070
+    },
+    {
+      "path": "crates/terrain-core/bindings/FreshnessDriftFactor.ts",
+      "header_line": 20078
+    },
+    {
+      "path": "crates/terrain-core/bindings/FreshnessSummary.ts",
+      "header_line": 20088
+    },
+    {
+      "path": "crates/terrain-core/bindings/HumanDocEntry.ts",
+      "header_line": 20096
+    },
+    {
+      "path": "crates/terrain-core/bindings/IpcSourceSlice.ts",
+      "header_line": 20106
+    },
+    {
+      "path": "crates/terrain-core/bindings/LithoPlan.ts",
+      "header_line": 20114
+    },
+    {
+      "path": "crates/terrain-core/bindings/LithoStatus.ts",
+      "header_line": 20122
+    },
+    {
+      "path": "crates/terrain-core/bindings/ProjectOverview.ts",
+      "header_line": 20130
+    },
+    {
+      "path": "crates/terrain-core/bindings/ProjectSummary.ts",
+      "header_line": 20140
+    },
+    {
+      "path": "crates/terrain-core/bindings/QuickRefreshResult.ts",
+      "header_line": 20148
+    },
+    {
+      "path": "crates/terrain-core/bindings/ScanReport.ts",
+      "header_line": 20156
+    },
+    {
+      "path": "crates/terrain-core/bindings/SddPhase.ts",
+      "header_line": 20164
+    },
+    {
+      "path": "crates/terrain-core/bindings/SddPhaseInfo.ts",
+      "header_line": 20172
+    },
+    {
+      "path": "crates/terrain-core/bindings/SddPhaseResult.ts",
+      "header_line": 20180
+    },
+    {
+      "path": "crates/terrain-core/bindings/SddSessionInfo.ts",
+      "header_line": 20188
+    },
+    {
+      "path": "crates/terrain-core/bindings/SddStatus.ts",
+      "header_line": 20196
+    },
+    {
+      "path": "crates/terrain-core/bindings/SearchHit.ts",
+      "header_line": 20204
+    },
+    {
+      "path": "crates/terrain-core/bindings/SourceCitation.ts",
+      "header_line": 20212
+    },
+    {
+      "path": "crates/terrain-core/bindings/StaleProjectSummary.ts",
+      "header_line": 20220
+    },
+    {
+      "path": "crates/terrain-core/bindings/TokenHeavyFile.ts",
+      "header_line": 20228
+    },
+    {
+      "path": "crates/terrain-core/src/assets/context_layers.rs",
+      "header_line": 20236
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/agents_md.rs",
+      "header_line": 20305
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/status/cache.rs",
+      "header_line": 20325
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/status/mod.rs",
+      "header_line": 20364
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/status/plan.rs",
+      "header_line": 20380
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/status/probe.rs",
+      "header_line": 20454
+    },
+    {
+      "path": "crates/terrain-core/src/assets/env/status/types.rs",
+      "header_line": 20506
+    },
+    {
+      "path": "crates/terrain-core/src/assets/query.rs",
+      "header_line": 20553
+    },
+    {
+      "path": "crates/terrain-core/src/citations.rs",
+      "header_line": 20598
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/codegraph.rs",
+      "header_line": 20622
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/compute.rs",
+      "header_line": 20680
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/drift_factors.rs",
+      "header_line": 20708
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/git.rs",
+      "header_line": 20746
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/ledger.rs",
+      "header_line": 20786
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/mod.rs",
+      "header_line": 20818
+    },
+    {
+      "path": "crates/terrain-core/src/freshness/scoring.rs",
+      "header_line": 20826
+    },
+    {
+      "path": "crates/terrain-core/src/human.rs",
+      "header_line": 20864
+    },
+    {
+      "path": "crates/terrain-core/src/integrations/mod.rs",
+      "header_line": 20896
+    },
+    {
+      "path": "crates/terrain-core/src/ipc/chat.rs",
+      "header_line": 20924
+    },
+    {
+      "path": "crates/terrain-core/src/ipc/mod.rs",
+      "header_line": 20999
+    },
+    {
+      "path": "crates/terrain-core/src/ipc/workflows.rs",
+      "header_line": 21014
+    },
+    {
+      "path": "crates/terrain-core/src/progress.rs",
+      "header_line": 21068
+    },
+    {
+      "path": "crates/terrain-core/src/prompts/mod.rs",
+      "header_line": 21122
+    },
+    {
+      "path": "crates/terrain-core/src/render.rs",
+      "header_line": 21131
+    },
+    {
+      "path": "crates/terrain-core/src/repo.rs",
+      "header_line": 21176
+    },
+    {
+      "path": "crates/terrain-core/src/schema/asset.rs",
+      "header_line": 21184
+    },
+    {
+      "path": "crates/terrain-core/src/schema/citation.rs",
+      "header_line": 21251
+    },
+    {
+      "path": "crates/terrain-core/src/schema/doc.rs",
+      "header_line": 21304
+    },
+    {
+      "path": "crates/terrain-core/src/schema/freshness.rs",
+      "header_line": 21419
+    },
+    {
+      "path": "crates/terrain-core/src/schema/mod.rs",
+      "header_line": 21526
+    },
+    {
+      "path": "crates/terrain-core/src/schema/project.rs",
+      "header_line": 21554
+    },
+    {
+      "path": "crates/terrain-core/src/schema/sdd.rs",
+      "header_line": 21659
+    },
+    {
+      "path": "crates/terrain-core/src/sessions/mod.rs",
+      "header_line": 21779
+    },
+    {
+      "path": "crates/terrain-ts-export/Cargo.toml",
+      "header_line": 21791
+    },
+    {
+      "path": "index.html",
+      "header_line": 21813
+    },
+    {
+      "path": "npm/package.json",
+      "header_line": 21830
+    },
+    {
+      "path": "npm/packages/cli/README.md",
+      "header_line": 21852
+    },
+    {
+      "path": "npm/packages/cli-darwin-arm64/package.json",
+      "header_line": 21884
+    },
+    {
+      "path": "npm/packages/cli-win32-x64/bin/.gitkeep",
+      "header_line": 21918
+    },
+    {
+      "path": "npm/packages/cli-win32-x64/package.json",
+      "header_line": 21924
+    },
+    {
+      "path": "npm/packages/rtk/README.md",
+      "header_line": 21958
+    },
+    {
+      "path": "npm/packages/rtk-darwin-arm64/package.json",
+      "header_line": 21989
+    },
+    {
+      "path": "npm/packages/rtk-win32-x64/bin/.gitkeep",
+      "header_line": 22023
+    },
+    {
+      "path": "npm/packages/rtk-win32-x64/package.json",
+      "header_line": 22029
+    },
+    {
+      "path": "npm/scripts/lib/platform.mjs",
+      "header_line": 22063
+    },
+    {
+      "path": "npm/scripts/sync-version.mjs",
+      "header_line": 22077
+    },
+    {
+      "path": "npm/scripts/write-shims.mjs",
+      "header_line": 22112
+    },
+    {
+      "path": "packages/codegraph/darwin-arm64/.gitkeep",
+      "header_line": 22137
+    },
+    {
+      "path": "packages/codegraph/win32-x64/.gitkeep",
+      "header_line": 22143
+    },
+    {
+      "path": "packages/rtk/darwin-arm64/.gitkeep",
+      "header_line": 22149
+    },
+    {
+      "path": "packages/rtk/win32-x64/.gitkeep",
+      "header_line": 22155
+    },
+    {
+      "path": "packages/terrain/darwin-arm64/.gitkeep",
+      "header_line": 22161
+    },
+    {
+      "path": "packages/terrain/win32-x64/.gitkeep",
+      "header_line": 22167
+    },
+    {
+      "path": "preset_skills/agent-architecture-skill/terrain-meta.example.json",
+      "header_line": 22173
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/references/phase4-output.md",
+      "header_line": 22205
+    },
+    {
+      "path": "scripts/cross-windows-terrain.sh",
+      "header_line": 22405
+    },
+    {
+      "path": "src/UsageWindow.svelte",
+      "header_line": 22448
+    },
+    {
+      "path": "src/lib/agentExecution.ts",
+      "header_line": 22458
+    },
+    {
+      "path": "src/lib/askSession.ts",
+      "header_line": 22477
+    },
+    {
+      "path": "src/lib/askShareImage.ts",
+      "header_line": 22591
+    },
+    {
+      "path": "src/lib/assistantMarkdown.ts",
+      "header_line": 22662
+    },
+    {
+      "path": "src/lib/assistantSteps.ts",
+      "header_line": 22685
+    },
+    {
+      "path": "src/lib/components/AskCompletionNotice.svelte",
+      "header_line": 22782
+    },
+    {
+      "path": "src/lib/components/AskSessionSelector.svelte",
+      "header_line": 22880
+    },
+    {
+      "path": "src/lib/components/CopyImageButton.svelte",
+      "header_line": 23027
+    },
+    {
+      "path": "src/lib/components/SourceCodeViewer.svelte",
+      "header_line": 23077
+    },
+    {
+      "path": "src/lib/components/TaskProgressBar.svelte",
+      "header_line": 23141
+    },
+    {
+      "path": "src/lib/components/UsageMonitor.svelte",
+      "header_line": 23197
+    },
+    {
+      "path": "src/lib/markdownSanitize.ts",
+      "header_line": 23253
+    },
+    {
+      "path": "src/lib/markdownToc.ts",
+      "header_line": 23379
+    },
+    {
+      "path": "src/lib/mermaidLoader.ts",
+      "header_line": 23474
+    },
+    {
+      "path": "src/lib/overlayMotion.ts",
+      "header_line": 23502
+    },
+    {
+      "path": "src/lib/source-code.css",
+      "header_line": 23529
+    },
+    {
+      "path": "src/lib/stores/project.svelte.ts",
+      "header_line": 23679
+    },
+    {
+      "path": "src/lib/stores/usageDisplay.svelte.ts",
+      "header_line": 23717
+    },
+    {
+      "path": "src/main.ts",
+      "header_line": 23742
+    },
+    {
+      "path": "src-tauri/binaries/.gitkeep",
+      "header_line": 23750
+    },
+    {
+      "path": "src-tauri/gen/schemas/windows-schema.json",
+      "header_line": 23756
+    },
+    {
+      "path": "src-tauri/icons/android/mipmap-anydpi-v26/ic_launcher.xml",
+      "header_line": 26439
+    },
+    {
+      "path": "src-tauri/icons/android/values/ic_launcher_background.xml",
+      "header_line": 26449
+    },
+    {
+      "path": "src-tauri/src/commands/sessions.rs",
+      "header_line": 26458
+    },
+    {
+      "path": "src-tauri/src/commands/usage.rs",
+      "header_line": 26565
+    },
+    {
+      "path": "src-tauri/src/commands/util.rs",
+      "header_line": 26580
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "header_line": 26592
+    },
+    {
+      "path": "src-tauri/src/preset_skills.rs",
+      "header_line": 26600
+    },
+    {
+      "path": "tsconfig.json",
+      "header_line": 26608
+    },
+    {
+      "path": "LICENSE",
+      "header_line": 26629
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/_meta.json",
+      "header_line": 26655
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/references/doc-templates.md",
+      "header_line": 26666
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/references/phase1-preprocessing.md",
+      "header_line": 26762
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/references/phase2-research.md",
+      "header_line": 26953
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/skill-card.md",
+      "header_line": 27499
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "header_line": 27550
+    },
+    {
+      "path": "src/lib/constants.ts",
+      "header_line": 27558
+    },
+    {
+      "path": "src/lib/highlightSetup.ts",
+      "header_line": 27569
+    },
+    {
+      "path": "src/lib/ime.ts",
+      "header_line": 27657
+    },
+    {
+      "path": "src/lib/mermaid-utils.ts",
+      "header_line": 27669
+    },
+    {
+      "path": "src/lib/sourceLanguage.ts",
+      "header_line": 27744
+    },
+    {
+      "path": "src/lib/timeFormat.ts",
+      "header_line": 27760
+    },
+    {
+      "path": "src-tauri/gen/schemas/acl-manifests.json",
+      "header_line": 27781
+    },
+    {
+      "path": "src-tauri/gen/schemas/desktop-schema.json",
+      "header_line": 27787
+    },
+    {
+      "path": "src-tauri/gen/schemas/macOS-schema.json",
+      "header_line": 30470
+    },
+    {
+      "path": "svelte.config.js",
+      "header_line": 33153
     }
   ]
 }

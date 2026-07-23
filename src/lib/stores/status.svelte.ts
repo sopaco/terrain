@@ -5,10 +5,14 @@ export const STATUS_AUTO_DISMISS_MS = 3_000;
 const DEFAULT_MESSAGE = "就绪";
 const DEFAULT_KIND: StatusKind = "idle";
 
-export const status = $state({
+export const status = $state<{
+  message: string;
+  kind: StatusKind;
+  detail: string | null;
+}>({
   message: DEFAULT_MESSAGE,
   kind: DEFAULT_KIND,
-  detail: null as string | null,
+  detail: null,
 });
 
 let dismissTimer: ReturnType<typeof setTimeout> | undefined;
