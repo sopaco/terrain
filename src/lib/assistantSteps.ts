@@ -13,6 +13,47 @@ export function appendStepText(steps: AssistantStep[], chunk: string): Assistant
   return next;
 }
 
+export function appendStepThinking(steps: AssistantStep[], chunk: string): AssistantStep[] {
+  if (!chunk) return steps;
+  const next = [...steps];
+  const last = next[next.length - 1];
+  if (last?.kind === "thinking") {
+    next[next.length - 1] = { kind: "thinking", content: last.content + chunk };
+  } else {
+    next.push({ kind: "thinking", content: chunk });
+  }
+  return next;
+}
+
+/** Last text step index, or -1 when none. */
+export function lastTextStepIndex(steps: AssistantStep[]): number {
+  for (let i = steps.length - 1; i >= 0; i -= 1) {
+    if (steps[i].kind === "text") return i;
+  }
+  return -1;
+}
+
+/** Thinking steps and legacy pre-answer text steps (before the final answer text). */
+export function isThinkingStep(steps: AssistantStep[], index: number): boolean {
+  const step = steps[index];
+  if (step.kind === "thinking") return step.content.trim().length > 0;
+  if (step.kind !== "text" || !step.content.trim()) return false;
+  const lastText = lastTextStepIndex(steps);
+  return lastText >= 0 && index !== lastText;
+}
+
+export function isThinkingStepActive(
+  steps: AssistantStep[],
+  index: number,
+  busy: boolean,
+): boolean {
+  if (!busy || !isThinkingStep(steps, index)) return false;
+  const lastText = lastTextStepIndex(steps);
+  if (lastText < 0) return true;
+  const step = steps[lastText];
+  return step.kind === "text" && !step.content.trim();
+}
+
 export function startNewTextStep(steps: AssistantStep[]): AssistantStep[] {
   const last = steps[steps.length - 1];
   if (last?.kind === "text" && !last.content.trim()) {

@@ -57,6 +57,12 @@ export const CHAT_PHASE_LABELS = {
   streaming: "流式输出中…",
 } as const;
 
+/** Collapsible thinking trace labels */
+export const THINKING_TRACE_LABELS = {
+  active: "思考中…",
+  done: "思考过程",
+} as const;
+
 /** Tool call trace labels */
 export const TOOL_LABELS: Record<string, string> = {
   list_projects: "列出项目",

@@ -119,6 +119,7 @@ async fn run_sdd_llm_phase(
             |_| {},
             |_| {},
             |_| {},
+            |_| {},
         )
         .await?;
 

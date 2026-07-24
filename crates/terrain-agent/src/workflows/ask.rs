@@ -41,6 +41,13 @@ pub async fn ask_knowledge(
                     guard(AskStreamEvent::Chunk { text: chunk.to_string() });
                 }
             },
+            |chunk| {
+                if let Ok(mut guard) = on_event.lock() {
+                    guard(AskStreamEvent::ThinkingChunk {
+                        text: chunk.to_string(),
+                    });
+                }
+            },
             |calls| {
                 if let Ok(mut guard) = on_event.lock() {
                     guard(AskStreamEvent::ToolCalls {

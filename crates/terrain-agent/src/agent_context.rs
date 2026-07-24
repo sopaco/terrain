@@ -76,6 +76,7 @@ async fn run_agent_context_native(
             |_| {},
             |_| {},
             |_| {},
+            |_| {},
         )
         .await?;
 

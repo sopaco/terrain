@@ -11,8 +11,11 @@
   import { parseAskSlashCommand } from "../askSlashCommands";
   import {
     appendStepText,
+    appendStepThinking,
     finalizeAssistantSteps,
     finalAnswerFromSteps,
+    isThinkingStep,
+    isThinkingStepActive,
     startNewTextStep,
     syncStepTools,
   } from "../assistantSteps";
@@ -39,6 +42,7 @@
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
+  import ThinkingTrace from "./ThinkingTrace.svelte";
   import AskSessionSelector from "./AskSessionSelector.svelte";
   import {
     activeAskSessionIds,
@@ -205,6 +209,9 @@
       case "chunk":
         streamSteps = appendStepText(streamSteps, event.text);
         break;
+      case "thinking_chunk":
+        streamSteps = appendStepThinking(streamSteps, event.text);
+        break;
       case "tool_calls":
         streamSteps = syncStepTools(streamSteps, event.tool_calls);
         if (event.tool_calls.some((call) => call.status === "running")) {
@@ -327,9 +334,11 @@
   const streamScrollToken = $derived(
     streamSteps
       .map((step) =>
-        step.kind === "text"
+        step.kind === "text" || step.kind === "thinking"
           ? step.content.length
-          : step.toolCalls.map((c) => `${c.id}:${c.status}`).join(","),
+          : step.kind === "tools"
+            ? step.toolCalls.map((c) => `${c.id}:${c.status}`).join(",")
+            : "",
       )
       .join("|"),
   );
@@ -764,6 +773,8 @@
                       <div class="my-3">
                         <ToolCallTrace toolCalls={step.toolCalls} />
                       </div>
+                    {:else if isThinkingStep(msg.steps, i)}
+                      <ThinkingTrace content={step.content} {repoPath} />
                     {:else if step.content.trim()}
                       <MarkdownViewer body={step.content} repoPath={repoPath} compact onSourceClick={openCitation} />
                     {/if}
@@ -840,6 +851,12 @@
                     <div class="my-3">
                       <ToolCallTrace toolCalls={step.toolCalls} defaultExpanded={i === streamSteps.length - 1} />
                     </div>
+                  {:else if isThinkingStep(streamSteps, i)}
+                    <ThinkingTrace
+                      content={step.content}
+                      active={isThinkingStepActive(streamSteps, i, busy)}
+                      {repoPath}
+                    />
                   {:else if step.content.trim()}
                     <MarkdownViewer
                       body={step.content}

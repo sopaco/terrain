@@ -132,6 +132,7 @@ impl super::ChatEngine {
         project: Option<&str>,
         repo_path: Option<&str>,
         mut on_chunk: impl FnMut(&str),
+        mut on_thinking_chunk: impl FnMut(&str),
         mut on_tool_calls: impl FnMut(&[ChatToolCallRecord]),
         mut on_phase: impl FnMut(ChatPhase),
         mut on_usage: impl FnMut(&ChatTokenUsage),
@@ -211,27 +212,23 @@ impl super::ChatEngine {
             let stream_model_text = !tool_tracker.has_running();
             let event_text = extract_event_text(&event);
             if stream_model_text {
-                let mut streamed_any = false;
-                if !event_text.visible.is_empty() {
-                    answer_collector.push_visible(&event_text.visible, &mut on_chunk);
-                    streamed_any = true;
-                }
-                // Thinking-capable models stream reasoning as `Part::Thinking`; forward
-                // those deltas to the UI so Ask mode does not sit on a spinner until done.
                 if !event_text.thinking.is_empty() {
-                    answer_collector.push_visible(&event_text.thinking, &mut on_chunk);
-                    streamed_any = true;
+                    on_thinking_chunk(&event_text.thinking);
                 }
-                if streamed_any && phase != ChatPhase::Streaming {
-                    phase = ChatPhase::Streaming;
-                    on_phase(phase);
+                if !event_text.visible.is_empty() {
+                    if phase != ChatPhase::Generating && phase != ChatPhase::Tools {
+                        phase = ChatPhase::Generating;
+                        on_phase(phase);
+                    }
+                    answer_collector.push_visible(&event_text.visible, &mut on_chunk);
+                    if phase != ChatPhase::Tools && phase != ChatPhase::Streaming {
+                        phase = ChatPhase::Streaming;
+                        on_phase(phase);
+                    }
                 }
             } else {
                 if !event_text.visible.is_empty() {
                     answer_collector.push_visible_silent(&event_text.visible);
-                }
-                if !event_text.thinking.is_empty() {
-                    answer_collector.push_visible_silent(&event_text.thinking);
                 }
             }
         }

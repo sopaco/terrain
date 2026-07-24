@@ -79,6 +79,7 @@ pub struct ChatReply {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AskStreamEvent {
     Chunk { text: String },
+    ThinkingChunk { text: String },
     ToolCalls { tool_calls: Vec<ChatToolCallRecord> },
     Phase { phase: ChatPhase },
     Usage { usage: ChatTokenUsage },

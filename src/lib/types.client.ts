@@ -15,6 +15,7 @@ import type {
 /** Streaming payloads from `ask_knowledge_cmd` via Tauri Channel (mirrors Rust `AskStreamEvent`). */
 export type AskStreamEvent =
   | { type: "chunk"; text: string }
+  | { type: "thinking_chunk"; text: string }
   | { type: "tool_calls"; tool_calls: ToolCallRecord[] }
   | { type: "phase"; phase: ChatPhase }
   | { type: "usage"; usage: TokenUsage }
@@ -43,6 +44,7 @@ export type SourceSlice = IpcSourceSlice & {
 };
 
 export type AssistantStep =
+  | { kind: "thinking"; content: string }
   | { kind: "text"; content: string }
   | { kind: "tools"; toolCalls: ToolCallRecord[] };
 
