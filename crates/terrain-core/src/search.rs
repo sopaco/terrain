@@ -232,6 +232,21 @@ pub fn read_doc_at(paths: &KnowledgePaths, rel_or_abs: &str) -> Result<crate::do
     read_doc_at_in_project(paths, rel_or_abs, None)
 }
 
+/// Strip repo-relative `.terrain/` prefixes so paths match knowledge-root layout.
+fn normalize_knowledge_doc_rel(path: &str) -> String {
+    let p = path.trim().trim_start_matches("./").trim_start_matches('/');
+    if let Some(rest) = p.strip_prefix(".terrain/") {
+        return rest.to_string();
+    }
+    if let Some(idx) = p.find("/.terrain/") {
+        return p[idx + "/.terrain/".len()..].to_string();
+    }
+    if p == "context.md" {
+        return "agent/context.md".to_string();
+    }
+    p.to_string()
+}
+
 /// Resolve a knowledge document path against registry-backed project roots.
 pub fn read_doc_at_in_project(
     paths: &KnowledgePaths,
@@ -261,19 +276,19 @@ pub fn read_doc_at_in_project(
         push(path.to_path_buf(), &mut candidates);
     }
 
-    let rel = trimmed.trim_start_matches("./").trim_start_matches('/');
+    let rel = normalize_knowledge_doc_rel(trimmed);
 
     if let Some(slug) = project_slug
         && let Ok(root) = paths.try_project_dir(slug) {
-            push(root.join(rel), &mut candidates);
+            push(root.join(&rel), &mut candidates);
         }
 
     if let Some(root) = paths.workspace_knowledge_root() {
-        push(root.join(rel), &mut candidates);
+        push(root.join(&rel), &mut candidates);
     }
 
     for (_slug, root) in paths.indexed_project_roots() {
-        push(root.join(rel), &mut candidates);
+        push(root.join(&rel), &mut candidates);
     }
 
     for candidate in candidates {
@@ -340,5 +355,17 @@ mod read_doc_tests {
 
         let doc = read_doc_at_in_project(&paths, "human/1.概述.md", Some(&slug)).unwrap();
         assert!(doc.body.contains("Hello"));
+    }
+
+    #[test]
+    fn resolves_terrain_prefixed_agent_context() {
+        let (paths, slug, _guard) = test_setup("read-doc-ctx-proj");
+        let context_path = paths.agent_context_main(&slug);
+        std::fs::create_dir_all(context_path.parent().unwrap()).unwrap();
+        std::fs::write(&context_path, "# Agent context\n\nModules overview.").unwrap();
+
+        let doc =
+            read_doc_at_in_project(&paths, ".terrain/agent/context.md", Some(&slug)).unwrap();
+        assert!(doc.body.contains("Modules overview"));
     }
 }

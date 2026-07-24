@@ -1,82 +1,32 @@
-use terrain_agent::{
-    ask_knowledge, execution_pure_acp, run_sdd_phase, AskStreamEvent, ChatReply,
-};
+use terrain_agent::{ask_knowledge, execution_pure_acp, run_sdd_phase, ChatReply};
 use terrain_core::{
-    ipc_string, resolve_sdd_session_id, SddPhase, SddPhaseResult, SddStatus,
+    ipc_string, resolve_sdd_session_id, AskStreamEvent, SddPhase, SddPhaseResult, SddStatus,
 };
-use tauri::{AppHandle, Emitter, State};
+use tauri::{ipc::Channel, AppHandle, Emitter, State};
 
 use crate::AppState;
 
-use super::payloads::{
-    ChatChunkPayload, ChatDonePayload, ChatPhasePayload, ChatToolCallsPayload, ChatUsagePayload,
-    SddDonePayload, SddProgressPayload,
-};
-use super::util::validate_repo;
+use super::payloads::{SddDonePayload, SddProgressPayload};
 use super::{resolved_acp_settings, slugify_repo};
 
 #[tauri::command]
 pub async fn ask_knowledge_cmd(
-    app: AppHandle,
     state: State<'_, AppState>,
     query: String,
     project: Option<String>,
     repo_path: Option<String>,
-    request_id: Option<String>,
+    on_stream: Channel<AskStreamEvent>,
 ) -> Result<ChatReply, String> {
-    let stream_id = request_id.unwrap_or_else(|| format!("ask-{}", query.len()));
-    let app_emit = app.clone();
-    let sid = stream_id.clone();
-
-    let on_event = move |event: AskStreamEvent| match event {
-        AskStreamEvent::Chunk { text } => {
-            let _ = app_emit.emit(
-                "chat-chunk",
-                ChatChunkPayload {
-                    session_id: sid.clone(),
-                    text,
-                },
-            );
-        }
-        AskStreamEvent::ToolCalls { tool_calls } => {
-            let _ = app_emit.emit(
-                "chat-tool-calls",
-                ChatToolCallsPayload {
-                    session_id: sid.clone(),
-                    tool_calls,
-                },
-            );
-        }
-        AskStreamEvent::Phase { phase } => {
-            let _ = app_emit.emit(
-                "chat-phase",
-                ChatPhasePayload {
-                    session_id: sid.clone(),
-                    phase,
-                },
-            );
-        }
-        AskStreamEvent::Usage { usage } => {
-            let _ = app_emit.emit(
-                "chat-usage",
-                ChatUsagePayload {
-                    session_id: sid.clone(),
-                    usage,
-                },
-            );
-        }
-        AskStreamEvent::Done { reply } => {
-            let _ = app_emit.emit(
-                "chat-done",
-                ChatDonePayload {
-                    session_id: sid.clone(),
-                    answer: reply.answer.clone(),
-                    citations: reply.citations.clone(),
-                    tool_calls: reply.tool_calls.clone(),
-                    usage: reply.usage.clone(),
-                    completed_at: reply.completed_at,
-                },
-            );
+    let stream_id = format!(
+        "ask-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
+    let on_event = move |event: AskStreamEvent| {
+        if let Err(err) = on_stream.send(event) {
+            tracing::warn!(error = %err, "ask stream channel send failed");
         }
     };
 
@@ -102,7 +52,7 @@ pub async fn run_sdd_phase_cmd(
     phase: SddPhase,
     user_input: Option<String>,
 ) -> Result<SddPhaseResult, String> {
-    validate_repo(&repo_path).map_err(ipc_string)?;
+    super::util::validate_repo(&repo_path).map_err(ipc_string)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let paths = state.paths();
     let session_id = session_id

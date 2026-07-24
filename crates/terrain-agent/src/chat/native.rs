@@ -211,30 +211,32 @@ impl super::ChatEngine {
             let stream_model_text = !tool_tracker.has_running();
             let event_text = extract_event_text(&event);
             if stream_model_text {
+                let mut streamed_any = false;
                 if !event_text.visible.is_empty() {
                     answer_collector.push_visible(&event_text.visible, &mut on_chunk);
-                    if phase != ChatPhase::Streaming {
-                        phase = ChatPhase::Streaming;
-                        on_phase(phase);
-                    }
+                    streamed_any = true;
                 }
-            } else if !event_text.visible.is_empty() {
-                answer_collector.push_visible_silent(&event_text.visible);
-            }
-            if !event_text.thinking.is_empty() {
-                answer_collector.push_thinking(&event_text.thinking);
+                // Thinking-capable models stream reasoning as `Part::Thinking`; forward
+                // those deltas to the UI so Ask mode does not sit on a spinner until done.
+                if !event_text.thinking.is_empty() {
+                    answer_collector.push_visible(&event_text.thinking, &mut on_chunk);
+                    streamed_any = true;
+                }
+                if streamed_any && phase != ChatPhase::Streaming {
+                    phase = ChatPhase::Streaming;
+                    on_phase(phase);
+                }
+            } else {
+                if !event_text.visible.is_empty() {
+                    answer_collector.push_visible_silent(&event_text.visible);
+                }
+                if !event_text.thinking.is_empty() {
+                    answer_collector.push_visible_silent(&event_text.thinking);
+                }
             }
         }
 
-        let thinking_fallback = answer_collector.thinking_fallback();
         let mut answer = answer_collector.finalize();
-        if answer.trim().is_empty() && !thinking_fallback.trim().is_empty() {
-            for chunk in thinking_fallback.chars().collect::<Vec<_>>().chunks(48) {
-                let s: String = chunk.iter().collect();
-                on_chunk(&s);
-            }
-            answer = thinking_fallback;
-        }
         let raw_answer = answer.clone();
         answer = sanitize_answer_text(&answer);
         self.paths.write_debug_file("last-ask-raw.md", &raw_answer);
@@ -322,7 +324,6 @@ struct EventText {
 struct ModelAnswerCollector {
     segments: Vec<String>,
     current: String,
-    thinking_parts: Vec<String>,
     had_tools: bool,
 }
 
@@ -331,7 +332,6 @@ impl ModelAnswerCollector {
         Self {
             segments: Vec::new(),
             current: String::new(),
-            thinking_parts: Vec::new(),
             had_tools: false,
         }
     }
@@ -353,10 +353,6 @@ impl ModelAnswerCollector {
         self.current.push_str(text);
     }
 
-    fn push_thinking(&mut self, text: &str) {
-        self.thinking_parts.push(text.to_string());
-    }
-
     fn flush_current(&mut self) {
         if !self.current.is_empty() {
             self.segments.push(std::mem::take(&mut self.current));
@@ -366,10 +362,6 @@ impl ModelAnswerCollector {
     fn finalize(mut self) -> String {
         self.flush_current();
         select_model_answer(&self.segments, self.had_tools)
-    }
-
-    fn thinking_fallback(&self) -> String {
-        self.thinking_parts.join("")
     }
 }
 

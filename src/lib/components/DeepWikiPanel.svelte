@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { listen } from "@tauri-apps/api/event";
-  import { onMount, tick } from "svelte";
+  import { tick } from "svelte";
   import { Check, MessageSquarePlus } from "@lucide/svelte";
   import { askKnowledge, deleteAskSession, loadAskMessages, readDocument } from "../api";
   import {
@@ -21,6 +20,7 @@
   import { citationToSourceSlice, createPendingSourceSlice } from "../resolveSource";
   import { shouldSubmitOnEnter } from "../ime";
   import type {
+    AskStreamEvent,
     AssistantStep,
     ChatMessage,
     ChatPhase,
@@ -87,8 +87,6 @@
   let busy = $state(false);
   let streamSteps = $state<AssistantStep[]>([]);
   let streamingUsage = $state<TokenUsage | null>(null);
-  let listenersReady = $state(false);
-  let activeRequestId = $state<string | null>(null);
   let turnCompleted = $state(false);
   let messagesScrollEl = $state<HTMLDivElement | null>(null);
   let messagesContentEl = $state<HTMLDivElement | null>(null);
@@ -195,25 +193,44 @@
     if (e.key === "Escape" && open) onclose();
   }
 
-  const streamCtx = { activeRequestId: null as string | null };
-
-  function setActiveRequest(id: string | null) {
-    activeRequestId = id;
-    streamCtx.activeRequestId = id;
-  }
-
-  function sessionMatches(sessionId: string): boolean {
-    return Boolean(
-      streamCtx.activeRequestId && sessionId === streamCtx.activeRequestId,
-    );
-  }
-
   function resetStreamState() {
     streamSteps = [];
     streamingUsage = null;
     busy = false;
     streamPhase = "thinking";
-    setActiveRequest(null);
+  }
+
+  function handleAskStreamEvent(event: AskStreamEvent) {
+    switch (event.type) {
+      case "chunk":
+        streamSteps = appendStepText(streamSteps, event.text);
+        break;
+      case "tool_calls":
+        streamSteps = syncStepTools(streamSteps, event.tool_calls);
+        if (event.tool_calls.some((call) => call.status === "running")) {
+          streamPhase = "tools";
+        }
+        break;
+      case "phase":
+        streamPhase = event.phase;
+        if (event.phase === "generating") {
+          streamSteps = startNewTextStep(streamSteps);
+        }
+        break;
+      case "usage":
+        streamingUsage = event.usage;
+        break;
+      case "done":
+        streamingUsage = event.reply.usage;
+        completeAssistantTurn({
+          answer: event.reply.answer,
+          citations: event.reply.citations,
+          toolCalls: event.reply.tool_calls ?? [],
+          usage: event.reply.usage,
+          completedAt: event.reply.completed_at,
+        });
+        break;
+    }
   }
 
   function formatUsageLine(usage?: TokenUsage | null): string | null {
@@ -408,7 +425,7 @@
   }
 
   $effect(() => {
-    if (open && initialQuestion && !consumedInitial && !busy && listenersReady) {
+    if (open && initialQuestion && !consumedInitial && !busy) {
       consumedInitial = true;
       void sendQuestion(initialQuestion);
     }
@@ -441,78 +458,6 @@
     });
     observer.observe(content);
     return () => observer.disconnect();
-  });
-
-  onMount(() => {
-    let unlistenChunk: (() => void) | undefined;
-    let unlistenTools: (() => void) | undefined;
-    let unlistenPhase: (() => void) | undefined;
-    let unlistenUsage: (() => void) | undefined;
-    let unlistenDone: (() => void) | undefined;
-
-    void (async () => {
-      unlistenChunk = await listen<{ session_id: string; text: string }>(
-        "chat-chunk",
-        (ev) => {
-          if (!sessionMatches(ev.payload.session_id)) return;
-          streamSteps = appendStepText(streamSteps, ev.payload.text);
-        },
-      );
-      unlistenTools = await listen<{
-        session_id: string;
-        tool_calls: ToolCallRecord[];
-      }>("chat-tool-calls", (ev) => {
-        if (!sessionMatches(ev.payload.session_id)) return;
-        streamSteps = syncStepTools(streamSteps, ev.payload.tool_calls);
-        if (ev.payload.tool_calls.some((call) => call.status === "running")) {
-          streamPhase = "tools";
-        }
-      });
-      unlistenPhase = await listen<{ session_id: string; phase: ChatPhase }>(
-        "chat-phase",
-        (ev) => {
-          if (!sessionMatches(ev.payload.session_id)) return;
-          streamPhase = ev.payload.phase;
-          if (ev.payload.phase === "generating") {
-            streamSteps = startNewTextStep(streamSteps);
-          }
-        },
-      );
-      unlistenUsage = await listen<{ session_id: string; usage: TokenUsage }>(
-        "chat-usage",
-        (ev) => {
-          if (!sessionMatches(ev.payload.session_id)) return;
-          streamingUsage = ev.payload.usage;
-        },
-      );
-      unlistenDone = await listen<{
-        session_id: string;
-        answer: string;
-        citations: SourceCitation[];
-        tool_calls: ToolCallRecord[];
-        usage: TokenUsage;
-        completed_at: number;
-      }>("chat-done", (ev) => {
-        if (!sessionMatches(ev.payload.session_id)) return;
-        streamingUsage = ev.payload.usage;
-        completeAssistantTurn({
-          answer: ev.payload.answer,
-          citations: ev.payload.citations,
-          toolCalls: ev.payload.tool_calls ?? [],
-          usage: ev.payload.usage,
-          completedAt: ev.payload.completed_at,
-        });
-      });
-      listenersReady = true;
-    })();
-
-    return () => {
-      unlistenChunk?.();
-      unlistenTools?.();
-      unlistenPhase?.();
-      unlistenUsage?.();
-      unlistenDone?.();
-    };
   });
 
   async function handleNewSession() {
@@ -580,7 +525,6 @@
     }
 
     const question = q.trim();
-    const requestId = crypto.randomUUID();
     const requestRepo = repoPath;
 
     if (!projectSlug) return;
@@ -602,7 +546,6 @@
     stickToBottom = true;
     turnCompleted = false;
     streamPhase = "thinking";
-    setActiveRequest(requestId);
     streamSteps = [];
     streamingUsage = null;
 
@@ -611,7 +554,7 @@
         question,
         projectSlug,
         requestRepo ?? undefined,
-        requestId,
+        handleAskStreamEvent,
       );
       if (!turnCompleted) {
         completeAssistantTurn({

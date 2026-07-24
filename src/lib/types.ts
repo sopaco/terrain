@@ -9,6 +9,7 @@ export {
   type AppTab,
   type AskExecution,
   type AskKnowledgeReplyUi,
+  type AskStreamEvent,
   type AssistantStep,
   type ChatMessage,
   type KnowledgeDoc,
