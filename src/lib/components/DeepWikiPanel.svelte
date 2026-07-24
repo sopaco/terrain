@@ -16,7 +16,7 @@
     finalAnswerFromSteps,
     isThinkingStep,
     isThinkingStepActive,
-    startNewTextStep,
+    normalizeAssistantSteps,
     syncStepTools,
   } from "../assistantSteps";
   import { isKnowledgeMarkdownPath } from "../knowledgeDoc";
@@ -220,9 +220,6 @@
         break;
       case "phase":
         streamPhase = event.phase;
-        if (event.phase === "generating") {
-          streamSteps = startNewTextStep(streamSteps);
-        }
         break;
       case "usage":
         streamingUsage = event.usage;
@@ -330,6 +327,8 @@
   const phaseLabel = $derived(CHAT_PHASE_LABELS[streamPhase] ?? CHAT_PHASE_LABELS.thinking);
 
   const streamingUsageLine = $derived(formatUsageLine(streamingUsage));
+
+  const displayStreamSteps = $derived(normalizeAssistantSteps(streamSteps));
 
   const streamScrollToken = $derived(
     streamSteps
@@ -768,12 +767,13 @@
                 <p class="whitespace-pre-wrap text-sm leading-relaxed text-tr-ink">{msg.content}</p>
               {:else}
                 {#if msg.steps?.length}
-                  {#each msg.steps as step, i (i)}
+                  {@const displaySteps = normalizeAssistantSteps(msg.steps)}
+                  {#each displaySteps as step, i (i)}
                     {#if step.kind === "tools"}
                       <div class="my-3">
                         <ToolCallTrace toolCalls={step.toolCalls} />
                       </div>
-                    {:else if isThinkingStep(msg.steps, i)}
+                    {:else if isThinkingStep(displaySteps, i)}
                       <ThinkingTrace content={step.content} {repoPath} />
                     {:else if step.content.trim()}
                       <MarkdownViewer body={step.content} repoPath={repoPath} compact onSourceClick={openCitation} />
@@ -846,15 +846,15 @@
                   <span class="text-xs text-tr-ink-3">{phaseLabel}</span>
                 </div>
               {:else}
-                {#each streamSteps as step, i (i)}
+                {#each displayStreamSteps as step, i (i)}
                   {#if step.kind === "tools"}
                     <div class="my-3">
-                      <ToolCallTrace toolCalls={step.toolCalls} defaultExpanded={i === streamSteps.length - 1} />
+                      <ToolCallTrace toolCalls={step.toolCalls} defaultExpanded={i === displayStreamSteps.length - 1} />
                     </div>
-                  {:else if isThinkingStep(streamSteps, i)}
+                  {:else if isThinkingStep(displayStreamSteps, i)}
                     <ThinkingTrace
                       content={step.content}
-                      active={isThinkingStepActive(streamSteps, i, busy)}
+                      active={isThinkingStepActive(displayStreamSteps, i, busy)}
                       {repoPath}
                     />
                   {:else if step.content.trim()}
