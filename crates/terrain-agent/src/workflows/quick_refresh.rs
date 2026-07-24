@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_fresh, agent_context_ready, compute_freshness, KnowledgePaths, ProjectScanner,
-    QuickRefreshResult,
+    agent_context_ready, agent_context_synced_with_head, compute_freshness, KnowledgePaths,
+    ProjectScanner, QuickRefreshResult,
 };
 
 use crate::acp::{agent_execution_ready, execution_pure_acp, execution_uses_native_llm};
@@ -39,7 +39,7 @@ pub async fn run_quick_refresh(
 
     let mut agent_context_regenerated = false;
     if agent_execution_ready(acp, model_config).is_ok() {
-        if !agent_context_fresh(paths, project_slug, repo_path) {
+        if !agent_context_synced_with_head(paths, project_slug, repo_path) {
             let engine = if execution_uses_native_llm(acp) {
                 Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?))
             } else {

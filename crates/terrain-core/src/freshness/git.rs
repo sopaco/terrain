@@ -20,6 +20,18 @@ pub struct GitDrift {
     pub changed_files: Vec<String>,
 }
 
+/// True when `baseline` matches current HEAD (or repo is not Git).
+pub fn baseline_matches_head(repo_path: &str, baseline: Option<&str>) -> bool {
+    let git = git_snapshot(repo_path);
+    if !git.is_git_repo {
+        return true;
+    }
+    match (baseline, git.head.as_deref()) {
+        (Some(baseline), Some(head)) => baseline == head,
+        _ => false,
+    }
+}
+
 /// Capture current Git HEAD for a repository (best-effort).
 pub fn git_snapshot(repo_path: &str) -> GitSnapshot {
     let repo = Path::new(repo_path);

@@ -4,6 +4,14 @@ use chrono::{DateTime, Utc};
 
 use super::FRESH_THRESHOLD;
 
+/// Commit drift penalty per commit behind baseline (capped).
+pub(crate) const COMMITS_PENALTY_PER: i32 = 2;
+pub(crate) const COMMITS_PENALTY_CAP: i32 = 40;
+
+/// Calendar age since last asset sync — light penalty so stale packs are not over-penalized.
+pub(crate) const SYNC_AGE_PENALTY_PER_DAY: i32 = 1;
+pub(crate) const SYNC_AGE_PENALTY_CAP: i32 = 5;
+
 /// Compute asset freshness score (0–100).
 pub fn score_asset(
     commits_since: u32,
@@ -13,14 +21,14 @@ pub fn score_asset(
     working_tree_dirty: bool,
 ) -> u8 {
     let mut score: i32 = 100;
-    score -= (commits_since as i32 * 2).min(40);
+    score -= (commits_since as i32 * COMMITS_PENALTY_PER).min(COMMITS_PENALTY_CAP);
     if total_tracked_estimate > 0 {
         let ratio = (changed_files_count as f64 / total_tracked_estimate as f64).min(1.0);
         score -= (ratio * 30.0).round() as i32;
     } else if changed_files_count > 0 {
         score -= (changed_files_count as i32).min(30);
     }
-    score -= (days_since_sync as i32 * 2).min(20);
+    score -= (days_since_sync as i32 * SYNC_AGE_PENALTY_PER_DAY).min(SYNC_AGE_PENALTY_CAP);
     if working_tree_dirty {
         score -= 5;
     }
@@ -84,6 +92,14 @@ mod tests {
         assert_eq!(overall_freshness_score(0, 100, 100), 0);
         assert_eq!(overall_freshness_score(100, 80, 100), 80);
         assert_eq!(overall_freshness_score(50, 60, 70), 50);
+    }
+
+    #[test]
+    fn sync_age_penalty_capped_at_five() {
+        assert_eq!(score_asset(0, 0, 100, 0, false), 100);
+        assert_eq!(score_asset(0, 0, 100, 3, false), 97);
+        assert_eq!(score_asset(0, 0, 100, 7, false), 95);
+        assert_eq!(score_asset(0, 0, 100, 30, false), 95);
     }
 
     #[test]

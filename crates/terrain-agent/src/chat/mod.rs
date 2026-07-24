@@ -13,7 +13,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use terrain_core::{
-    agent_context_fresh, agent_pack_fresh, normalize_repo_hint, resolve_project_repo_path,
+    agent_context_synced_with_head, agent_pack_synced_with_head, normalize_repo_hint,
+    resolve_project_repo_path,
     KnowledgePaths, KnowledgeSearch, SearchOptions, SourceCitation, prepare_chat_markdown,
 };
 
@@ -119,7 +120,7 @@ impl ChatEngine {
         repo_path: Option<&str>,
         on_chunk: impl FnMut(&str),
         on_tool_calls: impl FnMut(&[ChatToolCallRecord]),
-        on_phase: impl FnMut(ChatPhase),
+        mut on_phase: impl FnMut(ChatPhase),
         on_usage: impl FnMut(&ChatTokenUsage),
     ) -> Result<ChatReply> {
         if let Some(slug) = project {
@@ -129,14 +130,15 @@ impl ChatEngine {
                 normalize_repo_hint(repo_path),
             )
             .unwrap_or_default();
-            if !agent_pack_fresh(&self.paths, slug, &repo)
-                || !agent_context_fresh(&self.paths, slug, &repo)
+            if !agent_pack_synced_with_head(&self.paths, slug, &repo)
+                || !agent_context_synced_with_head(&self.paths, slug, &repo)
             {
                 prepare_agent_assets_for_ask(
                     &self.paths,
                     &self.model_config,
                     slug,
                     normalize_repo_hint(repo_path),
+                    &mut on_phase,
                 )
                 .await?;
             }

@@ -33,7 +33,8 @@ pub mod usage;
 mod ts_ipc;
 
 pub use assets::{
-    agent_context_fresh, agent_context_ready, build_agent_context_prompt, build_context_overview,
+    agent_context_fresh, agent_context_ready, agent_context_synced_with_head,
+    build_agent_context_prompt, build_context_overview,
     build_generation_plan, collect_knowledge_dir_inputs, collect_project_meta,
     count_knowledge_markdown_files, count_markdown_in_dir, default_agent_arch_skill_dir,
     default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
@@ -47,7 +48,10 @@ pub use assets::{
     LITHO_REQUIRED_HUMAN_FILES,
 };
 #[cfg(feature = "repomix")]
-pub use assets::{agent_pack_fresh, agent_pack_ready, maybe_pack_agent_assets, pack_agent_assets, AgentPackReport};
+pub use assets::{
+    agent_pack_fresh, agent_pack_ready, agent_pack_synced_with_head, maybe_pack_agent_assets,
+    pack_agent_assets, AgentPackReport,
+};
 #[cfg(not(feature = "repomix"))]
 pub use assets::agent_pack_ready;
 

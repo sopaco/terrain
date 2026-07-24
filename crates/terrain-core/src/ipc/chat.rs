@@ -52,6 +52,10 @@ pub struct ChatTokenUsage {
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ChatPhase {
+    /// Repomix pack missing or stale — packing before Ask can proceed.
+    PreparingPack,
+    /// agent/context.md missing or stale — generating before Ask can proceed.
+    PreparingContext,
     Thinking,
     Tools,
     Generating,

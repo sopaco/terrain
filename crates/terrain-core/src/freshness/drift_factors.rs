@@ -3,6 +3,7 @@
 use crate::schema::FreshnessDriftFactor;
 
 use super::git::{GitDrift, GitSnapshot};
+use super::scoring::{COMMITS_PENALTY_CAP, COMMITS_PENALTY_PER, SYNC_AGE_PENALTY_CAP, SYNC_AGE_PENALTY_PER_DAY};
 use super::MACRO_PRELOAD_THRESHOLD;
 
 pub(crate) struct DriftExplainInput<'a> {
@@ -56,7 +57,8 @@ pub(crate) fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<Freshnes
 
     if input.git.is_git_repo {
         if input.pack_drift.commits_since_baseline > 0 {
-            let lost = (input.pack_drift.commits_since_baseline as i32 * 2).min(40) as u8;
+            let lost = (input.pack_drift.commits_since_baseline as i32 * COMMITS_PENALTY_PER)
+                .min(COMMITS_PENALTY_CAP) as u8;
             factors.push(FreshnessDriftFactor {
                 id: "commits_behind".into(),
                 severity: if input.pack_drift.commits_since_baseline >= 10 {
@@ -69,9 +71,11 @@ pub(crate) fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<Freshnes
                     input.pack_drift.commits_since_baseline
                 ),
                 detail: format!(
-                    "知识资产 baseline 为 {}，当前 HEAD 为 {}。每多 1 个提交约扣 2 分（上限 40 分）。",
+                    "知识资产 baseline 为 {}，当前 HEAD 为 {}。每多 1 个提交约扣 {} 分（上限 {} 分）。",
                     input.pack_baseline.unwrap_or("（未记录）"),
                     input.git.head_short.as_deref().unwrap_or("—"),
+                    COMMITS_PENALTY_PER,
+                    COMMITS_PENALTY_CAP,
                 ),
                 points_lost: Some(lost),
             });
@@ -114,7 +118,8 @@ pub(crate) fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<Freshnes
     }
 
     if input.pack_days > 0 {
-        let lost = (input.pack_days as i32 * 2).min(20) as u8;
+        let lost = (input.pack_days as i32 * SYNC_AGE_PENALTY_PER_DAY)
+            .min(SYNC_AGE_PENALTY_CAP) as u8;
         factors.push(FreshnessDriftFactor {
             id: "pack_age".into(),
             severity: if input.pack_days >= 7 {
@@ -123,7 +128,10 @@ pub(crate) fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<Freshnes
                 "low".into()
             },
             title: format!("源码索引已生成 {} 天", input.pack_days),
-            detail: "距上次 Repomix 打包越久，额外扣分越多（每天约 2 分，上限 20 分）。".into(),
+            detail: format!(
+                "距上次 Repomix 打包越久，额外扣分越多（每天约 {} 分，上限 {} 分）。",
+                SYNC_AGE_PENALTY_PER_DAY, SYNC_AGE_PENALTY_CAP,
+            ),
             points_lost: if lost > 0 { Some(lost) } else { None },
         });
     }

@@ -320,15 +320,7 @@
     }
   }
 
-  const phaseLabel = $derived(
-    streamPhase === "tools"
-      ? CHAT_PHASE_LABELS.tools
-      : streamPhase === "generating"
-        ? CHAT_PHASE_LABELS.generating
-        : streamPhase === "streaming"
-          ? CHAT_PHASE_LABELS.streaming
-          : CHAT_PHASE_LABELS.thinking,
-  );
+  const phaseLabel = $derived(CHAT_PHASE_LABELS[streamPhase] ?? CHAT_PHASE_LABELS.thinking);
 
   const streamingUsageLine = $derived(formatUsageLine(streamingUsage));
 
