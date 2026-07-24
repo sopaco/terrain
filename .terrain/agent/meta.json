@@ -4,9 +4,9 @@
   "generator": "repomix-core",
   "pack_strategy": "architecture-context",
   "output_file": "repomix.md",
-  "total_files": 298,
-  "total_tokens": 342553,
-  "total_characters": 1293731,
+  "total_files": 334,
+  "total_tokens": 303612,
+  "total_characters": 1134694,
   "top_files_by_tokens": [
     {
       "path": "src-tauri/gen/schemas/desktop-schema.json",
@@ -22,51 +22,27 @@
     },
     {
       "path": "src-tauri/gen/schemas/acl-manifests.json",
-      "tokens": 15726
-    },
-    {
-      "path": "src/App.svelte",
-      "tokens": 12320
-    },
-    {
-      "path": "src/lib/components/DeepWikiPanel.svelte",
-      "tokens": 9746
-    },
-    {
-      "path": "src/lib/components/ProjectOverviewPanel.svelte",
-      "tokens": 9166
+      "tokens": 15725
     },
     {
       "path": "preset_skills/litho-documents-skill/references/phase3-composition.md",
       "tokens": 8337
     },
     {
+      "path": "src/App.svelte",
+      "tokens": 7683
+    },
+    {
       "path": "preset_skills/litho-documents-skill/references/phase2-research.md",
       "tokens": 7109
     },
     {
-      "path": "src/lib/components/SddWorkflowPanel.svelte",
-      "tokens": 5448
-    },
-    {
-      "path": "src/lib/components/EnvIntegratePanel.svelte",
-      "tokens": 4857
+      "path": "src/lib/components/DeepWikiPanel.svelte",
+      "tokens": 5789
     },
     {
       "path": "README_zh.md",
       "tokens": 4715
-    },
-    {
-      "path": "crates/terrain-core/src/schema.rs",
-      "tokens": 4210
-    },
-    {
-      "path": "src/lib/components/UsagePanel.svelte",
-      "tokens": 4206
-    },
-    {
-      "path": "src/lib/components/FreshnessHelpPanel.svelte",
-      "tokens": 3980
     },
     {
       "path": "README.md",
@@ -77,8 +53,8 @@
       "tokens": 3550
     },
     {
-      "path": "src/lib/components/HumanDocTree.svelte",
-      "tokens": 3497
+      "path": "src/lib/components/ProjectOverviewPanel.svelte",
+      "tokens": 3410
     },
     {
       "path": "preset_skills/litho-documents-skill/SKILL.md",
@@ -87,9 +63,33 @@
     {
       "path": "AGENTS.md",
       "tokens": 2848
+    },
+    {
+      "path": "src/lib/components/SddWorkflowPanel.svelte",
+      "tokens": 2799
+    },
+    {
+      "path": "preset_skills/litho-documents-skill/references/phase4-output.md",
+      "tokens": 2638
+    },
+    {
+      "path": "src/lib/api.ts",
+      "tokens": 2594
+    },
+    {
+      "path": "crates/terrain-core/src/paths.rs",
+      "tokens": 2391
+    },
+    {
+      "path": "crates/terrain-cli/src/cli.rs",
+      "tokens": 2298
+    },
+    {
+      "path": "src/lib/components/EnvIntegratePanel.svelte",
+      "tokens": 2273
     }
   ],
-  "directory_structure": "crates/\n  agent-client-protocol-tokio-patched/\n    src/\n      acp_agent.rs\n      lib.rs\n    CHANGELOG.md\n    Cargo.toml\n    Cargo.toml.orig\n    README.md\n  terrain-agent/\n    bindings/\n      AcpSettings.ts\n      AgentContextGenerationResult.ts\n      AgentContextMeta.ts\n      AgentExecution.ts\n      AskKnowledgeReply.ts\n      ChatPhase.ts\n      ChatToolCallStatus.ts\n      CitationKind.ts\n      LithoGenerationJob.ts\n      LithoGenerationResult.ts\n      LithoPlan.ts\n      LlmStatus.ts\n      ModelSettings.ts\n      ProjectInitResult.ts\n      ProviderProfile.ts\n      SourceCitation.ts\n      TokenUsage.ts\n      ToolCallRecord.ts\n    src/\n      chat/\n        acp.rs\n        mod.rs\n        native.rs\n        prompt.rs\n        tracker.rs\n        types.rs\n      acp.rs\n      agent_assets.rs\n      agent_context.rs\n      builder.rs\n      compat_tool.rs\n      context_generator.rs\n      env_optimize.rs\n      lib.rs\n      litho.rs\n      project_init.rs\n      sdd.rs\n      throttle.rs\n      tool_schema.rs\n      tool_session_cache.rs\n      tools.rs\n    Cargo.toml\n  terrain-cli/\n    src/\n      commands/\n        assets.rs\n        env.rs\n        knowledge.rs\n        mod.rs\n        tools.rs\n      cli.rs\n      main.rs\n      util.rs\n    Cargo.toml\n  terrain-core/\n    bindings/\n      AgentContextMeta.ts\n      AgentContextStatus.ts\n      AgentEnvStatus.ts\n      AgentPackMeta.ts\n      AgentPackReport.ts\n      AgentPackSummary.ts\n      AssetGenerator.ts\n      AssetTrackHealth.ts\n      CitationKind.ts\n      DocCounts.ts\n      DocType.ts\n      EnvApplyResult.ts\n      EnvIntegrationStatus.ts\n      EnvPlan.ts\n      EnvPlanStep.ts\n      EnvStatus.ts\n      FreshnessDriftFactor.ts\n      FreshnessSummary.ts\n      HumanDocEntry.ts\n      IpcSourceSlice.ts\n      LithoPlan.ts\n      LithoStatus.ts\n      ProjectOverview.ts\n      ProjectSummary.ts\n      QuickRefreshResult.ts\n      ScanReport.ts\n      SddPhase.ts\n      SddPhaseInfo.ts\n      SddPhaseResult.ts\n      SddSessionInfo.ts\n      SddStatus.ts\n      SearchHit.ts\n      SourceCitation.ts\n      StaleProjectSummary.ts\n      TokenHeavyFile.ts\n    src/\n      assets/\n        env/\n          agents_md.rs\n          apply.rs\n          catalog.rs\n          mod.rs\n          status.rs\n        agent_context.rs\n        ask.rs\n        context_layers.rs\n        litho.rs\n        mod.rs\n        pack_read.rs\n        project_meta.rs\n        query.rs\n        repomix.rs\n        sdd.rs\n      ingest/\n        git.rs\n        mod.rs\n        openapi.rs\n      agent_tools_deploy.rs\n      bundled_tools.rs\n      citations.rs\n      doc.rs\n      error.rs\n      freshness.rs\n      human.rs\n      lib.rs\n      model_text.rs\n      path_portable.rs\n      paths.rs\n      platform.rs\n      preset_skills.rs\n      process.rs\n      project.rs\n      registry.rs\n      render.rs\n      repo_walk.rs\n      schema.rs\n      search.rs\n      shell_path.rs\n      source.rs\n      ts_ipc.rs\n      usage.rs\n    Cargo.toml\n  terrain-ts-export/\n    src/\n      main.rs\n    Cargo.toml\nenv-catalog/\n  agents-md/\n    env-overview.fragment\n    knowledge-guide.fragment\n    skills.fragment\n    tools.fragment\n  skills/\n    codegraph-skill/\n      SKILL.md\n    repomix-context-skill/\n      SKILL.md\n    rtk-skill/\n      SKILL.md\n    terrain-knowledge-skill/\n      SKILL.md\n  agent-tools.template.json\n  catalog.json\nnpm/\n  packages/\n    cli/\n      bin/\n        terrain.js\n      README.md\n      package.json\n    cli-darwin-arm64/\n      package.json\n    cli-win32-x64/\n      bin/\n        .gitkeep\n      package.json\n    rtk/\n      bin/\n        rtk.js\n      README.md\n      package.json\n    rtk-darwin-arm64/\n      package.json\n    rtk-win32-x64/\n      bin/\n        .gitkeep\n      package.json\n  scripts/\n    lib/\n      platform.mjs\n      write-shim.mjs\n    prepare-binaries.mjs\n    sync-version.mjs\n    write-shims.mjs\n  README.md\n  package.json\npackages/\n  codegraph/\n    darwin-arm64/\n      .gitkeep\n    win32-x64/\n      .gitkeep\n  rtk/\n    darwin-arm64/\n      .gitkeep\n    win32-x64/\n      .gitkeep\n  terrain/\n    darwin-arm64/\n      .gitkeep\n    win32-x64/\n      .gitkeep\npreset_skills/\n  agent-architecture-skill/\n    SKILL.md\n    terrain-meta.example.json\n  agent-context-skill/\n    SKILL.md\n  litho-documents-skill/\n    references/\n      doc-templates.md\n      phase1-preprocessing.md\n      phase2-research.md\n      phase3-composition.md\n      phase4-output.md\n    SKILL.md\n    _meta.json\n    skill-card.md\n  sdd-workflow-skill/\n    SKILL.md\n  terrain-ask-skill/\n    SKILL.md\nscripts/\n  cross-windows-terrain.sh\nsrc/\n  lib/\n    components/\n      icons/\n        ChevronIcon.svelte\n        CloseButton.svelte\n        HelpButton.svelte\n      AskBar.svelte\n      AskCompletionNotice.svelte\n      AskSessionSelector.svelte\n      CopyImageButton.svelte\n      CopyMarkdownButton.svelte\n      DeepWikiPanel.svelte\n      EnvIntegratePanel.svelte\n      EnvPlanPanel.svelte\n      FreshnessHelpPanel.svelte\n      HelpPanel.svelte\n      HumanDocTree.svelte\n      KnowledgeArticle.svelte\n      MainNavTabs.svelte\n      MarkdownArticleToc.svelte\n      MarkdownViewer.svelte\n      MermaidLightbox.svelte\n      ModalShell.svelte\n      OverviewActionBanner.svelte\n      OverviewKnowledgeCard.svelte\n      ProjectOverviewPanel.svelte\n      ProjectSelector.svelte\n      ReadinessHelpPanel.svelte\n      SddSessionSelector.svelte\n      SddWorkflowPanel.svelte\n      SlideDrawer.svelte\n      SourceCodeViewer.svelte\n      SourceDrawer.svelte\n      SourcePanel.svelte\n      StatusBanner.svelte\n      TaskProgressBar.svelte\n      ToolCallTrace.svelte\n      UsageBadge.svelte\n      UsageBarChart.svelte\n      UsageDetailTable.svelte\n      UsageMonitor.svelte\n      UsagePanel.svelte\n    stores/\n      chat.svelte.ts\n      project.svelte.ts\n      status.svelte.ts\n      usageDisplay.svelte.ts\n    agentExecution.ts\n    api.ts\n    askSession.ts\n    askShareImage.ts\n    askSlashCommands.ts\n    assistantMarkdown.ts\n    assistantSteps.ts\n    clipboard.ts\n    constants.ts\n    glossary.ts\n    highlightSetup.ts\n    ime.ts\n    knowledgeDoc.ts\n    markdown.css\n    markdownSanitize.ts\n    markdownToc.ts\n    mergeFreshness.ts\n    mermaid-utils.ts\n    mermaidLoader.ts\n    overlayMotion.ts\n    resolveSource.ts\n    source-code.css\n    sourceLanguage.ts\n    sourceRef.ts\n    terminology.ts\n    timeFormat.ts\n    types.client.ts\n    types.ts\n  App.svelte\n  UsageWindow.svelte\n  app.css\n  main.ts\nsrc-tauri/\n  binaries/\n    .gitkeep\n  capabilities/\n    default.json\n  gen/\n    schemas/\n      acl-manifests.json\n      capabilities.json\n      desktop-schema.json\n      macOS-schema.json\n      windows-schema.json\n  icons/\n    android/\n      mipmap-anydpi-v26/\n        ic_launcher.xml\n      values/\n        ic_launcher_background.xml\n  src/\n    commands/\n      ask.rs\n      assets.rs\n      chat.rs\n      env.rs\n      knowledge.rs\n      mod.rs\n      payloads.rs\n      project.rs\n      sdd.rs\n      settings.rs\n      usage.rs\n    bundled_tools.rs\n    lib.rs\n    main.rs\n    preset_skills.rs\n    tray.rs\n  Cargo.toml\n  build.rs\n  tauri.conf.json\nAGENTS.md\nCargo.toml\nLICENSE\nREADME.md\nREADME_zh.md\nindex.html\npackage.json\nrust-toolchain.toml\nsvelte.config.js\ntsconfig.json\nvite.config.ts",
-  "synced_at": "2026-07-16T07:35:08.560021+00:00",
-  "baseline_git_head": "a5a97549e0686e653635783cf9ac5bec4e28bc6a"
+  "directory_structure": "crates/\n  agent-client-protocol-tokio-patched/\n    src/\n      acp_agent.rs\n      lib.rs\n    CHANGELOG.md\n    Cargo.toml\n    Cargo.toml.orig\n    README.md\n  terrain-agent/\n    bindings/\n      AcpSettings.ts\n      AgentContextGenerationResult.ts\n      AgentContextMeta.ts\n      AgentExecution.ts\n      AskKnowledgeReply.ts\n      ChatPhase.ts\n      ChatToolCallStatus.ts\n      CitationKind.ts\n      LithoGenerationJob.ts\n      LithoGenerationResult.ts\n      LithoPlan.ts\n      LlmStatus.ts\n      ModelSettings.ts\n      ProjectInitResult.ts\n      ProviderProfile.ts\n      SourceCitation.ts\n      TokenUsage.ts\n      ToolCallRecord.ts\n    src/\n      chat/\n        acp.rs\n        mod.rs\n        native.rs\n        prompt.rs\n        tracker.rs\n        types.rs\n      workflows/\n        ask.rs\n        init.rs\n        mod.rs\n        quick_refresh.rs\n        sdd.rs\n      acp.rs\n      agent_assets.rs\n      agent_context.rs\n      builder.rs\n      compat_tool.rs\n      context_generator.rs\n      lib.rs\n      litho.rs\n      runtime.rs\n      sdd.rs\n      throttle.rs\n      tool_schema.rs\n      tool_session_cache.rs\n      tools.rs\n    Cargo.toml\n  terrain-cli/\n    src/\n      commands/\n        ask.rs\n        assets.rs\n        env.rs\n        init.rs\n        knowledge.rs\n        mod.rs\n        project.rs\n        sdd.rs\n        settings.rs\n        source.rs\n        tools.rs\n        usage.rs\n      cli.rs\n      main.rs\n      util.rs\n    Cargo.toml\n  terrain-core/\n    bindings/\n      AgentContextMeta.ts\n      AgentContextStatus.ts\n      AgentEnvStatus.ts\n      AgentPackMeta.ts\n      AgentPackReport.ts\n      AgentPackSummary.ts\n      AssetGenerator.ts\n      AssetTrackHealth.ts\n      CitationKind.ts\n      DocCounts.ts\n      DocType.ts\n      EnvApplyResult.ts\n      EnvIntegrationStatus.ts\n      EnvPlan.ts\n      EnvPlanStep.ts\n      EnvStatus.ts\n      FreshnessDriftFactor.ts\n      FreshnessSummary.ts\n      HumanDocEntry.ts\n      IpcSourceSlice.ts\n      LithoPlan.ts\n      LithoStatus.ts\n      ProjectOverview.ts\n      ProjectSummary.ts\n      QuickRefreshResult.ts\n      ScanReport.ts\n      SddPhase.ts\n      SddPhaseInfo.ts\n      SddPhaseResult.ts\n      SddSessionInfo.ts\n      SddStatus.ts\n      SearchHit.ts\n      SourceCitation.ts\n      StaleProjectSummary.ts\n      TokenHeavyFile.ts\n    src/\n      assets/\n        env/\n          status/\n            cache.rs\n            mod.rs\n            plan.rs\n            probe.rs\n            types.rs\n          agents_md.rs\n          apply.rs\n          catalog.rs\n          mod.rs\n        agent_context.rs\n        ask.rs\n        context_layers.rs\n        litho.rs\n        mod.rs\n        pack_read.rs\n        project_meta.rs\n        query.rs\n        repomix.rs\n        sdd.rs\n      freshness/\n        codegraph.rs\n        compute.rs\n        drift_factors.rs\n        git.rs\n        ledger.rs\n        mod.rs\n        scoring.rs\n      ingest/\n        git.rs\n        mod.rs\n        openapi.rs\n      integrations/\n        mod.rs\n      ipc/\n        chat.rs\n        mod.rs\n        workflows.rs\n      prompts/\n        mod.rs\n      schema/\n        asset.rs\n        citation.rs\n        doc.rs\n        freshness.rs\n        mod.rs\n        project.rs\n        sdd.rs\n      sessions/\n        mod.rs\n      agent_tools_deploy.rs\n      bundled_tools.rs\n      citations.rs\n      doc.rs\n      error.rs\n      human.rs\n      lib.rs\n      model_text.rs\n      path_portable.rs\n      paths.rs\n      platform.rs\n      preset_skills.rs\n      process.rs\n      progress.rs\n      project.rs\n      registry.rs\n      render.rs\n      repo.rs\n      repo_walk.rs\n      search.rs\n      shell_path.rs\n      source.rs\n      ts_ipc.rs\n      usage.rs\n    Cargo.toml\n  terrain-ts-export/\n    src/\n      main.rs\n    Cargo.toml\nenv-catalog/\n  agents-md/\n    env-overview.fragment\n    knowledge-guide.fragment\n    skills.fragment\n    tools.fragment\n  skills/\n    codegraph-skill/\n      SKILL.md\n    repomix-context-skill/\n      SKILL.md\n    rtk-skill/\n      SKILL.md\n    terrain-knowledge-skill/\n      SKILL.md\n  agent-tools.template.json\n  catalog.json\nnpm/\n  packages/\n    cli/\n      bin/\n        terrain.js\n      README.md\n      package.json\n    cli-darwin-arm64/\n      package.json\n    cli-win32-x64/\n      bin/\n        .gitkeep\n      package.json\n    rtk/\n      bin/\n        rtk.js\n      README.md\n      package.json\n    rtk-darwin-arm64/\n      package.json\n    rtk-win32-x64/\n      bin/\n        .gitkeep\n      package.json\n  scripts/\n    lib/\n      platform.mjs\n      write-shim.mjs\n    prepare-binaries.mjs\n    sync-version.mjs\n    write-shims.mjs\n  README.md\n  package.json\npackages/\n  codegraph/\n    darwin-arm64/\n      .gitkeep\n    win32-x64/\n      .gitkeep\n  rtk/\n    darwin-arm64/\n      .gitkeep\n    win32-x64/\n      .gitkeep\n  terrain/\n    darwin-arm64/\n      .gitkeep\n    win32-x64/\n      .gitkeep\npreset_skills/\n  agent-architecture-skill/\n    SKILL.md\n    terrain-meta.example.json\n  agent-context-skill/\n    SKILL.md\n  litho-documents-skill/\n    references/\n      doc-templates.md\n      phase1-preprocessing.md\n      phase2-research.md\n      phase3-composition.md\n      phase4-output.md\n    SKILL.md\n    _meta.json\n    skill-card.md\n  sdd-workflow-skill/\n    SKILL.md\n  terrain-ask-skill/\n    SKILL.md\nscripts/\n  cross-windows-terrain.sh\nsrc/\n  lib/\n    components/\n      icons/\n        ChevronIcon.svelte\n        CloseButton.svelte\n        HelpButton.svelte\n      AskBar.svelte\n      AskCompletionNotice.svelte\n      AskSessionSelector.svelte\n      CopyImageButton.svelte\n      CopyMarkdownButton.svelte\n      DeepWikiPanel.svelte\n      EnvIntegratePanel.svelte\n      EnvPlanPanel.svelte\n      FreshnessHelpPanel.svelte\n      HelpPanel.svelte\n      HumanDocTree.svelte\n      KnowledgeArticle.svelte\n      MainNavTabs.svelte\n      MarkdownArticleToc.svelte\n      MarkdownViewer.svelte\n      MermaidLightbox.svelte\n      ModalShell.svelte\n      OverviewActionBanner.svelte\n      OverviewKnowledgeCard.svelte\n      ProjectOverviewPanel.svelte\n      ProjectSelector.svelte\n      ReadinessHelpPanel.svelte\n      SddSessionSelector.svelte\n      SddWorkflowPanel.svelte\n      SlideDrawer.svelte\n      SourceCodeViewer.svelte\n      SourceDrawer.svelte\n      SourcePanel.svelte\n      StatusBanner.svelte\n      TaskProgressBar.svelte\n      ThinkingTrace.svelte\n      ToolCallTrace.svelte\n      UsageBadge.svelte\n      UsageBarChart.svelte\n      UsageDetailTable.svelte\n      UsageMonitor.svelte\n      UsagePanel.svelte\n    stores/\n      chat.svelte.ts\n      project.svelte.ts\n      status.svelte.ts\n      usageDisplay.svelte.ts\n    agentExecution.ts\n    api.ts\n    askSession.ts\n    askShareImage.ts\n    askSlashCommands.ts\n    assistantMarkdown.ts\n    assistantSteps.ts\n    clipboard.ts\n    constants.ts\n    glossary.ts\n    highlightSetup.ts\n    ime.ts\n    knowledgeDoc.ts\n    markdown.css\n    markdownSanitize.ts\n    markdownToc.ts\n    mergeFreshness.ts\n    mermaid-utils.ts\n    mermaidLoader.ts\n    overlayMotion.ts\n    resolveSource.ts\n    source-code.css\n    sourceLanguage.ts\n    sourceRef.ts\n    terminology.ts\n    timeFormat.ts\n    types.client.ts\n    types.ts\n  App.svelte\n  UsageWindow.svelte\n  app.css\n  main.ts\nsrc-tauri/\n  binaries/\n    .gitkeep\n  capabilities/\n    default.json\n  gen/\n    schemas/\n      acl-manifests.json\n      capabilities.json\n      desktop-schema.json\n      macOS-schema.json\n      windows-schema.json\n  icons/\n    android/\n      mipmap-anydpi-v26/\n        ic_launcher.xml\n      values/\n        ic_launcher_background.xml\n  src/\n    commands/\n      assets.rs\n      env.rs\n      knowledge.rs\n      mod.rs\n      payloads.rs\n      project.rs\n      sessions.rs\n      settings.rs\n      usage.rs\n      util.rs\n      workflows.rs\n    bundled_tools.rs\n    lib.rs\n    main.rs\n    preset_skills.rs\n    tray.rs\n  Cargo.toml\n  build.rs\n  tauri.conf.json\nAGENTS.md\nCargo.toml\nLICENSE\nREADME.md\nREADME_zh.md\nindex.html\npackage.json\nrust-toolchain.toml\nsvelte.config.js\ntsconfig.json\nvite.config.ts",
+  "synced_at": "2026-07-24T17:12:32.489053+00:00",
+  "baseline_git_head": "f40e205c05ba83146613fecfee809e506cd1c744"
 }

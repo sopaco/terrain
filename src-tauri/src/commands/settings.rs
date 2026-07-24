@@ -1,6 +1,6 @@
 use terrain_agent::{
     acp_available, acp_spawn_command, llm_status, load_model_settings, model_settings_from_config,
-    save_model_settings, ModelSettings,
+    resolve_model_config, save_model_settings, ModelSettings,
 };
 use tauri::State;
 
@@ -15,7 +15,7 @@ pub fn get_knowledge_root(
 ) -> Result<String, String> {
     if let Some(slug) = project_slug.filter(|s| !s.trim().is_empty()) {
         return state
-            .paths
+            .paths()
             .try_project_dir(&slug)
             .map(|p| p.display().to_string())
             .map_err(|e| e.to_string());
@@ -41,24 +41,23 @@ pub fn check_opencode() -> bool {
 
 #[tauri::command]
 pub fn check_llm(state: State<'_, AppState>) -> terrain_agent::LlmStatus {
-    llm_status(&state.get_model_config())
+    llm_status(&state.model_config())
 }
 
 #[tauri::command]
 pub fn get_model_settings(state: State<'_, AppState>) -> ModelSettings {
-    load_model_settings().unwrap_or_else(|| model_settings_from_config(&state.get_model_config()))
+    load_model_settings().unwrap_or_else(|| model_settings_from_config(&state.model_config()))
 }
 
 #[tauri::command]
-pub async fn save_model_settings_cmd(
+pub fn save_model_settings_cmd(
     state: State<'_, AppState>,
     settings: ModelSettings,
 ) -> Result<terrain_agent::LlmStatus, String> {
     save_model_settings(&settings).map_err(|e| e.to_string())?;
-    let config = terrain_agent::resolve_model_config();
+    let config = resolve_model_config();
     state.set_model_config(config);
-    *state.chat.lock().await = None;
-    Ok(llm_status(&state.get_model_config()))
+    Ok(llm_status(&state.model_config()))
 }
 
 #[tauri::command]

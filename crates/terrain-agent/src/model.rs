@@ -4,14 +4,11 @@ use adk_core::Llm;
 use adk_model::ollama::{OllamaConfig, OllamaModel};
 use adk_model::openai::{OpenAIClient, OpenAIConfig};
 use anyhow::{Context, Result, bail};
-
-pub const DEFAULT_OPENAI_BASE_URL: &str = "https://integrate.api.nvidia.com/v1";
-pub const DEFAULT_OPENAI_MODEL: &str = "stepfun-ai/step-3.7-flash";
-
-pub const DEFAULT_LMSTUDIO_BASE_URL: &str = "http://localhost:1234/v1";
-pub const DEFAULT_LMSTUDIO_MODEL: &str = "qwen/qwen3.5-9b";
-/// LM Studio accepts any non-empty API key on the OpenAI-compatible endpoint.
-pub const DEFAULT_LMSTUDIO_API_KEY: &str = "lm-studio";
+pub use terrain_core::LlmStatus;
+pub use terrain_core::settings::{
+    DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL,
+    DEFAULT_OLLAMA_HOST, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmProvider {
@@ -29,18 +26,8 @@ pub struct ModelConfig {
     pub openai_base_url: Option<String>,
 }
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct LlmStatus {
-    pub provider: String,
-    pub model: String,
-    pub ready: bool,
-    pub message: String,
-    pub base_url: Option<String>,
-}
-
-use crate::settings::{load_model_settings, model_config_from_settings, DEFAULT_OLLAMA_HOST};
+use crate::settings::model_config_from_settings;
+use terrain_core::settings::load_model_settings;
 
 pub fn parse_provider(raw: &str) -> LlmProvider {
     match raw.to_lowercase().as_str() {
@@ -230,7 +217,7 @@ pub fn load_dotenv() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::settings::{ModelSettings, ProviderProfile, save_model_settings};
+    use terrain_core::settings::{ModelSettings, ProviderProfile, save_model_settings};
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
 

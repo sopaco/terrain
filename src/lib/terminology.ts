@@ -49,10 +49,18 @@ export const UI_MESSAGES = {
 
 /** DeepWiki streaming phase labels */
 export const CHAT_PHASE_LABELS = {
+  preparing_pack: "正在打包源码索引…",
+  preparing_context: "正在生成架构上下文…",
   thinking: "思考中…",
   tools: "调用工具中…",
   generating: "生成回答中…",
   streaming: "流式输出中…",
+} as const;
+
+/** Collapsible thinking trace labels */
+export const THINKING_TRACE_LABELS = {
+  active: "思考中…",
+  done: "思考过程",
 } as const;
 
 /** Tool call trace labels */

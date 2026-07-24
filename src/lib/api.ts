@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import type {
   AgentContextGenerationResult,
   AgentPackReport,
@@ -30,7 +30,7 @@ import type {
   UsageProbeResult,
   UsageSnapshot,
 } from "./types";
-import type { ChatMessage } from "./types";
+import type { AskStreamEvent, ChatMessage } from "./types";
 
 export const listProjects = () => invoke<ProjectSummary[]>("list_projects");
 
@@ -108,14 +108,19 @@ export const askKnowledge = (
   query: string,
   project?: string,
   repoPath?: string,
-  requestId?: string,
-) =>
-  invoke<AskKnowledgeReply>("ask_knowledge_cmd", {
+  onStream?: (event: AskStreamEvent) => void,
+) => {
+  const streamChannel = new Channel<AskStreamEvent>();
+  if (onStream) {
+    streamChannel.onmessage = onStream;
+  }
+  return invoke<AskKnowledgeReply>("ask_knowledge_cmd", {
     query,
     project: project || null,
     repoPath: repoPath || null,
-    requestId: requestId ?? crypto.randomUUID(),
+    onStream: streamChannel,
   });
+};
 
 export const listAskSessions = (projectSlug: string) =>
   invoke<AskSessionInfo[]>("list_ask_sessions_cmd", { projectSlug });

@@ -86,12 +86,11 @@ pub fn list_ask_sessions(paths: &KnowledgePaths, project_slug: &str) -> Vec<AskS
             continue;
         }
         let meta_path = session_meta_path(&sessions_dir, &id);
-        if let Ok(raw) = std::fs::read_to_string(&meta_path) {
-            if let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw) {
+        if let Ok(raw) = std::fs::read_to_string(&meta_path)
+            && let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw) {
                 sessions.push(meta_to_info(meta));
                 continue;
             }
-        }
         sessions.push(AskSessionInfo {
             id: id.clone(),
             title: id,
@@ -241,11 +240,10 @@ fn last_replied_date_from_messages(messages: &serde_json::Value) -> String {
     if let Some(arr) = messages.as_array() {
         for msg in arr.iter().rev() {
             if msg.get("role").and_then(|r| r.as_str()) == Some("assistant") {
-                if let Some(ts) = msg.get("timestamp").and_then(|t| t.as_u64()) {
-                    if let Some(dt) = chrono::DateTime::from_timestamp_millis(ts as i64) {
+                if let Some(ts) = msg.get("timestamp").and_then(|t| t.as_u64())
+                    && let Some(dt) = chrono::DateTime::from_timestamp_millis(ts as i64) {
                         return dt.format("%Y-%m-%d").to_string();
                     }
-                }
                 return today_date_string();
             }
         }

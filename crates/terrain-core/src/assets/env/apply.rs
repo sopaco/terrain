@@ -17,14 +17,10 @@ use crate::path_portable::REPO_AGENT_TOOLS_MANIFEST;
 /// Skill deployment targets: ACP/OpenCode convention + Claude Code discovery dir.
 pub const SKILL_DEPLOY_DIRS: [&str; 2] = [".agents/skills", ".claude/skills"];
 
-#[derive(Debug, Clone, Serialize)]
-pub struct EnvApplyProgress {
-    pub stage: String,
-    pub message: String,
-}
+use crate::progress::{EnvApplyProgress, ProgressEvent};
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
 pub struct EnvApplyResult {
     pub repo_path: String,
@@ -82,10 +78,10 @@ pub async fn apply_env_integration(
             continue;
         }
 
-        on_progress(EnvApplyProgress {
-            stage: def.id.clone(),
-            message: format!("正在集成 {}…", def.label),
-        });
+        on_progress(ProgressEvent::env(
+            def.id.clone(),
+            format!("正在集成 {}…", def.label),
+        ));
 
         let result = match def.kind.as_str() {
             "skill" => apply_skill(repo, def),

@@ -1,0 +1,58 @@
+use serde::Serialize;
+
+use crate::schema::{AgentContextMeta, LithoPlan};
+
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct LlmStatus {
+    pub provider: String,
+    pub model: String,
+    pub ready: bool,
+    pub message: String,
+    pub base_url: Option<String>,
+}
+
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct LithoGenerationJob {
+    pub plan: LithoPlan,
+    pub prompt: String,
+    pub acp_command: String,
+    pub status: String,
+}
+
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct LithoGenerationResult {
+    pub plan: LithoPlan,
+    pub response_excerpt: String,
+    pub human_doc_count: usize,
+    pub human_docs_complete: bool,
+}
+
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectInitResult {
+    pub project_slug: String,
+    pub repo_path: String,
+    pub scan_files_written: usize,
+    pub repack_tokens: Option<usize>,
+    pub agent_context_generated: bool,
+    pub human_doc_count: usize,
+    pub human_docs_complete: bool,
+    pub litho_ran: bool,
+    pub notes: Vec<String>,
+}
+
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentContextGenerationResult {
+    pub output_path: String,
+    pub meta: AgentContextMeta,
+    pub response_excerpt: String,
+}

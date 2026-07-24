@@ -507,26 +507,23 @@ pub fn read_doc_ask_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                     let path_lower = params.path.to_lowercase();
                     if path_lower.contains("/human/") || path_lower.starts_with("human/") {
                         let slug = params.project.as_deref();
-                        if let Some(slug) = slug {
-                            if agent_context_ready(&paths, slug) {
+                        if let Some(slug) = slug
+                            && agent_context_ready(&paths, slug) {
                                 return Err(adk_core::AdkError::tool(
                                     "human/ Litho docs are disabled in Ask mode when agent/context.md \
                                      exists. Call read_agent_context(section=\"…\") for architecture, \
                                      grep_agent_pack for code.",
                                 ));
                             }
-                        }
                     }
-                    if path_lower.ends_with("agent/context.md") || path_lower == "agent/context.md" {
-                        if let Some(slug) = params.project.as_deref() {
-                            if agent_context_ready(&paths, slug) {
+                    if (path_lower.ends_with("agent/context.md") || path_lower == "agent/context.md")
+                        && let Some(slug) = params.project.as_deref()
+                            && agent_context_ready(&paths, slug) {
                                 return Err(adk_core::AdkError::tool(
                                     "agent/context.md overview is preloaded in Ask mode. \
                                      Use read_agent_context(section=\"…\") for one section, not read_doc.",
                                 ));
                             }
-                        }
-                    }
 
                     terrain_core::read_doc_at_in_project(
                         &paths,

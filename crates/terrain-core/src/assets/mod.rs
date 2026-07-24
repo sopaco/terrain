@@ -12,8 +12,8 @@ mod sdd;
 mod repomix;
 
 pub use agent_context::{
-    agent_context_fresh, agent_context_ready, build_agent_context_prompt, read_agent_context_status,
-    write_agent_context,
+    agent_context_fresh, agent_context_ready, agent_context_synced_with_head,
+    build_agent_context_prompt, read_agent_context_status, write_agent_context,
 };
 pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{
@@ -60,7 +60,10 @@ pub use sdd::{
 pub use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 
 #[cfg(feature = "repomix")]
-pub use repomix::{agent_pack_fresh, maybe_pack_agent_assets, pack_agent_assets, AgentPackReport};
+pub use repomix::{
+    agent_pack_fresh, agent_pack_synced_with_head, maybe_pack_agent_assets, pack_agent_assets,
+    AgentPackReport,
+};
 
 use crate::paths::KnowledgePaths;
 use crate::schema::LithoPlan;

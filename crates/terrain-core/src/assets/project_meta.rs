@@ -142,7 +142,7 @@ pub fn discover_meta_files(repo: &Path) -> Vec<PathBuf> {
 
     for entry in discover_repo_walk(repo).filter_map(|e| e.ok()) {
         let path = entry.path();
-        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
             continue;
         }
         if path.file_name().and_then(|n| n.to_str()) != Some(META_FILENAME) {

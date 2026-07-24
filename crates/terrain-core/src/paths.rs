@@ -219,11 +219,10 @@ impl KnowledgePaths {
 
     /// Knowledge root for Ask/ACP env vars — prefers an explicit project slug.
     pub fn knowledge_root_for(&self, project_slug: Option<&str>) -> Option<PathBuf> {
-        if let Some(slug) = project_slug {
-            if let Ok(root) = self.try_project_dir(slug) {
+        if let Some(slug) = project_slug
+            && let Ok(root) = self.try_project_dir(slug) {
                 return Some(root);
             }
-        }
         self.workspace_knowledge_root()
     }
 

@@ -49,9 +49,8 @@ export function knowledgeDocPathForCitation(
   projectSlug: string,
   path: string,
 ): string {
-  if (path.startsWith("/") || path.includes(".terrain/")) {
-    return path;
-  }
+  // Always normalize `.terrain/...` → `agent/...` etc. `read_document` expects paths
+  // relative to the knowledge root, not repo-relative `.terrain/` prefixes.
   return resolveKnowledgeDocPath(projectSlug, path);
 }
 

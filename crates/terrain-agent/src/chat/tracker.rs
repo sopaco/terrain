@@ -37,8 +37,8 @@ impl ToolCallTracker {
             match part {
                 Part::FunctionCall { name, args, id, .. } => {
                     // Streaming providers may emit the same call across partial chunks.
-                    if event.llm_response.partial {
-                        if let Some(idx) = self.records.iter().rposition(|r| {
+                    if event.llm_response.partial
+                        && let Some(idx) = self.records.iter().rposition(|r| {
                             r.name == *name && matches!(r.status, ChatToolCallStatus::Running)
                         }) {
                             self.records[idx].arguments = args.clone();
@@ -49,7 +49,6 @@ impl ToolCallTracker {
                             changed = true;
                             continue;
                         }
-                    }
 
                     let call_id = id.clone().unwrap_or_else(|| {
                         if let Some(idx) = self.records.iter().rposition(|r| {
@@ -89,22 +88,20 @@ impl ToolCallTracker {
                     id,
                 } => {
                     let mut matched = false;
-                    if let Some(call_id) = id {
-                        if let Some(&idx) = self.by_id.get(call_id) {
+                    if let Some(call_id) = id
+                        && let Some(&idx) = self.by_id.get(call_id) {
                             apply_tool_result(self, idx, &function_response.response);
                             matched = true;
                             changed = true;
                         }
-                    }
                     if !matched {
                         let call_id = function_response.name.clone();
-                        if let Some(&idx) = self.by_id.get(&call_id) {
-                            if matches!(self.records[idx].status, ChatToolCallStatus::Running) {
+                        if let Some(&idx) = self.by_id.get(&call_id)
+                            && matches!(self.records[idx].status, ChatToolCallStatus::Running) {
                                 apply_tool_result(self, idx, &function_response.response);
                                 matched = true;
                                 changed = true;
                             }
-                        }
                     }
                     if !matched {
                         if let Some(idx) = self.records.iter().position(|r| {

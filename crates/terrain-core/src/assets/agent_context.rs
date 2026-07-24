@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use chrono::Utc;
-use crate::freshness::git_snapshot;
+use crate::freshness::{baseline_matches_head, git_snapshot};
 
 use crate::assets::project_meta::{
     collect_project_meta, format_meta_bundle_for_prompt, persist_meta_inputs,
@@ -28,8 +28,23 @@ pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// True when context exists, meets the ready heuristic, and its baseline matches current HEAD.
-pub fn agent_context_fresh(
+fn context_baseline_head(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+) -> Option<String> {
+    let ctx_meta =
+        crate::doc::read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)).ok();
+    let pack_meta =
+        crate::doc::read_json::<crate::schema::AgentPackMeta>(paths.agent_pack_meta(project_slug))
+            .ok();
+    ctx_meta
+        .as_ref()
+        .and_then(|m| m.baseline_git_head.clone())
+        .or_else(|| pack_meta.and_then(|m| m.baseline_git_head.clone()))
+}
+
+/// True when context exists and its baseline matches current HEAD (ignores dirty working tree).
+pub fn agent_context_synced_with_head(
     paths: &KnowledgePaths,
     project_slug: &str,
     repo_path: &str,
@@ -37,23 +52,20 @@ pub fn agent_context_fresh(
     if !agent_context_ready(paths, project_slug) {
         return false;
     }
-    let git = git_snapshot(repo_path);
-    if !git.is_git_repo || git.dirty {
+    baseline_matches_head(repo_path, context_baseline_head(paths, project_slug).as_deref())
+}
+
+/// True when context matches current HEAD and the working tree is clean (excluding `.terrain/`).
+pub fn agent_context_fresh(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> bool {
+    if !agent_context_synced_with_head(paths, project_slug, repo_path) {
         return false;
     }
-    let ctx_meta =
-        crate::doc::read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)).ok();
-    let pack_meta =
-        crate::doc::read_json::<crate::schema::AgentPackMeta>(paths.agent_pack_meta(project_slug))
-            .ok();
-    let baseline = ctx_meta
-        .as_ref()
-        .and_then(|m| m.baseline_git_head.clone())
-        .or_else(|| pack_meta.and_then(|m| m.baseline_git_head.clone()));
-    match (baseline.as_deref(), git.head.as_deref()) {
-        (Some(baseline), Some(head)) => baseline == head,
-        _ => false,
-    }
+    let git = git_snapshot(repo_path);
+    !git.is_git_repo || !git.dirty
 }
 
 pub fn read_agent_context_status(paths: &KnowledgePaths, project_slug: &str) -> AgentContextStatus {
@@ -241,4 +253,107 @@ pub fn write_agent_context(
     };
     crate::doc::write_json(paths.agent_context_meta(project_slug), &meta)?;
     Ok(meta)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use std::process::Command;
+
+    fn init_git_repo(repo: &Path) -> String {
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo)
+            .output()
+            .expect("git init");
+        Command::new("git")
+            .args(["config", "user.email", "t@test.com"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "t"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        fs::write(repo.join("src.rs"), "fn main() {}\n").unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        String::from_utf8(
+            Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(repo)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string()
+    }
+
+    fn write_ready_context(paths: &KnowledgePaths, slug: &str, repo_path: &str, head: &str) {
+        let sections = (1..=4)
+            .map(|i| format!("## Section {i}\n\n{}", "x".repeat(130)))
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        let body = format!("Overview paragraph.\n\n{sections}");
+        let fm = DocFrontmatter {
+            doc_type: DocType::AgentContext,
+            project: slug.to_string(),
+            module: None,
+            title: Some("Agent Architecture Context".into()),
+            source: Some(stored_repo_path(Path::new(repo_path))),
+            refs: vec![],
+            deps: vec![],
+            extra: serde_json::Map::new(),
+        };
+        write_doc(&paths.agent_context_main(slug), &fm, &body).unwrap();
+        let meta = AgentContextMeta {
+            project: slug.to_string(),
+            repo_path: stored_repo_path(Path::new(repo_path)),
+            output_file: "context.md".into(),
+            generated_at: Utc::now().to_rfc3339(),
+            section_count: 4,
+            char_count: body.len(),
+            baseline_git_head: Some(head.to_string()),
+        };
+        crate::doc::write_json(paths.agent_context_meta(slug), &meta).unwrap();
+    }
+
+    #[test]
+    fn context_synced_with_head_ignores_dirty_working_tree() {
+        let _lock = crate::registry::registry_test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let head = init_git_repo(repo);
+        let slug = "dirty-ctx";
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        write_ready_context(&paths, slug, &repo.display().to_string(), &head);
+
+        fs::write(repo.join("dirty.rs"), "x").unwrap();
+
+        assert!(agent_context_synced_with_head(
+            &paths,
+            slug,
+            &repo.display().to_string()
+        ));
+        assert!(!agent_context_fresh(
+            &paths,
+            slug,
+            &repo.display().to_string()
+        ));
+    }
 }

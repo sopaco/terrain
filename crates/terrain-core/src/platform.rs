@@ -79,16 +79,13 @@ pub fn expand_user_path(path: &Path) -> PathBuf {
     if let Some(rest) = path
         .to_str()
         .and_then(|s| s.strip_prefix("~/").or_else(|| s.strip_prefix("~\\")))
-    {
-        if let Some(home) = user_home() {
+        && let Some(home) = user_home() {
             return home.join(rest);
         }
-    }
-    if let Some(s) = path.to_str() {
-        if let Some(expanded) = expand_windows_env_prefix(s) {
+    if let Some(s) = path.to_str()
+        && let Some(expanded) = expand_windows_env_prefix(s) {
             return PathBuf::from(expanded);
         }
-    }
     path.to_path_buf()
 }
 

@@ -66,12 +66,11 @@ impl ProjectScanner {
         files_written += git.scan(repo_path)?;
         collectors.push("git".into());
 
-        if let Some(count) = OpenApiImporter::new(&self.paths, &slug).import_repo(repo_path)? {
-            if count > 0 {
+        if let Some(count) = OpenApiImporter::new(&self.paths, &slug).import_repo(repo_path)?
+            && count > 0 {
                 files_written += count;
                 collectors.push("openapi".into());
             }
-        }
 
         #[cfg(feature = "repomix")]
         let agent_pack = {

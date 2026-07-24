@@ -5,6 +5,7 @@ use terrain_core::{KnowledgePaths, registry};
 pub struct TestKnowledgeSetup {
     pub paths: KnowledgePaths,
     pub slug: String,
+    #[allow(dead_code)]
     pub repo: PathBuf,
     _lock: std::sync::MutexGuard<'static, ()>,
     _registry_dir: tempfile::TempDir,

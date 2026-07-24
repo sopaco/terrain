@@ -2,7 +2,7 @@ use std::path::Path;
 
 use chrono::Utc;
 use crate::doc::read_json;
-use crate::freshness::git_snapshot;
+use crate::freshness::{baseline_matches_head, git_snapshot};
 use crate::path_portable::stored_repo_path;
 use repomix_core::{OutputStyle, PackOptions, RepomixConfig, pack_with_options};
 
@@ -67,25 +67,31 @@ pub struct AgentPackReport {
     pub skipped: bool,
 }
 
-/// True when an existing pack matches current Git HEAD and the working tree is clean (excluding `.terrain/`).
-pub fn agent_pack_fresh(paths: &KnowledgePaths, project_slug: &str, repo_path: &str) -> bool {
+/// True when pack exists and its Git baseline matches current HEAD (ignores dirty working tree).
+///
+/// Use this to decide whether repomix packing can be skipped. A dirty tree may still differ from
+/// the last pack on disk; freshness scoring and Ask trust blocks surface that separately.
+pub fn agent_pack_synced_with_head(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> bool {
     if !agent_pack_ready(paths, project_slug) {
         return false;
     }
     let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) else {
         return false;
     };
-    let git = git_snapshot(repo_path);
-    if !git.is_git_repo {
-        return true;
-    }
-    if git.dirty {
+    baseline_matches_head(repo_path, meta.baseline_git_head.as_deref())
+}
+
+/// True when pack matches current HEAD and the working tree is clean (excluding `.terrain/`).
+pub fn agent_pack_fresh(paths: &KnowledgePaths, project_slug: &str, repo_path: &str) -> bool {
+    if !agent_pack_synced_with_head(paths, project_slug, repo_path) {
         return false;
     }
-    match (&meta.baseline_git_head, &git.head) {
-        (Some(baseline), Some(head)) => baseline == head,
-        _ => false,
-    }
+    let git = git_snapshot(repo_path);
+    !git.is_git_repo || !git.dirty
 }
 
 fn report_from_meta(
@@ -109,7 +115,7 @@ pub async fn maybe_pack_agent_assets(
     project_slug: &str,
     repo_path: &str,
 ) -> Result<AgentPackReport> {
-    if agent_pack_fresh(paths, project_slug, repo_path) {
+    if agent_pack_synced_with_head(paths, project_slug, repo_path) {
         let meta = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug))?;
         return Ok(report_from_meta(paths, project_slug, &meta));
     }
@@ -202,4 +208,128 @@ pub async fn pack_agent_assets(
         total_tokens: meta.total_tokens,
         skipped: false,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::TokenHeavyFile;
+    use std::fs;
+    use std::path::Path;
+    use std::process::Command;
+
+    fn init_git_repo(repo: &Path) -> String {
+        Command::new("git")
+            .args(["init"])
+            .current_dir(repo)
+            .output()
+            .expect("git init");
+        Command::new("git")
+            .args(["config", "user.email", "t@test.com"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "t"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        fs::write(repo.join("src.rs"), "fn main() {}\n").unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        String::from_utf8(
+            Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(repo)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string()
+    }
+
+    fn write_pack_assets(paths: &KnowledgePaths, slug: &str, repo_path: &str, head: &str) {
+        fs::write(paths.agent_pack_main(slug), "# pack\n").unwrap();
+        let meta = AgentPackMeta {
+            project: slug.to_string(),
+            repo_path: repo_path.to_string(),
+            generator: AssetGenerator::RepomixCore,
+            pack_strategy: AGENT_PACK_STRATEGY.into(),
+            output_file: "repomix.md".into(),
+            total_files: 1,
+            total_tokens: 10,
+            total_characters: 100,
+            top_files_by_tokens: vec![TokenHeavyFile {
+                path: "src.rs".into(),
+                tokens: 10,
+            }],
+            directory_structure: "src.rs".into(),
+            synced_at: Utc::now().to_rfc3339(),
+            baseline_git_head: Some(head.to_string()),
+        };
+        write_json(&paths.agent_pack_meta(slug), &meta).unwrap();
+    }
+
+    #[test]
+    fn pack_synced_with_head_ignores_dirty_working_tree() {
+        let _lock = crate::registry::registry_test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let head = init_git_repo(repo);
+        let slug = "dirty-pack";
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        write_pack_assets(&paths, slug, &repo.display().to_string(), &head);
+
+        fs::write(repo.join("dirty.rs"), "x").unwrap();
+
+        assert!(agent_pack_synced_with_head(
+            &paths,
+            slug,
+            &repo.display().to_string()
+        ));
+        assert!(!agent_pack_fresh(&paths, slug, &repo.display().to_string()));
+    }
+
+    #[test]
+    fn pack_not_synced_when_head_advanced() {
+        let _lock = crate::registry::registry_test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let head = init_git_repo(repo);
+        let slug = "stale-pack";
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        write_pack_assets(&paths, slug, &repo.display().to_string(), &head);
+
+        fs::write(repo.join("next.rs"), "y").unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "next"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+
+        assert!(!agent_pack_synced_with_head(
+            &paths,
+            slug,
+            &repo.display().to_string()
+        ));
+    }
 }

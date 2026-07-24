@@ -177,10 +177,7 @@ fn break_before_known_sections(text: &str) -> String {
 pub fn strip_model_reasoning(text: &str) -> String {
     let mut out = text.to_string();
 
-    loop {
-        let Some(start) = find_ignore_case(&out, THINK_OPEN) else {
-            break;
-        };
+    while let Some(start) = find_ignore_case(&out, THINK_OPEN) {
         if let Some(rel_end) = find_ignore_case(&out[start..], THINK_CLOSE) {
             let remove_end = start + rel_end + THINK_CLOSE.len();
             out.replace_range(start..remove_end, "");
@@ -244,11 +241,10 @@ pub fn extract_markdown_body(text: &str) -> String {
         return text.to_string();
     }
     // Skip a lone document title (`# …`) before real `##` sections.
-    if text.starts_with("# ") {
-        if let Some(idx) = text.find("\n## ") {
+    if text.starts_with("# ")
+        && let Some(idx) = text.find("\n## ") {
             return text[idx + 1..].trim_start().to_string();
         }
-    }
     // Inline preamble before the first `##` on the same line (local LLM output).
     if let Some(idx) = text.find("## ") {
         return text[idx..].to_string();

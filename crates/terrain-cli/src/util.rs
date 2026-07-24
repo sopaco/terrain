@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use terrain_core::{get_env_status, KnowledgePaths};
@@ -14,7 +14,7 @@ pub fn paths(cli: &Cli) -> KnowledgePaths {
 
 pub fn workspace_project_slug(paths: &KnowledgePaths) -> Option<String> {
     let repo = paths.workspace_repo()?;
-    Some(slug_from(&repo.to_path_buf(), None))
+    Some(slug_from(repo, None))
 }
 
 pub fn require_repo_path(global: Option<PathBuf>, explicit: Option<PathBuf>) -> Result<PathBuf> {
@@ -24,7 +24,7 @@ pub fn require_repo_path(global: Option<PathBuf>, explicit: Option<PathBuf>) -> 
         .context("repository path is required; pass a path, --repo-path, or run inside a Git workspace")
 }
 
-pub fn slug_from(repo_path: &PathBuf, slug: Option<String>) -> String {
+pub fn slug_from(repo_path: &Path, slug: Option<String>) -> String {
     slug.unwrap_or_else(|| {
         slug::slugify(
             repo_path

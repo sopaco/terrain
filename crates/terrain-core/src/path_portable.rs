@@ -23,15 +23,14 @@ pub const REPO_AGENT_TOOLS_MANIFEST: &str = ".terrain/env/agent-tools.json";
 
 /// Convert an absolute path under `$HOME` to `~/…` for agent manifests.
 pub fn to_tilde_path(path: &Path) -> String {
-    if let Some(home) = user_home() {
-        if let Ok(rest) = path.strip_prefix(&home) {
+    if let Some(home) = user_home()
+        && let Ok(rest) = path.strip_prefix(&home) {
             let rest = rest.to_string_lossy();
             if rest.is_empty() {
                 return "~".into();
             }
             return format!("~/{rest}");
         }
-    }
     normalize_slashes(&path.display().to_string())
 }
 

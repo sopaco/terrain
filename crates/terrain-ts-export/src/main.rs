@@ -59,14 +59,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     terrain_core::EnvPlan::export_all_to(&out)?;
     terrain_core::EnvApplyResult::export_all_to(&out)?;
     terrain_core::SddPhaseResult::export_all_to(&out)?;
-    terrain_agent::LithoGenerationResult::export_all_to(&out)?;
-    terrain_agent::ChatPhase::export_all_to(&out)?;
-    terrain_agent::ChatReply::export_all_to(&out)?;
-    terrain_agent::ProjectInitResult::export_all_to(&out)?;
-    terrain_agent::LithoGenerationJob::export_all_to(&out)?;
-    terrain_agent::ModelSettings::export_all_to(&out)?;
-    terrain_agent::LlmStatus::export_all_to(&out)?;
-    terrain_agent::AgentContextGenerationResult::export_all_to(&out)?;
+    terrain_core::LithoGenerationResult::export_all_to(&out)?;
+    terrain_core::ChatPhase::export_all_to(&out)?;
+    terrain_core::ChatReply::export_all_to(&out)?;
+    terrain_core::ProjectInitResult::export_all_to(&out)?;
+    terrain_core::LithoGenerationJob::export_all_to(&out)?;
+    terrain_core::ModelSettings::export_all_to(&out)?;
+    terrain_core::LlmStatus::export_all_to(&out)?;
+    terrain_core::AgentContextGenerationResult::export_all_to(&out)?;
 
     terrain_core::UsageSnapshot::export_all_to(&out)?;
     terrain_core::UsageProbeResult::export_all_to(&out)?;

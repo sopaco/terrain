@@ -209,6 +209,99 @@ fn contains_ascii_insensitive(haystack: &str, needle: &str) -> bool {
         .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
 }
 
+fn snippet(body: &str, query: &str) -> String {
+    let query = query.split_whitespace().next().unwrap_or(query);
+    let body_l = body.to_lowercase();
+    let query_l = query.to_lowercase();
+    if let Some(idx) = body_l.find(&query_l) {
+        let start = body.floor_char_boundary(idx.saturating_sub(40));
+        let end = body.ceil_char_boundary((idx + query_l.len() + 80).min(body.len()));
+        let slice = body[start..end].replace('\n', " ");
+        return format!("…{}…", slice.trim());
+    }
+
+    body.lines()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("")
+        .chars()
+        .take(120)
+        .collect()
+}
+
+pub fn read_doc_at(paths: &KnowledgePaths, rel_or_abs: &str) -> Result<crate::doc::KnowledgeDoc> {
+    read_doc_at_in_project(paths, rel_or_abs, None)
+}
+
+/// Strip repo-relative `.terrain/` prefixes so paths match knowledge-root layout.
+fn normalize_knowledge_doc_rel(path: &str) -> String {
+    let p = path.trim().trim_start_matches("./").trim_start_matches('/');
+    if let Some(rest) = p.strip_prefix(".terrain/") {
+        return rest.to_string();
+    }
+    if let Some(idx) = p.find("/.terrain/") {
+        return p[idx + "/.terrain/".len()..].to_string();
+    }
+    if p == "context.md" {
+        return "agent/context.md".to_string();
+    }
+    p.to_string()
+}
+
+/// Resolve a knowledge document path against registry-backed project roots.
+pub fn read_doc_at_in_project(
+    paths: &KnowledgePaths,
+    rel_or_abs: &str,
+    project_slug: Option<&str>,
+) -> Result<crate::doc::KnowledgeDoc> {
+    use std::collections::HashSet;
+
+    let trimmed = rel_or_abs.trim();
+    if trimmed.is_empty() {
+        return Err(crate::error::CoreError::InvalidDoc(
+            "document path is empty".into(),
+        ));
+    }
+
+    let mut tried = HashSet::new();
+    let mut push = |candidate: PathBuf, queue: &mut Vec<PathBuf>| {
+        if tried.insert(candidate.clone()) {
+            queue.push(candidate);
+        }
+    };
+
+    let mut candidates = Vec::new();
+    let path = Path::new(trimmed);
+
+    if path.is_absolute() {
+        push(path.to_path_buf(), &mut candidates);
+    }
+
+    let rel = normalize_knowledge_doc_rel(trimmed);
+
+    if let Some(slug) = project_slug
+        && let Ok(root) = paths.try_project_dir(slug) {
+            push(root.join(&rel), &mut candidates);
+        }
+
+    if let Some(root) = paths.workspace_knowledge_root() {
+        push(root.join(&rel), &mut candidates);
+    }
+
+    for (_slug, root) in paths.indexed_project_roots() {
+        push(root.join(&rel), &mut candidates);
+    }
+
+    for candidate in candidates {
+        if candidate.is_file() {
+            return read_doc(&candidate);
+        }
+    }
+
+    Err(crate::error::CoreError::InvalidDoc(format!(
+        "document not found: {rel_or_abs}"
+    )))
+}
+
 #[cfg(test)]
 mod read_doc_tests {
     use super::*;
@@ -263,83 +356,16 @@ mod read_doc_tests {
         let doc = read_doc_at_in_project(&paths, "human/1.概述.md", Some(&slug)).unwrap();
         assert!(doc.body.contains("Hello"));
     }
-}
 
-fn snippet(body: &str, query: &str) -> String {
-    let query = query.split_whitespace().next().unwrap_or(query);
-    let body_l = body.to_lowercase();
-    let query_l = query.to_lowercase();
-    if let Some(idx) = body_l.find(&query_l) {
-        let start = body.floor_char_boundary(idx.saturating_sub(40));
-        let end = body.ceil_char_boundary((idx + query_l.len() + 80).min(body.len()));
-        let slice = body[start..end].replace('\n', " ");
-        return format!("…{}…", slice.trim());
+    #[test]
+    fn resolves_terrain_prefixed_agent_context() {
+        let (paths, slug, _guard) = test_setup("read-doc-ctx-proj");
+        let context_path = paths.agent_context_main(&slug);
+        std::fs::create_dir_all(context_path.parent().unwrap()).unwrap();
+        std::fs::write(&context_path, "# Agent context\n\nModules overview.").unwrap();
+
+        let doc =
+            read_doc_at_in_project(&paths, ".terrain/agent/context.md", Some(&slug)).unwrap();
+        assert!(doc.body.contains("Modules overview"));
     }
-
-    body.lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("")
-        .chars()
-        .take(120)
-        .collect()
-}
-
-pub fn read_doc_at(paths: &KnowledgePaths, rel_or_abs: &str) -> Result<crate::doc::KnowledgeDoc> {
-    read_doc_at_in_project(paths, rel_or_abs, None)
-}
-
-/// Resolve a knowledge document path against registry-backed project roots.
-pub fn read_doc_at_in_project(
-    paths: &KnowledgePaths,
-    rel_or_abs: &str,
-    project_slug: Option<&str>,
-) -> Result<crate::doc::KnowledgeDoc> {
-    use std::collections::HashSet;
-
-    let trimmed = rel_or_abs.trim();
-    if trimmed.is_empty() {
-        return Err(crate::error::CoreError::InvalidDoc(
-            "document path is empty".into(),
-        ));
-    }
-
-    let mut tried = HashSet::new();
-    let mut push = |candidate: PathBuf, queue: &mut Vec<PathBuf>| {
-        if tried.insert(candidate.clone()) {
-            queue.push(candidate);
-        }
-    };
-
-    let mut candidates = Vec::new();
-    let path = Path::new(trimmed);
-
-    if path.is_absolute() {
-        push(path.to_path_buf(), &mut candidates);
-    }
-
-    let rel = trimmed.trim_start_matches("./").trim_start_matches('/');
-
-    if let Some(slug) = project_slug {
-        if let Ok(root) = paths.try_project_dir(slug) {
-            push(root.join(rel), &mut candidates);
-        }
-    }
-
-    if let Some(root) = paths.workspace_knowledge_root() {
-        push(root.join(rel), &mut candidates);
-    }
-
-    for (_slug, root) in paths.indexed_project_roots() {
-        push(root.join(rel), &mut candidates);
-    }
-
-    for candidate in candidates {
-        if candidate.is_file() {
-            return read_doc(&candidate);
-        }
-    }
-
-    Err(crate::error::CoreError::InvalidDoc(format!(
-        "document not found: {rel_or_abs}"
-    )))
 }

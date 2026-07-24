@@ -39,13 +39,11 @@ pub fn read_pack_text_cached(pack_path: &Path) -> Result<String> {
     let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
     let len = meta.len();
 
-    if let Ok(guard) = PACK_TEXT_CACHE.lock() {
-        if let Some(entry) = guard.get(&key) {
-            if entry.mtime == mtime && entry.len == len {
+    if let Ok(guard) = PACK_TEXT_CACHE.lock()
+        && let Some(entry) = guard.get(&key)
+            && entry.mtime == mtime && entry.len == len {
                 return Ok(entry.text.clone());
             }
-        }
-    }
 
     let text = std::fs::read_to_string(pack_path).map_err(|e| {
         CoreError::InvalidDoc(format!("cannot read pack {}: {e}", pack_path.display()))
@@ -168,28 +166,22 @@ fn path_matches(requested: &str, header: &str) -> bool {
 }
 
 fn strip_line_number_prefix(line: &str) -> &str {
-    if let Some((prefix, rest)) = line.split_once(':') {
-        if !prefix.is_empty()
+    if let Some((prefix, rest)) = line.split_once(':')
+        && !prefix.is_empty()
             && prefix.chars().all(|c| c.is_ascii_digit())
             && rest.starts_with(' ')
         {
             return &rest[1..];
         }
-    }
     line
 }
 
 fn parse_numbered_line(line: &str) -> Option<(u32, String)> {
-    if let Some((prefix, rest)) = line.split_once(':') {
-        if let Ok(num) = prefix.parse::<u32>() {
-            let body = if rest.starts_with(' ') {
-                rest[1..].to_string()
-            } else {
-                rest.to_string()
-            };
+    if let Some((prefix, rest)) = line.split_once(':')
+        && let Ok(num) = prefix.parse::<u32>() {
+            let body = rest.strip_prefix(' ').unwrap_or(rest).to_string();
             return Some((num, body));
         }
-    }
     None
 }
 

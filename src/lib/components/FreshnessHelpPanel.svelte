@@ -196,7 +196,7 @@
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
                 >
-                    距上次同步每多 1 天 · 约 −2 分（上限 20）
+                    距上次同步每多 1 天 · 约 −1 分（上限 5）
                 </div>
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"

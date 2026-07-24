@@ -82,13 +82,11 @@ pub fn load_registry() -> Result<Vec<RegistryEntry>> {
     }
 
     let mtime = std::fs::metadata(&path).ok().and_then(|m| m.modified().ok());
-    if let Ok(guard) = REGISTRY_CACHE.lock() {
-        if let Some(cache) = guard.as_ref() {
-            if cache.mtime == mtime {
+    if let Ok(guard) = REGISTRY_CACHE.lock()
+        && let Some(cache) = guard.as_ref()
+            && cache.mtime == mtime {
                 return Ok(cache.entries.clone());
             }
-        }
-    }
 
     let raw = std::fs::read_to_string(&path)?;
     let file: RegistryFile = serde_json::from_str(&raw)?;

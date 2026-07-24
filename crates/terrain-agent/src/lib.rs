@@ -5,16 +5,16 @@ mod builder;
 mod context_generator;
 mod chat;
 mod compat_tool;
-mod env_optimize;
 mod litho;
 mod model;
-mod project_init;
+mod runtime;
 mod sdd;
 mod settings;
 mod throttle;
 mod tool_schema;
 mod tool_session_cache;
 mod tools;
+mod workflows;
 
 pub use acp::{
     acp_args, acp_available, acp_binary, acp_spawn_command, agent_execution_ready,
@@ -23,30 +23,33 @@ pub use acp::{
 };
 pub use builder::{
     knowledge_paths_from_env, knowledge_root_from_env, AgentConfig, build_agent,
-    opencode_available, validate_repo_path,
+    opencode_available,
 };
 pub use context_generator::AgentContextGenerator;
 pub use agent_assets::{ensure_agent_assets, AgentAssetsEnsureReport};
-pub use agent_context::{
-    agent_context_exists, run_agent_context_generation, AgentContextGenerationResult,
+pub use agent_context::{agent_context_exists, run_agent_context_generation};
+pub use chat::ChatEngine;
+pub use litho::{prepare_litho_generation, run_litho_generation};
+pub use runtime::Runtime;
+pub use workflows::{
+    ask_knowledge, fallback_search_reply, llm_ready, run_project_initialization, run_quick_refresh,
+    run_sdd_phase, LithoProgress, ProgressEvent, ProjectInitProgress, ProjectInitResult,
+    SddProgress,
 };
-pub use chat::{ChatEngine, ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus};
-pub use env_optimize::{env_plan_for_repo, env_status_for_repo, run_env_integration};
-pub use litho::{
-    prepare_litho_generation, run_litho_generation, LithoGenerationJob, LithoGenerationResult,
-    LithoProgress,
-};
-pub use project_init::{
-    run_project_initialization, ProjectInitProgress, ProjectInitResult,
-};
-pub use sdd::{run_sdd_phase, SddProgress};
 pub use model::{
-    load_dotenv, llm_status, parse_provider, resolve_model_config, LlmProvider, LlmStatus,
-    ModelConfig, build_llm, DEFAULT_LMSTUDIO_BASE_URL, DEFAULT_LMSTUDIO_MODEL,
-    DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,
+    load_dotenv, llm_status, parse_provider, resolve_model_config, LlmProvider, ModelConfig,
+    build_llm,
 };
 pub use settings::{
     default_profile_for, load_model_settings, model_config_from_settings, model_settings_from_config,
     save_model_settings, AcpSettings, AgentExecution, AskExecution, ModelSettings, ProviderProfile,
     DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
+};
+pub use terrain_core::{
+    validate_repo_path, AgentContextGenerationResult, AskStreamEvent, ChatPhase, ChatReply,
+    ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus, LithoGenerationJob,
+    LithoGenerationResult, LlmStatus,
+};
+pub use terrain_core::settings::{
+    DEFAULT_LMSTUDIO_BASE_URL, DEFAULT_LMSTUDIO_MODEL, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,
 };

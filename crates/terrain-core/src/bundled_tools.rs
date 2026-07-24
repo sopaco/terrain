@@ -141,12 +141,7 @@ pub fn resolve_sidecar_next_to_exe(exe_dir: &Path, name: &str) -> Option<PathBuf
                 .join(&bin_name),
         );
     }
-    for candidate in candidates {
-        if is_executable_file(&candidate) {
-            return Some(candidate);
-        }
-    }
-    None
+    candidates.into_iter().find(|candidate| is_executable_file(candidate))
 }
 
 pub(crate) fn bundled_rtk() -> Option<PathBuf> {

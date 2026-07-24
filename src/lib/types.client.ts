@@ -5,11 +5,21 @@
 
 import type {
   AskKnowledgeReply,
+  ChatPhase,
   IpcSourceSlice,
   SourceCitation,
   TokenUsage,
   ToolCallRecord,
 } from "./generated";
+
+/** Streaming payloads from `ask_knowledge_cmd` via Tauri Channel (mirrors Rust `AskStreamEvent`). */
+export type AskStreamEvent =
+  | { type: "chunk"; text: string }
+  | { type: "thinking_chunk"; text: string }
+  | { type: "tool_calls"; tool_calls: ToolCallRecord[] }
+  | { type: "phase"; phase: ChatPhase }
+  | { type: "usage"; usage: TokenUsage }
+  | { type: "done"; reply: AskKnowledgeReply };
 
 /** Knowledge document returned by `read_document` IPC. */
 export interface KnowledgeDoc {
@@ -34,6 +44,7 @@ export type SourceSlice = IpcSourceSlice & {
 };
 
 export type AssistantStep =
+  | { kind: "thinking"; content: string }
   | { kind: "text"; content: string }
   | { kind: "tools"; toolCalls: ToolCallRecord[] };
 

@@ -18,6 +18,7 @@ async fn ask_smoke() {
             |_| {},
             |_| {},
             |_| {},
+            |_| {},
         )
         .await;
     match &result {

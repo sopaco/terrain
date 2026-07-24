@@ -1,9 +1,8 @@
 mod common;
 
 use common::TestKnowledgeSetup;
-use terrain_core::registry::registry_test_lock;
 use terrain_core::{
-    KnowledgePaths, KnowledgeSearch, SearchOptions, parse_markdown, parse_markdown_at, read_doc,
+    parse_markdown, parse_markdown_at, read_doc,
     write_doc,
 };
 use terrain_core::schema::{DocFrontmatter, DocType};

@@ -246,7 +246,7 @@ fn materialize_ensure(key: &str, dest: &Path, source: &Path, force: bool) -> Res
     #[cfg(unix)]
     {
         symlink_replace(dest, source)?;
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(unix))]
