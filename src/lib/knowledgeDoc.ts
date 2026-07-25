@@ -1,5 +1,18 @@
 import type { CitationKind } from "./types";
 
+/** Whether a path refers to a non-markdown Terrain knowledge asset (e.g. `.meta/freshness.json`). */
+export function isTerrainKnowledgeAssetPath(path: string): boolean {
+  const p = resolveKnowledgeDocPath("", path);
+  if (p === "agent/repomix.md" || p.endsWith("/agent/repomix.md")) {
+    return false;
+  }
+  return (
+    p.startsWith(".meta/") ||
+    p.startsWith("env/") ||
+    (p.startsWith("agent/") && !p.endsWith(".md"))
+  );
+}
+
 /** Whether a path refers to a Litho / agent knowledge Markdown doc (not repomix source). */
 export function isKnowledgeMarkdownPath(path: string): boolean {
   const p = path.trim().replace(/^\.\//, "").replace(/^\//, "");
@@ -22,6 +35,9 @@ export function isKnowledgeMarkdownPath(path: string): boolean {
 }
 
 export function citationKindForPath(path: string): CitationKind {
+  if (isTerrainKnowledgeAssetPath(path)) {
+    return "structured_doc";
+  }
   if (!isKnowledgeMarkdownPath(path)) {
     return "source_code";
   }

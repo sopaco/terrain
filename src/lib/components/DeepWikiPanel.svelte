@@ -19,7 +19,7 @@
     normalizeAssistantSteps,
     syncStepTools,
   } from "../assistantSteps";
-  import { isKnowledgeMarkdownPath } from "../knowledgeDoc";
+  import { isKnowledgeMarkdownPath, isTerrainKnowledgeAssetPath } from "../knowledgeDoc";
   import { citationToSourceSlice, createPendingSourceSlice } from "../resolveSource";
   import { shouldSubmitOnEnter } from "../ime";
   import type {
@@ -605,7 +605,7 @@
   async function openCitation(c: SourceCitation) {
     citationError = null;
 
-    if (!projectSlug && !isKnowledgeMarkdownPath(c.path)) {
+    if (!projectSlug && !isKnowledgeMarkdownPath(c.path) && !isTerrainKnowledgeAssetPath(c.path)) {
       citationError = UI_MESSAGES.noProjectSelected;
       return;
     }

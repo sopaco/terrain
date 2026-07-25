@@ -3,7 +3,7 @@ import { citationKindForPath } from "./knowledgeDoc";
 
 /** File extensions treated as linkable source / doc paths in Markdown. */
 export const SOURCE_FILE_EXTENSIONS =
-  "rs|ts|tsx|js|jsx|mjs|cjs|py|go|java|kt|swift|cs|cpp|c|h|md|yaml|yml|toml|json|svelte";
+  "tsx|jsx|mjs|cjs|yaml|json|toml|swift|java|svelte|cpp|ts|rs|py|go|kt|cs|md|yml|js|c|h";
 
 const EXT_GROUP = `(?:${SOURCE_FILE_EXTENSIONS})`;
 
