@@ -168,6 +168,12 @@ pub fn plan_env_integration(
                 kind: def.kind.clone(),
                 action: "更新 AGENTS.md 托管片段".into(),
             }),
+            "terrain_ignore" => steps.push(EnvPlanStep {
+                id: def.id.clone(),
+                label: def.label.clone(),
+                kind: def.kind.clone(),
+                action: "写入 .terrain/.gitignore 与 .terrain/.gitattributes".into(),
+            }),
             "gitignore" => steps.push(EnvPlanStep {
                 id: def.id.clone(),
                 label: def.label.clone(),

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "integrations": [
     {
       "id": "skill-terrain-knowledge",
@@ -67,19 +67,10 @@
       "depends_on": ["skill-terrain-knowledge"]
     },
     {
-      "id": "gitignore-repomix",
-      "kind": "gitignore",
-      "label": "忽略 repomix.md",
-      "description": "将 .terrain/agent/repomix.md 加入 .gitignore",
-      "patterns": [".terrain/agent/repomix.md"],
-      "depends_on": []
-    },
-    {
-      "id": "gitignore-sdd-agent",
-      "kind": "gitignore",
-      "label": "忽略 SDD 工作区",
-      "description": "将 .terrain/.sdd-agent/ 加入 .gitignore（SDD 产出已迁至本地 ~/.terrain/sdd/）",
-      "patterns": ["**/.sdd-agent"],
+      "id": "terrain-git-policy",
+      "kind": "terrain_ignore",
+      "label": ".terrain/ Git 跟随策略",
+      "description": "写入 .terrain/.gitignore 与 .terrain/.gitattributes：本机衍生物不入库，生成文档禁用自动合并（冲突时重生成）",
       "depends_on": []
     }
   ],
@@ -91,7 +82,7 @@
     },
     {
       "id": "knowledge-guide",
-      "version": 4,
+      "version": 5,
       "fragment": "agents-md/knowledge-guide.fragment"
     },
     {

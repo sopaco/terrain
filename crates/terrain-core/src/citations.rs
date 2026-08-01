@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn skips_agent_pack_index_path() {
+    fn skips_agent_pack_path() {
         let refs = extract_source_citations("See agent/repomix.md for context.", Some("/repo"));
         assert!(refs.is_empty());
     }

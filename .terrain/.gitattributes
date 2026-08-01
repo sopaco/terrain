@@ -1,0 +1,14 @@
+# .gitattributes — terrain-git-policy: v1 · 由 Terrain 生成并维护
+
+# ── 生成的知识文档：禁用自动合并 ───────────────────────────────
+# 冲突处理：
+#   git checkout --ours  .terrain/agent/context.md   # 或 --theirs
+#   git add              .terrain/agent/context.md
+
+agent/context.md    -merge linguist-generated=true
+index.md            -merge linguist-generated=true
+human/**            -merge linguist-generated=true
+
+# ── 人为维护的知识：走正常三方合并 ─────────────────────────────
+
+knowledge/**        merge

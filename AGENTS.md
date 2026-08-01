@@ -61,7 +61,7 @@ feature 定义见各 crate 的 `Cargo.toml`（`terrain-core`、`terrain-agent` �
 - **工作流**：先读知识 → 再查关系 → 最后读源码；shell 输出优先走 RTK
 <!-- terrain:end env-overview -->
 
-<!-- terrain:begin knowledge-guide v4 -->
+<!-- terrain:begin knowledge-guide v5 -->
 ## Terrain 知识资产
 
 Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层策略查询 **`.terrain/`**（仓库内路径，非全局目录）。
@@ -75,6 +75,20 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 | 关系 | codegraph CLI（见 `codegraph-skill`） | 调用链、依赖关系、影响分析 |
 
 **原则**：先宏观后微观；优先读已生成文档，再 grep 源码索引。
+
+## 知识资产的 Git 协作规则（必读）
+
+`.terrain/` 的 Git 策略由 **`.terrain/.gitignore`** 与 **`.terrain/.gitattributes`** 声明（Terrain 生成并维护，随仓库分发）。
+
+| 类别 | 位置 | Git 处理 |
+|------|------|----------|
+| 人为维护的私域知识 | `knowledge/` | 入库，正常三方合并 |
+| 生成的知识文档 | `agent/context.md`、`human/`、`index.md` | 入库，但 **`-merge`：禁用自动合并** |
+| 本机衍生物 | `agent/repomix*`、`agent/meta*.json`、`.meta/`、`env/`、`.litho-agent/`、`.sdd-agent/` | **不入库**，由 scan 本地重建 |
+
+- **不要**把本机衍生物 `git add -f` 进版本库；它们体积大、含时间戳与 baseline git HEAD，入库必然产生冲突。
+- `agent/context.md`、`human/**` 由 LLM 生成，**非确定性** —— 同一份代码两次生成措辞与结构都不同。冲突时**不要手工合并**（合并结果会是"既不是 A 也不是 B"的自相矛盾文档）：保留任一版本结束冲突，然后重新运行 Terrain scan 基于合并后的代码重生成。
+- 建议知识资产的刷新集中在主干分支（或 CI）进行，feature 分支不提交 `.terrain/agent/`、`.terrain/human/` 的改动 —— 每个分支各带一份生成结果是冲突的结构性来源。`freshness` 本身就能表达"资产落后于代码"，不必每个分支都刷。
 
 ## 知识保鲜（必读）
 
@@ -130,7 +144,7 @@ Windows 上工具部署在 `%USERPROFILE%\.terrain\bin\`（Git Bash / PowerShell
 3. 不存在 → RTK / CodeGraph 用上表 `bunx` / `npx` 降级；Terrain CLI 请用户通过桌面应用操作
 4. 可选参考：`.terrain/env/agent-tools.json`（本地生成、不入库），内容与约定路径一致
 
-**不要**把 manifest 里的 `~` 路径赋给变量再引号调用（`"$VAR"` 不会展开 `~`）。直接写 `~/.terrain/bin/rtk` 或选用 `bunx` 前缀。
+**不要**把 manifest 里的 `~` 路径赋给变量再引号调用（`""` 不会展开 `~`）。直接写 `~/.terrain/bin/rtk` 或选用 `bunx` 前缀。
 
 ### RTK 要点（必读 `rtk-skill`）
 

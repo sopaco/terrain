@@ -1,0 +1,25 @@
+# .gitignore — terrain-git-policy: v1 · 由 Terrain 生成并维护
+# ── 不入库：本机衍生物 ─────────────────────────────────────────
+# 这些文件由 Terrain scan 在本地重建，且随扫描环境漂移（体积大、含时间戳、
+# 含绝对路径或 git HEAD）。入库只会制造无意义的 diff 与必然的合并冲突。
+
+# 源码索引包及其派生物
+agent/repomix.md
+agent/repomix.index.json
+agent/meta.json
+agent/meta-inputs.md
+agent/meta-inputs-manifest.json
+agent/context-meta.json
+
+# 保鲜 / 同步快照（含时间戳与 baseline git HEAD，逐机器不同）
+.meta/
+
+# 本机环境状态（工具路径、集成清单）
+env/
+
+# 生成过程的中间态工作区
+.litho-agent/
+.sdd-agent/
+
+# OS 噪音
+.DS_Store

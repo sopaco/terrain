@@ -28,7 +28,9 @@
   const skillItems = $derived(status?.items.filter((i) => i.kind === "skill") ?? []);
   const toolItems = $derived(status?.items.filter((i) => i.kind === "tool") ?? []);
   const configItems = $derived(
-    status?.items.filter((i) => i.kind === "agents_md" || i.kind === "gitignore") ?? [],
+    status?.items.filter(
+      (i) => i.kind === "agents_md" || i.kind === "gitignore" || i.kind === "terrain_ignore",
+    ) ?? [],
   );
 
   const applyCount = $derived(plan?.steps.length ?? 0);

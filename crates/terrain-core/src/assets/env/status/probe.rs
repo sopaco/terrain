@@ -30,6 +30,9 @@ pub(crate) fn integration_is_ready(repo: &Path, def: &IntegrationDef) -> bool {
             }
         }
         "agents_md" => agents_md_ready(repo),
+        "terrain_ignore" => {
+            crate::git_policy::git_policy_ready(&crate::registry::knowledge_root_for_repo(repo))
+        }
         "gitignore" => gitignore_has_patterns(repo, &def.patterns),
         _ => false,
     }
@@ -77,6 +80,13 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
                 "AGENTS.md 含 Terrain 托管片段".into()
             } else {
                 "未配置".into()
+            }
+        }
+        "terrain_ignore" => {
+            if integrated {
+                ".terrain/.gitignore + .gitattributes 已就绪".into()
+            } else {
+                "未配置或版本过旧".into()
             }
         }
         "gitignore" => {

@@ -87,6 +87,7 @@ pub async fn apply_env_integration(
             "skill" => apply_skill(repo, def),
             "tool" => apply_tool(repo, def).await,
             "agents_md" => patch_agents_md(repo).map(|p| format!("已更新 {p}")),
+            "terrain_ignore" => apply_terrain_git_policy(repo),
             "gitignore" => apply_gitignore(repo, &def.patterns),
             _ => Err(CoreError::InvalidDoc(format!("unknown kind {}", def.kind))),
         };
@@ -260,6 +261,41 @@ async fn run_command(cwd: &Path, cmd: &str, args: &[String]) -> Result<()> {
         args.join(" "),
         output.status
     )))
+}
+
+/// Write `.terrain/.gitignore` + `.terrain/.gitattributes`. Normally already done
+/// when `.terrain/` was scaffolded; this path exists to repair or upgrade them.
+fn apply_terrain_git_policy(repo: &Path) -> Result<String> {
+    use crate::git_policy::{ensure_git_policy, PolicyOutcome};
+
+    let root = crate::registry::knowledge_root_for_repo(repo);
+    let report = ensure_git_policy(&root)?;
+
+    let written: Vec<&str> = report
+        .iter()
+        .filter(|r| matches!(r.outcome, PolicyOutcome::Created | PolicyOutcome::Upgraded))
+        .map(|r| r.name)
+        .collect();
+    let user_owned: Vec<&str> = report
+        .iter()
+        .filter(|r| r.outcome == PolicyOutcome::UserOwned)
+        .map(|r| r.name)
+        .collect();
+
+    let mut parts = Vec::new();
+    if !written.is_empty() {
+        parts.push(format!("已写入 .terrain/{{{}}}", written.join(", ")));
+    }
+    if !user_owned.is_empty() {
+        parts.push(format!(
+            "跳过自定义文件 .terrain/{{{}}}（无 Terrain 标记）",
+            user_owned.join(", ")
+        ));
+    }
+    if parts.is_empty() {
+        parts.push("已是最新".into());
+    }
+    Ok(parts.join("；"))
 }
 
 fn apply_gitignore(repo: &Path, patterns: &[String]) -> Result<String> {
