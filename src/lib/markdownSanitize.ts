@@ -45,7 +45,6 @@ export function repairInlineSectionHeadings(text: string): string {
   out = out.replace(/([。；;：:.!?])\s*(## )/g, "$1\n\n$2");
   out = out.replace(/([\u4e00-\u9fff\w`\)])\s*(## )/g, "$1\n\n$2");
   out = out.replace(/([^\n\r#])(#{2,6} )/g, "$1\n\n$2");
-  out = out.replace(/([^\n\r])(#{3,6} )/g, "$1\n\n$2");
   out = out.replace(/(#{1,6} [^\n]+[\u4e00-\u9fff])([A-Za-z])/g, "$1\n\n$2");
   out = out.replace(/([^\n\r`])(```[\w]+)/g, "$1\n\n$2");
   out = out.replace(/([^\n\r`])(```)(?=[^\w\n\r])/g, "$1\n\n$2");
@@ -60,10 +59,26 @@ export function repairInlineSectionHeadings(text: string): string {
   return out;
 }
 
+/**
+ * Whether the text still needs structural repair at all.
+ *
+ * The repairs below are heuristics for providers that stream a whole answer as
+ * one line. Well-formed markdown must not go through them: they demote `####`
+ * headings, split CJK/Latin headings such as `## 模块划分Overview`, cut
+ * paragraphs at any ` -\``, and turn `||` into `|\n|` — which corrupts mermaid
+ * ER diagrams (`A ||--o{ B`) and `||` in code. So this is decided from the
+ * *incoming* text, before any repair has had a chance to add newlines.
+ */
+function looksFlattened(text: string): boolean {
+  return (text.match(/\n/g) ?? []).length < 3;
+}
+
 /** Re-insert markdown structure when providers stream a single flattened line. */
 export function repairFlattenedMarkdown(text: string): string {
+  if (!looksFlattened(text)) return text;
+
   const layout = repairInlineSectionHeadings(text);
-  if ((layout.match(/\n/g) ?? []).length >= 3) return layout;
+  if (!looksFlattened(layout)) return layout;
 
   let out = layout;
   out = out.replace(/\*\^([^^*]+)\^\*/g, "*$1*");
