@@ -12,6 +12,15 @@ const QWEN_REASONING_PREFIX_RE = /^`\n[\s\S]*?``(?!`)\s*/;
 
 const MARKDOWN_FENCE_RE = /^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i;
 
+/**
+ * Leading YAML frontmatter, e.g. the header Terrain writes into
+ * `agent/context.md`. Left in place it renders as body text, and the closing
+ * `---` turns the last key line into a setext heading. Deliberately strict
+ * (`key: value` lines only) so a streamed answer that merely opens with `---`
+ * is not mistaken for frontmatter.
+ */
+const FRONTMATTER_RE = /^---[ \t]*\r?\n(?:[ \t]*[\w.-]+[ \t]*:[^\r\n]*\r?\n)+---[ \t]*(?:\r?\n|$)/;
+
 /** Remove model reasoning blocks that should not appear in the rendered answer. */
 export function stripThinkingBlocks(text: string): string {
   let out = text.trim();
@@ -21,6 +30,11 @@ export function stripThinkingBlocks(text: string): string {
     out = next;
   }
   return out.replace(QWEN_REASONING_PREFIX_RE, "").trim();
+}
+
+/** Drop a leading YAML frontmatter block so it is not rendered as prose. */
+export function stripFrontmatter(text: string): string {
+  return text.replace(FRONTMATTER_RE, "");
 }
 
 /** Unwrap a single outer ```markdown / ```md fenced block if present. */
@@ -106,7 +120,7 @@ export function repairFlattenedMarkdown(text: string): string {
 
 /** Full cleanup before markdown rendering. */
 export function prepareMarkdownForRender(text: string, opts?: { extractBody?: boolean }): string {
-  const stripped = stripThinkingBlocks(text);
+  const stripped = stripFrontmatter(stripThinkingBlocks(text));
   const unwrapped = unwrapMarkdownFence(stripped);
   const repaired = repairFlattenedMarkdown(unwrapped);
   if (opts?.extractBody) return extractMarkdownBody(repaired);

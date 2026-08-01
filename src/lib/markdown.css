@@ -101,11 +101,18 @@
   line-height: 1.65;
 }
 
+.markdown-body .markdown-table-wrap {
+  margin: 0 0 1.125rem;
+  overflow-x: auto;
+}
+
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  display: block;
-  overflow-x: auto;
+}
+
+.markdown-body .markdown-table-wrap table {
+  margin: 0;
 }
 
 .markdown-body th,

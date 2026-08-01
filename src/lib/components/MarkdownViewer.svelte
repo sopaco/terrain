@@ -18,6 +18,12 @@
     repoPath?: string | null;
     compact?: boolean;
     allowMermaid?: boolean;
+    /**
+     * Render a single newline as `<br>`. Right for chat, where models emit soft
+     * wraps mid-paragraph; wrong for authored documents, where it turns a
+     * hard-wrapped paragraph into a run of ragged short lines.
+     */
+    breaks?: boolean;
     /** Precomputed heading ids (document order) for in-page anchor navigation. */
     headingIds?: string[];
     onSourceClick?: (citation: SourceCitation) => void;
@@ -28,6 +34,7 @@
     repoPath = null,
     compact = false,
     allowMermaid = true,
+    breaks = true,
     headingIds = [],
     onSourceClick,
   }: Props = $props();
@@ -68,6 +75,10 @@
       }
       return `<code>${escapeHtml(text)}</code>`;
     };
+    // A table must scroll inside its own box; making the table itself
+    // `display: block` would drop `width: 100%` and collapse the column widths.
+    const baseTable = renderer.table.bind(renderer);
+    renderer.table = (token) => `<div class="markdown-table-wrap">${baseTable(token)}</div>`;
     if (headingIds.length > 0) {
       renderer.heading = ({ text, depth }) => {
         const id = headingIds[headingIndex];
@@ -85,7 +96,7 @@
     linkifySourcesInHtml(
       marked.parse(preparedBody, {
         async: false,
-        breaks: true,
+        breaks,
         gfm: true,
         renderer: createRenderer(),
       }) as string,
