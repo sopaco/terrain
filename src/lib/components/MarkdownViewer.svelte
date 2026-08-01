@@ -10,7 +10,9 @@
     parseSourceRef,
     sourceRefDataAttr,
   } from "../sourceRef";
+  import { copyTextToClipboard } from "../clipboard";
   import MermaidLightbox from "./MermaidLightbox.svelte";
+  import "../syntax-tokens.css";
   import "../markdown.css";
 
   interface Props {
@@ -24,6 +26,11 @@
      * hard-wrapped paragraph into a run of ragged short lines.
      */
     breaks?: boolean;
+    /**
+     * Syntax-highlight fenced code. Turn off while streaming: the rendered HTML
+     * is rebuilt on every chunk, so every block would be re-highlighted.
+     */
+    highlight?: boolean;
     /** Precomputed heading ids (document order) for in-page anchor navigation. */
     headingIds?: string[];
     onSourceClick?: (citation: SourceCitation) => void;
@@ -35,6 +42,7 @@
     compact = false,
     allowMermaid = true,
     breaks = true,
+    highlight = true,
     headingIds = [],
     onSourceClick,
   }: Props = $props();
@@ -64,8 +72,18 @@
         }
         return `<div class="mermaid-wrap" data-mermaid-source="${encodeURIComponent(text)}"></div>`;
       }
-      const language = lang ? ` class="language-${lang}"` : "";
-      return `<pre><code${language}>${escapeHtml(text)}</code></pre>`;
+      const label = (lang ?? "").trim();
+      const langClass = label ? ` class="language-${escapeHtml(label)}"` : "";
+      const langAttr = label ? ` data-lang="${escapeHtml(label)}"` : "";
+      return (
+        `<div class="code-block tr-syntax"${langAttr}>` +
+        `<div class="code-block-bar">` +
+        `<span class="code-block-lang">${escapeHtml(label || "text")}</span>` +
+        `<button type="button" class="code-copy" aria-label="复制代码">复制</button>` +
+        `</div>` +
+        `<pre><code${langClass}>${escapeHtml(text)}</code></pre>` +
+        `</div>`
+      );
     };
     renderer.codespan = ({ text }) => {
       const parsed = parseSourceRef(text);
@@ -80,13 +98,16 @@
     const baseTable = renderer.table.bind(renderer);
     renderer.table = (token) => `<div class="markdown-table-wrap">${baseTable(token)}</div>`;
     if (headingIds.length > 0) {
-      renderer.heading = ({ text, depth }) => {
+      // `token.text` is raw markdown — emitting it would show `` `code` `` and
+      // `**bold**` inside headings verbatim, so parse the inline tokens instead.
+      renderer.heading = function ({ tokens, depth }) {
         const id = headingIds[headingIndex];
         headingIndex += 1;
+        const content = this.parser.parseInline(tokens);
         if (id) {
-          return `<h${depth} id="${escapeHtml(id)}">${text}</h${depth}>`;
+          return `<h${depth} id="${escapeHtml(id)}">${content}</h${depth}>`;
         }
-        return `<h${depth}>${text}</h${depth}>`;
+        return `<h${depth}>${content}</h${depth}>`;
       };
     }
     return renderer;
@@ -152,15 +173,61 @@
     cleanupMermaidArtifacts();
   }
 
+  async function highlightCodeBlocks() {
+    if (!container || !highlight) return;
+    const blocks = container.querySelectorAll<HTMLElement>(".code-block code");
+    if (blocks.length === 0) return;
+
+    const { highlightFencedCode } = await import("../highlightSetup");
+    for (const block of blocks) {
+      if (block.dataset.highlighted === "true") continue;
+      // Set before awaiting nothing further, so a re-render mid-loop cannot double-apply.
+      block.dataset.highlighted = "true";
+      const raw = block.textContent ?? "";
+      if (!raw.trim()) continue;
+      const lang = block.closest<HTMLElement>(".code-block")?.dataset.lang;
+      block.innerHTML = highlightFencedCode(raw, lang);
+      block.classList.add("hljs");
+    }
+  }
+
+  async function copyCodeBlock(button: HTMLElement) {
+    const code = button.closest(".code-block")?.querySelector("code");
+    const text = code?.textContent ?? "";
+    if (!text) return;
+
+    const original = button.textContent;
+    try {
+      await copyTextToClipboard(text);
+      button.textContent = "已复制";
+    } catch {
+      button.textContent = "复制失败";
+    }
+    setTimeout(() => {
+      // The block may have been re-rendered while the label was swapped.
+      if (button.isConnected) button.textContent = original;
+    }, 1800);
+  }
+
   $effect(() => {
     html;
     canRenderMermaid;
+    highlight;
     queueMicrotask(() => {
       void renderMermaidBlocks();
+      void highlightCodeBlocks();
     });
   });
 
   function handleClick(e: MouseEvent) {
+    const copyButton = (e.target as HTMLElement).closest(".code-copy") as HTMLElement | null;
+    if (copyButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      void copyCodeBlock(copyButton);
+      return;
+    }
+
     const target = (e.target as HTMLElement).closest(".source-ref") as HTMLElement | null;
     if (!target || !onSourceClick) return;
     e.preventDefault();

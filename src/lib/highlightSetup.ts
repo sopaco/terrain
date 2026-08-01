@@ -72,6 +72,24 @@ export function getHighlighter(): typeof hljs {
   return hljs;
 }
 
+/**
+ * Highlight a markdown fenced code block. Returns escaped-but-unhighlighted
+ * HTML when the fence carries no language or an unregistered one — guessing
+ * with `highlightAuto` on the short snippets typical of docs mislabels more
+ * often than it helps.
+ */
+export function highlightFencedCode(code: string, lang?: string | null): string {
+  const hljs = getHighlighter();
+  const normalized = lang?.trim().toLowerCase();
+  if (!normalized || !hljs.getLanguage(normalized)) return escapeHtml(code);
+
+  try {
+    return hljs.highlight(code, { language: normalized }).value;
+  } catch {
+    return escapeHtml(code);
+  }
+}
+
 export interface HighlightedLine {
   number: number;
   html: string;

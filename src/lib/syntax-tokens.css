@@ -1,0 +1,97 @@
+/*
+ * highlight.js token colors (VS Code Dark+ inspired), shared by the source
+ * panel and markdown fenced code blocks. Opt in by putting `tr-syntax` on an
+ * ancestor of the highlighted `<code>`.
+ */
+
+.tr-syntax code.hljs {
+  display: block;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.tr-syntax .hljs-comment,
+.tr-syntax .hljs-quote {
+  color: #6a9955;
+  font-style: italic;
+}
+
+.tr-syntax .hljs-keyword,
+.tr-syntax .hljs-selector-tag,
+.tr-syntax .hljs-literal,
+.tr-syntax .hljs-built_in {
+  color: #569cd6;
+}
+
+.tr-syntax .hljs-string,
+.tr-syntax .hljs-regexp,
+.tr-syntax .hljs-symbol,
+.tr-syntax .hljs-bullet {
+  color: #ce9178;
+}
+
+.tr-syntax .hljs-number,
+.tr-syntax .hljs-meta {
+  color: #b5cea8;
+}
+
+.tr-syntax .hljs-title,
+.tr-syntax .hljs-title.function_,
+.tr-syntax .hljs-function .hljs-title {
+  color: #dcdcaa;
+}
+
+.tr-syntax .hljs-type,
+.tr-syntax .hljs-class .hljs-title,
+.tr-syntax .hljs-title.class_ {
+  color: #4ec9b0;
+}
+
+.tr-syntax .hljs-variable,
+.tr-syntax .hljs-params,
+.tr-syntax .hljs-attribute {
+  color: #9cdcfe;
+}
+
+.tr-syntax .hljs-tag,
+.tr-syntax .hljs-name {
+  color: #569cd6;
+}
+
+.tr-syntax .hljs-attr {
+  color: #9cdcfe;
+}
+
+.tr-syntax .hljs-selector-class,
+.tr-syntax .hljs-selector-id {
+  color: #d7ba7d;
+}
+
+.tr-syntax .hljs-subst {
+  color: #d4d4d4;
+}
+
+.tr-syntax .hljs-section,
+.tr-syntax .hljs-emphasis {
+  font-style: italic;
+}
+
+.tr-syntax .hljs-strong {
+  font-weight: 600;
+}
+
+.tr-syntax .hljs-link {
+  color: #569cd6;
+  text-decoration: underline;
+}
+
+.tr-syntax .hljs-addition {
+  color: #b5cea8;
+  background: rgba(78, 201, 176, 0.12);
+}
+
+.tr-syntax .hljs-deletion {
+  color: #ce9178;
+  background: rgba(206, 145, 120, 0.12);
+}

@@ -863,6 +863,7 @@
                       repoPath={repoPath}
                       compact
                       allowMermaid={false}
+                      highlight={false}
                       onSourceClick={openCitation}
                     />
                   {/if}

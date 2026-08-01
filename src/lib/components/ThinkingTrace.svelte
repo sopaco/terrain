@@ -36,7 +36,7 @@
 
     {#if panelOpen}
       <div class="border-t border-tr-border px-3 py-2">
-        <MarkdownViewer body={content} {repoPath} compact allowMermaid={false} />
+        <MarkdownViewer body={content} {repoPath} compact allowMermaid={false} highlight={false} />
       </div>
     {/if}
   </div>

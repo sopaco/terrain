@@ -116,10 +116,22 @@
     flex-shrink: 0;
     align-self: flex-start;
     position: sticky;
-    top: 0;
+    /* Matches the layout's top padding so it does not jump when it starts sticking. */
+    top: 2rem;
     max-height: calc(100vh - 12rem);
     display: flex;
     flex-direction: column;
+  }
+
+  /*
+   * `100vh` overshoots by the toolbar above and the ask bar below, letting a long
+   * outline run off the bottom. `cqh` is the real height of the scrollport, which
+   * KnowledgeArticle declares as a size container.
+   */
+  @supports (height: 1cqh) {
+    .article-toc {
+      max-height: calc(100cqh - 4rem);
+    }
   }
 
   .article-toc.collapsed {
