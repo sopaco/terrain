@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PanelLeftClose } from "@lucide/svelte";
   import type { HumanDocEntry } from "../types";
   import { generateLabel, TERMS, UI_MESSAGES } from "../terminology";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
@@ -8,9 +9,16 @@
     activePath?: string | null;
     loading?: boolean;
     onselect: (doc: HumanDocEntry) => void;
+    oncollapse?: () => void;
   }
 
-  let { docs, activePath = null, loading = false, onselect }: Props = $props();
+  let {
+    docs,
+    activePath = null,
+    loading = false,
+    onselect,
+    oncollapse,
+  }: Props = $props();
 
   type DocTreeNode = {
     id: string;
@@ -292,15 +300,26 @@
 
 <div class="flex min-h-0 flex-1 flex-col">
   <div class="border-b border-tr-border-strong px-3 py-2.5">
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold text-tr-ink-2">文档目录</span>
+    <div class="flex items-center gap-2">
+      <span class="min-w-0 flex-1 text-xs font-semibold text-tr-ink-2">文档目录</span>
       {#if loading}
-        <span class="inline-flex items-center gap-1.5 text-[10px] text-tr-accent">
+        <span class="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-tr-accent">
           <span class="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent"></span>
           {UI_MESSAGES.loadingDocs}
         </span>
       {:else}
-        <span class="text-[10px] text-tr-ink-3">{docs.length} 篇</span>
+        <span class="shrink-0 text-[10px] text-tr-ink-3">{docs.length} 篇</span>
+      {/if}
+      {#if oncollapse}
+        <button
+          type="button"
+          class="-mr-1 inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
+          onclick={oncollapse}
+          aria-label="收起文档目录"
+          title="收起文档目录"
+        >
+          <PanelLeftClose size={14} strokeWidth={2} aria-hidden="true" />
+        </button>
       {/if}
     </div>
   </div>

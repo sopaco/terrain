@@ -44,14 +44,21 @@
     display: flex;
     gap: 2rem;
     align-items: flex-start;
-    max-width: 72rem;
+    max-width: 88rem;
     margin: 0 auto;
     padding: 2rem;
   }
 
+  /*
+   * `flex: 1` claims whatever either rail gives back when collapsed; the cap
+   * keeps line length sane on wide windows, and `margin-inline: auto` centers
+   * the column in the released space instead of leaving a gap on the far side.
+   */
   .knowledge-article-body {
     min-width: 0;
     flex: 1;
+    max-width: 72rem;
+    margin-inline: auto;
   }
 
   @media (max-width: 960px) {
