@@ -1,5 +1,5 @@
 <div align="center">
-    <img height="160" src="./assets/banner.webp">
+    <img height="320" src="./assets/banner.webp">
 
 # Terrain
 
@@ -37,7 +37,7 @@ Terrain 是一款面向 AI 辅助开发时代的**工程环境管理平台**。�
 
 ### 知识工厂
 
-<img height="160" src="./assets/graph_knowledge_factory.webp">
+<img height="320" src="./assets/graph_knowledge_factory.webp">
 
 ---
 
@@ -285,21 +285,21 @@ Terrain 能和你已有的 AI 工具链无缝配合：
 ### 概览
 
 <!-- 截图：带新鲜度指示器的桌面应用项目列表 -->
-<img src="assets/screenshots/01-overview.png" alt="Terrain 桌面 — 项目概览" width="800" />
+<img height="1200" alt="image" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a" />
 
 *项目列表、注册状态和新鲜度评分一览。*
 
 ### 知识与 Litho
 
 <!-- 截图：人类文档树，Litho C4 文档打开 -->
-<img src="assets/screenshots/02-knowledge-litho.png" alt="Terrain — Litho 人类文档" width="800" />
+<img height="1200" alt="image" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e" />
 
 *Litho 流水线自动生成的人类可读 C4 架构文档。*
 
 ### DeepWiki
 
 <!-- 截图：DeepWiki 提问面板，含问题和带引用的回答 -->
-<img src="assets/screenshots/03-deepwiki.png" alt="Terrain — DeepWiki 问答" width="800" />
+<img height="1200" alt="image" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09" />
 
 *基于知识库的智能问答，每条回答都附带引用来源和工具调用链路。*
 
