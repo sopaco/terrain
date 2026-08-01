@@ -1,8 +1,9 @@
 # .gitignore — terrain-git-policy: v1 · 由 Terrain 生成并维护
-# ── 不入库：本机衍生物 ─────────────────────────────────────────
-# 这些文件由 Terrain scan 在本地重建，且随扫描环境漂移（体积大、含时间戳、
-# 含绝对路径或 git HEAD）。入库只会制造无意义的 diff 与必然的合并冲突。
+# 决定 .terrain/ 下哪些文件进版本库（策略说明见下）
+# 需要自定义时删除本文件顶部的 `terrain-git-policy: v<n>` 标记行，
+# Terrain 就不再覆盖它（Terrain 也不会再为你升级策略）。
 
+# ── 不入库：本机衍生物 ─────────────────────────────────────────
 # 源码索引包及其派生物
 agent/repomix.md
 agent/repomix.index.json
@@ -23,3 +24,8 @@ env/
 
 # OS 噪音
 .DS_Store
+
+# ── 入库（未被上面规则排除）────────────────────────────────────
+# knowledge/   人为维护的私域知识 —— 真正需要逐行合并的部分
+# agent/context.md, human/, index.md, project-note.md
+#              生成的知识文档；合并策略见同目录 .gitattributes

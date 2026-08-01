@@ -1,9 +1,13 @@
 # .gitattributes — terrain-git-policy: v1 · 由 Terrain 生成并维护
+# 决定 .terrain/ 下生成文档的合并方式（策略说明见下）
+# 需要自定义时删除本文件顶部的 `terrain-git-policy: v<n>` 标记行，
+# Terrain 就不再覆盖它（Terrain 也不会再为你升级策略）。
 
 # ── 生成的知识文档：禁用自动合并 ───────────────────────────────
 # 冲突处理：
 #   git checkout --ours  .terrain/agent/context.md   # 或 --theirs
 #   git add              .terrain/agent/context.md
+#   # 合并完成后重新运行 Terrain scan，让资产对齐合并后的代码
 
 agent/context.md    -merge linguist-generated=true
 index.md            -merge linguist-generated=true
