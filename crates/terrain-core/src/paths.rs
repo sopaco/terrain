@@ -238,8 +238,38 @@ impl KnowledgePaths {
         std::fs::create_dir_all(base.join("agent"))?;
         std::fs::create_dir_all(base.join("knowledge"))?;
         std::fs::create_dir_all(base.join("env"))?;
+        // Nested .gitignore / .gitattributes travel with the directory, so every
+        // project gets the asset-tracking policy without running env integration.
+        crate::git_policy::ensure_git_policy(&base)?;
         Ok(())
     }
+}
+
+/// Normalize a citation path to knowledge-root-relative form (no `.terrain/` prefix).
+pub fn normalize_knowledge_ref(file_path: &str) -> String {
+    let p = file_path.trim().trim_start_matches("./").trim_start_matches('/');
+    if p == "context.md" {
+        return "agent/context.md".into();
+    }
+    if let Some(rest) = p.strip_prefix(".terrain/") {
+        return rest.to_string();
+    }
+    if let Some(idx) = p.find("/.terrain/") {
+        return p[idx + "/.terrain/".len()..].to_string();
+    }
+    p.to_string()
+}
+
+/// Non-markdown assets under `.terrain/` that should be read from the knowledge root,
+/// not from the live repo or Repomix agent pack (e.g. `.meta/freshness.json`).
+pub fn is_terrain_knowledge_asset_path(file_path: &str) -> bool {
+    let p = normalize_knowledge_ref(file_path);
+    if p == "agent/repomix.md" || p.ends_with("/agent/repomix.md") {
+        return false;
+    }
+    p.starts_with(".meta/")
+        || p.starts_with("env/")
+        || (p.starts_with("agent/") && !p.ends_with(".md"))
 }
 
 /// Git/repo paths that are Terrain-generated knowledge outputs.

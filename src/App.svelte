@@ -1,6 +1,12 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Check, CircleX, Folder, Settings } from "@lucide/svelte";
+    import {
+        Check,
+        CircleX,
+        Folder,
+        PanelLeftOpen,
+        Settings,
+    } from "@lucide/svelte";
     import { open } from "@tauri-apps/plugin-dialog";
     import { listen } from "@tauri-apps/api/event";
     import AskBar from "./lib/components/AskBar.svelte";
@@ -60,6 +66,7 @@
         STATUS_AUTO_DISMISS_MS,
         status,
     } from "./lib/stores/status.svelte";
+    import { readerLayout, toggleDocTree } from "./lib/stores/readerLayout.svelte";
     import {
         chatSessions,
         deepWikiSources,
@@ -1077,6 +1084,29 @@
             </div>
 
             <div class="flex min-h-0 flex-1">
+                {#if readerLayout.docTreeCollapsed}
+                    <aside
+                        class="flex w-9 shrink-0 flex-col items-center gap-3 border-r border-tr-border-strong bg-tr-surface py-2.5"
+                    >
+                        <button
+                            type="button"
+                            class="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
+                            onclick={toggleDocTree}
+                            aria-label="展开文档目录"
+                            title="展开文档目录"
+                        >
+                            <PanelLeftOpen
+                                size={14}
+                                strokeWidth={2}
+                                aria-hidden="true"
+                            />
+                        </button>
+                        <span
+                            class="select-none text-[10px] tracking-wider text-tr-ink-3 [writing-mode:vertical-rl]"
+                            >文档目录</span
+                        >
+                    </aside>
+                {:else}
                 <aside
                     class="flex w-60 shrink-0 flex-col border-r border-tr-border-strong bg-tr-surface"
                 >
@@ -1085,6 +1115,7 @@
                         activePath={project.activeHumanPath}
                         loading={project.humanDocsLoading}
                         onselect={openHumanDoc}
+                        oncollapse={toggleDocTree}
                     />
                     <div
                         class="mt-auto border-t border-tr-border-strong px-3 py-2 text-[10px] text-tr-ink-3"
@@ -1152,6 +1183,7 @@
                         </div>
                     </div>
                 </aside>
+                {/if}
 
                 <main class="flex min-w-0 flex-1 flex-col">
                     {#if project.docLoading}

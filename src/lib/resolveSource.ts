@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { SourceCitation, SourceSlice } from "./types";
 import {
   isKnowledgeMarkdownPath,
+  isTerrainKnowledgeAssetPath,
   resolveKnowledgeDocPath,
 } from "./knowledgeDoc";
 
@@ -14,7 +15,8 @@ export function isKnowledgeDocCitation(c: SourceCitation): boolean {
   return (
     c.kind === "human_doc" ||
     c.kind === "structured_doc" ||
-    isKnowledgeMarkdownPath(c.path)
+    isKnowledgeMarkdownPath(c.path) ||
+    isTerrainKnowledgeAssetPath(c.path)
   );
 }
 
@@ -91,7 +93,7 @@ export async function citationToSourceSlice(
   repoPath: string | null | undefined,
   readDoc: (path: string) => Promise<{ body: string }>,
 ): Promise<SourceSlice> {
-  if (isKnowledgeDocCitation(citation)) {
+  if (isKnowledgeMarkdownPath(citation.path)) {
     const docPath = knowledgeDocPathForCitation(projectSlug, citation.path);
     const doc = await readDoc(docPath);
     return {

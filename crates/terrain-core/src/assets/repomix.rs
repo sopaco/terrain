@@ -11,7 +11,7 @@ use crate::error::{CoreError, Result};
 use crate::paths::KnowledgePaths;
 use crate::schema::{AgentPackMeta, AssetGenerator};
 
-use super::pack_read::{agent_pack_ready, invalidate_pack_text_cache, write_pack_file_index};
+use super::pack_read::{agent_pack_ready, invalidate_pack_text_cache};
 
 /// Architecture-oriented agent context — not a full code dump.
 pub const AGENT_PACK_STRATEGY: &str = "architecture-context";
@@ -173,7 +173,7 @@ pub async fn pack_agent_assets(
         std::fs::read_to_string(&output_path).unwrap_or_default()
     };
     if !pack_text.is_empty() {
-        let _ = write_pack_file_index(&output_path, &pack_text);
+        // Drop the cached text + section index so the next read re-indexes.
         invalidate_pack_text_cache(&output_path);
     }
 

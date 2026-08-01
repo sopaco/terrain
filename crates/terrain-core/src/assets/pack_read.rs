@@ -1,37 +1,77 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::path::Path;
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::SystemTime;
 
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, Result};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PackFileIndexEntry {
-    pub path: String,
-    pub header_line: usize,
+/// `### path (N lines)` section header.
+///
+/// Compiled once: this sits on the Agent tool hot path and used to be rebuilt
+/// on every single read.
+static HEADER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^### (.+?) \(\d+ lines").expect("valid pack header regex"));
+
+/// One file section inside a repomix pack, located by **byte** offset.
+///
+/// Byte offsets rather than line numbers are what make a seek possible: reaching
+/// line N of a `&str` still costs a walk over every preceding byte, whereas a
+/// byte offset slices in O(1). This index lives only in the process cache below,
+/// derived from exactly the bytes being served — so it cannot go stale against
+/// the pack the way a sidecar file on disk could.
+#[derive(Debug, Clone)]
+struct Section {
+    /// Header path as stored in the pack, with `\|` unescaped.
+    path: String,
+    /// Byte offset of the header line.
+    start: usize,
+    /// Byte offset one past this section (next header, or end of pack).
+    end: usize,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct PackFileIndex {
-    files: Vec<PackFileIndexEntry>,
+/// Locate every `### path (N lines)` section and its byte range.
+fn index_sections(pack: &str) -> Vec<Section> {
+    let mut headers: Vec<(usize, String)> = Vec::new();
+    let mut offset = 0usize;
+    for line in pack.split_inclusive('\n') {
+        // Match against the line without its terminator, mirroring `str::lines`.
+        if let Some(cap) = HEADER_RE.captures(line.trim_end_matches(['\n', '\r'])) {
+            let path = cap
+                .get(1)
+                .map(|m| m.as_str().replace("\\|", "|"))
+                .unwrap_or_default();
+            headers.push((offset, path));
+        }
+        offset += line.len();
+    }
+
+    let total = pack.len();
+    headers
+        .iter()
+        .enumerate()
+        .map(|(i, (start, path))| Section {
+            path: path.clone(),
+            start: *start,
+            end: headers.get(i + 1).map(|(next, _)| *next).unwrap_or(total),
+        })
+        .collect()
 }
 
-struct PackTextCacheEntry {
+struct PackCacheEntry {
     mtime: SystemTime,
     len: u64,
-    text: String,
+    /// `Arc` so handing the text to a caller does not copy ~1MB per call.
+    text: Arc<str>,
+    sections: Arc<[Section]>,
 }
 
-use std::sync::LazyLock;
-
-static PACK_TEXT_CACHE: LazyLock<Mutex<HashMap<String, PackTextCacheEntry>>> =
+static PACK_TEXT_CACHE: LazyLock<Mutex<HashMap<String, PackCacheEntry>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// Read repomix pack with in-process cache keyed by path + mtime.
-pub fn read_pack_text_cached(pack_path: &Path) -> Result<String> {
+/// Pack text plus its section index, cached per path + mtime + len.
+fn cached_pack(pack_path: &Path) -> Result<(Arc<str>, Arc<[Section]>)> {
     let key = pack_path.display().to_string();
     let meta = std::fs::metadata(pack_path).map_err(|e| {
         CoreError::InvalidDoc(format!("cannot stat pack {}: {e}", pack_path.display()))
@@ -41,59 +81,37 @@ pub fn read_pack_text_cached(pack_path: &Path) -> Result<String> {
 
     if let Ok(guard) = PACK_TEXT_CACHE.lock()
         && let Some(entry) = guard.get(&key)
-            && entry.mtime == mtime && entry.len == len {
-                return Ok(entry.text.clone());
-            }
+        && entry.mtime == mtime
+        && entry.len == len
+    {
+        return Ok((entry.text.clone(), entry.sections.clone()));
+    }
 
     let text = std::fs::read_to_string(pack_path).map_err(|e| {
         CoreError::InvalidDoc(format!("cannot read pack {}: {e}", pack_path.display()))
     })?;
+    // Indexed outside the lock: one pass per pack version, not per read.
+    let text: Arc<str> = Arc::from(text);
+    let sections: Arc<[Section]> = Arc::from(index_sections(&text));
 
     if let Ok(mut guard) = PACK_TEXT_CACHE.lock() {
         guard.insert(
             key,
-            PackTextCacheEntry {
+            PackCacheEntry {
                 mtime,
                 len,
                 text: text.clone(),
+                sections: sections.clone(),
             },
         );
     }
 
-    Ok(text)
+    Ok((text, sections))
 }
 
-pub fn pack_index_path(pack_path: &Path) -> PathBuf {
-    pack_path.with_extension("index.json")
-}
-
-pub fn write_pack_file_index(pack_path: &Path, pack_content: &str) -> Result<()> {
-    let index = build_pack_file_index(pack_content);
-    let path = pack_index_path(pack_path);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    crate::doc::write_json(path, &PackFileIndex { files: index })?;
-    Ok(())
-}
-
-pub fn build_pack_file_index(pack_content: &str) -> Vec<PackFileIndexEntry> {
-    let header_re = match Regex::new(r"^### (.+?) \(\d+ lines") {
-        Ok(re) => re,
-        Err(_) => return Vec::new(),
-    };
-    pack_content
-        .lines()
-        .enumerate()
-        .filter_map(|(idx, line)| {
-            let cap = header_re.captures(line)?;
-            let path = cap.get(1)?.as_str().replace("\\|", "|");
-            Some(PackFileIndexEntry {
-                path,
-                header_line: idx + 1,
-            })
-        })
-        .collect()
+/// Read repomix pack text with an in-process cache keyed by path + mtime.
+pub fn read_pack_text_cached(pack_path: &Path) -> Result<Arc<str>> {
+    Ok(cached_pack(pack_path)?.0)
 }
 
 pub fn invalidate_pack_text_cache(pack_path: &Path) {
@@ -176,11 +194,16 @@ fn strip_line_number_prefix(line: &str) -> &str {
     line
 }
 
-fn parse_numbered_line(line: &str) -> Option<(u32, String)> {
+/// Split a `N: body` pack line into its source line number and body.
+///
+/// Borrows from `line` rather than allocating. Note this is deliberately *not*
+/// the same as `strip_line_number_prefix`: for a blank source line repomix emits
+/// bare `42:`, which must yield an empty body — `strip_line_number_prefix`
+/// requires a space after the colon and would return the whole `42:` verbatim.
+fn parse_numbered_line(line: &str) -> Option<(u32, &str)> {
     if let Some((prefix, rest)) = line.split_once(':')
         && let Ok(num) = prefix.parse::<u32>() {
-            let body = rest.strip_prefix(' ').unwrap_or(rest).to_string();
-            return Some((num, body));
+            return Some((num, rest.strip_prefix(' ').unwrap_or(rest)));
         }
     None
 }
@@ -192,46 +215,60 @@ pub fn read_agent_pack_file(
     start_line: Option<u32>,
     end_line: Option<u32>,
 ) -> Result<AgentPackFileContent> {
-    let content = read_pack_text_cached(pack_path)?;
-    read_agent_pack_file_from_text(&content, file_path, start_line, end_line)
+    let (text, sections) = cached_pack(pack_path)?;
+    let section = find_section(&sections, file_path)?;
+    slice_section(
+        &text[section.start..section.end],
+        file_path,
+        &section.path,
+        start_line,
+        end_line,
+    )
 }
 
-pub fn read_agent_pack_file_from_text(
+/// Text-based entry point, for exercising the section parser without touching
+/// the filesystem or the cache. Production reads go through
+/// [`read_agent_pack_file`], which uses the cached byte-offset index.
+#[cfg(test)]
+fn read_agent_pack_file_from_text(
     pack_content: &str,
     file_path: &str,
     start_line: Option<u32>,
     end_line: Option<u32>,
 ) -> Result<AgentPackFileContent> {
-    let header_re = Regex::new(r"^### (.+?) \(\d+ lines").map_err(|e| {
-        CoreError::InvalidDoc(format!("invalid pack header regex: {e}"))
-    })?;
+    let sections = index_sections(pack_content);
+    let section = find_section(&sections, file_path)?;
+    slice_section(
+        &pack_content[section.start..section.end],
+        file_path,
+        &section.path,
+        start_line,
+        end_line,
+    )
+}
 
-    let lines: Vec<&str> = pack_content.lines().collect();
-    let mut matched_path = String::new();
-    let mut body_lines: Vec<String> = Vec::new();
-    let mut in_target = false;
+/// First section whose header path matches the request, as the linear scan did.
+fn find_section<'a>(sections: &'a [Section], file_path: &str) -> Result<&'a Section> {
+    sections
+        .iter()
+        .find(|s| path_matches(file_path, &s.path))
+        .ok_or_else(|| {
+            CoreError::InvalidDoc(format!("file not found in agent pack: {file_path}"))
+        })
+}
+
+/// Extract the fenced body of a single pack section and apply the line range.
+fn slice_section(
+    section: &str,
+    file_path: &str,
+    matched_path: &str,
+    start_line: Option<u32>,
+    end_line: Option<u32>,
+) -> Result<AgentPackFileContent> {
+    let mut body_lines: Vec<&str> = Vec::new();
     let mut in_fence = false;
-
-    for line in &lines {
-        if let Some(cap) = header_re.captures(line) {
-            let header_path = cap
-                .get(1)
-                .map(|m| m.as_str().replace("\\|", "|"))
-                .unwrap_or_default();
-            if in_target {
-                break;
-            }
-            if path_matches(file_path, &header_path) {
-                matched_path = header_path;
-                in_target = true;
-            }
-            continue;
-        }
-
-        if !in_target {
-            continue;
-        }
-
+    // `skip(1)` drops the `### path (N lines)` header itself.
+    for line in section.lines().skip(1) {
         if !in_fence {
             if line.trim().is_empty() {
                 continue;
@@ -241,25 +278,18 @@ pub fn read_agent_pack_file_from_text(
             }
             continue;
         }
-
         if line.starts_with("```") {
             break;
         }
-        body_lines.push((*line).to_string());
+        body_lines.push(line);
     }
 
-    if matched_path.is_empty() {
-        return Err(CoreError::InvalidDoc(format!(
-            "file not found in agent pack: {file_path}"
-        )));
-    }
-
-    let numbered: Vec<(u32, String)> = body_lines
+    let numbered: Vec<(u32, &str)> = body_lines
         .iter()
         .enumerate()
-        .map(|(i, line)| {
-            parse_numbered_line(line)
-                .unwrap_or_else(|| (i as u32 + 1, strip_line_number_prefix(line).to_string()))
+        .map(|(i, line)| match parse_numbered_line(line) {
+            Some((n, body)) => (n, body),
+            None => (i as u32 + 1, strip_line_number_prefix(line)),
         })
         .collect();
 
@@ -273,7 +303,7 @@ pub fn read_agent_pack_file_from_text(
     if total_lines == 0 {
         return Ok(AgentPackFileContent {
             file_path: file_path.to_string(),
-            matched_path,
+            matched_path: matched_path.to_string(),
             content: String::new(),
             start_line: 0,
             end_line: 0,
@@ -303,15 +333,15 @@ pub fn read_agent_pack_file_from_text(
         )));
     }
 
-    let slice: Vec<String> = numbered
+    let slice: Vec<&str> = numbered
         .iter()
         .filter(|(n, _)| *n >= start && *n <= end)
-        .map(|(_, body)| body.clone())
+        .map(|(_, body)| *body)
         .collect();
 
     Ok(AgentPackFileContent {
         file_path: file_path.to_string(),
-        matched_path,
+        matched_path: matched_path.to_string(),
         content: slice.join("\n"),
         start_line: start,
         end_line: end,
@@ -395,5 +425,111 @@ mod tests {
         )
         .unwrap();
         assert_eq!(got.matched_path, "src/lib.rs");
+    }
+
+    #[test]
+    fn blank_source_lines_stay_blank() {
+        // repomix emits a bare `N:` for an empty source line — it must decode to
+        // an empty body, not to the literal "2:".
+        const WITH_BLANK: &str = "\
+### src/blank.rs (3 lines)
+
+```rust
+1: first
+2:
+3: third
+```
+";
+        let got = read_agent_pack_file_from_text(WITH_BLANK, "src/blank.rs", None, None).unwrap();
+        assert_eq!(got.total_lines, 3);
+        assert_eq!(got.content, "first\n\nthird");
+        assert!(!got.content.contains("2:"));
+    }
+
+    #[test]
+    fn keeps_colon_lines_that_are_not_line_numbers() {
+        const TRICKY: &str = "\
+### src/map.yaml (2 lines)
+
+```yaml
+1: key: value
+2: other:thing
+```
+";
+        let got = read_agent_pack_file_from_text(TRICKY, "src/map.yaml", None, None).unwrap();
+        assert_eq!(got.content, "key: value\nother:thing");
+    }
+
+    #[test]
+    fn missing_file_reports_error() {
+        let err = read_agent_pack_file_from_text(SAMPLE, "src/nope.rs", None, None);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn reads_last_section_up_to_end_of_pack() {
+        // The final section has no following header, so its range must run to EOF.
+        let got = read_agent_pack_file_from_text(SAMPLE, "src/other.rs", None, None).unwrap();
+        assert_eq!(got.matched_path, "src/other.rs");
+        assert_eq!(got.total_lines, 1);
+        assert!(got.content.contains("pub fn other()"));
+    }
+
+    #[test]
+    fn does_not_bleed_into_the_next_section() {
+        let got = read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", None, None).unwrap();
+        assert!(!got.content.contains("pub fn other()"));
+    }
+
+    #[test]
+    fn section_index_covers_every_file_with_contiguous_ranges() {
+        let sections = index_sections(SAMPLE);
+        assert_eq!(sections.len(), 2);
+        assert_eq!(sections[0].path, "src/lib.rs");
+        assert_eq!(sections[1].path, "src/other.rs");
+        // Ranges must be contiguous and the last must reach the end of the pack.
+        assert_eq!(sections[0].end, sections[1].start);
+        assert_eq!(sections[1].end, SAMPLE.len());
+        // Each range must actually start at its own header.
+        for s in &sections {
+            assert!(SAMPLE[s.start..s.end].starts_with("### "));
+        }
+    }
+
+    #[test]
+    fn cache_serves_new_content_after_pack_is_rewritten() {
+        let dir = std::env::temp_dir().join(format!(
+            "terrain-pack-cache-{}-{:?}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pack = dir.join("repomix.md");
+
+        std::fs::write(&pack, SAMPLE).unwrap();
+        let first = read_agent_pack_file(&pack, "src/lib.rs", None, None).unwrap();
+        assert!(first.content.contains("fn main()"));
+
+        // Rewrite in place at the same path with different content and length.
+        let rewritten = SAMPLE.replace("fn main()", "fn renamed_main()");
+        assert_ne!(rewritten.len(), SAMPLE.len());
+        std::fs::write(&pack, &rewritten).unwrap();
+
+        let second = read_agent_pack_file(&pack, "src/lib.rs", None, None).unwrap();
+        assert!(
+            second.content.contains("fn renamed_main()"),
+            "stale cache served old content: {}",
+            second.content
+        );
+
+        // An explicit invalidation must also work (what scan calls).
+        invalidate_pack_text_cache(&pack);
+        let third = read_agent_pack_file(&pack, "src/lib.rs", None, None).unwrap();
+        assert!(third.content.contains("fn renamed_main()"));
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

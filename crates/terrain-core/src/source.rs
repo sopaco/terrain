@@ -4,7 +4,7 @@ use crate::assets::read_agent_pack_file;
 use crate::doc::read_json;
 use crate::error::{CoreError, Result};
 use crate::human::read_human_doc;
-use crate::paths::KnowledgePaths;
+use crate::paths::{is_terrain_knowledge_asset_path, KnowledgePaths, normalize_knowledge_ref};
 use crate::project::resolve_project_repo_path;
 use crate::schema::{AgentPackMeta, SourceSlice};
 use crate::search::read_doc_at_in_project;
@@ -146,18 +146,7 @@ fn knowledge_doc_relative_candidates(project_slug: &str, file_path: &str) -> Vec
 }
 
 fn project_relative_knowledge_path(_project_slug: &str, file_path: &str) -> String {
-    let p = normalize_doc_ref(file_path);
-    if p == "context.md" {
-        return "agent/context.md".into();
-    }
-    if let Some(rest) = p.strip_prefix(".terrain/") {
-        return rest.to_string();
-    }
-    // Legacy citation prefix (pre–repo-local layout)
-    if let Some(idx) = p.find("/.terrain/") {
-        return p[idx + "/.terrain/".len()..].to_string();
-    }
-    p
+    normalize_knowledge_ref(file_path)
 }
 
 fn try_resolve_knowledge_markdown(
@@ -210,6 +199,42 @@ fn try_resolve_knowledge_markdown(
     }
 
     None
+}
+
+fn try_resolve_knowledge_asset(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    file_path: &str,
+    repo_path: Option<&str>,
+) -> Option<Result<SourceSlice>> {
+    if !is_terrain_knowledge_asset_path(file_path) {
+        return None;
+    }
+
+    let rel = project_relative_knowledge_path(project_slug, file_path);
+    let abs_path = paths.project_dir(project_slug).join(&rel);
+    if !abs_path.is_file() {
+        return Some(Err(CoreError::InvalidDoc(format!(
+            "terrain knowledge asset not found: {file_path}"
+        ))));
+    }
+
+    let content = match std::fs::read_to_string(&abs_path) {
+        Ok(body) => body,
+        Err(e) => {
+            return Some(Err(CoreError::InvalidDoc(format!(
+                "cannot read terrain knowledge asset {file_path}: {e}"
+            ))));
+        }
+    };
+
+    Some(Ok(SourceSlice {
+        repo_path: repo_path.unwrap_or("").to_string(),
+        file_path: rel,
+        start_line: 0,
+        end_line: 0,
+        content,
+    }))
 }
 
 fn agent_pack_index_slice(paths: &KnowledgePaths, project_slug: &str, repo_path: Option<&str>) -> Result<SourceSlice> {
@@ -381,6 +406,10 @@ pub fn resolve_source_citation(
             return result;
         }
 
+    if let Some(result) = try_resolve_knowledge_asset(paths, project_slug, file_path, repo_path) {
+        return result;
+    }
+
     let path_candidates = source_path_candidates(project_slug, file_path);
     let repos = repo_path_candidates(paths, project_slug, repo_path);
     if let Some(slice) =
@@ -480,6 +509,29 @@ mod tests {
             std::fs::create_dir_all(parent).unwrap();
         }
         std::fs::write(path, content).unwrap();
+    }
+
+    #[test]
+    fn resolves_terrain_meta_freshness_json() {
+        let (paths, slug, _, _guard) = test_setup("unit-test-freshness-json");
+        std::fs::create_dir_all(paths.project_dir(&slug).join(".meta")).unwrap();
+        std::fs::write(
+            paths.freshness_meta_path(&slug),
+            r#"{"freshness_score":72}"#,
+        )
+        .unwrap();
+
+        let slice = resolve_source_citation(
+            &paths,
+            &slug,
+            None,
+            ".meta/freshness.json",
+            0,
+            0,
+        )
+        .unwrap();
+        assert_eq!(slice.file_path, ".meta/freshness.json");
+        assert!(slice.content.contains("freshness_score"));
     }
 
     #[test]

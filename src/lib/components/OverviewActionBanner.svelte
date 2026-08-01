@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { CircleAlert, Settings2, TriangleAlert } from "@lucide/svelte";
+
     import ChevronIcon from "./icons/ChevronIcon.svelte";
 
     export interface OverviewActionItem {
@@ -40,6 +42,12 @@
         violet: "bg-tr-accent-soft text-tr-accent",
     };
 
+    const accentIcon = {
+        rose: TriangleAlert,
+        amber: CircleAlert,
+        violet: Settings2,
+    } as const;
+
     const accentButton: Record<OverviewActionItem["accent"], string> = {
         rose: "bg-tr-critical text-tr-on-critical hover:opacity-90",
         amber: "bg-tr-watch text-tr-on-watch hover:opacity-90",
@@ -48,13 +56,16 @@
 </script>
 
 {#snippet actionRow(item: OverviewActionItem, compact = false)}
+    {@const AccentIcon = accentIcon[item.accent]}
     <div
         class={`flex items-center gap-3 rounded-xl border px-4 ${compact ? "py-3" : "py-3.5"} ${accentTint[item.accent]}`}
     >
         <span
-            class={`h-7 w-7 shrink-0 rounded-lg ${accentIconTint[item.accent]}`}
+            class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${accentIconTint[item.accent]}`}
             aria-hidden="true"
-        ></span>
+        >
+            <AccentIcon size={20} strokeWidth={2} />
+        </span>
         <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-tr-ink">
                 {item.title}

@@ -87,7 +87,10 @@ source: .
     - package.json
     - scripts/
     - packages/
+  - CLAUDE.md
   - .codegraph/
+    - codegraph.db-wal
+    - codegraph.db-shm
     - codegraph.db
     - .gitignore
   - src/

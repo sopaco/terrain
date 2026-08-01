@@ -3,6 +3,7 @@ pub mod citations;
 pub mod doc;
 pub mod error;
 pub mod freshness;
+pub mod git_policy;
 pub mod human;
 pub mod ingest;
 pub mod integrations;

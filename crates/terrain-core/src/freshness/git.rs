@@ -68,16 +68,17 @@ pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
         return GitDrift::default();
     }
 
-    let count = git_output(
-        repo,
-        &["rev-list", "--count", &format!("{baseline}..HEAD")],
-    )
-    .and_then(|s| s.trim().parse().ok())
-    .unwrap_or(0);
+    let count = source_commits_since(repo, baseline);
 
     let changed_files = git_output(
         repo,
-        &["diff", "--name-only", &format!("{baseline}..HEAD")],
+        &[
+            "-c",
+            "core.quotepath=false",
+            "diff",
+            "--name-only",
+            &format!("{baseline}..HEAD"),
+        ],
     )
     .map(|s| {
         s.lines()
@@ -92,6 +93,50 @@ pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
         commits_since_baseline: count,
         changed_files,
     }
+}
+
+/// Count commits in `baseline..HEAD` that touch at least one non-knowledge path.
+///
+/// A plain `rev-list --count` also counts commits that only rewrite `.terrain/` — so
+/// committing regenerated knowledge assets advances HEAD and immediately penalizes the
+/// very assets that commit refreshed (`changed_files` filters those paths out, leaving a
+/// deduction with no visible cause). Merge commits show no paths under `--name-only` and
+/// are skipped; the commits they bring in are counted individually when in range.
+fn source_commits_since(repo: &Path, baseline: &str) -> u32 {
+    let Some(log) = git_output(
+        repo,
+        &[
+            "-c",
+            "core.quotepath=false",
+            "log",
+            // NUL prefix marks commit boundaries so a path can never be read as a hash.
+            "--format=%x00%H",
+            "--name-only",
+            &format!("{baseline}..HEAD"),
+        ],
+    ) else {
+        return 0;
+    };
+    count_source_commits_in_log(&log)
+}
+
+/// Count commits in `git log --format=%x00%H --name-only` output that touch a non-knowledge path.
+pub(crate) fn count_source_commits_in_log(log: &str) -> u32 {
+    let mut count = 0u32;
+    let mut current_counted = false;
+    for line in log.lines() {
+        if line.starts_with('\0') {
+            current_counted = false;
+            continue;
+        }
+        let path = line.trim();
+        if current_counted || path.is_empty() || is_knowledge_output_path(path) {
+            continue;
+        }
+        count += 1;
+        current_counted = true;
+    }
+    count
 }
 
 pub(crate) fn git_output(repo: &Path, args: &[&str]) -> Option<String> {

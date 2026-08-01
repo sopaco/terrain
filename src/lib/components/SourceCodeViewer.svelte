@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { HighlightedLine } from "../highlightSetup";
+  import "../syntax-tokens.css";
   import "../source-code.css";
 
   interface Props {
@@ -42,7 +43,12 @@
   });
 </script>
 
-<div class="source-code-viewer" bind:this={container} role="region" aria-label="Source code">
+<div
+  class="source-code-viewer tr-syntax"
+  bind:this={container}
+  role="region"
+  aria-label="Source code"
+>
   <table>
     <tbody>
       {#each lines as line (line.number)}

@@ -93,6 +93,65 @@
   background: var(--color-tr-page);
 }
 
+.markdown-body .code-block {
+  margin: 0 0 1.125rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-tr-border);
+  background: var(--color-tr-page);
+  overflow: hidden;
+}
+
+/* The frame moved to .code-block, so the inner pre only handles scrolling. */
+.markdown-body .code-block pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.markdown-body .code-block-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--color-tr-border);
+  background: var(--color-tr-elevated);
+}
+
+.markdown-body .code-block-lang {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-tr-ink-3);
+}
+
+.markdown-body .code-copy {
+  flex-shrink: 0;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-tr-ink-3);
+  font: inherit;
+  font-size: 0.6875rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.markdown-body .code-block:hover .code-copy,
+.markdown-body .code-copy:focus-visible {
+  opacity: 1;
+}
+
+.markdown-body .code-copy:hover {
+  border-color: var(--color-tr-border-strong);
+  background: var(--color-tr-raised);
+  color: var(--color-tr-ink);
+}
+
 .markdown-body pre code {
   padding: 0;
   background: transparent;
@@ -101,11 +160,18 @@
   line-height: 1.65;
 }
 
+.markdown-body .markdown-table-wrap {
+  margin: 0 0 1.125rem;
+  overflow-x: auto;
+}
+
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  display: block;
-  overflow-x: auto;
+}
+
+.markdown-body .markdown-table-wrap table {
+  margin: 0;
 }
 
 .markdown-body th,

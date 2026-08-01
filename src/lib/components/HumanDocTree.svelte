@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { FileText, PanelLeftClose, Search, X } from "@lucide/svelte";
   import type { HumanDocEntry } from "../types";
   import { generateLabel, TERMS, UI_MESSAGES } from "../terminology";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
@@ -8,9 +9,16 @@
     activePath?: string | null;
     loading?: boolean;
     onselect: (doc: HumanDocEntry) => void;
+    oncollapse?: () => void;
   }
 
-  let { docs, activePath = null, loading = false, onselect }: Props = $props();
+  let {
+    docs,
+    activePath = null,
+    loading = false,
+    onselect,
+    oncollapse,
+  }: Props = $props();
 
   type DocTreeNode = {
     id: string;
@@ -40,6 +48,7 @@
   };
 
   let openNodes = $state<Record<string, boolean>>({});
+  let filter = $state("");
 
   function treePath(doc: HumanDocEntry): string {
     const rel = doc.relative_path.replace(/\\/g, "/");
@@ -180,9 +189,20 @@
     return null;
   }
 
+  const query = $derived(filter.trim().toLowerCase());
+
+  const visibleDocs = $derived.by(() => {
+    if (!query) return docs;
+    return docs.filter(
+      (doc) =>
+        doc.title.toLowerCase().includes(query) ||
+        treePath(doc).toLowerCase().includes(query),
+    );
+  });
+
   const sections = $derived.by(() => {
     const grouped = new Map<string, HumanDocEntry[]>();
-    for (const doc of docs) {
+    for (const doc of visibleDocs) {
       const section = doc.section ?? "human";
       const list = grouped.get(section) ?? [];
       list.push(doc);
@@ -214,6 +234,8 @@
   }
 
   function isOpen(id: string, fallback: boolean) {
+    // While filtering, every branch that survived the filter should be visible.
+    if (query) return true;
     return openNodes[id] ?? fallback;
   }
 
@@ -227,7 +249,7 @@
 {#snippet docButton(doc: HumanDocEntry, depth: number)}
   <button
     type="button"
-    class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] leading-snug transition-colors hover:bg-tr-elevated ${
+    class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-xs leading-snug transition-colors hover:bg-tr-elevated ${
       activePath === doc.path
         ? "bg-tr-accent-soft-strong font-medium text-tr-on-accent"
         : "text-tr-ink-2"
@@ -236,8 +258,13 @@
     onclick={() => onselect(doc)}
     title={treePath(doc)}
   >
-    <span class="w-3 shrink-0" aria-hidden="true"></span>
-    <span class="min-w-0 flex-1">{doc.title || prettyFileLabel(treePath(doc))}</span>
+    <FileText
+      size={12}
+      strokeWidth={2}
+      class="w-3 shrink-0 text-tr-ink-4"
+      aria-hidden="true"
+    />
+    <span class="min-w-0 flex-1 truncate">{doc.title || prettyFileLabel(treePath(doc))}</span>
   </button>
 {/snippet}
 
@@ -251,7 +278,7 @@
     <div>
       <button
         type="button"
-        class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] leading-snug transition-colors hover:bg-tr-elevated ${
+        class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-xs leading-snug transition-colors hover:bg-tr-elevated ${
           deepFolder && node.depth > 0 ? "text-tr-accent" : "text-tr-ink-2"
         }`}
         style={`padding-left: ${rowIndent(node.depth)}`}
@@ -292,15 +319,54 @@
 
 <div class="flex min-h-0 flex-1 flex-col">
   <div class="border-b border-tr-border-strong px-3 py-2.5">
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold text-tr-ink-2">文档目录</span>
+    <div class="flex items-center gap-2">
+      <span class="min-w-0 flex-1 text-xs font-semibold text-tr-ink-2">文档目录</span>
       {#if loading}
-        <span class="inline-flex items-center gap-1.5 text-[10px] text-tr-accent">
+        <span class="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-tr-accent">
           <span class="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent"></span>
           {UI_MESSAGES.loadingDocs}
         </span>
       {:else}
-        <span class="text-[10px] text-tr-ink-3">{docs.length} 篇</span>
+        <span class="shrink-0 text-[10px] text-tr-ink-3">
+          {query ? `${visibleDocs.length}/${docs.length}` : `${docs.length} 篇`}
+        </span>
+      {/if}
+      {#if oncollapse}
+        <button
+          type="button"
+          class="-mr-1 inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
+          onclick={oncollapse}
+          aria-label="收起文档目录"
+          title="收起文档目录"
+        >
+          <PanelLeftClose size={14} strokeWidth={2} aria-hidden="true" />
+        </button>
+      {/if}
+    </div>
+
+    <div class="relative mt-2">
+      <Search
+        size={12}
+        strokeWidth={2}
+        class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-tr-ink-4"
+        aria-hidden="true"
+      />
+      <input
+        class="w-full rounded-md border border-tr-border bg-tr-elevated py-1 pl-6 pr-6 text-xs text-tr-ink outline-none placeholder:text-tr-ink-4 focus:border-tr-accent"
+        placeholder="筛选文档…"
+        aria-label="筛选文档"
+        bind:value={filter}
+      />
+      {#if filter}
+        <button
+          type="button"
+          class="absolute right-1 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded p-0.5 text-tr-ink-4 transition-colors hover:text-tr-ink"
+          onclick={() => (filter = "")}
+          aria-label="清除筛选"
+          title="清除筛选"
+        >
+          <X size={12} strokeWidth={2} aria-hidden="true" />
+        </button>
       {/if}
     </div>
   </div>
@@ -327,6 +393,10 @@
           </div>
         {/each}
       </div>
+    {:else if query}
+      <p class="px-2 py-4 text-xs leading-relaxed text-tr-ink-3">
+        没有匹配「<span class="text-tr-ink-2">{filter.trim()}</span>」的文档。
+      </p>
     {:else if !loading}
       <p class="px-2 py-4 text-xs leading-relaxed text-tr-ink-3">
         尚无{TERMS.humanKnowledge}。请在工具栏点击 <span class="text-tr-ink-2">{generateLabel(TERMS.humanKnowledge, false)}</span>。

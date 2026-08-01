@@ -58,7 +58,7 @@ pub(crate) fn env_cache_fingerprint(repo: &Path) -> u64 {
 
 fn env_cache_watch_paths(repo: &Path) -> Vec<PathBuf> {
     let bin = agent_bin_dir();
-    vec![
+    let mut paths = vec![
         repo.join("AGENTS.md"),
         repo.join(".gitignore"),
         repo.join(".codegraph/codegraph.db"),
@@ -74,7 +74,11 @@ fn env_cache_watch_paths(repo: &Path) -> Vec<PathBuf> {
         repo.join(".claude/skills/repomix-context-skill/SKILL.md"),
         bin.join("rtk"),
         bin.join("codegraph"),
-    ]
+    ];
+    paths.extend(crate::git_policy::git_policy_paths(
+        &crate::registry::knowledge_root_for_repo(repo),
+    ));
+    paths
 }
 
 pub(crate) fn env_cache_get(key: &str, fingerprint: u64) -> Option<EnvStatus> {

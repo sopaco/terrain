@@ -12,6 +12,21 @@ pub(crate) const COMMITS_PENALTY_CAP: i32 = 40;
 pub(crate) const SYNC_AGE_PENALTY_PER_DAY: i32 = 1;
 pub(crate) const SYNC_AGE_PENALTY_CAP: i32 = 5;
 
+/// `agent/context.md` is an LLM-generated derivative of the source pack, so its score is
+/// discounted — the architecture layer never claims to be as trustworthy as raw source.
+/// Consequence: this layer caps at 90, and so does the overall (minimum) score.
+pub(crate) const CONTEXT_DISCOUNT: f32 = 0.9;
+
+/// Discounted context score before the source-index ceiling is applied.
+pub(crate) fn discount_context_score(raw: u8) -> u8 {
+    ((raw as f32) * CONTEXT_DISCOUNT) as u8
+}
+
+/// Final context score: discounted raw score, never above the source index it derives from.
+pub(crate) fn context_score_from_raw(raw: u8, pack_score: u8) -> u8 {
+    discount_context_score(raw).min(pack_score)
+}
+
 /// Compute asset freshness score (0–100).
 pub fn score_asset(
     commits_since: u32,

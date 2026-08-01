@@ -25,21 +25,16 @@ src-tauri/bundled-resources/
 # Logs
 *.log
 
-# Terrain — repomix index (regenerated locally, not versioned)
-.terrain/agent/repomix.md
+# Terrain — 知识资产的 Git 跟随策略声明在 .terrain/.gitignore 与
+# .terrain/.gitattributes（由 Terrain 生成维护、随仓库分发），此处不再重复。
 
 # Bundled agent binaries (installed to ~/.terrain/bin /, not versioned)
 packages/codegraph/darwin-arm64/node
 
-# Terrain — per-machine env state (regenerated via env integration / scan)
-.terrain/env/agent-tools.json
-.terrain/env/manifest.json
-.terrain/.meta/sync.json
-.terrain/.meta/freshness.json
-.terrain/agent/context-meta.json
-
-**/.litho-agent
-**/.sdd-agent
-
+# CodeGraph local index
 .codegraph
-.claude/
+
+# Claude Code — 仅忽略本机配置；.claude/skills/ 由 Terrain 注入且需入库，
+# 不能整目录忽略（否则新增 skill 会被 `git add .` 静默漏掉）
+.claude/settings.local.json
+.claude/launch.json

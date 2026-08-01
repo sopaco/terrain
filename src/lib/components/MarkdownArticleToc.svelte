@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { ChevronDown } from "@lucide/svelte";
+  import { PanelRightClose, PanelRightOpen } from "@lucide/svelte";
   import type { TocHeading } from "../markdownToc";
+  import { readerLayout, toggleArticleToc } from "../stores/readerLayout.svelte";
 
   interface Props {
     headings: TocHeading[];
@@ -10,20 +11,9 @@
 
   let { headings, scrollRoot, contentRoot }: Props = $props();
 
-  const STORAGE_KEY = "terrain:article-toc-expanded";
-
-  let expanded = $state(readExpandedPreference());
   let activeId = $state<string | null>(null);
 
-  function readExpandedPreference(): boolean {
-    if (typeof localStorage === "undefined") return true;
-    return localStorage.getItem(STORAGE_KEY) !== "false";
-  }
-
-  function toggleExpanded() {
-    expanded = !expanded;
-    localStorage.setItem(STORAGE_KEY, String(expanded));
-  }
+  const collapsed = $derived(readerLayout.articleTocCollapsed);
 
   function scrollToHeading(id: string) {
     const el = contentRoot?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
@@ -56,6 +46,7 @@
     scrollRoot;
     contentRoot;
 
+    if (collapsed) return;
     if (!scrollRoot || !contentRoot) return;
 
     const onScroll = () => updateActiveHeading();
@@ -70,26 +61,35 @@
   }
 </script>
 
-<aside class="article-toc" aria-label="文章目录">
-  <div class="article-toc-panel">
+<aside class={`article-toc ${collapsed ? "collapsed" : ""}`} aria-label="文章目录">
+  {#if collapsed}
     <button
       type="button"
-      class="article-toc-header"
-      onclick={toggleExpanded}
-      aria-expanded={expanded}
-      title={expanded ? "收起目录" : "展开目录"}
+      class="article-toc-rail"
+      onclick={toggleArticleToc}
+      aria-expanded="false"
+      title="展开本页目录"
     >
-      <span class="article-toc-title">本页目录</span>
-      <span class="article-toc-count">{headings.length}</span>
-      <ChevronDown
-        size={16}
-        strokeWidth={2}
-        class={`article-toc-chevron shrink-0 text-tr-ink-3 ${expanded ? "expanded" : ""}`}
-        aria-hidden="true"
-      />
+      <PanelRightOpen size={14} strokeWidth={2} aria-hidden="true" />
+      <span class="article-toc-rail-label">本页目录</span>
     </button>
+  {:else}
+    <div class="article-toc-panel">
+      <div class="article-toc-header">
+        <span class="article-toc-title">本页目录</span>
+        <span class="article-toc-count">{headings.length}</span>
+        <button
+          type="button"
+          class="article-toc-collapse"
+          onclick={toggleArticleToc}
+          aria-expanded="true"
+          aria-label="收起本页目录"
+          title="收起本页目录"
+        >
+          <PanelRightClose size={14} strokeWidth={2} aria-hidden="true" />
+        </button>
+      </div>
 
-    {#if expanded}
       <nav class="article-toc-nav">
         <ul class="article-toc-list">
           {#each headings as heading (heading.id)}
@@ -106,8 +106,8 @@
           {/each}
         </ul>
       </nav>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </aside>
 
 <style>
@@ -116,10 +116,53 @@
     flex-shrink: 0;
     align-self: flex-start;
     position: sticky;
-    top: 0;
+    /* Matches the layout's top padding so it does not jump when it starts sticking. */
+    top: 2rem;
     max-height: calc(100vh - 12rem);
     display: flex;
     flex-direction: column;
+  }
+
+  /*
+   * `100vh` overshoots by the toolbar above and the ask bar below, letting a long
+   * outline run off the bottom. `cqh` is the real height of the scrollport, which
+   * KnowledgeArticle declares as a size container.
+   */
+  @supports (height: 1cqh) {
+    .article-toc {
+      max-height: calc(100cqh - 4rem);
+    }
+  }
+
+  .article-toc.collapsed {
+    width: 2.25rem;
+  }
+
+  .article-toc-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0;
+    border: none;
+    background: transparent;
+    color: var(--color-tr-ink-3);
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .article-toc-rail:hover {
+    background: var(--color-tr-elevated);
+    color: var(--color-tr-ink);
+  }
+
+  .article-toc-rail-label {
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    writing-mode: vertical-rl;
+    user-select: none;
   }
 
   .article-toc-panel {
@@ -138,19 +181,10 @@
     gap: 0.375rem;
     width: 100%;
     padding: 0.625rem 0.75rem;
-    border: none;
-    background: transparent;
     color: var(--color-tr-ink-2);
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .article-toc-header:hover {
-    background: var(--color-tr-raised);
-    color: var(--color-tr-ink);
   }
 
   .article-toc-title {
@@ -167,12 +201,24 @@
     padding: 0.1rem 0.4rem;
   }
 
-  .article-toc-chevron {
-    transition: transform 0.2s ease;
+  .article-toc-collapse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: -0.25rem;
+    padding: 0.25rem;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-tr-ink-3);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
   }
 
-  .article-toc-chevron.expanded {
-    transform: rotate(180deg);
+  .article-toc-collapse:hover {
+    background: var(--color-tr-raised);
+    color: var(--color-tr-ink);
   }
 
   .article-toc-nav {

@@ -12,6 +12,15 @@ const QWEN_REASONING_PREFIX_RE = /^`\n[\s\S]*?``(?!`)\s*/;
 
 const MARKDOWN_FENCE_RE = /^```(?:markdown|md)\s*\n([\s\S]*?)\n```\s*$/i;
 
+/**
+ * Leading YAML frontmatter, e.g. the header Terrain writes into
+ * `agent/context.md`. Left in place it renders as body text, and the closing
+ * `---` turns the last key line into a setext heading. Deliberately strict
+ * (`key: value` lines only) so a streamed answer that merely opens with `---`
+ * is not mistaken for frontmatter.
+ */
+const FRONTMATTER_RE = /^---[ \t]*\r?\n(?:[ \t]*[\w.-]+[ \t]*:[^\r\n]*\r?\n)+---[ \t]*(?:\r?\n|$)/;
+
 /** Remove model reasoning blocks that should not appear in the rendered answer. */
 export function stripThinkingBlocks(text: string): string {
   let out = text.trim();
@@ -21,6 +30,11 @@ export function stripThinkingBlocks(text: string): string {
     out = next;
   }
   return out.replace(QWEN_REASONING_PREFIX_RE, "").trim();
+}
+
+/** Drop a leading YAML frontmatter block so it is not rendered as prose. */
+export function stripFrontmatter(text: string): string {
+  return text.replace(FRONTMATTER_RE, "");
 }
 
 /** Unwrap a single outer ```markdown / ```md fenced block if present. */
@@ -45,7 +59,6 @@ export function repairInlineSectionHeadings(text: string): string {
   out = out.replace(/([。；;：:.!?])\s*(## )/g, "$1\n\n$2");
   out = out.replace(/([\u4e00-\u9fff\w`\)])\s*(## )/g, "$1\n\n$2");
   out = out.replace(/([^\n\r#])(#{2,6} )/g, "$1\n\n$2");
-  out = out.replace(/([^\n\r])(#{3,6} )/g, "$1\n\n$2");
   out = out.replace(/(#{1,6} [^\n]+[\u4e00-\u9fff])([A-Za-z])/g, "$1\n\n$2");
   out = out.replace(/([^\n\r`])(```[\w]+)/g, "$1\n\n$2");
   out = out.replace(/([^\n\r`])(```)(?=[^\w\n\r])/g, "$1\n\n$2");
@@ -60,10 +73,26 @@ export function repairInlineSectionHeadings(text: string): string {
   return out;
 }
 
+/**
+ * Whether the text still needs structural repair at all.
+ *
+ * The repairs below are heuristics for providers that stream a whole answer as
+ * one line. Well-formed markdown must not go through them: they demote `####`
+ * headings, split CJK/Latin headings such as `## 模块划分Overview`, cut
+ * paragraphs at any ` -\``, and turn `||` into `|\n|` — which corrupts mermaid
+ * ER diagrams (`A ||--o{ B`) and `||` in code. So this is decided from the
+ * *incoming* text, before any repair has had a chance to add newlines.
+ */
+function looksFlattened(text: string): boolean {
+  return (text.match(/\n/g) ?? []).length < 3;
+}
+
 /** Re-insert markdown structure when providers stream a single flattened line. */
 export function repairFlattenedMarkdown(text: string): string {
+  if (!looksFlattened(text)) return text;
+
   const layout = repairInlineSectionHeadings(text);
-  if ((layout.match(/\n/g) ?? []).length >= 3) return layout;
+  if (!looksFlattened(layout)) return layout;
 
   let out = layout;
   out = out.replace(/\*\^([^^*]+)\^\*/g, "*$1*");
@@ -91,7 +120,7 @@ export function repairFlattenedMarkdown(text: string): string {
 
 /** Full cleanup before markdown rendering. */
 export function prepareMarkdownForRender(text: string, opts?: { extractBody?: boolean }): string {
-  const stripped = stripThinkingBlocks(text);
+  const stripped = stripFrontmatter(stripThinkingBlocks(text));
   const unwrapped = unwrapMarkdownFence(stripped);
   const repaired = repairFlattenedMarkdown(unwrapped);
   if (opts?.extractBody) return extractMarkdownBody(repaired);

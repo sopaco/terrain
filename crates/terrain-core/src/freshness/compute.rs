@@ -21,7 +21,8 @@ use super::ledger::{
     LEDGER_VERSION_CONST,
 };
 use super::scoring::{
-    days_since_rfc3339, overall_freshness_score, score_asset, short_git_ref, stale_reason_for,
+    context_score_from_raw, days_since_rfc3339, overall_freshness_score, score_asset,
+    short_git_ref, stale_reason_for,
 };
 use super::{FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD};
 
@@ -87,7 +88,7 @@ pub fn compute_freshness(
     } else {
         0
     };
-    let ctx_score = ((ctx_score_raw as f32) * 0.9).min(pack_score as f32) as u8;
+    let ctx_score = context_score_from_raw(ctx_score_raw, pack_score);
 
     let human_days = sync_meta
         .as_ref()
@@ -131,10 +132,12 @@ pub fn compute_freshness(
         human_score,
         overall_score,
         pack_drift: &pack_drift,
+        ctx_drift: &ctx_drift,
         pack_days,
         ctx_days,
         pack_total_files,
         pack_baseline: pack_baseline.as_deref(),
+        ctx_baseline: ctx_baseline.as_deref(),
     });
 
     let sample_changed_files: Vec<String> = pack_drift

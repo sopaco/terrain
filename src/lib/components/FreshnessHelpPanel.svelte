@@ -173,8 +173,8 @@
                     对比打包时的 Git baseline 与当前 HEAD
                 </li>
                 <li>
-                    <span class="text-tr-ink-2">{TERMS.agentKnowledge}</span> — 同上，且不超过源码索引分数的
-                    90%
+                    <span class="text-tr-ink-2">{TERMS.agentKnowledge}</span> —
+                    按自己的生成 baseline 对比；作为 LLM 派生资产再乘 0.9（故该层上限 90 分，综合分同此上限），且不高于源码索引分数
                 </li>
                 <li>
                     <span class="text-tr-ink-2">{TERMS.humanKnowledge}</span> — 主要参考项目扫描时间与提交漂移
@@ -186,7 +186,7 @@
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
                 >
-                    每落后 1 个提交 · 约 −2 分（上限 40）
+                    每落后 1 个改动源码的提交 · 约 −2 分（上限 40）
                 </div>
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
