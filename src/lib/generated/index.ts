@@ -10,6 +10,7 @@ export type { AgentExecution } from "./AgentExecution";
 export type { AgentPackMeta } from "./AgentPackMeta";
 export type { AgentPackReport } from "./AgentPackReport";
 export type { AgentPackSummary } from "./AgentPackSummary";
+export type { AppBootstrap } from "./AppBootstrap";
 export type { AskKnowledgeReply } from "./AskKnowledgeReply";
 export type { AskSessionInfo } from "./AskSessionInfo";
 export type { AssetGenerator } from "./AssetGenerator";

@@ -43,6 +43,7 @@
         quickRefreshBusy?: boolean;
         freshnessLoading?: boolean;
         onQuickRefresh?: () => void;
+        onRequestFreshnessCompute?: () => void;
         onSaveProjectRemark?: (remark: string) => Promise<void>;
     }
 
@@ -73,6 +74,7 @@
         quickRefreshBusy = false,
         freshnessLoading = false,
         onQuickRefresh,
+        onRequestFreshnessCompute,
         onSaveProjectRemark,
     }: Props = $props();
 
@@ -82,6 +84,10 @@
     let remarkDraft = $state("");
     let remarkSaving = $state(false);
     let copiedPath = $state<string | null>(null);
+
+    $effect(() => {
+        if (freshnessHelpOpen) onRequestFreshnessCompute?.();
+    });
 
     const readyCount = $derived(
         overview?.asset_health.filter((a) => a.ready).length ?? 0,
