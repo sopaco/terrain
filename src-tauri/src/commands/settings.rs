@@ -2,11 +2,32 @@ use terrain_agent::{
     acp_available, acp_spawn_command, llm_status, load_model_settings, model_settings_from_config,
     resolve_model_config, save_model_settings, ModelSettings,
 };
+use terrain_core::{list_stale_registry_projects, AppBootstrap, KnowledgeSearch};
 use tauri::State;
 
 use crate::AppState;
 
 use super::resolved_acp_settings;
+
+#[tauri::command]
+pub fn bootstrap_app(state: State<'_, AppState>) -> AppBootstrap {
+    let settings =
+        load_model_settings().unwrap_or_else(|| model_settings_from_config(&state.model_config()));
+    let projects = KnowledgeSearch::new(state.paths())
+        .list_projects()
+        .unwrap_or_default();
+    let stale_projects = list_stale_registry_projects().unwrap_or_default();
+    let llm_status = llm_status(&state.model_config());
+    let acp_ok = acp_available(&resolved_acp_settings());
+
+    AppBootstrap {
+        model_settings: settings,
+        projects,
+        stale_projects,
+        llm_status,
+        acp_ok,
+    }
+}
 
 #[tauri::command]
 pub fn get_knowledge_root(

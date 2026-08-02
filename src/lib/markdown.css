@@ -5,6 +5,14 @@
   word-wrap: break-word;
 }
 
+/* Long-form knowledge docs: lighter copy, headings stay at --color-tr-ink. */
+.markdown-body.reading {
+  font-weight: 400;
+  color: var(--color-tr-ink-reading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .markdown-body > :first-child {
   margin-top: 0;
 }
@@ -45,7 +53,6 @@
   margin: 1.25rem 0 0.625rem;
 }
 
-.markdown-body p,
 .markdown-body ul,
 .markdown-body ol,
 .markdown-body blockquote,

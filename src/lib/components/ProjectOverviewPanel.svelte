@@ -43,6 +43,7 @@
         quickRefreshBusy?: boolean;
         freshnessLoading?: boolean;
         onQuickRefresh?: () => void;
+        onRequestFreshnessCompute?: () => void;
         onSaveProjectRemark?: (remark: string) => Promise<void>;
     }
 
@@ -73,6 +74,7 @@
         quickRefreshBusy = false,
         freshnessLoading = false,
         onQuickRefresh,
+        onRequestFreshnessCompute,
         onSaveProjectRemark,
     }: Props = $props();
 
@@ -82,6 +84,10 @@
     let remarkDraft = $state("");
     let remarkSaving = $state(false);
     let copiedPath = $state<string | null>(null);
+
+    $effect(() => {
+        if (freshnessHelpOpen) onRequestFreshnessCompute?.();
+    });
 
     const readyCount = $derived(
         overview?.asset_health.filter((a) => a.ready).length ?? 0,
@@ -360,7 +366,7 @@
         >
         <button
             type="button"
-            class="shrink-0 rounded-md p-1 text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink"
+            class="tr-press shrink-0 rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
             title="复制"
             aria-label={`复制${label}`}
             onclick={() => copyPath(path)}
@@ -379,7 +385,7 @@
         {#if onOpenPath}
             <button
                 type="button"
-                class="shrink-0 rounded-md p-1 text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink"
+                class="tr-press shrink-0 rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
                 title="在 Finder 中打开"
                 aria-label={`打开${label}`}
                 onclick={() => onOpenPath(path)}
@@ -454,7 +460,7 @@
                             <div class="flex flex-wrap gap-2">
                                 <button
                                     type="button"
-                                    class="rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent hover:bg-tr-accent-hover disabled:opacity-50"
+                                    class="tr-press rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
                                     disabled={remarkSaving ||
                                         !onSaveProjectRemark}
                                     onclick={saveRemark}
@@ -463,7 +469,7 @@
                                 </button>
                                 <button
                                     type="button"
-                                    class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated"
+                                    class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated"
                                     disabled={remarkSaving}
                                     onclick={cancelRemarkEdit}
                                 >
@@ -487,7 +493,7 @@
                             {#if onSaveProjectRemark}
                                 <button
                                     type="button"
-                                    class="shrink-0 text-[11px] text-tr-ink-3 hover:text-tr-accent"
+                                    class="shrink-0 text-[11px] text-tr-ink-3 transition-colors hover:text-tr-accent"
                                     onclick={startRemarkEdit}
                                 >
                                     编辑
@@ -528,7 +534,7 @@
                     {#if overview.repo_path && onOpenPath}
                         <button
                             type="button"
-                            class="rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 hover:bg-tr-elevated"
+                            class="tr-press rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
                             onclick={() => onOpenPath(overview.repo_path)}
                         >
                             打开仓库
@@ -536,7 +542,7 @@
                     {/if}
                     <button
                         type="button"
-                        class="rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent hover:bg-tr-accent-hover"
+                        class="tr-press rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover"
                         onclick={onOpenAsk}
                     >
                         提问 Ask
@@ -656,16 +662,16 @@
 
                     {#if freshnessLoading && !freshness}
                         <div
-                            class="mt-3 h-1.5 animate-pulse rounded-full bg-tr-elevated"
+                            class="mt-3 h-2.5 animate-pulse rounded-full bg-tr-elevated"
                             role="status"
                             aria-live="polite"
                         ></div>
                     {:else if freshnessScore != null}
                         <div
-                            class="mt-3 h-1.5 overflow-hidden rounded-full bg-tr-elevated"
+                            class="mt-3 h-2.5 overflow-hidden rounded-full bg-tr-elevated"
                         >
                             <div
-                                class={`h-full rounded-full transition-all ${
+                                class={`h-full w-full origin-left rounded-full transition-transform duration-300 ease-out ${
                                     freshnessTone(freshnessScore) === "good"
                                         ? "bg-tr-good"
                                         : freshnessTone(freshnessScore) ===
@@ -673,7 +679,7 @@
                                           ? "bg-tr-watch"
                                           : "bg-tr-critical"
                                 }`}
-                                style={`width: ${freshnessScore}%`}
+                                style={`transform: scaleX(${freshnessScore / 100})`}
                             ></div>
                         </div>
                         <p class="mt-2 text-[11px] text-tr-ink-3">
@@ -702,6 +708,32 @@
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <OverviewKnowledgeCard
+                        title={SHORT_TERMS.humanKnowledge}
+                        subtitle="Litho C4 文档，从 1.概述 开始阅读"
+                        meta={humanKnowledgeMeta(overview)}
+                        ready={overview.litho.human_docs_complete}
+                        icon="book"
+                        featured={true}
+                        primaryLabel={overview.litho.human_docs_complete
+                            ? "打开"
+                            : generateLabel(TERMS.humanKnowledge, lithoBusy)}
+                        onPrimary={overview.litho.human_docs_complete
+                            ? onOpenHumanOverview
+                            : onGenerateHuman}
+                        primaryDisabled={overview.litho.human_docs_complete
+                            ? !onOpenHumanOverview
+                            : lithoBusy || !acpOk || !onGenerateHuman}
+                        secondaryLabel={overview.litho.human_docs_complete
+                            ? lithoBusy
+                                ? "生成中…"
+                                : "重新生成"
+                            : undefined}
+                        onSecondary={overview.litho.human_docs_complete
+                            ? onGenerateHuman
+                            : undefined}
+                        secondaryDisabled={lithoBusy || !acpOk}
+                    />
                     <OverviewKnowledgeCard
                         title={SHORT_TERMS.agentKnowledge}
                         subtitle="模块地图、架构与流程等，供 Agent 与问答使用"
@@ -733,31 +765,6 @@
                             ? onGenerateAgentContext
                             : undefined}
                         secondaryDisabled={agentContextBusy || !llmReady}
-                    />
-                    <OverviewKnowledgeCard
-                        title={SHORT_TERMS.humanKnowledge}
-                        subtitle="Litho C4 文档，从 1.概述 开始阅读"
-                        meta={humanKnowledgeMeta(overview)}
-                        ready={overview.litho.human_docs_complete}
-                        icon="book"
-                        primaryLabel={overview.litho.human_docs_complete
-                            ? "打开"
-                            : generateLabel(TERMS.humanKnowledge, lithoBusy)}
-                        onPrimary={overview.litho.human_docs_complete
-                            ? onOpenHumanOverview
-                            : onGenerateHuman}
-                        primaryDisabled={overview.litho.human_docs_complete
-                            ? !onOpenHumanOverview
-                            : lithoBusy || !acpOk || !onGenerateHuman}
-                        secondaryLabel={overview.litho.human_docs_complete
-                            ? lithoBusy
-                                ? "生成中…"
-                                : "重新生成"
-                            : undefined}
-                        onSecondary={overview.litho.human_docs_complete
-                            ? onGenerateHuman
-                            : undefined}
-                        secondaryDisabled={lithoBusy || !acpOk}
                     />
                     {#if structuredAsset}
                         {@const structuredAction =
@@ -795,7 +802,7 @@
                         {#if onOpenSettings}
                             <button
                                 type="button"
-                                class="shrink-0 text-xs text-tr-accent hover:text-tr-accent-hover"
+                                class="shrink-0 text-xs text-tr-accent transition-colors hover:text-tr-accent-hover"
                                 onclick={onOpenSettings}
                             >
                                 前往设置
@@ -841,7 +848,7 @@
                                     }`}
                                 >
                                     {overview.agent_env.ready
-                                        ? "已集成"
+                                        ? "就绪"
                                         : "待配置"}
                                 </span>
                             </div>
@@ -854,7 +861,7 @@
                     {#if onOpenEnv}
                         <button
                             type="button"
-                            class="shrink-0 rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent hover:bg-tr-accent-hover"
+                            class="tr-press shrink-0 rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover"
                             onclick={onOpenEnv}
                         >
                             {overview.agent_env.ready ? "管理集成" : "前往配置"}

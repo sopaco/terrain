@@ -27,6 +27,22 @@ pub fn get_env_status(repo: &Path) -> Result<EnvStatus> {
     Ok(status)
 }
 
+/// Build a concise integration-status phrase for the overview card.
+///
+/// The big `integrated_count/total_count` number already carries the ratio,
+/// so this must NOT repeat it — it only describes state in words.
+fn env_integration_summary(ready_count: usize, total: usize) -> String {
+    if total == 0 {
+        "未检测".to_string()
+    } else if ready_count == total {
+        "全部已集成".to_string()
+    } else if ready_count == 0 {
+        "尚未集成".to_string()
+    } else {
+        "部分已集成".to_string()
+    }
+}
+
 fn compute_env_status(repo: &Path) -> Result<EnvStatus> {
     let catalog = load_catalog()?;
     let items: Vec<_> = catalog
@@ -37,7 +53,7 @@ fn compute_env_status(repo: &Path) -> Result<EnvStatus> {
 
     let ready_count = items.iter().filter(|i| i.integrated).count();
     let total = items.len();
-    let summary = format!("{ready_count}/{total} 已集成");
+    let summary = env_integration_summary(ready_count, total);
 
     Ok(EnvStatus {
         repo_path: repo.display().to_string(),
@@ -79,7 +95,7 @@ pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEn
         ready: core,
         integrated_count: ready_count,
         total_count: total,
-        summary: format!("{ready_count}/{total} 已集成"),
+        summary: env_integration_summary(ready_count, total),
         detail: format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
     }
 }

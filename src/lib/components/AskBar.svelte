@@ -58,7 +58,7 @@
 <div class="border-t border-tr-border-strong bg-tr-page/95 px-4 py-4 backdrop-blur-sm">
   <div class="mx-auto max-w-3xl">
     <div
-      class={`flex items-stretch gap-2 rounded-2xl border bg-tr-surface p-1.5 shadow-lg transition-colors ${
+      class={`flex items-stretch gap-2 rounded-2xl border bg-tr-surface p-1.5 shadow-lg transition-[border-color,box-shadow] duration-200 ${
         disabled
           ? "border-tr-border-strong opacity-60"
           : "border-tr-border-strong focus-within:border-tr-accent focus-within:ring-2 focus-within:ring-tr-accent-soft-strong"
@@ -76,7 +76,7 @@
       ></textarea>
       <button
         type="button"
-        class="my-0.5 shrink-0 self-stretch rounded-xl bg-tr-accent px-5 text-sm font-medium text-white transition-colors hover:bg-tr-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+        class="tr-press my-0.5 shrink-0 self-stretch rounded-xl bg-tr-accent px-5 text-sm font-medium text-white transition-colors hover:bg-tr-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
         {disabled}
         onclick={onAskButtonClick}
       >

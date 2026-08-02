@@ -11,24 +11,18 @@
     import { listen } from "@tauri-apps/api/event";
     import AskBar from "./lib/components/AskBar.svelte";
     import AskCompletionNotice from "./lib/components/AskCompletionNotice.svelte";
-    import DeepWikiPanel from "./lib/components/DeepWikiPanel.svelte";
     import HumanDocTree from "./lib/components/HumanDocTree.svelte";
-    import EnvIntegratePanel from "./lib/components/EnvIntegratePanel.svelte";
     import MainNavTabs from "./lib/components/MainNavTabs.svelte";
-    import KnowledgeArticle from "./lib/components/KnowledgeArticle.svelte";
     import SourceDrawer from "./lib/components/SourceDrawer.svelte";
     import ProjectOverviewPanel from "./lib/components/ProjectOverviewPanel.svelte";
     import ProjectSelector from "./lib/components/ProjectSelector.svelte";
-    import SddWorkflowPanel from "./lib/components/SddWorkflowPanel.svelte";
-    import HelpPanel from "./lib/components/HelpPanel.svelte";
     import HelpButton from "./lib/components/icons/HelpButton.svelte";
-    import SettingsPanel from "./lib/components/SettingsPanel.svelte";
     import UsageMonitor from "./lib/components/UsageMonitor.svelte";
     import StatusBanner from "./lib/components/StatusBanner.svelte";
     import TaskProgressBar from "./lib/components/TaskProgressBar.svelte";
     import type { StatusKind } from "./lib/components/StatusBanner.svelte";
     import {
-        checkLlm,
+        bootstrapApp,
         checkAcp,
         computeFreshness,
         getKnowledgeRoot,
@@ -36,10 +30,8 @@
         getProjectOverview,
         initializeProject,
         listHumanDocs,
-        listProjects,
         readProjectFreshnessCached,
         removeProject,
-        listStaleProjects,
         openRepoFolder,
         packAgentAssets,
         readDocument,
@@ -56,6 +48,7 @@
     } from "./lib/agentExecution";
     import { parseAskSlashCommand } from "./lib/askSlashCommands";
     import { loadAskProjectState, startNewAskSession, switchAskSession } from "./lib/askSession";
+    import { scheduleIdle } from "./lib/scheduleIdle";
     import { generateLabel, TERMS, UI_MESSAGES } from "./lib/terminology";
     import {
         citationToSourceSlice,
@@ -113,6 +106,70 @@
     const lithoBusy = $derived(currentTaskDerived.lithoBusy);
     const lithoProgress = $derived(currentTaskDerived.lithoProgress);
 
+    type SddPanel = typeof import("./lib/components/SddWorkflowPanel.svelte").default;
+    type EnvPanel = typeof import("./lib/components/EnvIntegratePanel.svelte").default;
+    type DeepWikiPanelType = typeof import("./lib/components/DeepWikiPanel.svelte").default;
+    type SettingsPanelType = typeof import("./lib/components/SettingsPanel.svelte").default;
+    type HelpPanelType = typeof import("./lib/components/HelpPanel.svelte").default;
+    type KnowledgeArticleType = typeof import("./lib/components/KnowledgeArticle.svelte").default;
+
+    let SddWorkflowPanel = $state<SddPanel | null>(null);
+    let EnvIntegratePanel = $state<EnvPanel | null>(null);
+    let DeepWikiPanel = $state<DeepWikiPanelType | null>(null);
+    let SettingsPanel = $state<SettingsPanelType | null>(null);
+    let HelpPanel = $state<HelpPanelType | null>(null);
+    let KnowledgeArticle = $state<KnowledgeArticleType | null>(null);
+
+    let freshnessComputeSlug: string | null = null;
+
+    $effect(() => {
+        if (project.activeTab === "sdd" && !SddWorkflowPanel) {
+            void import("./lib/components/SddWorkflowPanel.svelte").then((m) => {
+                SddWorkflowPanel = m.default;
+            });
+        }
+    });
+
+    $effect(() => {
+        if (project.activeTab === "env" && !EnvIntegratePanel) {
+            void import("./lib/components/EnvIntegratePanel.svelte").then((m) => {
+                EnvIntegratePanel = m.default;
+            });
+        }
+    });
+
+    $effect(() => {
+        if (project.deepWikiOpen && project.selectedSlug && !DeepWikiPanel) {
+            void import("./lib/components/DeepWikiPanel.svelte").then((m) => {
+                DeepWikiPanel = m.default;
+            });
+        }
+    });
+
+    $effect(() => {
+        if (project.settingsOpen && !SettingsPanel) {
+            void import("./lib/components/SettingsPanel.svelte").then((m) => {
+                SettingsPanel = m.default;
+            });
+        }
+    });
+
+    $effect(() => {
+        if (project.helpOpen && !HelpPanel) {
+            void import("./lib/components/HelpPanel.svelte").then((m) => {
+                HelpPanel = m.default;
+            });
+        }
+    });
+
+    $effect(() => {
+        if (project.activeDoc && !KnowledgeArticle) {
+            void import("./lib/components/KnowledgeArticle.svelte").then((m) => {
+                KnowledgeArticle = m.default;
+            });
+        }
+    });
+
     async function refreshKnowledgeRoot(slug?: string | null) {
         const target = slug ?? project.selectedSlug;
         if (!target) {
@@ -129,19 +186,14 @@
     async function refresh() {
         setStatus("正在刷新项目列表…", "loading");
         try {
-            const settings = await getModelSettings();
+            const boot = await bootstrapApp();
             project.agentExecution = normalizeAgentExecution(
-                settings.acp?.agent_execution,
+                boot.model_settings.acp?.agent_execution,
             );
-            [project.projects, project.staleProjects, project.llmStatus] =
-                await Promise.all([
-                    listProjects(),
-                    listStaleProjects(),
-                    checkLlm(),
-                ]);
-            void checkAcp().then((ok) => {
-                project.acpOk = ok;
-            });
+            project.projects = boot.projects;
+            project.staleProjects = boot.stale_projects;
+            project.llmStatus = boot.llm_status;
+            project.acpOk = boot.acp_ok;
             if (!project.selectedSlug && project.projects.length > 0) {
                 await selectProject(project.projects[0]);
             } else {
@@ -156,6 +208,65 @@
         }
     }
 
+    async function applyCachedFreshness(slug: string) {
+        try {
+            const cached = await readProjectFreshnessCached(slug);
+            if (
+                cached &&
+                project.selectedSlug === slug &&
+                project.projectOverview
+            ) {
+                project.projectOverview = mergeFreshnessIntoOverview(
+                    project.projectOverview,
+                    cached,
+                );
+            }
+        } catch {
+            /* keep overview without freshness */
+        }
+    }
+
+    async function runFreshnessCompute(slug: string, repoPath: string) {
+        const requestSlug = slug;
+        project.freshnessLoading = true;
+        try {
+            const freshness = await computeFreshness(slug, repoPath);
+            if (
+                project.selectedSlug === requestSlug &&
+                project.projectOverview
+            ) {
+                project.projectOverview = mergeFreshnessIntoOverview(
+                    project.projectOverview,
+                    freshness,
+                );
+            }
+        } catch {
+            /* keep cached freshness */
+        } finally {
+            if (project.selectedSlug === requestSlug) {
+                project.freshnessLoading = false;
+            }
+        }
+    }
+
+    function scheduleFreshnessCompute(slug: string, repoPath: string) {
+        if (freshnessComputeSlug === slug) return;
+        freshnessComputeSlug = slug;
+        scheduleIdle(() => {
+            if (project.selectedSlug !== slug) return;
+            void runFreshnessCompute(slug, repoPath);
+        });
+    }
+
+    function requestFreshnessCompute() {
+        const slug = project.selectedSlug;
+        const repoPath = project.projectOverview?.repo_path;
+        if (!slug || !repoPath) return;
+        if (project.freshnessLoading) return;
+        if (project.projectOverview?.freshness?.overall_score != null) return;
+        void runFreshnessCompute(slug, repoPath);
+    }
+
     async function loadProjectOverviewFreshness(
         slug: string,
         repoPath: string | null | undefined,
@@ -164,50 +275,9 @@
             project.freshnessLoading = false;
             return;
         }
-        const requestSlug = slug;
-        project.freshnessLoading = true;
-        try {
-            const cached = await readProjectFreshnessCached(slug);
-            if (
-                cached &&
-                project.selectedSlug === requestSlug &&
-                project.projectOverview
-            ) {
-                project.projectOverview = mergeFreshnessIntoOverview(
-                    project.projectOverview,
-                    cached,
-                );
-            }
-
-            window.setTimeout(() => {
-                void (async () => {
-                    try {
-                        const freshness = await computeFreshness(
-                            slug,
-                            repoPath,
-                        );
-                        if (
-                            project.selectedSlug === requestSlug &&
-                            project.projectOverview
-                        ) {
-                            project.projectOverview =
-                                mergeFreshnessIntoOverview(
-                                    project.projectOverview,
-                                    freshness,
-                                );
-                        }
-                    } catch {
-                        /* keep cached freshness */
-                    } finally {
-                        if (project.selectedSlug === requestSlug) {
-                            project.freshnessLoading = false;
-                        }
-                    }
-                })();
-            }, 2000);
-        } catch {
-            project.freshnessLoading = false;
-        }
+        freshnessComputeSlug = null;
+        await applyCachedFreshness(slug);
+        scheduleFreshnessCompute(slug, repoPath);
     }
 
     async function loadProjectOverview(
@@ -905,7 +975,7 @@
         >
             <button
                 type="button"
-                class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 hover:bg-tr-elevated"
+                class="tr-press inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated"
                 title="设置"
                 aria-label="Settings"
                 onclick={() => (project.settingsOpen = true)}
@@ -995,6 +1065,7 @@
             quickRefreshBusy={project.quickRefreshBusy}
             freshnessLoading={project.freshnessLoading}
             onQuickRefresh={triggerQuickRefresh}
+            onRequestFreshnessCompute={requestFreshnessCompute}
             onSaveProjectRemark={async (remark) => {
                 if (!project.selectedSlug) return;
                 const prevFreshness = project.projectOverview?.freshness;
@@ -1014,7 +1085,7 @@
         class="flex min-h-0 flex-1 flex-col"
         class:hidden={project.activeTab !== "sdd"}
     >
-        {#if project.activeTab === "sdd"}
+        {#if project.activeTab === "sdd" && SddWorkflowPanel}
             <SddWorkflowPanel
                 projectSlug={project.selectedSlug}
                 repoPath={project.selectedRepoPath}
@@ -1028,14 +1099,16 @@
 
     {#if project.activeTab === "env"}
         <div class="flex min-h-0 flex-1 flex-col">
-            <EnvIntegratePanel
-                repoPath={project.selectedRepoPath}
-                onStatus={(message, kind) => setStatus(message, kind)}
-                onIntegrated={() => {
-                    if (project.selectedSlug)
-                        void loadProjectOverview(project.selectedSlug);
-                }}
-            />
+            {#if EnvIntegratePanel}
+                <EnvIntegratePanel
+                    repoPath={project.selectedRepoPath}
+                    onStatus={(message, kind) => setStatus(message, kind)}
+                    onIntegrated={() => {
+                        if (project.selectedSlug)
+                            void loadProjectOverview(project.selectedSlug);
+                    }}
+                />
+            {/if}
         </div>
     {/if}
 
@@ -1055,7 +1128,7 @@
                 />
                 <button
                     type="button"
-                    class="shrink-0 rounded-lg bg-tr-elevated px-3 py-1.5 text-sm hover:bg-tr-raised disabled:opacity-50"
+                    class="tr-press shrink-0 rounded-lg bg-tr-elevated px-3 py-1.5 text-sm transition-colors hover:bg-tr-raised disabled:opacity-50"
                     disabled={project.docLoading}
                     onclick={runSearch}
                 >
@@ -1067,7 +1140,7 @@
                     >
                         <button
                             type="button"
-                            class="rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs hover:bg-tr-elevated disabled:opacity-50"
+                            class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
                             disabled={repackBusy ||
                                 lithoBusy ||
                                 !project.selectedRepoPath ||
@@ -1090,7 +1163,7 @@
                     >
                         <button
                             type="button"
-                            class="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
+                            class="tr-press inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
                             onclick={toggleDocTree}
                             aria-label="展开文档目录"
                             title="展开文档目录"
@@ -1195,7 +1268,7 @@
                             ></span>
                             <span>{UI_MESSAGES.loadingDocument}</span>
                         </div>
-                    {:else if project.activeDoc}
+                    {:else if project.activeDoc && KnowledgeArticle}
                         <KnowledgeArticle
                             body={project.activeDoc.body}
                             path={project.activeDoc.path}
@@ -1210,7 +1283,7 @@
                                         <li>
                                             <button
                                                 type="button"
-                                                class="mb-2 w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-4 py-3 text-left hover:bg-tr-raised"
+                                                class="mb-2 w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-4 py-3 text-left transition-colors hover:bg-tr-raised"
                                                 onclick={() => openHit(hit)}
                                             >
                                                 <div
@@ -1272,7 +1345,7 @@
     </div>
 </div>
 
-{#if project.selectedSlug}
+{#if project.selectedSlug && project.deepWikiOpen && DeepWikiPanel}
     <DeepWikiPanel
         open={project.deepWikiOpen}
         projectSlug={project.selectedSlug}
@@ -1299,7 +1372,7 @@
     onOpenAsk={openDeepWikiFromNotice}
 />
 
-{#if project.settingsOpen}
+{#if project.settingsOpen && SettingsPanel}
     <SettingsPanel
         open={project.settingsOpen}
         onclose={() => (project.settingsOpen = false)}
@@ -1334,7 +1407,7 @@
     onSourceClick={openKnowledgeSourceCitation}
 />
 
-{#if project.helpOpen}
+{#if project.helpOpen && HelpPanel}
     <HelpPanel
         open={project.helpOpen}
         onclose={() => (project.helpOpen = false)}

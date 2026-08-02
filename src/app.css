@@ -13,6 +13,19 @@
 }
 
 /*
+ * Motion tokens. Strong custom curves — built-in CSS easings are too weak.
+ * - tr-out: strong ease-out for entering/exiting UI (starts fast, feels responsive)
+ * - tr-in-out: strong ease-in-out for on-screen movement
+ * - tr-drawer: iOS-like drawer curve
+ * Durations: press 160ms / popovers 150-200ms / drawers 280ms. UI stays < 300ms.
+ */
+@theme {
+  --ease-tr-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-tr-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-tr-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
  * Design tokens ("tr-" = Terrain), used across the whole app — not just the
  * overview page. Semantic layers, distinct from the default Tailwind palette:
  * - bg layers: page < surface < elevated < raised
@@ -31,6 +44,8 @@
   --color-tr-border-strong: rgba(255, 255, 255, 0.14);
 
   --color-tr-ink: #e8ecef;
+  /* Softer body copy for long-form reading (between ink and ink-2). */
+  --color-tr-ink-reading: #c8d0d6;
   --color-tr-ink-2: #a2acb5;
   --color-tr-ink-3: #6c7680;
   --color-tr-ink-4: #454c54;
@@ -84,10 +99,87 @@ body {
   }
 }
 
+/*
+ * Press feedback — every pressable element should acknowledge pointer-down
+ * instantly (scale 0.97, 160ms ease-out). Opt in per element with `tr-press`;
+ * reduced-motion users get no transform (opacity/color feedback still allowed).
+ * The property list deliberately covers colors/opacity/shadow too: unlayered
+ * author CSS wins over Tailwind's layered `transition-colors`, so this keeps
+ * hover fades working when both classes land on the same element.
+ */
+.tr-press {
+  transition-property:
+    transform, color, background-color, border-color,
+    text-decoration-color, fill, stroke, opacity, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-tr-out);
+}
+.tr-press:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Origin-aware popover entry: scale from the trigger (never scale(0), never center). */
+.tr-pop {
+  transform-origin: var(--tr-pop-origin, top left);
+  animation: tr-pop-in 320ms var(--ease-tr-out);
+}
+@keyframes tr-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Toast-like surface entry (bottom-anchored notices). */
+.tr-toast-in {
+  animation: tr-toast-in 320ms var(--ease-tr-out);
+}
+@keyframes tr-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Top-anchored toast entry (e.g. copy confirmations under a header). */
+.tr-toast-top-in {
+  animation: tr-toast-top-in 180ms var(--ease-tr-out);
+}
+@keyframes tr-toast-top-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep color fades, drop the press transform. */
+  .tr-press:not(:disabled):active {
+    transform: none;
+  }
+  .tr-pop,
+  .tr-toast-in,
+  .tr-toast-top-in {
+    animation: none;
+  }
+}
+
 /* GPU-composited overlay motion (no backdrop-filter — avoids jank during transitions) */
 .mm-overlay-backdrop {
   opacity: 0;
-  transition: opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 280ms var(--ease-tr-drawer);
   will-change: opacity;
 }
 
@@ -97,7 +189,7 @@ body {
 
 .mm-overlay-drawer {
   transform: translate3d(100%, 0, 0);
-  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 280ms var(--ease-tr-drawer);
   contain: layout style paint;
   backface-visibility: hidden;
 }
@@ -110,8 +202,8 @@ body {
   transform: scale(0.97) translateZ(0);
   opacity: 0;
   transition:
-    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+    transform 360ms var(--ease-tr-drawer),
+    opacity 280ms var(--ease-tr-drawer);
   contain: layout style paint;
   backface-visibility: hidden;
 }
@@ -131,7 +223,7 @@ body {
   height: 100%;
   min-width: max(400px, calc(100vw - min(760px, 92vw)));
   transform: translate3d(-100%, 0, 0);
-  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 280ms var(--ease-tr-drawer);
   contain: strict;
   backface-visibility: hidden;
 }
@@ -140,11 +232,30 @@ body {
   transform: translate3d(0, 0, 0);
 }
 
+/*
+ * Reduced motion = gentler, not zero. Keep the opacity cross-fade (aids
+ * comprehension), drop all movement. Drawers/modals fade in place.
+ */
 @media (prefers-reduced-motion: reduce) {
   .mm-overlay-backdrop,
   .mm-overlay-drawer,
   .mm-overlay-modal,
   .mm-source-rail-panel {
-    transition-duration: 0.01ms !important;
+    transition: opacity 150ms ease;
+  }
+
+  .mm-overlay-drawer,
+  .mm-source-rail-panel {
+    opacity: 0;
+    transform: none;
+  }
+
+  .mm-overlay-drawer.is-presented,
+  .mm-source-rail-panel.is-presented {
+    opacity: 1;
+  }
+
+  .mm-overlay-modal {
+    transform: none;
   }
 }

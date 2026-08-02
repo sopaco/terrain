@@ -2,6 +2,7 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import type {
   AgentContextGenerationResult,
   AgentPackReport,
+  AppBootstrap,
   AskKnowledgeReply,
   AskSessionInfo,
   EnvApplyResult,
@@ -31,6 +32,8 @@ import type {
   UsageSnapshot,
 } from "./types";
 import type { AskStreamEvent, ChatMessage } from "./types";
+
+export const bootstrapApp = () => invoke<AppBootstrap>("bootstrap_app");
 
 export const listProjects = () => invoke<ProjectSummary[]>("list_projects");
 

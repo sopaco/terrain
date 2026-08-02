@@ -298,14 +298,14 @@
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="button"
-        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs hover:bg-tr-elevated"
+        class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs transition-colors hover:bg-tr-elevated"
         onclick={selectAllPending}
       >
         全选待集成
       </button>
       <button
         type="button"
-        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs hover:bg-tr-elevated"
+        class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs transition-colors hover:bg-tr-elevated"
         onclick={selectNone}
       >
         清空可选
@@ -313,7 +313,7 @@
       <div class="flex items-center gap-1.5">
         <button
           type="button"
-          class="rounded-lg bg-tr-accent px-4 py-1.5 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-50"
+          class="tr-press rounded-lg bg-tr-accent px-4 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
           disabled={applying || applyCount === 0}
           onclick={apply}
         >
@@ -393,7 +393,7 @@
         {#if canCancelReinstall(item)}
           <button
             type="button"
-            class="shrink-0 rounded-lg border border-tr-watch/30 px-2.5 py-1 text-[11px] text-tr-watch hover:border-tr-watch/40 hover:bg-tr-watch-soft hover:text-tr-watch"
+            class="tr-press shrink-0 rounded-lg border border-tr-watch/30 px-2.5 py-1 text-[11px] text-tr-watch transition-colors hover:border-tr-watch/40 hover:bg-tr-watch-soft hover:text-tr-watch"
             onclick={() => cancelReinstall(item.id)}
           >
             取消重新安装
@@ -401,7 +401,7 @@
         {:else if canMarkReinstall(item)}
           <button
             type="button"
-            class="shrink-0 rounded-lg border border-tr-border-strong px-2.5 py-1 text-[11px] text-tr-ink-2 hover:border-tr-border-strong hover:bg-tr-elevated hover:text-tr-ink-2"
+            class="tr-press shrink-0 rounded-lg border border-tr-border-strong px-2.5 py-1 text-[11px] text-tr-ink-2 transition-colors hover:border-tr-border-strong hover:bg-tr-elevated hover:text-tr-ink-2"
             onclick={() => markForReinstall(item.id)}
           >
             {item.bundled ? "重新部署内置工具" : "标记为重新安装"}

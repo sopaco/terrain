@@ -649,23 +649,6 @@
   }
 </script>
 
-<style>
-  @keyframes copy-toast-in {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .copy-toast {
-    animation: copy-toast-in 180ms ease-out;
-  }
-</style>
-
 {#if mounted}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
@@ -690,7 +673,7 @@
         aria-live="polite"
       >
         <div
-          class="copy-toast flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl backdrop-blur-md {copyToast.ok
+          class="tr-toast-top-in flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl backdrop-blur-md {copyToast.ok
             ? 'border-tr-good/35 bg-tr-good-soft text-tr-good'
             : 'border-tr-critical/35 bg-tr-critical/20 text-tr-on-critical'}"
         >
@@ -715,7 +698,7 @@
       {/if}
       <button
         type="button"
-        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
+        class="tr-press inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
         disabled={busy || sessionBusy || !projectSlug}
         onclick={() => void handleNewSession()}
         aria-label="新建对话"
@@ -737,7 +720,7 @@
       {/if}
       <button
         type="button"
-        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated"
+        class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
         onclick={onclose}
       >
         Close
@@ -819,7 +802,7 @@
                   {#each msg.citations as c}
                     <button
                       type="button"
-                      class="block w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-left text-xs hover:bg-tr-elevated"
+                      class="block w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-left text-xs transition-colors hover:bg-tr-elevated"
                       onclick={() => openCitation(c)}
                     >
                       <span class="text-tr-ink-3">{c.kind}</span>
@@ -924,7 +907,7 @@
           ></textarea>
           <button
             type="button"
-            class="w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
+            class="tr-press w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
             disabled={!projectSlug || busy}
             onclick={send}
           >

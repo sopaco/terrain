@@ -81,7 +81,7 @@
   <button
     type="button"
     bind:this={triggerEl}
-    class="flex w-full items-center gap-2 rounded-xl border border-tr-border-strong bg-tr-elevated px-3 py-2.5 text-left text-sm hover:bg-tr-raised"
+    class="tr-press flex w-full items-center gap-2 rounded-xl border border-tr-border-strong bg-tr-elevated px-3 py-2.5 text-left text-sm transition-colors hover:bg-tr-raised"
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="listbox"
@@ -99,8 +99,8 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="fixed inset-0 z-[200]" onclick={ontoggle} role="presentation"></div>
     <div
-      class="fixed z-[201] overflow-hidden rounded-xl border border-tr-border-strong bg-tr-raised shadow-xl"
-      style="top: {menuTop}px; left: {menuLeft}px; width: {menuWidth}px;"
+      class="tr-pop fixed z-[201] overflow-hidden rounded-xl border border-tr-border-strong bg-tr-raised shadow-xl"
+      style="top: {menuTop}px; left: {menuLeft}px; width: {menuWidth}px; --tr-pop-origin: top left;"
       role="listbox"
     >
       <div class="border-b border-tr-border-strong px-3 py-2 text-xs text-tr-ink-3">
@@ -111,7 +111,7 @@
           <li class="mx-1 flex items-stretch gap-0.5">
             <button
               type="button"
-              class={`flex min-w-0 flex-1 flex-col rounded-lg px-3 py-2 text-left text-sm hover:bg-tr-elevated ${
+              class={`flex min-w-0 flex-1 flex-col rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-tr-elevated ${
                 activeSessionId === session.id ? "bg-tr-accent-soft-strong text-tr-on-accent" : ""
               }`}
               onclick={() => onselect(session.id)}
@@ -125,7 +125,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex shrink-0 items-center justify-center rounded-lg px-2 text-tr-ink-3 hover:bg-tr-critical-soft hover:text-tr-critical"
+              class="tr-press inline-flex shrink-0 items-center justify-center rounded-lg px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical"
               title="删除此需求及全部产出"
               aria-label={`删除 ${session.title}`}
               onclick={(e) => confirmDelete(session, e)}
@@ -149,7 +149,7 @@
             />
             <button
               type="button"
-              class="shrink-0 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-40"
+              class="tr-press shrink-0 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-40"
               disabled={creating}
               onclick={handleCreate}
             >
@@ -159,7 +159,7 @@
         {:else}
           <button
             type="button"
-            class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-tr-border-strong px-3 py-2 text-xs text-tr-accent hover:border-tr-accent-soft-strong hover:bg-tr-accent-soft"
+            class="tr-press inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-tr-border-strong px-3 py-2 text-xs text-tr-accent transition-colors hover:border-tr-accent-soft-strong hover:bg-tr-accent-soft"
             onclick={() => (showCreate = true)}
           >
             <Plus size={12} strokeWidth={2} aria-hidden="true" />

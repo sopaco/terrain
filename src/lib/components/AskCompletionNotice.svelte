@@ -31,14 +31,14 @@
 
 {#if notice}
   <div
-    class="pointer-events-auto fixed bottom-4 right-4 z-[100] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-tr-border-strong bg-tr-surface shadow-2xl"
+    class="tr-toast-in pointer-events-auto fixed bottom-4 right-4 z-[100] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-tr-border-strong bg-tr-surface shadow-2xl"
     role="alertdialog"
     aria-labelledby="ask-notice-title"
   >
     <div class="flex items-start gap-2 border-b border-tr-border-strong px-4 py-3">
       <button
         type="button"
-        class="min-w-0 flex-1 cursor-pointer text-left hover:opacity-90"
+        class="min-w-0 flex-1 cursor-pointer text-left transition-opacity hover:opacity-90"
         onclick={handleHeaderClick}
       >
         <p id="ask-notice-title" class="text-sm font-semibold text-tr-ink">
@@ -48,7 +48,7 @@
       </button>
       <button
         type="button"
-        class="shrink-0 rounded-lg p-1 text-tr-ink-3 hover:bg-tr-elevated"
+        class="tr-press shrink-0 rounded-lg p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated"
         aria-label="关闭通知"
         onclick={() => dismissAskCompletionNotice()}
       >
@@ -70,7 +70,7 @@
     <div class="flex items-center gap-2 border-t border-tr-border-strong px-3 py-2">
       <button
         type="button"
-        class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated"
+        class="tr-press inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated"
         onclick={() => toggleAskCompletionExpanded()}
       >
         {#if notice.expanded}
@@ -83,7 +83,7 @@
       </button>
       <button
         type="button"
-        class="ml-auto rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-tr-accent-hover"
+        class="tr-press ml-auto rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-tr-accent-hover"
         onclick={handleOpen}
       >
         打开 Ask

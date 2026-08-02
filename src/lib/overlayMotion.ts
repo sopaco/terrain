@@ -10,10 +10,9 @@ export function prefersReducedMotion(): boolean {
 /** Wait for DOM, then flip the presented class on the next frame (compositor-friendly). */
 export async function schedulePresent(setPresented: (value: boolean) => void) {
   await tick();
-  if (prefersReducedMotion()) {
-    setPresented(true);
-    return;
-  }
+  // Always defer one frame, even for reduced motion: the CSS reduced-motion
+  // path is a 150ms opacity fade, which only runs if the initial styles are
+  // committed before the class flips.
   requestAnimationFrame(() => setPresented(true));
 }
 

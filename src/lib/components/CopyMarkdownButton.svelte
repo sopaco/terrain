@@ -20,7 +20,7 @@
 
 <button
   type="button"
-  class="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[10px] transition-all duration-200 {buttonClass}"
+  class="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[10px] transition-[color,background-color,border-color,transform] duration-150 {buttonClass}"
   disabled={copying}
   aria-live="polite"
   {onclick}

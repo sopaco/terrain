@@ -1,6 +1,21 @@
 use serde::Serialize;
 
+use crate::registry::StaleProjectSummary;
 use crate::schema::{AgentContextMeta, LithoPlan};
+use crate::search::ProjectSummary;
+use crate::settings::ModelSettings;
+
+/// Single IPC payload for app startup — avoids multiple round-trips on first paint.
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct AppBootstrap {
+    pub model_settings: ModelSettings,
+    pub projects: Vec<ProjectSummary>,
+    pub stale_projects: Vec<StaleProjectSummary>,
+    pub llm_status: LlmStatus,
+    pub acp_ok: bool,
+}
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts-export", ts(export))]

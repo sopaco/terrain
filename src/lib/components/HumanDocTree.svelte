@@ -334,7 +334,7 @@
       {#if oncollapse}
         <button
           type="button"
-          class="-mr-1 inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
+          class="tr-press -mr-1 inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
           onclick={oncollapse}
           aria-label="收起文档目录"
           title="收起文档目录"

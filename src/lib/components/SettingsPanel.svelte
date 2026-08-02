@@ -235,7 +235,7 @@
       </div>
       <button
         type="button"
-        class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 hover:bg-tr-elevated"
+        class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
         onclick={onclose}
       >
         关闭
@@ -322,7 +322,7 @@
 
         <button
           type="button"
-          class="w-full rounded-lg border border-tr-border-strong py-2 text-xs hover:bg-tr-elevated disabled:opacity-50"
+          class="tr-press w-full rounded-lg border border-tr-border-strong py-2 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
           disabled={saving}
           onclick={testAcp}
         >
@@ -401,7 +401,7 @@
 
           <button
             type="button"
-            class="w-full rounded-lg border border-tr-border-strong py-2 text-xs hover:bg-tr-elevated disabled:opacity-50"
+            class="tr-press w-full rounded-lg border border-tr-border-strong py-2 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
             disabled={saving}
             onclick={testConnection}
           >
@@ -428,7 +428,7 @@
     <footer class="border-t border-tr-border-strong px-5 py-4">
       <button
         type="button"
-        class="w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium hover:bg-tr-accent-hover disabled:opacity-50"
+        class="tr-press w-full rounded-xl bg-tr-accent py-2.5 text-sm font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
         disabled={saving}
         onclick={() => save(true)}
       >

@@ -68,7 +68,7 @@
   <div class="rounded-lg border border-tr-border-strong bg-tr-page">
     <button
       type="button"
-      class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-tr-elevated"
+      class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-tr-elevated"
       onclick={() => (panelOpen = !panelOpen)}
     >
       <ChevronIcon direction={panelOpen ? "down" : "right"} size={12} class="shrink-0 text-tr-ink-3" />
@@ -87,7 +87,7 @@
           <div class="rounded-md border border-tr-border bg-tr-elevated">
             <button
               type="button"
-              class="flex w-full items-start gap-2 px-2.5 py-2 text-left text-xs hover:bg-tr-elevated"
+              class="flex w-full items-start gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-tr-elevated"
               onclick={() => toggleItem(call.id)}
             >
               <span class="mt-0.5 inline-flex shrink-0 text-tr-ink-3">

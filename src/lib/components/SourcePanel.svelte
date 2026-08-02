@@ -27,7 +27,7 @@
     </span>
     <button
       type="button"
-      class="text-xs text-tr-ink-3 hover:text-tr-ink-2"
+      class="text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
       onclick={onclose}
     >
       关闭
@@ -82,11 +82,11 @@
       />
     </div>
   {:else}
-    <div class="min-h-0 flex-1 overflow-y-auto">
+    <div class="flex min-h-0 flex-1 flex-col">
       <SourceCodeViewer
         content={slice.content}
         filePath={slice.file_path}
-        startLine={slice.start_line}
+        startLine={slice.start_line || 1}
         focusLine={slice.focus_line}
       />
     </div>

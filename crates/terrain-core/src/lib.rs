@@ -60,9 +60,9 @@ pub use citations::{extract_source_citations, merge_citations};
 pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_doc, render_markdown, write_doc};
 pub use error::{ipc_string, CoreError, Result, TerrainError, TerrainErrorBody};
 pub use ipc::{
-    AgentContextGenerationResult, AskStreamEvent, ChatPhase, ChatReply, ChatTokenUsage,
-    ChatToolCallRecord, ChatToolCallStatus, LithoGenerationJob, LithoGenerationResult, LlmStatus,
-    ProjectInitResult,
+    AgentContextGenerationResult, AppBootstrap, AskStreamEvent, ChatPhase, ChatReply,
+    ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus, LithoGenerationJob,
+    LithoGenerationResult, LlmStatus, ProjectInitResult,
 };
 pub use integrations::{
     apply_env_integration, bundled_terrain_cli, bundled_tools, deploy_agent_toolchain,

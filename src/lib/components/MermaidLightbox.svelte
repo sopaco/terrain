@@ -92,7 +92,7 @@
     <div class="flex-1"></div>
     <button
       type="button"
-      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated"
+      class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={zoomOut}
       title="缩小 (-)"
     >
@@ -101,7 +101,7 @@
     <span class="min-w-[3rem] text-center text-xs text-tr-ink-3">{Math.round(scale * 100)}%</span>
     <button
       type="button"
-      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated"
+      class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={zoomIn}
       title="放大 (+)"
     >
@@ -109,7 +109,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated"
+      class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={resetView}
       title="重置视图 (0)"
     >
@@ -117,7 +117,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs hover:bg-tr-elevated disabled:opacity-50"
+      class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
       disabled={copying}
       onclick={copyImage}
     >
@@ -125,7 +125,7 @@
     </button>
     <button
       type="button"
-      class="rounded-lg border border-tr-border-strong px-3 py-1 text-xs hover:bg-tr-elevated"
+      class="tr-press rounded-lg border border-tr-border-strong px-3 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={onclose}
     >
       关闭
@@ -146,7 +146,7 @@
     role="presentation"
   >
     <div
-      class="absolute left-1/2 top-1/2 origin-center"
+      class="absolute left-1/2 top-1/2 origin-center {dragging ? '' : 'transition-transform duration-150 ease-out'}"
       style={`transform: translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) scale(${scale});`}
     >
       {@html svg}

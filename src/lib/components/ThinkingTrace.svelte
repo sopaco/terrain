@@ -20,7 +20,7 @@
   <div class="my-2 rounded-lg border border-tr-border-strong bg-tr-page">
     <button
       type="button"
-      class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-tr-elevated"
+      class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-tr-elevated"
       onclick={() => (panelOpen = !panelOpen)}
       aria-expanded={panelOpen}
     >

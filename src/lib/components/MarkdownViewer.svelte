@@ -33,6 +33,8 @@
     highlight?: boolean;
     /** Precomputed heading ids (document order) for in-page anchor navigation. */
     headingIds?: string[];
+    /** Softer typography for long-form reading (knowledge articles). */
+    reading?: boolean;
     onSourceClick?: (citation: SourceCitation) => void;
   }
 
@@ -44,6 +46,7 @@
     breaks = true,
     highlight = true,
     headingIds = [],
+    reading = false,
     onSourceClick,
   }: Props = $props();
 
@@ -248,7 +251,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   bind:this={container}
-  class={`markdown-body max-w-none ${compact ? "compact" : ""}`}
+  class={`markdown-body max-w-none ${compact ? "compact" : ""} ${reading ? "reading" : ""}`}
   onclick={handleClick}
 >
   {@html html}

@@ -48,10 +48,10 @@
 
 <button
   type="button"
-  class="hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated sm:inline-flex
+  class="tr-press hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated sm:inline-flex
     {loading ? 'border-tr-border-strong text-tr-ink-3' : hasData ? 'border-tr-accent-soft-strong bg-tr-accent-soft text-tr-on-accent' : 'border-tr-border-strong text-tr-ink-3'}"
-  title="开发者 Token 用量（{periodLabel}）"
-  aria-label="开发者 Token 用量，{periodLabel}"
+  title="开发用量 · 花费（USD）与 Token 数（{periodLabel}），点击查看明细"
+  aria-label="开发用量：花费与 Token 数，{periodLabel}"
   disabled={loading && !snapshot}
   onclick={onclick}
 >
@@ -68,8 +68,19 @@
   {:else if noSources}
     <span>用量 —</span>
   {:else if hasData && activeTotals}
-    <span>{periodLabel} {formatCost(activeTotals.total_cost_usd)} · {formatTokens(activeTotals.total_tokens)}</span>
+    <span class="flex items-center gap-1.5">
+      <span class="text-tr-ink-3">{periodLabel}</span>
+      <span class="flex items-center gap-1">
+        <span class="text-tr-ink-3">花费</span>
+        <span class="font-medium tabular-nums text-tr-ink">{formatCost(activeTotals.total_cost_usd)}</span>
+      </span>
+      <span class="text-tr-ink-4">·</span>
+      <span class="flex items-center gap-1">
+        <span class="text-tr-ink-3">Token</span>
+        <span class="font-medium tabular-nums text-tr-ink">{formatTokens(activeTotals.total_tokens)}</span>
+      </span>
+    </span>
   {:else}
-    <span>{periodLabel} $0</span>
+    <span>{periodLabel} 花费 $0</span>
   {/if}
 </button>

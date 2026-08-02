@@ -57,6 +57,7 @@ pub fn run() {
             commands::scan_project,
             commands::search_knowledge,
             commands::read_document,
+            commands::bootstrap_app,
             commands::check_acp,
             commands::check_opencode,
             commands::acp_spawn_command_cmd,

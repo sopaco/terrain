@@ -1,4 +1,3 @@
-import html2canvas from "html2canvas";
 import { marked } from "marked";
 import { escapeHtml } from "./mermaid-utils";
 import { prepareMarkdownForRender } from "./markdownSanitize";
@@ -134,6 +133,7 @@ async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 async function htmlToPngBlob(html: string, width: number): Promise<Blob> {
+  const { default: html2canvas } = await import("html2canvas");
   const host = document.createElement("div");
   host.style.cssText =
     "position:fixed;left:-12000px;top:0;width:0;height:0;overflow:visible;pointer-events:none;";
