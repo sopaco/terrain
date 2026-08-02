@@ -905,7 +905,7 @@
         >
             <button
                 type="button"
-                class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 hover:bg-tr-elevated"
+                class="tr-press inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated"
                 title="设置"
                 aria-label="Settings"
                 onclick={() => (project.settingsOpen = true)}
@@ -1055,7 +1055,7 @@
                 />
                 <button
                     type="button"
-                    class="shrink-0 rounded-lg bg-tr-elevated px-3 py-1.5 text-sm hover:bg-tr-raised disabled:opacity-50"
+                    class="tr-press shrink-0 rounded-lg bg-tr-elevated px-3 py-1.5 text-sm transition-colors hover:bg-tr-raised disabled:opacity-50"
                     disabled={project.docLoading}
                     onclick={runSearch}
                 >
@@ -1067,7 +1067,7 @@
                     >
                         <button
                             type="button"
-                            class="rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs hover:bg-tr-elevated disabled:opacity-50"
+                            class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
                             disabled={repackBusy ||
                                 lithoBusy ||
                                 !project.selectedRepoPath ||
@@ -1090,7 +1090,7 @@
                     >
                         <button
                             type="button"
-                            class="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
+                            class="tr-press inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
                             onclick={toggleDocTree}
                             aria-label="展开文档目录"
                             title="展开文档目录"
@@ -1210,7 +1210,7 @@
                                         <li>
                                             <button
                                                 type="button"
-                                                class="mb-2 w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-4 py-3 text-left hover:bg-tr-raised"
+                                                class="mb-2 w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-4 py-3 text-left transition-colors hover:bg-tr-raised"
                                                 onclick={() => openHit(hit)}
                                             >
                                                 <div

@@ -22,7 +22,7 @@
 {#snippet navButton(tab: (typeof tabs)[number])}
   <button
     type="button"
-    class={`flex w-14 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10.5px] leading-tight transition-colors disabled:opacity-40 ${
+    class={`tr-press flex w-14 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10.5px] leading-tight transition-colors disabled:opacity-40 ${
       active === tab.id
         ? "bg-tr-accent-soft text-tr-accent"
         : "text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink-2"

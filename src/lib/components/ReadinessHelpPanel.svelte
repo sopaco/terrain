@@ -64,7 +64,7 @@
           <h3 class="text-xs font-medium text-tr-ink-3">各项资产</h3>
           <button
             type="button"
-            class="text-xs text-tr-accent hover:text-tr-accent-hover"
+            class="text-xs text-tr-accent transition-colors hover:text-tr-accent-hover"
             onclick={onOpenKnowledge}
           >
             进入{TERMS.knowledgeTab}
@@ -101,7 +101,7 @@
             {#if row.action?.onClick}
               <button
                 type="button"
-                class="shrink-0 rounded-lg border border-tr-border-strong px-2.5 py-1 text-[11px] text-tr-accent hover:bg-tr-elevated hover:text-tr-accent-hover disabled:opacity-50"
+                class="tr-press shrink-0 rounded-lg border border-tr-border-strong px-2.5 py-1 text-[11px] text-tr-accent transition-colors hover:bg-tr-elevated hover:text-tr-accent-hover disabled:opacity-50"
                 disabled={row.action.disabled}
                 onclick={row.action.onClick}
               >

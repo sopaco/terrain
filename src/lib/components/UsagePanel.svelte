@@ -227,7 +227,7 @@
             </div>
             <button
                 type="button"
-                class="rounded-lg border border-tr-border-strong px-2.5 min-w-14 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated disabled:opacity-40"
+                class="tr-press rounded-lg border border-tr-border-strong px-2.5 min-w-14 py-1.5 text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:opacity-40"
                 disabled={loading}
                 onclick={() => void refresh(true)}
             >

@@ -27,7 +27,7 @@
     </span>
     <button
       type="button"
-      class="text-xs text-tr-ink-3 hover:text-tr-ink-2"
+      class="text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
       onclick={onclose}
     >
       关闭

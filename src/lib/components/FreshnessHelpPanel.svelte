@@ -369,7 +369,7 @@
                 {#if onQuickRefresh}
                     <button
                         type="button"
-                        class="mt-3 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-50"
+                        class="tr-press mt-3 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
                         disabled={quickRefreshBusy}
                         onclick={() => {
                             onQuickRefresh();

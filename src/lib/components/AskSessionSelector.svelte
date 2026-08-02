@@ -61,7 +61,7 @@
   <button
     type="button"
     bind:this={triggerEl}
-    class={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40 ${
+    class={`tr-press inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40 ${
       open ? "border-tr-accent-soft-strong bg-tr-accent-soft text-tr-accent" : ""
     }`}
     onclick={ontoggle}
@@ -78,8 +78,8 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="fixed inset-0 z-[200]" onclick={ontoggle} role="presentation"></div>
     <div
-      class="fixed z-[201] overflow-hidden rounded-xl border border-tr-border-strong bg-tr-surface shadow-2xl"
-      style="top: {menuTop}px; right: {menuRight}px; width: {menuWidth}px;"
+      class="tr-pop fixed z-[201] overflow-hidden rounded-xl border border-tr-border-strong bg-tr-surface shadow-2xl"
+      style="top: {menuTop}px; right: {menuRight}px; width: {menuWidth}px; --tr-pop-origin: top right;"
       role="listbox"
       aria-label="Ask 历史记录"
     >
@@ -114,7 +114,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex shrink-0 items-center justify-center rounded-lg px-2 text-tr-ink-3 hover:bg-tr-critical-soft hover:text-tr-critical"
+              class="tr-press inline-flex shrink-0 items-center justify-center rounded-lg px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical"
               title="删除此对话"
               aria-label={`删除 ${session.title}`}
               onclick={(e) => confirmDelete(session, e)}
@@ -129,7 +129,7 @@
       <div class="border-t border-tr-border-strong p-2">
         <button
           type="button"
-          class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-tr-border-strong px-3 py-2 text-xs text-tr-accent transition-colors hover:border-tr-accent-soft-strong hover:bg-tr-accent-soft disabled:opacity-40"
+          class="tr-press inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-tr-border-strong px-3 py-2 text-xs text-tr-accent transition-colors hover:border-tr-accent-soft-strong hover:bg-tr-accent-soft disabled:opacity-40"
           disabled={creating}
           onclick={oncreate}
         >

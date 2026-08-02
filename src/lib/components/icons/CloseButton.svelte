@@ -18,7 +18,7 @@
 
 <button
   type="button"
-  class="inline-flex shrink-0 items-center justify-center rounded-lg border border-tr-border-strong px-2.5 py-1 text-tr-ink-2 hover:bg-tr-elevated {className}"
+  class="tr-press inline-flex shrink-0 items-center justify-center rounded-lg border border-tr-border-strong px-2.5 py-1 text-tr-ink-2 transition-colors hover:bg-tr-elevated {className}"
   {onclick}
   aria-label={label}
 >

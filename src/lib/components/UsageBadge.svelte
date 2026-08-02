@@ -48,7 +48,7 @@
 
 <button
   type="button"
-  class="hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated sm:inline-flex
+  class="tr-press hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated sm:inline-flex
     {loading ? 'border-tr-border-strong text-tr-ink-3' : hasData ? 'border-tr-accent-soft-strong bg-tr-accent-soft text-tr-on-accent' : 'border-tr-border-strong text-tr-ink-3'}"
   title="开发者 Token 用量（{periodLabel}）"
   aria-label="开发者 Token 用量，{periodLabel}"

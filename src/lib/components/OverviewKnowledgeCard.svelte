@@ -71,7 +71,7 @@
       {#if secondaryLabel && onSecondary}
         <button
           type="button"
-          class="rounded-lg px-2 py-1.5 text-xs text-tr-ink-3 hover:text-tr-ink-2 disabled:opacity-50"
+          class="tr-press rounded-lg px-2 py-1.5 text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2 disabled:opacity-50"
           disabled={secondaryDisabled}
           onclick={onSecondary}
         >
@@ -80,7 +80,7 @@
       {/if}
       <button
         type="button"
-        class="rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent hover:bg-tr-accent-hover disabled:opacity-50"
+        class="tr-press rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
         disabled={primaryDisabled || !onPrimary}
         onclick={onPrimary}
       >

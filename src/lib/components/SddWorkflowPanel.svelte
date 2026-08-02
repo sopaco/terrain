@@ -367,7 +367,7 @@
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      class="rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-40"
+                      class="tr-press rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-40"
                       disabled={!canRun(phaseInfo)}
                       onclick={() => runPhase(phaseInfo.phase)}
                     >
@@ -424,7 +424,7 @@
         {#if viewMode === "edit"}
           <button
             type="button"
-            class="rounded-lg border border-tr-good/35 bg-tr-good-soft px-3 py-1.5 text-xs font-medium text-tr-good hover:bg-tr-good-soft/70 disabled:opacity-40"
+            class="tr-press rounded-lg border border-tr-good/35 bg-tr-good-soft px-3 py-1.5 text-xs font-medium text-tr-good transition-colors hover:bg-tr-good-soft/70 disabled:opacity-40"
             disabled={!dirty || saving}
             onclick={saveEdits}
           >
@@ -468,7 +468,7 @@
           {#if dirty}
             <button
               type="button"
-              class="rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 hover:bg-tr-elevated disabled:opacity-40"
+              class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:opacity-40"
               disabled={saving || !!busyPhase}
               onclick={saveEdits}
             >
@@ -477,7 +477,7 @@
           {/if}
           <button
             type="button"
-            class="rounded-lg bg-tr-accent px-4 py-2 text-xs font-medium hover:bg-tr-accent-hover disabled:opacity-40"
+            class="tr-press rounded-lg bg-tr-accent px-4 py-2 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-40"
             disabled={!!busyPhase || !hitlFeedback.trim()}
             onclick={submitHitlRevision}
           >
