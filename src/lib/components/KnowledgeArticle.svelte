@@ -96,7 +96,7 @@
   >
     <div class="knowledge-article-layout">
       <article class="knowledge-article-body" bind:this={contentRoot}>
-        <MarkdownViewer {body} {repoPath} {onSourceClick} {headingIds} breaks={false} />
+        <MarkdownViewer {body} {repoPath} {onSourceClick} {headingIds} breaks={false} reading />
       </article>
 
       {#if showToc}

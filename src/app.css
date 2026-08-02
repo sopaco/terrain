@@ -44,6 +44,8 @@
   --color-tr-border-strong: rgba(255, 255, 255, 0.14);
 
   --color-tr-ink: #e8ecef;
+  /* Softer body copy for long-form reading (between ink and ink-2). */
+  --color-tr-ink-reading: #c8d0d6;
   --color-tr-ink-2: #a2acb5;
   --color-tr-ink-3: #6c7680;
   --color-tr-ink-4: #454c54;
