@@ -662,13 +662,13 @@
 
                     {#if freshnessLoading && !freshness}
                         <div
-                            class="mt-3 h-1.5 animate-pulse rounded-full bg-tr-elevated"
+                            class="mt-3 h-2.5 animate-pulse rounded-full bg-tr-elevated"
                             role="status"
                             aria-live="polite"
                         ></div>
                     {:else if freshnessScore != null}
                         <div
-                            class="mt-3 h-1.5 overflow-hidden rounded-full bg-tr-elevated"
+                            class="mt-3 h-2.5 overflow-hidden rounded-full bg-tr-elevated"
                         >
                             <div
                                 class={`h-full w-full origin-left rounded-full transition-transform duration-300 ease-out ${
@@ -709,6 +709,32 @@
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <OverviewKnowledgeCard
+                        title={SHORT_TERMS.humanKnowledge}
+                        subtitle="Litho C4 文档，从 1.概述 开始阅读"
+                        meta={humanKnowledgeMeta(overview)}
+                        ready={overview.litho.human_docs_complete}
+                        icon="book"
+                        featured={true}
+                        primaryLabel={overview.litho.human_docs_complete
+                            ? "打开"
+                            : generateLabel(TERMS.humanKnowledge, lithoBusy)}
+                        onPrimary={overview.litho.human_docs_complete
+                            ? onOpenHumanOverview
+                            : onGenerateHuman}
+                        primaryDisabled={overview.litho.human_docs_complete
+                            ? !onOpenHumanOverview
+                            : lithoBusy || !acpOk || !onGenerateHuman}
+                        secondaryLabel={overview.litho.human_docs_complete
+                            ? lithoBusy
+                                ? "生成中…"
+                                : "重新生成"
+                            : undefined}
+                        onSecondary={overview.litho.human_docs_complete
+                            ? onGenerateHuman
+                            : undefined}
+                        secondaryDisabled={lithoBusy || !acpOk}
+                    />
+                    <OverviewKnowledgeCard
                         title={SHORT_TERMS.agentKnowledge}
                         subtitle="模块地图、架构与流程等，供 Agent 与问答使用"
                         meta={overview.agent_context.ready
@@ -739,31 +765,6 @@
                             ? onGenerateAgentContext
                             : undefined}
                         secondaryDisabled={agentContextBusy || !llmReady}
-                    />
-                    <OverviewKnowledgeCard
-                        title={SHORT_TERMS.humanKnowledge}
-                        subtitle="Litho C4 文档，从 1.概述 开始阅读"
-                        meta={humanKnowledgeMeta(overview)}
-                        ready={overview.litho.human_docs_complete}
-                        icon="book"
-                        primaryLabel={overview.litho.human_docs_complete
-                            ? "打开"
-                            : generateLabel(TERMS.humanKnowledge, lithoBusy)}
-                        onPrimary={overview.litho.human_docs_complete
-                            ? onOpenHumanOverview
-                            : onGenerateHuman}
-                        primaryDisabled={overview.litho.human_docs_complete
-                            ? !onOpenHumanOverview
-                            : lithoBusy || !acpOk || !onGenerateHuman}
-                        secondaryLabel={overview.litho.human_docs_complete
-                            ? lithoBusy
-                                ? "生成中…"
-                                : "重新生成"
-                            : undefined}
-                        onSecondary={overview.litho.human_docs_complete
-                            ? onGenerateHuman
-                            : undefined}
-                        secondaryDisabled={lithoBusy || !acpOk}
                     />
                     {#if structuredAsset}
                         {@const structuredAction =
@@ -847,7 +848,7 @@
                                     }`}
                                 >
                                     {overview.agent_env.ready
-                                        ? "已集成"
+                                        ? "就绪"
                                         : "待配置"}
                                 </span>
                             </div>

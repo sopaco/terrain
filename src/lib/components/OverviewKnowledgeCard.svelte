@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BookOpen, Compass, ListTree } from "@lucide/svelte";
+  import { BookOpen, Compass, ListTree, RefreshCw } from "@lucide/svelte";
 
   type IconKind = "compass" | "book" | "list";
 
@@ -9,6 +9,8 @@
     meta: string;
     ready: boolean;
     icon: IconKind;
+    /** Visually elevate this card as the recommended entry point. */
+    featured?: boolean;
     primaryLabel: string;
     onPrimary?: () => void;
     primaryDisabled?: boolean;
@@ -23,6 +25,7 @@
     meta,
     ready,
     icon,
+    featured = false,
     primaryLabel,
     onPrimary,
     primaryDisabled = false,
@@ -30,16 +33,29 @@
     onSecondary,
     secondaryDisabled = false,
   }: Props = $props();
+
+  // Each asset kind gets its own semantic icon color so the three cards read
+  // as distinct at a glance instead of three identical teal chips.
+  const iconClass = $derived(
+    (() => {
+      if (!ready) return "bg-tr-elevated text-tr-ink-3";
+      if (icon === "compass") return "bg-tr-accent-soft text-tr-accent";
+      if (icon === "book") return "bg-tr-good-soft text-tr-good";
+      return "bg-tr-watch-soft text-tr-watch";
+    })(),
+  );
 </script>
 
 <div
-  class="flex flex-col gap-3 rounded-xl border border-tr-border bg-tr-surface p-4"
+  class={`flex flex-col gap-3 rounded-xl border p-4 transition-colors ${
+    featured
+      ? "border-tr-accent-soft-strong bg-tr-accent-soft"
+      : "border-tr-border bg-tr-surface"
+  }`}
 >
   <div class="flex items-start gap-3">
     <span
-      class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-        ready ? "bg-tr-accent-soft text-tr-accent" : "bg-tr-elevated text-tr-ink-3"
-      }`}
+      class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconClass}`}
       aria-hidden="true"
     >
       {#if icon === "compass"}
@@ -52,7 +68,15 @@
     </span>
     <div class="min-w-0 flex-1">
       <div class="flex items-start justify-between gap-2">
-        <p class="text-sm font-medium text-tr-ink">{title}</p>
+        <div class="flex items-center gap-1.5">
+          <p class="text-sm font-medium text-tr-ink">{title}</p>
+          {#if featured}
+            <span
+              class="rounded-full bg-tr-accent px-1.5 py-0.5 text-[9px] font-semibold text-tr-on-accent"
+              >推荐</span
+            >
+          {/if}
+        </div>
         <span
           class={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
             ready ? "bg-tr-good-soft text-tr-good" : "bg-tr-elevated text-tr-ink-3"
@@ -71,10 +95,12 @@
       {#if secondaryLabel && onSecondary}
         <button
           type="button"
-          class="tr-press rounded-lg px-2 py-1.5 text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2 disabled:opacity-50"
+          class="tr-press inline-flex items-center gap-1 rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink-2 disabled:opacity-50"
           disabled={secondaryDisabled}
+          title="重新生成会覆盖现有内容，操作不可撤销"
           onclick={onSecondary}
         >
+          <RefreshCw size={12} strokeWidth={2} aria-hidden="true" />
           {secondaryLabel}
         </button>
       {/if}
