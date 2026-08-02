@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import type { HighlightedLine } from "../highlightSetup";
   import "../syntax-tokens.css";
   import "../source-code.css";
@@ -31,12 +32,14 @@
     };
   });
 
+  // Highlighting is async; wait until rows exist before scrolling to the cited line.
   $effect(() => {
     const target = focusLine;
     const root = container;
-    if (!target || !root) return;
+    const rendered = lines.length;
+    if (!target || !root || rendered === 0) return;
 
-    queueMicrotask(() => {
+    void tick().then(() => {
       const row = root.querySelector<HTMLElement>(`tr[data-line="${target}"]`);
       row?.scrollIntoView({ block: "center", behavior: "smooth" });
     });
