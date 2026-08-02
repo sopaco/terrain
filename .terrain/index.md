@@ -50,8 +50,6 @@ source: .
   - Cargo.lock
   - bun.lock
   - README.md
-  - .workbuddy/
-    - memory/
   - .gitignore
   - package.json
   - README_zh.md
@@ -100,4 +98,4 @@ source: .
     - app.css
     - App.svelte
     - lib/
-  - …
+    - UsageWindow.svelte
