@@ -3,9 +3,10 @@ use terrain_agent::{
     ProjectInitProgress,
 };
 use terrain_core::{
-    compute_freshness, get_project_overview, list_stale_registry_projects, plan_litho_generation,
-    read_freshness_ledger, write_project_remark, FreshnessSummary, ProjectOverview, ProjectSummary,
-    QuickRefreshResult, ScanReport, StaleProjectSummary, ProjectScanner, ProjectInitResult,
+    compute_freshness, get_project_overview, list_all_registry_projects, plan_litho_generation,
+    read_freshness_ledger, write_project_remark, FreshnessSummary, ProjectOverview,
+    ProjectRegistryEntry, ProjectSummary, QuickRefreshResult, ScanReport, ProjectScanner,
+    ProjectInitResult,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -39,8 +40,10 @@ pub async fn scan_project(
 }
 
 #[tauri::command]
-pub fn list_stale_projects_cmd() -> Result<Vec<StaleProjectSummary>, String> {
-    list_stale_registry_projects().map_err(|e| e.to_string())
+pub fn list_registry_projects_cmd(
+    state: State<'_, AppState>,
+) -> Result<Vec<ProjectRegistryEntry>, String> {
+    list_all_registry_projects(state.paths()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

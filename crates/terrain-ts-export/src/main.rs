@@ -50,9 +50,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     terrain_core::AskSessionInfo::export_all_to(&out)?;
     terrain_core::EnvStatus::export_all_to(&out)?;
     terrain_core::ProjectSummary::export_all_to(&out)?;
+    terrain_core::ProjectRegistryEntry::export_all_to(&out)?;
+    terrain_core::ProjectRegistryStatus::export_all_to(&out)?;
     terrain_core::SearchHit::export_all_to(&out)?;
     terrain_core::ScanReport::export_all_to(&out)?;
-    terrain_core::StaleProjectSummary::export_all_to(&out)?;
     terrain_core::QuickRefreshResult::export_all_to(&out)?;
     terrain_core::SourceSlice::export_all_to(&out)?;
     terrain_core::HumanDocEntry::export_all_to(&out)?;

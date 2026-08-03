@@ -17,7 +17,7 @@ import type {
   ModelSettings,
   ProjectInitResult,
   ProjectOverview,
-  ProjectSummary,
+  ProjectRegistryEntry,
   QuickRefreshResult,
   ScanReport,
   SddPhase,
@@ -26,7 +26,6 @@ import type {
   SddStatus,
   SearchHit,
   SourceSlice,
-  StaleProjectSummary,
   UsageDetailLevel,
   UsageProbeResult,
   UsageSnapshot,
@@ -35,10 +34,8 @@ import type { AskStreamEvent, ChatMessage } from "./types";
 
 export const bootstrapApp = () => invoke<AppBootstrap>("bootstrap_app");
 
-export const listProjects = () => invoke<ProjectSummary[]>("list_projects");
-
-export const listStaleProjects = () =>
-  invoke<StaleProjectSummary[]>("list_stale_projects_cmd");
+export const listRegistryProjects = () =>
+  invoke<ProjectRegistryEntry[]>("list_registry_projects_cmd");
 
 export const initializeProject = (repoPath: string, projectSlug?: string) =>
   invoke<ProjectInitResult>("initialize_project_cmd", {

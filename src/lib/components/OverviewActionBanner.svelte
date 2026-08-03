@@ -20,9 +20,11 @@
     interface Props {
         items: OverviewActionItem[];
         progressNote?: string | null;
+        /** When false, show every item expanded (e.g. global stale repair list). */
+        collapseSecondary?: boolean;
     }
 
-    let { items, progressNote = null }: Props = $props();
+    let { items, progressNote = null, collapseSecondary = true }: Props = $props();
 
     let moreOpen = $state(false);
 
@@ -104,21 +106,29 @@
         {@render actionRow(primary)}
 
         {#if secondary.length > 0}
-            <button
-                type="button"
-                class="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
-                aria-expanded={moreOpen}
-                onclick={() => (moreOpen = !moreOpen)}
-            >
-                <ChevronIcon
-                    direction={moreOpen ? "down" : "right"}
-                    size={12}
-                    class="shrink-0 text-tr-ink-3"
-                />
-                还有 {secondary.length} 项待处理
-            </button>
+            {#if collapseSecondary}
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
+                    aria-expanded={moreOpen}
+                    onclick={() => (moreOpen = !moreOpen)}
+                >
+                    <ChevronIcon
+                        direction={moreOpen ? "down" : "right"}
+                        size={12}
+                        class="shrink-0 text-tr-ink-3"
+                    />
+                    还有 {secondary.length} 项待处理
+                </button>
 
-            {#if moreOpen}
+                {#if moreOpen}
+                    <div class="space-y-2">
+                        {#each secondary as item (item.id)}
+                            {@render actionRow(item, true)}
+                        {/each}
+                    </div>
+                {/if}
+            {:else}
                 <div class="space-y-2">
                     {#each secondary as item (item.id)}
                         {@render actionRow(item, true)}

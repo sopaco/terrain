@@ -71,22 +71,37 @@
     import {
         currentTask,
         project,
-        selectedProjectMeta,
+        selectedRegistryProject,
+        hasAnySelectableProject,
         setProjectTask,
     } from "./lib/stores/project.svelte";
     import type {
         ChatMessage,
         HumanDocEntry,
         KnowledgeDoc,
-        ProjectSummary,
+        ProjectRegistryEntry,
         SearchHit,
         SourceCitation,
         SourceSlice,
     } from "./lib/types";
+    import {
+        countRegistryByStatus,
+        findRegistryProject,
+        preferredRegistryProject,
+        registryDisplayName,
+        selectedProjectDisplayName,
+    } from "./lib/projectRegistry";
 
     const hybridNativeLlm = $derived(usesNativeLlm(project.agentExecution));
 
-    const selectedProjectMetaDerived = $derived(selectedProjectMeta());
+    const selectedRegistryDerived = $derived(selectedRegistryProject());
+    const selectedProjectLabel = $derived(
+        selectedProjectDisplayName(
+            project.selectedSlug,
+            project.registryProjects,
+            UI_MESSAGES.selectProject,
+        ),
+    );
     const currentTaskDerived = $derived(currentTask());
     const currentMessages = $derived(
         project.selectedSlug ? (chatSessions[project.selectedSlug] ?? []) : [],
@@ -190,17 +205,55 @@
             project.agentExecution = normalizeAgentExecution(
                 boot.model_settings.acp?.agent_execution,
             );
-            project.projects = boot.projects;
-            project.staleProjects = boot.stale_projects;
+            project.registryProjects = boot.registry_projects;
             project.llmStatus = boot.llm_status;
             project.acpOk = boot.acp_ok;
-            if (!project.selectedSlug && project.projects.length > 0) {
-                await selectProject(project.projects[0]);
+
+            const slug = project.selectedSlug;
+            if (slug) {
+                const entry = findRegistryProject(slug, project.registryProjects);
+                if (entry) {
+                    project.selectedRepoPath = entry.repo_path;
+                    if (entry.status === "stale") {
+                        project.projectOverview = null;
+                        project.freshnessLoading = false;
+                        await refreshKnowledgeRoot(slug);
+                    } else {
+                        await refreshKnowledgeRoot(slug);
+                        if (project.activeTab === "overview") {
+                            void loadProjectOverview(slug);
+                        }
+                    }
+                } else {
+                    project.selectedSlug = null;
+                    project.selectedRepoPath = null;
+                    project.projectOverview = null;
+                    const fallback = preferredRegistryProject(
+                        project.registryProjects,
+                    );
+                    if (fallback) {
+                        selectRegistryProject(fallback);
+                    } else {
+                        await refreshKnowledgeRoot();
+                    }
+                }
             } else {
-                await refreshKnowledgeRoot();
+                const fallback = preferredRegistryProject(
+                    project.registryProjects,
+                );
+                if (fallback) {
+                    selectRegistryProject(fallback);
+                } else {
+                    await refreshKnowledgeRoot();
+                }
             }
+
+            const counts = countRegistryByStatus(project.registryProjects);
+            const issues = counts.partial + counts.stale;
+            const statusDetail =
+                issues > 0 ? `（${issues} 个待处理）` : "";
             setStatus(
-                `已索引 ${project.projects.length} 个项目`,
+                `已登记 ${project.registryProjects.length} 个项目${statusDetail}`,
                 "success",
             );
         } catch (e) {
@@ -328,11 +381,11 @@
         await triggerProjectInitialization(picked);
     }
 
-    async function removeProjectFromList(item: ProjectSummary) {
+    async function removeRegistryProject(entry: ProjectRegistryEntry) {
         project.pickerOpen = false;
         try {
-            await removeProject(item.slug);
-            if (project.selectedSlug === item.slug) {
+            await removeProject(entry.slug);
+            if (project.selectedSlug === entry.slug) {
                 project.selectedSlug = null;
                 project.selectedRepoPath = null;
                 project.projectOverview = null;
@@ -342,42 +395,51 @@
                 project.hits = [];
             }
             await refresh();
-            setStatus(`已从列表移除：${item.name}`, "success");
+            setStatus(
+                `已从列表移除：${registryDisplayName(entry)}`,
+                "success",
+            );
         } catch (e) {
             setStatus(String(e), "error");
         }
     }
 
-    async function selectProject(item: ProjectSummary) {
+    function selectRegistryProject(entry: ProjectRegistryEntry) {
         project.pickerOpen = false;
-        if (project.selectedSlug !== item.slug) {
+        if (project.selectedSlug !== entry.slug) {
             project.activeDoc = null;
             project.activeHumanPath = null;
             project.hits = [];
             project.deepWikiInitialQuestion = null;
         }
-        project.selectedSlug = item.slug;
-        project.selectedRepoPath = item.repo_path ?? null;
-        if (!project.selectedRepoPath) {
-            try {
-                const doc = await readDocument(item.path);
-                const source = doc.frontmatter.source;
-                project.selectedRepoPath =
-                    typeof source === "string" ? source : null;
-            } catch {
-                project.selectedRepoPath = null;
-            }
+        project.selectedSlug = entry.slug;
+        project.selectedRepoPath = entry.repo_path;
+        project.activeTab = "overview";
+
+        if (entry.status === "stale") {
+            project.projectOverview = null;
+            project.freshnessLoading = false;
+            project.humanDocs = [];
+            setStatus(
+                `项目需修复：${registryDisplayName(entry)}`,
+                "idle",
+                entry.slug,
+                STATUS_AUTO_DISMISS_MS,
+            );
+            void refreshKnowledgeRoot(entry.slug);
+            return;
         }
+
         setStatus(
-            `项目：${item.name}`,
+            `项目：${registryDisplayName(entry)}`,
             "idle",
-            item.slug,
+            entry.slug,
             STATUS_AUTO_DISMISS_MS,
         );
-        void loadHumanDocs(item.slug);
-        void loadProjectOverview(item.slug);
-        void refreshKnowledgeRoot(item.slug);
-        void loadAskProjectState(item.slug);
+        void loadHumanDocs(entry.slug);
+        void loadProjectOverview(entry.slug);
+        void refreshKnowledgeRoot(entry.slug);
+        void loadAskProjectState(entry.slug);
     }
 
     async function openFolderPath(path: string) {
@@ -386,19 +448,6 @@
         } catch (e) {
             setStatus(UI_MESSAGES.openFolderFailed(e), "error");
         }
-    }
-
-    async function openProjectFolder(item: ProjectSummary) {
-        const repo =
-            item.repo_path ??
-            (item.slug === project.selectedSlug
-                ? project.selectedRepoPath
-                : null);
-        if (!repo) {
-            setStatus(`项目 ${item.name} 未关联仓库路径`, "error");
-            return;
-        }
-        await openFolderPath(repo);
     }
 
     function parseProgressLabel(label: string): {
@@ -955,15 +1004,16 @@
 
         <MainNavTabs
             active={project.activeTab}
-            disabled={!project.selectedSlug && project.projects.length === 0}
+            disabled={!project.selectedSlug && !hasAnySelectableProject()}
             onchange={(tab) => {
                 project.activeTab = tab;
-                if (
-                    tab === "knowledge" &&
-                    !project.selectedSlug &&
-                    project.projects.length > 0
-                ) {
-                    void selectProject(project.projects[0]);
+                if (tab === "knowledge" && !project.selectedSlug) {
+                    const fallback = preferredRegistryProject(
+                        project.registryProjects,
+                    );
+                    if (fallback) {
+                        selectRegistryProject(fallback);
+                    }
                 }
             }}
         />
@@ -997,15 +1047,15 @@
             class="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-tr-border bg-tr-page px-4 py-2"
         >
             <ProjectSelector
-                projects={project.projects}
+                registryProjects={project.registryProjects}
                 selectedSlug={project.selectedSlug}
                 open={project.pickerOpen}
                 addBusy={project.initBusy}
                 ontoggle={() => (project.pickerOpen = !project.pickerOpen)}
-                onselect={selectProject}
+                onselect={selectRegistryProject}
                 onadd={addProject}
-                onremove={removeProjectFromList}
-                onopenFolder={openProjectFolder}
+                onremove={removeRegistryProject}
+                onopenFolder={(entry) => openFolderPath(entry.repo_path)}
             />
 
             <div class="ml-auto flex shrink-0 items-center gap-2">
@@ -1045,7 +1095,8 @@
             {repackBusy}
             initBusy={project.initBusy}
             initProgress={project.initProgress}
-            staleProjects={project.staleProjects}
+            registryProjects={project.registryProjects}
+            selectedRegistry={selectedRegistryDerived}
             onOpenKnowledge={() => (project.activeTab = "knowledge")}
             onOpenEnv={() => (project.activeTab = "env")}
             onOpenSettings={() => (project.settingsOpen = true)}
@@ -1349,7 +1400,7 @@
     <DeepWikiPanel
         open={project.deepWikiOpen}
         projectSlug={project.selectedSlug}
-        projectName={selectedProjectMetaDerived?.name ?? null}
+        projectName={selectedProjectLabel}
         repoPath={project.selectedRepoPath}
         messages={currentMessages}
         initialQuestion={project.deepWikiInitialQuestion}

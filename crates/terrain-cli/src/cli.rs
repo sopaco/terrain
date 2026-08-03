@@ -119,8 +119,8 @@ pub enum ProjectCommands {
         #[arg(long)]
         project: String,
     },
-    /// List registry projects whose repos are missing or moved
-    ListStale,
+    /// List all registered projects with readiness status
+    List,
     /// Read cached freshness ledger without recomputing
     FreshnessCached {
         #[arg(long)]
