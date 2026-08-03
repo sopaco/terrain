@@ -198,7 +198,7 @@
                 detail: `当前 ${readyCount}/${assetTotal} 项就绪。可一键完成扫描、源码索引、${TERMS.agentKnowledge} 与 ${TERMS.humanKnowledge}。`,
                 hint: initHint ?? undefined,
                 actionLabel: "一键初始化",
-                busyLabel: initProgress ?? "初始化中…",
+                busyLabel: "初始化中…",
                 onAction: () =>
                     onInitializeProject(overview.repo_path, overview.slug),
                 disabled: initBusy,
@@ -234,7 +234,7 @@
             detail: registryRepairDetail(entry),
             hint: initHint ?? undefined,
             actionLabel: "重新初始化",
-            busyLabel: initProgress ?? "初始化中…",
+            busyLabel: "重新初始化中…",
             onAction: onInitializeProject
                 ? () => onInitializeProject(entry.repo_path, entry.slug)
                 : undefined,
@@ -254,7 +254,7 @@
                 detail: registryRepairDetail(selectedRegistry),
                 hint: initHint ?? undefined,
                 actionLabel: "重新初始化",
-                busyLabel: initProgress ?? "初始化中…",
+                busyLabel: "重新初始化中…",
                 onAction: onInitializeProject
                     ? () =>
                           onInitializeProject(
@@ -445,7 +445,7 @@
         <div
             class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10"
         >
-            <header class="space-y-2">
+            <header class="space-y-3">
                 <div class="flex flex-wrap items-center gap-2">
                     <h2 class="text-xl font-semibold text-tr-ink">
                         {registryDisplayName(selectedRegistry)}
@@ -458,7 +458,7 @@
                 <p class="font-mono text-xs text-tr-ink-3">
                     {selectedRegistry.repo_path}
                 </p>
-                <p class="text-sm text-tr-ink-2">
+                <p class="text-sm leading-relaxed text-tr-ink-2">
                     知识索引 <code class="text-tr-ink">index.md</code> 缺失或
                     <code class="text-tr-ink">.terrain/</code> 已损坏，无法加载项目概览。
                 </p>
@@ -470,13 +470,16 @@
             />
 
             {#if selectedRegistry.repo_path && onOpenPath}
-                <button
-                    type="button"
-                    class="tr-press self-start rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
-                    onclick={() => onOpenPath(selectedRegistry.repo_path)}
-                >
-                    打开仓库
-                </button>
+                <div class="flex items-center gap-3 pt-1">
+                    <button
+                        type="button"
+                        class="tr-press inline-flex items-center gap-2 rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
+                        onclick={() => onOpenPath(selectedRegistry.repo_path)}
+                    >
+                        <FolderOpen size={15} strokeWidth={2} />
+                        打开仓库
+                    </button>
+                </div>
             {/if}
         </div>
     {:else if !overview}
