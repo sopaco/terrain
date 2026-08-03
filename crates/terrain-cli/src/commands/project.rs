@@ -1,6 +1,6 @@
 use anyhow::Result;
 use terrain_core::{
-    get_project_overview, list_stale_registry_projects, read_freshness_ledger, unregister_project,
+    get_project_overview, list_all_registry_projects, read_freshness_ledger, unregister_project,
     write_project_remark, KnowledgePaths,
 };
 
@@ -22,9 +22,9 @@ pub fn run(paths: &KnowledgePaths, command: ProjectCommands) -> Result<()> {
             unregister_project(&project)?;
             print_json(&serde_json::json!({ "removed": project }))
         }
-        ProjectCommands::ListStale => {
-            let stale = list_stale_registry_projects()?;
-            print_json(&stale)
+        ProjectCommands::List => {
+            let projects = list_all_registry_projects(paths)?;
+            print_json(&projects)
         }
         ProjectCommands::FreshnessCached { project } => {
             let summary = read_freshness_ledger(paths, &project).map(|l| l.summary);

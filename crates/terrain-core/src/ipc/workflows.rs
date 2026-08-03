@@ -1,8 +1,7 @@
 use serde::Serialize;
 
-use crate::registry::StaleProjectSummary;
+use crate::registry::ProjectRegistryEntry;
 use crate::schema::{AgentContextMeta, LithoPlan};
-use crate::search::ProjectSummary;
 use crate::settings::ModelSettings;
 
 /// Single IPC payload for app startup — avoids multiple round-trips on first paint.
@@ -11,8 +10,7 @@ use crate::settings::ModelSettings;
 #[derive(Debug, Clone, Serialize)]
 pub struct AppBootstrap {
     pub model_settings: ModelSettings,
-    pub projects: Vec<ProjectSummary>,
-    pub stale_projects: Vec<StaleProjectSummary>,
+    pub registry_projects: Vec<ProjectRegistryEntry>,
     pub llm_status: LlmStatus,
     pub acp_ok: bool,
 }

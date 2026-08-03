@@ -1,7 +1,11 @@
 <script lang="ts">
     import { Check, CircleCheck, Copy, FolderOpen } from "@lucide/svelte";
-    import type { ProjectOverview, StaleProjectSummary } from "../types";
+    import type { ProjectOverview, ProjectRegistryEntry } from "../types";
     import { copyTextToClipboard } from "../clipboard";
+    import {
+        registryDisplayName,
+        registryRepairDetail,
+    } from "../projectRegistry";
     import {
         generateLabel,
         SHORT_TERMS,
@@ -27,7 +31,8 @@
         repackBusy?: boolean;
         initBusy?: boolean;
         initProgress?: string | null;
-        staleProjects?: StaleProjectSummary[];
+        registryProjects?: ProjectRegistryEntry[];
+        selectedRegistry?: ProjectRegistryEntry | null;
         onOpenKnowledge: () => void;
         onOpenEnv?: () => void;
         onOpenAsk: () => void;
@@ -58,7 +63,8 @@
         repackBusy = false,
         initBusy = false,
         initProgress = null,
-        staleProjects = [],
+        registryProjects = [],
+        selectedRegistry = null,
         onOpenKnowledge,
         onOpenEnv,
         onOpenAsk,
@@ -192,7 +198,7 @@
                 detail: `当前 ${readyCount}/${assetTotal} 项就绪。可一键完成扫描、源码索引、${TERMS.agentKnowledge} 与 ${TERMS.humanKnowledge}。`,
                 hint: initHint ?? undefined,
                 actionLabel: "一键初始化",
-                busyLabel: initProgress ?? "初始化中…",
+                busyLabel: "初始化中…",
                 onAction: () =>
                     onInitializeProject(overview.repo_path, overview.slug),
                 disabled: initBusy,
@@ -215,23 +221,52 @@
         return items;
     });
 
+    const staleRegistryProjects = $derived(
+        registryProjects.filter((p) => p.status === "stale"),
+    );
+
     const staleActionItems = $derived.by((): OverviewActionItem[] =>
-        staleProjects.map((stale) => ({
-            id: `stale-${stale.slug}`,
+        staleRegistryProjects.map((entry) => ({
+            id: `stale-${entry.slug}`,
             priority: 2,
             accent: "amber" as const,
-            title: stale.slug,
-            detail: "仓库 `.terrain` 已缺失或损坏，可一键重新扫描并生成知识资产。",
+            title: registryDisplayName(entry),
+            detail: registryRepairDetail(entry),
             hint: initHint ?? undefined,
             actionLabel: "重新初始化",
-            busyLabel: initProgress ?? "初始化中…",
+            busyLabel: "重新初始化中…",
             onAction: onInitializeProject
-                ? () => onInitializeProject(stale.repo_path, stale.slug)
+                ? () => onInitializeProject(entry.repo_path, entry.slug)
                 : undefined,
             disabled: initBusy || !onInitializeProject,
             busy: initBusy,
         })),
     );
+
+    const selectedStaleActionItems = $derived.by((): OverviewActionItem[] => {
+        if (!selectedRegistry || selectedRegistry.status !== "stale") return [];
+        return [
+            {
+                id: `stale-selected-${selectedRegistry.slug}`,
+                priority: 1,
+                accent: "amber" as const,
+                title: "知识库数据丢失",
+                detail: registryRepairDetail(selectedRegistry),
+                hint: initHint ?? undefined,
+                actionLabel: "重新初始化",
+                busyLabel: "重新初始化中…",
+                onAction: onInitializeProject
+                    ? () =>
+                          onInitializeProject(
+                              selectedRegistry.repo_path,
+                              selectedRegistry.slug,
+                          )
+                    : undefined,
+                disabled: initBusy || !onInitializeProject,
+                busy: initBusy,
+            },
+        ];
+    });
 
     function freshnessBadgeClass(
         score: number,
@@ -406,6 +441,47 @@
             ></span>
             <span>加载项目概览…</span>
         </div>
+    {:else if selectedRegistry?.status === "stale"}
+        <div
+            class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10"
+        >
+            <header class="space-y-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-xl font-semibold text-tr-ink">
+                        {registryDisplayName(selectedRegistry)}
+                    </h2>
+                    <span
+                        class="rounded-full bg-tr-watch-soft px-2 py-0.5 text-[11px] font-medium text-tr-watch"
+                        >需修复</span
+                    >
+                </div>
+                <p class="font-mono text-xs text-tr-ink-3">
+                    {selectedRegistry.repo_path}
+                </p>
+                <p class="text-sm leading-relaxed text-tr-ink-2">
+                    知识索引 <code class="text-tr-ink">index.md</code> 缺失或
+                    <code class="text-tr-ink">.terrain/</code> 已损坏，无法加载项目概览。
+                </p>
+            </header>
+
+            <OverviewActionBanner
+                items={selectedStaleActionItems}
+                progressNote={initBusy ? initProgress : null}
+            />
+
+            {#if selectedRegistry.repo_path && onOpenPath}
+                <div class="flex items-center gap-3 pt-1">
+                    <button
+                        type="button"
+                        class="tr-press inline-flex items-center gap-2 rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
+                        onclick={() => onOpenPath(selectedRegistry.repo_path)}
+                    >
+                        <FolderOpen size={15} strokeWidth={2} />
+                        打开仓库
+                    </button>
+                </div>
+            {/if}
+        </div>
     {:else if !overview}
         <div
             class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-6 py-10"
@@ -419,14 +495,14 @@
                 <p class="mt-2 text-sm leading-relaxed text-tr-ink-2">
                     添加本地仓库后将自动完成索引与知识资产生成，可在本页查看状态并进入知识库阅读。
                 </p>
-                {#if staleProjects.length === 0}
+                {#if staleRegistryProjects.length === 0}
                     <p class="mt-4 text-xs text-tr-ink-3">
                         通过顶部项目选择器添加本地仓库；若索引失败，添加后可在本页初始化。
                     </p>
                 {/if}
             </section>
 
-            {#if staleProjects.length > 0}
+            {#if staleRegistryProjects.length > 0}
                 <section class="space-y-3">
                     <h3 class="text-sm font-medium text-tr-ink-2">
                         检测到知识库数据丢失
@@ -434,6 +510,7 @@
                     <OverviewActionBanner
                         items={staleActionItems}
                         progressNote={initBusy ? initProgress : null}
+                        collapseSecondary={false}
                     />
                 </section>
             {/if}

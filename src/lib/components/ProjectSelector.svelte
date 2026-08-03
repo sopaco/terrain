@@ -1,23 +1,28 @@
 <script lang="ts">
   import { Folder, Plus, X } from "@lucide/svelte";
-  import type { ProjectSummary } from "../types";
+  import type { ProjectRegistryEntry } from "../types";
+  import {
+    registryDisplayName,
+    selectedProjectDisplayName,
+    statusBadgeLabel,
+  } from "../projectRegistry";
   import { UI_MESSAGES } from "../terminology";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
-    projects: ProjectSummary[];
+    registryProjects: ProjectRegistryEntry[];
     selectedSlug: string | null;
     open: boolean;
     addBusy?: boolean;
     ontoggle: () => void;
-    onselect: (project: ProjectSummary) => void;
+    onselect: (project: ProjectRegistryEntry) => void;
     onadd: () => void;
-    onremove?: (project: ProjectSummary) => void;
-    onopenFolder?: (project: ProjectSummary) => void;
+    onremove?: (project: ProjectRegistryEntry) => void;
+    onopenFolder?: (project: ProjectRegistryEntry) => void;
   }
 
   let {
-    projects,
+    registryProjects,
     selectedSlug,
     open,
     addBusy = false,
@@ -28,7 +33,21 @@
     onopenFolder,
   }: Props = $props();
 
-  const selected = $derived(projects.find((p) => p.slug === selectedSlug) ?? null);
+  const displayName = $derived(
+    selectedProjectDisplayName(
+      selectedSlug,
+      registryProjects,
+      UI_MESSAGES.selectProject,
+    ),
+  );
+
+  const selectedEntry = $derived(
+    registryProjects.find((p) => p.slug === selectedSlug) ?? null,
+  );
+
+  const selectedBadge = $derived(
+    selectedEntry ? statusBadgeLabel(selectedEntry.status) : null,
+  );
 
   let triggerEl = $state<HTMLButtonElement | null>(null);
   let menuTop = $state(0);
@@ -52,16 +71,18 @@
       window.removeEventListener("scroll", onLayout, true);
     };
   });
-  function confirmRemove(project: ProjectSummary, e: MouseEvent) {
+
+  function confirmRemove(entry: ProjectRegistryEntry, e: MouseEvent) {
     e.stopPropagation();
+    const label = registryDisplayName(entry);
     if (
       !confirm(
-        `从列表中移除「${project.name}」？\n\n仅移除 Terrain 登记，不会删除仓库或 .terrain/ 知识资产。`,
+        `从列表中移除「${label}」？\n\n仅移除 Terrain 登记，不会删除仓库或 .terrain/ 知识资产。`,
       )
     ) {
       return;
     }
-    onremove?.(project);
+    onremove?.(entry);
   }
 </script>
 
@@ -69,14 +90,20 @@
   <button
     type="button"
     bind:this={triggerEl}
-    class="tr-press flex max-w-[220px] items-center gap-2 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-1.5 text-left text-sm transition-colors hover:bg-tr-elevated"
+    class="tr-press flex max-w-[240px] items-center gap-2 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-1.5 text-left text-sm transition-colors hover:bg-tr-elevated"
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="listbox"
   >
     <span class="min-w-0 flex-1 truncate font-medium">
-      {selected?.name ?? UI_MESSAGES.selectProject}
+      {displayName}
     </span>
+    {#if selectedBadge}
+      <span
+        class="shrink-0 rounded-full bg-tr-watch-soft px-1.5 py-0.5 text-[10px] font-medium text-tr-watch"
+        >{selectedBadge}</span
+      >
+    {/if}
     <ChevronIcon direction={open ? "up" : "down"} size={14} />
   </button>
 
@@ -93,28 +120,49 @@
       role="listbox"
     >
       <ul class="max-h-64 overflow-y-auto py-1">
-        {#each projects as project}
+        {#each registryProjects as entry (entry.slug)}
+          {@const badge = statusBadgeLabel(entry.status)}
           <li class="mx-1 flex items-stretch gap-1">
             <button
               type="button"
-              class={`flex min-w-0 flex-1 items-center rounded px-3 py-2 text-left text-sm transition-colors hover:bg-tr-elevated ${
-                selectedSlug === project.slug ? "bg-tr-accent-soft-strong text-tr-on-accent" : ""
+              class={`flex min-w-0 flex-1 flex-col rounded px-3 py-2 text-left text-sm transition-colors hover:bg-tr-elevated ${
+                selectedSlug === entry.slug
+                  ? "bg-tr-accent-soft-strong text-tr-on-accent"
+                  : ""
               }`}
-              onclick={() => onselect(project)}
+              onclick={() => onselect(entry)}
               role="option"
-              aria-selected={selectedSlug === project.slug}
+              aria-selected={selectedSlug === entry.slug}
             >
-              <span class="truncate font-medium">{project.name}</span>
+              <span class="flex min-w-0 items-center gap-1.5">
+                <span class="truncate font-medium"
+                  >{registryDisplayName(entry)}</span
+                >
+                {#if badge}
+                  <span
+                    class="shrink-0 rounded-full bg-tr-watch-soft px-1.5 py-0.5 text-[10px] font-medium text-tr-watch"
+                    >{badge}</span
+                  >
+                {/if}
+              </span>
+              {#if entry.status !== "ready"}
+                <span
+                  class="mt-0.5 truncate font-mono text-[10px] text-tr-ink-3"
+                  title={entry.repo_path}
+                >
+                  {entry.repo_path}
+                </span>
+              {/if}
             </button>
-            {#if project.repo_path && onopenFolder}
+            {#if onopenFolder}
               <button
                 type="button"
                 class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink-2"
                 title="打开仓库目录"
-                aria-label={`Open folder for ${project.name}`}
+                aria-label={`Open folder for ${registryDisplayName(entry)}`}
                 onclick={(e) => {
                   e.stopPropagation();
-                  onopenFolder(project);
+                  onopenFolder(entry);
                 }}
               >
                 <Folder size={16} strokeWidth={2} aria-hidden="true" />
@@ -125,8 +173,8 @@
                 type="button"
                 class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical"
                 title="从列表移除"
-                aria-label={`从列表移除 ${project.name}`}
-                onclick={(e) => confirmRemove(project, e)}
+                aria-label={`从列表移除 ${registryDisplayName(entry)}`}
+                onclick={(e) => confirmRemove(entry, e)}
               >
                 <X size={14} strokeWidth={2} aria-hidden="true" />
               </button>

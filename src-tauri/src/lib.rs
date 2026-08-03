@@ -87,7 +87,7 @@ pub fn run() {
             commands::save_sdd_output_cmd,
             commands::remove_project_cmd,
             commands::initialize_project_cmd,
-            commands::list_stale_projects_cmd,
+            commands::list_registry_projects_cmd,
             commands::run_sdd_phase_cmd,
             commands::run_agent_context_generation_cmd,
             commands::ask_knowledge_cmd,

@@ -20,9 +20,11 @@
     interface Props {
         items: OverviewActionItem[];
         progressNote?: string | null;
+        /** When false, show every item expanded (e.g. global stale repair list). */
+        collapseSecondary?: boolean;
     }
 
-    let { items, progressNote = null }: Props = $props();
+    let { items, progressNote = null, collapseSecondary = true }: Props = $props();
 
     let moreOpen = $state(false);
 
@@ -58,7 +60,7 @@
 {#snippet actionRow(item: OverviewActionItem, compact = false)}
     {@const AccentIcon = accentIcon[item.accent]}
     <div
-        class={`flex items-center gap-3 rounded-xl border px-4 ${compact ? "py-3" : "py-3.5"} ${accentTint[item.accent]}`}
+        class={`flex items-start gap-3 rounded-xl border px-4 ${compact ? "py-3" : "py-4"} ${accentTint[item.accent]}`}
     >
         <span
             class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${accentIconTint[item.accent]}`}
@@ -79,22 +81,28 @@
                 </p>
             {/if}
             {#if progressNote}
-                <p class="mt-1.5 text-xs text-tr-accent">
+                <p class="mt-2 text-xs leading-relaxed text-tr-accent break-words">
                     {progressNote}
                 </p>
             {/if}
         </div>
         {#if item.onAction}
-            <button
-                type="button"
-                class={`shrink-0 rounded-lg px-3.5 py-2 text-xs font-medium disabled:opacity-50 ${accentButton[item.accent]}`}
-                disabled={item.disabled || item.busy}
-                onclick={item.onAction}
-            >
-                {item.busy
-                    ? (item.busyLabel ?? "处理中…")
-                    : item.actionLabel}
-            </button>
+            <!-- Button area: capped width + truncate long labels so left content never gets squeezed -->
+            <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <button
+                    type="button"
+                    class={`max-w-[180px] truncate rounded-lg px-3 py-2 text-xs font-medium disabled:opacity-50 ${accentButton[item.accent]}`}
+                    disabled={item.disabled || item.busy}
+                    onclick={item.onAction}
+                    title={item.busy
+                        ? (item.busyLabel ?? "处理中…")
+                        : item.actionLabel}
+                >
+                    {item.busy
+                        ? (item.busyLabel ?? "处理中…")
+                        : item.actionLabel}
+                </button>
+            </div>
         {/if}
     </div>
 {/snippet}
@@ -104,21 +112,29 @@
         {@render actionRow(primary)}
 
         {#if secondary.length > 0}
-            <button
-                type="button"
-                class="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
-                aria-expanded={moreOpen}
-                onclick={() => (moreOpen = !moreOpen)}
-            >
-                <ChevronIcon
-                    direction={moreOpen ? "down" : "right"}
-                    size={12}
-                    class="shrink-0 text-tr-ink-3"
-                />
-                还有 {secondary.length} 项待处理
-            </button>
+            {#if collapseSecondary}
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
+                    aria-expanded={moreOpen}
+                    onclick={() => (moreOpen = !moreOpen)}
+                >
+                    <ChevronIcon
+                        direction={moreOpen ? "down" : "right"}
+                        size={12}
+                        class="shrink-0 text-tr-ink-3"
+                    />
+                    还有 {secondary.length} 项待处理
+                </button>
 
-            {#if moreOpen}
+                {#if moreOpen}
+                    <div class="space-y-2">
+                        {#each secondary as item (item.id)}
+                            {@render actionRow(item, true)}
+                        {/each}
+                    </div>
+                {/if}
+            {:else}
                 <div class="space-y-2">
                     {#each secondary as item (item.id)}
                         {@render actionRow(item, true)}

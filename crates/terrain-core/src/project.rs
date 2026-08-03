@@ -8,7 +8,57 @@ use crate::assets::{
 use crate::human::count_human_docs;
 use crate::freshness::read_freshness_ledger;
 use crate::paths::KnowledgePaths;
+use crate::registry::{ProjectRegistryEntry, ProjectRegistryStatus};
 use crate::schema::{AgentPackMeta, DocCounts, FreshnessSummary, LithoStatus, ProjectOverview, SyncMeta};
+
+/// Build a unified registry row for the desktop project list.
+pub fn build_registry_entry(
+    paths: &KnowledgePaths,
+    slug: &str,
+    repo_path: &str,
+) -> Result<ProjectRegistryEntry> {
+    let index_path = paths.project_index(slug);
+    if !index_path.is_file() {
+        let name = Path::new(repo_path)
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| slug.to_string());
+        return Ok(ProjectRegistryEntry {
+            slug: slug.to_string(),
+            name,
+            repo_path: repo_path.to_string(),
+            index_path: None,
+            status: ProjectRegistryStatus::Stale,
+            missing_assets: vec!["index.md".into()],
+        });
+    }
+
+    let overview = get_project_overview(paths, slug)?;
+    let missing_assets: Vec<String> = overview
+        .asset_health
+        .iter()
+        .filter(|asset| !asset.ready)
+        .map(|asset| asset.label.clone())
+        .collect();
+    let status = if missing_assets.is_empty() {
+        ProjectRegistryStatus::Ready
+    } else {
+        ProjectRegistryStatus::Partial
+    };
+
+    Ok(ProjectRegistryEntry {
+        slug: slug.to_string(),
+        name: overview.name,
+        repo_path: if overview.repo_path.is_empty() {
+            repo_path.to_string()
+        } else {
+            overview.repo_path
+        },
+        index_path: Some(index_path.display().to_string()),
+        status,
+        missing_assets,
+    })
+}
 
 /// Merge freshness scores into overview asset tracks (for deferred overview loading).
 pub fn merge_overview_freshness(

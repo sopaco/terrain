@@ -5,10 +5,10 @@ import type {
   KnowledgeDoc,
   LlmStatus,
   ProjectOverview,
-  ProjectSummary,
+  ProjectRegistryEntry,
   SearchHit,
-  StaleProjectSummary,
 } from "../types";
+import { findRegistryProject } from "../projectRegistry";
 
 export type ProjectTaskState = {
   repackBusy: boolean;
@@ -17,8 +17,7 @@ export type ProjectTaskState = {
 };
 
 export const project = $state({
-  projects: [] as ProjectSummary[],
-  staleProjects: [] as StaleProjectSummary[],
+  registryProjects: [] as ProjectRegistryEntry[],
   knowledgeRoot: "",
   acpOk: false,
   llmStatus: null as LlmStatus | null,
@@ -57,10 +56,6 @@ export function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {
   project.projectTasks[slug] = { ...prev, ...patch };
 }
 
-export function selectedProjectMeta() {
-  return project.projects.find((p) => p.slug === project.selectedSlug) ?? null;
-}
-
 export function currentTask(): ProjectTaskState {
   if (!project.selectedSlug) {
     return { repackBusy: false, lithoBusy: false, lithoProgress: "" };
@@ -72,4 +67,12 @@ export function currentTask(): ProjectTaskState {
       lithoProgress: "",
     }
   );
+}
+
+export function selectedRegistryProject() {
+  return findRegistryProject(project.selectedSlug, project.registryProjects);
+}
+
+export function hasAnySelectableProject() {
+  return project.registryProjects.length > 0;
 }

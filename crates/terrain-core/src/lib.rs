@@ -109,10 +109,13 @@ pub use path_portable::{
     path_in_repo, resolve_stored_repo_path, stored_repo_path, to_tilde_path,
     is_stored_repo_marker, normalize_repo_hint, REPO_AGENT_TOOLS_MANIFEST, REPO_ROOT_MARKER,
 };
-pub use project::{get_project_overview, merge_overview_freshness, resolve_project_repo_path, write_project_remark};
+pub use project::{
+    build_registry_entry, get_project_overview, merge_overview_freshness, resolve_project_repo_path,
+    write_project_remark,
+};
 pub use registry::{
-    knowledge_root_for_repo, list_stale_registry_projects, register_project, unregister_project,
-    StaleProjectSummary,
+    knowledge_root_for_repo, list_all_registry_projects, register_project, unregister_project,
+    ProjectRegistryEntry, ProjectRegistryStatus,
 };
 pub use repo::validate_repo_path;
 pub use settings::{
