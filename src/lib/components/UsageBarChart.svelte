@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tick } from "svelte";
+
   export type UsageBarPoint = {
     label: string;
     tokens: number;
@@ -22,6 +24,7 @@
   }: Props = $props();
 
   let hoveredIndex = $state<number | null>(null);
+  let scrollEl = $state<HTMLDivElement | null>(null);
 
   const PLOT_HEIGHT = 132;
   const LABEL_AREA = $derived(granularity === "month" ? 40 : 24);
@@ -104,6 +107,34 @@
   function clearBar() {
     hoveredIndex = null;
   }
+
+  function scrollToLatest() {
+    const el = scrollEl;
+    if (!el) return;
+    el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+  }
+
+  $effect(() => {
+    bars;
+    granularity;
+    void (async () => {
+      await tick();
+      requestAnimationFrame(() => {
+        scrollToLatest();
+      });
+    })();
+  });
+
+  function onChartWheel(e: WheelEvent) {
+    const el = scrollEl;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (delta === 0) return;
+
+    el.scrollLeft += delta;
+    e.preventDefault();
+  }
 </script>
 
 {#if bars.length === 0}
@@ -112,7 +143,11 @@
   </div>
 {:else}
   <div class="rounded-xl border border-tr-border-strong bg-tr-elevated px-3 pb-3 pt-3">
-    <div class="overflow-x-auto">
+    <div
+      class="chart-scroll overflow-x-auto"
+      bind:this={scrollEl}
+      onwheel={onChartWheel}
+    >
       <div
         class="flex items-end"
         style:min-width="{chartMinWidth}px"
@@ -188,3 +223,14 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .chart-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .chart-scroll::-webkit-scrollbar {
+    display: none;
+  }
+</style>
