@@ -74,27 +74,31 @@
             {@const path = rowOpenPath?.(row) ?? null}
             <tr class="border-b border-tr-border last:border-0 hover:bg-tr-elevated">
               <td class="px-3 py-2 text-tr-ink-2">
-                {#if path && onRowOpen}
-                  <button
-                    type="button"
-                    class="tr-press group inline-flex max-w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-tr-page hover:text-tr-accent"
-                    title="在文件管理器中查看本地记录"
-                    aria-label={`在文件管理器中打开 ${rowLabel(row)}`}
-                    onclick={() => openPath(path)}
-                  >
-                    <span class="truncate underline decoration-tr-border-strong decoration-dotted underline-offset-2 group-hover:decoration-tr-accent/60">
-                      {rowLabel(row)}
-                    </span>
-                    <FolderOpen
-                      size={12}
-                      strokeWidth={2}
-                      class="shrink-0 text-tr-ink-3 transition-colors group-hover:text-tr-accent"
-                      aria-hidden="true"
-                    />
-                  </button>
-                {:else}
-                  {rowLabel(row)}
-                {/if}
+                <div class="flex min-w-0 items-center gap-1.5">
+                  {#if path && onRowOpen}
+                    <button
+                      type="button"
+                      class="tr-press group contents"
+                      title="在文件管理器中查看本地记录"
+                      aria-label={`在文件管理器中打开 ${rowLabel(row)}`}
+                      onclick={() => openPath(path)}
+                    >
+                      <span
+                        class="min-w-0 flex-1 truncate text-left underline decoration-tr-border-strong decoration-dotted underline-offset-2 group-hover:text-tr-accent group-hover:decoration-tr-accent/60"
+                      >
+                        {rowLabel(row)}
+                      </span>
+                      <FolderOpen
+                        size={12}
+                        strokeWidth={2}
+                        class="shrink-0 text-tr-ink-3 group-hover:text-tr-accent"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  {:else}
+                    <span class="min-w-0 flex-1 truncate">{rowLabel(row)}</span>
+                  {/if}
+                </div>
               </td>
               <td class="px-3 py-2 text-tr-ink-2">{agentsLabel(row)}</td>
               <td class="px-3 py-2 text-right text-tr-ink-2">{formatTokens(row.input_tokens)}</td>
