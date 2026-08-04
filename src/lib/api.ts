@@ -262,3 +262,6 @@ export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
 
 export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefresh = false) =>
   invoke<UsageSnapshot>("usage_snapshot_cmd", { detail, forceRefresh });
+
+export const openLocalPath = (path: string) =>
+  invoke<void>("open_local_path_cmd", { path });

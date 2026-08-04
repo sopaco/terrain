@@ -1,6 +1,6 @@
 <script lang="ts">
     import { ChartColumn } from "@lucide/svelte";
-    import { getUsageSnapshot } from "../api";
+    import { getUsageSnapshot, openLocalPath } from "../api";
     import {
         setUsageBadgePeriod,
         usageDisplay,
@@ -11,6 +11,7 @@
     import UsageDetailTable from "./UsageDetailTable.svelte";
     import CloseButton from "./icons/CloseButton.svelte";
     import SlideDrawer from "./SlideDrawer.svelte";
+    import { UI_MESSAGES } from "../terminology";
 
     type ChartPeriod = "day" | "month" | "year";
 
@@ -38,7 +39,7 @@
     $effect(() => {
         if (open || standalone) {
             if (initialSnapshot) snapshot = initialSnapshot;
-            void refresh(true);
+            void refresh(false);
         }
     });
 
@@ -162,6 +163,18 @@
         return row.period || "会话";
     }
 
+    function sessionOpenPath(row: UsagePeriodEntry): string | null {
+        return row.source_path ?? null;
+    }
+
+    async function openSessionPath(path: string) {
+        try {
+            await openLocalPath(path);
+        } catch (e) {
+            error = UI_MESSAGES.openPathFailed(e);
+        }
+    }
+
     const summaryCards = $derived(
         snapshot
             ? [
@@ -170,6 +183,12 @@
                   { label: "本月", totals: snapshot.month },
               ]
             : [],
+    );
+
+    const detailLoading = $derived(
+        loading &&
+            chartPeriod === "day" &&
+            (snapshot?.sessions.length ?? 0) === 0,
     );
 
     const chartPeriodOptions: { id: ChartPeriod; label: string }[] = [
@@ -387,6 +406,10 @@
                 rows={detailConfig.rows}
                 rowLabel={detailConfig.rowLabel}
                 emptyLabel={detailConfig.emptyLabel}
+                loading={detailLoading}
+                loadingLabel="正在加载会话明细…"
+                rowOpenPath={chartPeriod === "day" ? sessionOpenPath : undefined}
+                onRowOpen={chartPeriod === "day" ? openSessionPath : undefined}
             />
 
             <p class="mt-4 text-[10px] leading-relaxed text-tr-ink-3">

@@ -9,6 +9,7 @@ pub mod ingest;
 pub mod integrations;
 pub mod ipc;
 pub mod model_text;
+pub mod open_path;
 pub mod path_portable;
 pub mod platform;
 pub mod preset_skills;
@@ -117,6 +118,7 @@ pub use registry::{
     knowledge_root_for_repo, list_all_registry_projects, register_project, unregister_project,
     ProjectRegistryEntry, ProjectRegistryStatus,
 };
+pub use open_path::open_path_in_file_manager;
 pub use repo::validate_repo_path;
 pub use settings::{
     default_profile_for, load_model_settings, normalize_model_settings, profile_for_provider,
