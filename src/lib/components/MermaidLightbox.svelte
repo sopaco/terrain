@@ -8,7 +8,9 @@
 
   let { svg, onclose }: Props = $props();
 
-  let scale = $state(1);
+  const DEFAULT_SCALE = 3;
+
+  let scale = $state(DEFAULT_SCALE);
   let offsetX = $state(0);
   let offsetY = $state(0);
   let dragging = $state(false);
@@ -26,7 +28,7 @@
   }
 
   function resetView() {
-    scale = 1;
+    scale = DEFAULT_SCALE;
     offsetX = 0;
     offsetY = 0;
   }
