@@ -66,13 +66,25 @@ pub async fn run_quick_refresh(
                 Ok(result) => {
                     agent_context_regenerated =
                         result.refresh_mode != KnowledgeRefreshMode::Skipped;
+                    let reason = result.refresh_reason.as_deref();
                     notes.push(match result.refresh_mode {
-                        KnowledgeRefreshMode::Incremental => {
-                            "Agent 友好的知识资产：已按 git diff 增量更新".into()
-                        }
-                        KnowledgeRefreshMode::Full => {
-                            "Agent 友好的知识资产：已重新生成".to_string()
-                        }
+                        KnowledgeRefreshMode::Incremental => match reason {
+                            // The reply was unusable but the agent's own in-place edit was sound.
+                            Some(r) if r.starts_with("recovered_from_disk") => {
+                                "Agent 友好的知识资产：已增量更新（回复不完整，已采用 Agent 就地修改的文件）"
+                                    .to_string()
+                            }
+                            _ => "Agent 友好的知识资产：已按 git diff 增量更新".to_string(),
+                        },
+                        // A full run that was *asked for* reads differently from one that had to
+                        // rescue a rejected incremental attempt — say which happened.
+                        KnowledgeRefreshMode::Full => match reason {
+                            Some(r) if r.starts_with("full_after_incremental_") => format!(
+                                "Agent 友好的知识资产：增量更新结果不可信（{}），已自动改为完整重新生成",
+                                r.trim_start_matches("full_after_incremental_")
+                            ),
+                            _ => "Agent 友好的知识资产：已重新生成".to_string(),
+                        },
                         KnowledgeRefreshMode::Skipped => {
                             "Agent 友好的知识资产：源码无变更，仅更新基线".to_string()
                         }

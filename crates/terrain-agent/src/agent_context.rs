@@ -4,9 +4,10 @@ use std::sync::Arc;
 use terrain_core::{
     agent_context_baseline_head, agent_context_ready, agent_pack_ready,
     build_agent_context_prompt, build_agent_context_update_prompt, pack_agent_assets,
-    plan_incremental_update, prepare_model_markdown, refresh_agent_context_baseline,
-    write_agent_context, AgentContextGenerationResult, IncrementalOptions, IncrementalPlan,
-    KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode,
+    plan_incremental_update, prepare_model_markdown, read_agent_context_body,
+    refresh_agent_context_baseline, reject_incremental_document, write_agent_context,
+    AgentContextGenerationResult, IncrementalOptions, IncrementalPlan, KnowledgePaths,
+    KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode,
 };
 
 use crate::acp::{
@@ -67,6 +68,7 @@ pub async fn run_agent_context_generation(
                 meta,
                 response_excerpt: String::new(),
                 refresh_mode: KnowledgeRefreshMode::Skipped,
+                refresh_reason: Some("up_to_date".into()),
             });
         }
         KnowledgeUpdateMode::Full { reason } => {
@@ -93,6 +95,13 @@ pub async fn run_agent_context_generation(
         pack_agent_assets(paths, project_slug, repo_path).await?;
     }
 
+    // Captured before the turn: the document an incremental result must be a superset of.
+    let baseline_body = update_plan
+        .is_some()
+        .then(|| read_agent_context_body(paths, project_slug))
+        .flatten()
+        .unwrap_or_default();
+
     let raw_answer = run_agent_context_turn(
         paths,
         engine.as_deref(),
@@ -108,30 +117,65 @@ pub async fn run_agent_context_generation(
     paths.write_debug_file("last-agent-context-sanitized.md", &body);
 
     let mut refresh_mode = refresh_mode;
-    // An incremental turn asks the model to reproduce most of the document verbatim — a
-    // truncated context, a dropped final message, or a model that only used its edit tool
-    // without echoing the result back can all surface as an empty reply. That is not evidence
-    // the *document* is unrecoverable, only that the diff-driven turn was: retry once as a
-    // full regeneration rather than leaving the document stuck behind HEAD until someone
-    // notices and clicks 「重新生成」 by hand.
-    if body.trim().is_empty() && update_plan.is_some() {
+    let mut refresh_reason: Option<String> = None;
+    // `write_agent_context` replaces the whole file, so an incremental reply that is empty,
+    // gutted, or just a summary of what the model did would silently destroy the document.
+    // Validate against the pre-turn baseline before trusting it, and recover in two steps.
+    if update_plan.is_some()
+        && let Some(reason) = reject_incremental_document(&body, &baseline_body)
+    {
         tracing::warn!(
             project = project_slug,
-            "agent context: incremental update returned empty output — falling back to full regeneration"
+            reason,
+            "agent context: incremental reply rejected — attempting recovery"
         );
-        let raw_answer = run_agent_context_turn(
-            paths,
-            engine.as_deref(),
-            acp_settings,
-            project_slug,
-            repo_path,
-            None,
-        )
-        .await?;
-        paths.write_debug_file("last-agent-context-raw.md", &raw_answer);
-        body = prepare_model_markdown(&raw_answer);
-        paths.write_debug_file("last-agent-context-sanitized.md", &body);
-        refresh_mode = KnowledgeRefreshMode::Full;
+
+        // An ACP agent may have edited the file in place despite being told not to; that edit is
+        // a legitimate result, so prefer it over discarding the turn. (Native execution has only
+        // read-only tools, so on that path this simply re-reads the unchanged baseline and fails
+        // the same validation, falling through to the full regeneration below.)
+        let on_disk = read_agent_context_body(paths, project_slug).unwrap_or_default();
+        if on_disk.trim() != baseline_body.trim()
+            && reject_incremental_document(&on_disk, &baseline_body).is_none()
+        {
+            tracing::info!(
+                project = project_slug,
+                "agent context: recovered incremental update from the file the agent edited"
+            );
+            body = on_disk;
+            refresh_reason = Some(format!("recovered_from_disk_after_{reason}"));
+        } else {
+            tracing::warn!(
+                project = project_slug,
+                reason,
+                "agent context: falling back to full regeneration"
+            );
+            let raw_answer = run_agent_context_turn(
+                paths,
+                engine.as_deref(),
+                acp_settings,
+                project_slug,
+                repo_path,
+                None,
+            )
+            .await?;
+            paths.write_debug_file("last-agent-context-raw.md", &raw_answer);
+            body = prepare_model_markdown(&raw_answer);
+            paths.write_debug_file("last-agent-context-sanitized.md", &body);
+            refresh_mode = KnowledgeRefreshMode::Full;
+            refresh_reason = Some(format!("full_after_incremental_{reason}"));
+
+            // A full regeneration has no baseline to preserve, but it must still not wipe a good
+            // document with an empty answer.
+            if body.trim().is_empty() {
+                anyhow::bail!(
+                    "Agent context incremental update failed ({reason}) and the full \
+                     regeneration that followed produced empty output — \
+                     {} left unchanged",
+                    paths.agent_context_main(project_slug).display()
+                );
+            }
+        }
     }
 
     if body.trim().is_empty() {
@@ -147,6 +191,7 @@ pub async fn run_agent_context_generation(
         meta,
         response_excerpt: excerpt,
         refresh_mode,
+        refresh_reason,
     })
 }
 
@@ -254,6 +299,20 @@ fn build_agent_context_acp_prompt(
         .unwrap_or_default();
     let output_path = paths.agent_context_main(project_slug).display().to_string();
 
+    // The skill tells the agent to write TERRAIN_AGENT_CONTEXT_OUTPUT itself, and Terrain also
+    // persists the reply — two writers for one file. On a full run both produce the same complete
+    // document so the redundancy is harmless. On an incremental run it is not: "edit it in place"
+    // invites an agent to patch the file and reply with a summary, which Terrain would then write
+    // over the very edit it just made. Name Terrain as the only writer for that case.
+    let write_contract = if update.is_some() {
+        "**Terrain is the only writer for this turn.** Do NOT create, edit or write \
+         TERRAIN_AGENT_CONTEXT_OUTPUT (or any other file) — not with an editor tool, not with a \
+         shell redirect. Terrain persists your reply verbatim as the complete file, so the updated \
+         document must arrive as your reply text and nowhere else.\n"
+    } else {
+        ""
+    };
+
     Ok(format!(
         "You are Terrain Agent Context generation running in **ACP mode**. \
          Native function tools are NOT available.\n\
@@ -268,6 +327,7 @@ fn build_agent_context_acp_prompt(
          - TERRAIN_PROJECT_SLUG={project_slug}\n\
          - TERRAIN_REPO_PATH={repo_path}\n\
          - TERRAIN_ASK_SKILL={ask_skill_s}\n\n\
+         {write_contract}\
          Return ONLY the final markdown document in your reply \
          (Terrain will persist it). Do not include reasoning outside the document.\n\n\
          {base}"

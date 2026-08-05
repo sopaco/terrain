@@ -32,7 +32,8 @@ pub use context_layers::{
     AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
 pub use incremental::{
-    plan_incremental_update, IncrementalOptions, IncrementalPlan, KnowledgeUpdateMode,
+    plan_incremental_update, reject_incremental_document, IncrementalOptions,
+    IncrementalOutputMode, IncrementalPlan, KnowledgeUpdateMode,
 };
 pub use litho::{
     build_litho_composition_prompt, build_litho_generation_prompt, build_litho_update_prompt,

@@ -226,7 +226,23 @@ impl IncrementalPlan {
     ///
     /// The critical rule is preservation: the model sees only a diff, so anything it cannot
     /// tie to a changed path must survive byte-for-byte rather than be rewritten from memory.
-    pub fn update_rules_block(&self) -> String {
+    ///
+    /// `output` decides how "nothing changed" is expressed, and that difference matters: with
+    /// [`IncrementalOutputMode::WholeDocumentReply`] the reply *is* the file, so "leave it alone"
+    /// must still mean "emit every byte of it". Telling such a caller it may reply with nothing
+    /// invites a short confirmation message that would then be persisted as the whole document.
+    pub fn update_rules_block(&self, output: IncrementalOutputMode) -> String {
+        let no_op_rule = match output {
+            IncrementalOutputMode::WholeDocumentReply => {
+                "- If nothing in the change list invalidates the document, still output the \
+                 **entire document verbatim** — an empty reply, a summary of what you checked, or \
+                 a note saying \"unchanged\" DELETES the document.\n"
+            }
+            IncrementalOutputMode::EditFilesInPlace => {
+                "- If nothing in the change list invalidates the documents, change no file and \
+                 say so.\n"
+            }
+        };
         format!(
             "## Incremental update rules (MANDATORY)\n\
              You are UPDATING existing documentation, not writing it again.\n\
@@ -241,11 +257,70 @@ impl IncrementalPlan {
              - Investigate only the changed paths. Do not re-explore the whole repository.\n\
              - If a change is cosmetic (formatting, comments, tests, lockfiles, docs) and affects \
                no architectural claim, make NO edit for it.\n\
-             - If nothing in the change list invalidates the document, return it completely \
-               unchanged.\n\n",
+             {no_op_rule}\n",
             touched = self.touched_file_count(),
+            no_op_rule = no_op_rule,
         )
     }
+}
+
+/// Fraction of the baseline's length an incremental result must retain to be believable.
+///
+/// Deliberately loose: a legitimate update can delete a removed module's rows, but it cannot
+/// lose a third of the document and still be "the same document with edits applied".
+const MIN_RETAINED_LENGTH_RATIO: f64 = 0.6;
+
+/// Reject an incremental result that cannot plausibly be `baseline` with edits applied.
+///
+/// Assets persisted from reply text have no diff to apply and no way to notice a partial answer:
+/// whatever comes back replaces the file. A model that edited the document with its own tool and
+/// replied "updated 模块地图", or took the no-op escape hatch literally, produces a short
+/// non-empty string that a bare `is_empty()` check waves through — and the real document is gone.
+///
+/// Returns `Some(reason)` when the result must NOT be persisted; the reason is a stable slug for
+/// logs and UI notes.
+pub fn reject_incremental_document(updated: &str, baseline: &str) -> Option<&'static str> {
+    let updated = updated.trim();
+    if updated.is_empty() {
+        return Some("empty_reply");
+    }
+
+    let baseline = baseline.trim();
+    if baseline.is_empty() {
+        // No prior document to protect — the caller's own readiness check governs.
+        return None;
+    }
+
+    if count_h2_sections(updated) < count_h2_sections(baseline) {
+        return Some("sections_lost");
+    }
+
+    let updated_len = updated.chars().count() as f64;
+    let baseline_len = baseline.chars().count() as f64;
+    if updated_len < baseline_len * MIN_RETAINED_LENGTH_RATIO {
+        return Some("document_shrank");
+    }
+
+    None
+}
+
+/// `##`-level section count, counting a document that opens directly on a heading.
+fn count_h2_sections(body: &str) -> usize {
+    body.matches("\n## ").count() + usize::from(body.starts_with("## "))
+}
+
+/// How the model is expected to hand an incremental update back to Terrain.
+///
+/// This is a correctness constraint, not a style preference: `agent/context.md` is persisted
+/// from the reply text (the native execution path has read-only tools and *cannot* write files),
+/// while the Litho `human/` set is edited on disk by an ACP agent and never overwritten from a
+/// reply. Prompts must state the matching contract or the two disagree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IncrementalOutputMode {
+    /// The reply text becomes the entire file. Omitting anything deletes it.
+    WholeDocumentReply,
+    /// The model edits files on disk; its reply is only commentary.
+    EditFilesInPlace,
 }
 
 #[cfg(test)]
@@ -396,7 +471,129 @@ mod tests {
         assert!(evidence.contains("- D main.rs"));
         assert!(evidence.contains("- W dirty.rs"));
         assert!(evidence.contains("swap entrypoint"));
-        assert!(plan.update_rules_block().contains("verbatim"));
+        assert!(plan
+            .update_rules_block(IncrementalOutputMode::WholeDocumentReply)
+            .contains("verbatim"));
+    }
+
+    /// A realistic 7-section document, as the baseline to protect.
+    fn baseline_doc() -> String {
+        [
+            "项目概览",
+            "架构设计",
+            "模块地图",
+            "核心流程",
+            "技术选型",
+            "系统边界",
+            "代码映射索引",
+        ]
+        .iter()
+        .map(|t| format!("## {t}\n\n{}\n", "内容".repeat(200)))
+        .collect::<Vec<_>>()
+        .join("\n")
+    }
+
+    #[test]
+    fn rejects_the_replies_a_bare_empty_check_waves_through() {
+        let baseline = baseline_doc();
+
+        // Agent edited the file with its own tool and only summarized what it did.
+        assert_eq!(
+            reject_incremental_document(
+                "I've updated the 模块地图 section and corrected the path index. \
+                 No other sections needed changes.",
+                &baseline,
+            ),
+            Some("sections_lost")
+        );
+
+        // The no-op escape hatch taken literally.
+        assert_eq!(
+            reject_incremental_document(
+                "Nothing in the change list invalidates the document. Returned unchanged.",
+                &baseline,
+            ),
+            Some("sections_lost")
+        );
+
+        // Only the sections it touched.
+        assert_eq!(
+            reject_incremental_document(
+                "## 模块地图\n\n| Module | Responsibility |\n|---|---|\n\n## 代码映射索引\n\n| C | L |",
+                &baseline,
+            ),
+            Some("sections_lost")
+        );
+
+        assert_eq!(
+            reject_incremental_document("   \n  ", &baseline),
+            Some("empty_reply")
+        );
+    }
+
+    #[test]
+    fn rejects_a_document_that_kept_its_headings_but_lost_its_body() {
+        let baseline = baseline_doc();
+        // All seven headings present, bodies gutted — section count alone would pass this.
+        let gutted = [
+            "项目概览",
+            "架构设计",
+            "模块地图",
+            "核心流程",
+            "技术选型",
+            "系统边界",
+            "代码映射索引",
+        ]
+        .iter()
+        .map(|t| format!("## {t}\n\nTODO\n"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+        assert_eq!(
+            reject_incremental_document(&gutted, &baseline),
+            Some("document_shrank")
+        );
+    }
+
+    #[test]
+    fn accepts_a_genuine_incremental_edit() {
+        let baseline = baseline_doc();
+
+        // Unchanged is fine.
+        assert_eq!(reject_incremental_document(&baseline, &baseline), None);
+
+        // A real edit: one module row rewritten, everything else reproduced.
+        let edited = baseline.replace("## 模块地图", "## 模块地图\n\n新增 incremental 模块");
+        assert_eq!(reject_incremental_document(&edited, &baseline), None);
+
+        // An added section is fine too.
+        let grown = format!("{baseline}\n## 附录\n\n{}", "内容".repeat(50));
+        assert_eq!(reject_incremental_document(&grown, &baseline), None);
+
+        // No baseline to protect — nothing to reject against.
+        assert_eq!(reject_incremental_document("## 新文档\n\n内容", ""), None);
+    }
+
+    #[test]
+    fn no_op_rule_matches_the_persistence_model() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let baseline = init_repo(repo);
+        let repo_s = repo.display().to_string();
+        fs::write(repo.join("added.rs"), "pub fn added() {}\n").unwrap();
+
+        let mode = plan_incremental_update(&repo_s, Some(&baseline), true, opts(true, 60));
+        let plan = mode.plan().expect("incremental plan");
+
+        // Reply-is-the-file: "unchanged" must never mean "reply with nothing".
+        let whole = plan.update_rules_block(IncrementalOutputMode::WholeDocumentReply);
+        assert!(whole.contains("entire document verbatim"), "{whole}");
+        assert!(whole.contains("DELETES the document"), "{whole}");
+
+        // Edit-in-place: changing no file is the correct no-op.
+        let in_place = plan.update_rules_block(IncrementalOutputMode::EditFilesInPlace);
+        assert!(in_place.contains("change no file"), "{in_place}");
+        assert!(!in_place.contains("DELETES the document"), "{in_place}");
     }
 
     #[test]

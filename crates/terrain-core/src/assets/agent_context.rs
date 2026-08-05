@@ -282,7 +282,7 @@ pub fn build_agent_context_update_prompt(
         project_slug = project_slug,
         output_path = output_path,
         repo_path = repo_path,
-        rules = plan.update_rules_block(),
+        rules = plan.update_rules_block(crate::assets::IncrementalOutputMode::WholeDocumentReply),
         evidence = plan.evidence_block(),
         meta_section = meta_section,
         directory_structure = directory_structure,

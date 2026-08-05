@@ -86,4 +86,7 @@ pub struct AgentContextGenerationResult {
     pub meta: AgentContextMeta,
     pub response_excerpt: String,
     pub refresh_mode: KnowledgeRefreshMode,
+    /// Why the run took the mode it did, when that is not obvious — e.g. `sections_lost` when an
+    /// incremental reply was rejected and a full regeneration ran instead.
+    pub refresh_reason: Option<String>,
 }

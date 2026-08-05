@@ -127,7 +127,8 @@ pub fn build_litho_update_prompt(
         skill = plan.skill_dir,
         repo = plan.repo_path,
         out = plan.human_output_dir,
-        rules = incremental.update_rules_block(),
+        rules = incremental
+            .update_rules_block(crate::assets::IncrementalOutputMode::EditFilesInPlace),
         evidence = incremental.evidence_block(),
         doc_list = doc_list,
     )
