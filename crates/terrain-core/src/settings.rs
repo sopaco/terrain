@@ -58,6 +58,45 @@ impl Default for AcpSettings {
     }
 }
 
+/// Above this many changed source files, an incremental update is no longer cheaper or safer
+/// than regenerating from scratch — the diff stops being a summary of the change.
+pub const DEFAULT_INCREMENTAL_MAX_CHANGED_FILES: u32 = 60;
+
+/// How knowledge assets are refreshed when they have drifted behind the repository.
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KnowledgeSettings {
+    /// Update existing assets from `git diff` instead of regenerating them from scratch.
+    #[serde(default = "default_true")]
+    pub incremental_refresh: bool,
+    /// Fall back to a full regeneration when more source files than this changed.
+    #[serde(default = "default_incremental_max_changed_files")]
+    pub incremental_max_changed_files: u32,
+    /// Also update the human-facing Litho docs during quick refresh (off by default — the
+    /// Litho ACP pass is the slowest stage, so quick refresh stays agent-assets-only).
+    #[serde(default)]
+    pub incremental_human_docs: bool,
+}
+
+impl Default for KnowledgeSettings {
+    fn default() -> Self {
+        Self {
+            incremental_refresh: true,
+            incremental_max_changed_files: DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
+            incremental_human_docs: false,
+        }
+    }
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_incremental_max_changed_files() -> u32 {
+    DEFAULT_INCREMENTAL_MAX_CHANGED_FILES
+}
+
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -85,6 +124,8 @@ pub struct ModelSettings {
     pub profiles: HashMap<String, ProviderProfile>,
     #[serde(default)]
     pub acp: AcpSettings,
+    #[serde(default)]
+    pub knowledge: KnowledgeSettings,
 }
 
 pub fn settings_path() -> PathBuf {
@@ -176,6 +217,11 @@ fn normalize_settings(settings: &mut ModelSettings) {
     }
 
     settings.provider = Some(active);
+
+    // A 0 budget would silently disable incremental refresh; treat it as "unset".
+    if settings.knowledge.incremental_max_changed_files == 0 {
+        settings.knowledge.incremental_max_changed_files = DEFAULT_INCREMENTAL_MAX_CHANGED_FILES;
+    }
 }
 
 fn merge_profile(target: &mut ProviderProfile, source: &ProviderProfile) {

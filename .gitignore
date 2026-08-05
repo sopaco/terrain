@@ -2,6 +2,11 @@
 /target/
 **/*.rs.bk
 
+# ts-rs 的默认导出目录 —— `cargo test --features ts-export` 的副产物，与
+# src/lib/generated/（由 `bun run gen:types` 生成，才是前端真源）内容重复。
+# 入库会让每次跑测试都产生几十个无关改动，并挤占增量保鲜的变更文件预算。
+crates/*/bindings/
+
 # Node
 node_modules/
 dist/

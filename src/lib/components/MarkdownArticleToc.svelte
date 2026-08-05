@@ -264,4 +264,9 @@
     border-left-color: var(--color-tr-accent);
     background: var(--color-tr-accent-soft);
   }
+
+  .article-toc-link.active:hover {
+    color: var(--color-tr-accent);
+    background: var(--color-tr-accent-soft);
+  }
 </style>

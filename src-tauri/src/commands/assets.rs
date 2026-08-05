@@ -3,7 +3,7 @@ use std::sync::Arc;
 use terrain_agent::{
     agent_execution_ready, execution_uses_native_llm, prepare_litho_generation,
     run_agent_context_generation, run_litho_generation, AgentContextGenerationResult, ChatEngine,
-    LithoGenerationJob, LithoProgress,
+    LithoGenerationJob, LithoProgress, LithoRunMode,
 };
 use terrain_core::{
     build_generation_plan, pack_agent_assets, plan_litho_generation, AgentPackReport,
@@ -15,7 +15,7 @@ use crate::AppState;
 
 use super::payloads::{LithoDonePayload, LithoProgressPayload};
 use super::util::validate_repo;
-use super::{resolved_acp_settings, slugify_repo};
+use super::{resolved_acp_settings, resolved_knowledge_settings, slugify_repo};
 
 #[tauri::command]
 pub async fn pack_agent_assets_cmd(
@@ -98,12 +98,14 @@ pub async fn run_litho_generation_cmd(
     };
 
     let acp = resolved_acp_settings();
+    // `force_refresh` is the UI's 「重新生成」 — an explicit rebuild bypasses incremental update.
     let result = run_litho_generation(
         &paths,
         &slug,
         &repo_path,
         &acp,
-        force_refresh.unwrap_or(false),
+        &resolved_knowledge_settings(),
+        LithoRunMode::from_force_refresh(force_refresh.unwrap_or(false)),
         emit_progress,
     )
     .await
@@ -126,6 +128,7 @@ pub async fn run_agent_context_generation_cmd(
     state: State<'_, AppState>,
     repo_path: String,
     project_slug: Option<String>,
+    force_full: Option<bool>,
 ) -> Result<AgentContextGenerationResult, String> {
     validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
@@ -139,7 +142,15 @@ pub async fn run_agent_context_generation_cmd(
     } else {
         None
     };
-    run_agent_context_generation(state.paths(), engine, &acp, &slug, &repo_path)
-        .await
-        .map_err(|e| e.to_string())
+    run_agent_context_generation(
+        state.paths(),
+        engine,
+        &acp,
+        &slug,
+        &repo_path,
+        &resolved_knowledge_settings(),
+        force_full.unwrap_or(false),
+    )
+    .await
+    .map_err(|e| e.to_string())
 }

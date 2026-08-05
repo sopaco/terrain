@@ -28,6 +28,22 @@ pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Recorded baseline commit for `agent/context.md` (falls back to the repomix pack baseline).
+pub fn agent_context_baseline_head(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+) -> Option<String> {
+    context_baseline_head(paths, project_slug)
+}
+
+/// Body of the existing `agent/context.md`, without frontmatter.
+pub fn read_agent_context_body(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {
+    read_doc(paths.agent_context_main(project_slug))
+        .ok()
+        .map(|doc| doc.body)
+        .filter(|body| !body.trim().is_empty())
+}
+
 fn context_baseline_head(
     paths: &KnowledgePaths,
     project_slug: &str,
@@ -203,6 +219,77 @@ pub fn build_agent_context_prompt(
     ))
 }
 
+/// Prompt for an **incremental** refresh of `agent/context.md` from a Git change set.
+///
+/// Unlike [`build_agent_context_prompt`] this carries the existing document verbatim and asks
+/// for surgical edits, so an unrelated commit costs a short turn instead of a full rewrite.
+/// The reply is still the complete document — persistence is whole-file (see
+/// [`write_agent_context`]) — but the model is instructed to copy untouched sections as-is.
+pub fn build_agent_context_update_prompt(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+    plan: &crate::assets::IncrementalPlan,
+) -> Result<String> {
+    let existing = read_agent_context_body(paths, project_slug).ok_or_else(|| {
+        crate::error::CoreError::InvalidDoc(
+            "agent context is missing or empty — cannot update incrementally".into(),
+        )
+    })?;
+
+    let output_path = paths.agent_context_main(project_slug).display().to_string();
+    let meta_path = paths.agent_pack_meta(project_slug);
+    let pack_meta = crate::doc::read_json::<crate::schema::AgentPackMeta>(&meta_path).ok();
+    let directory_structure = pack_meta
+        .as_ref()
+        .map(|m| m.directory_structure.as_str())
+        .unwrap_or("(agent pack not generated)");
+
+    // Structured meta is cheap and authoritative; refresh it so renamed modules are visible.
+    let repo = Path::new(repo_path);
+    let meta_bundle = collect_project_meta(repo)?;
+    persist_meta_inputs(paths, project_slug, &meta_bundle)?;
+    let meta_body = format_meta_bundle_for_prompt(&meta_bundle);
+    let meta_section = if meta_body.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "## Developer meta (`terrain-meta.json`, current)\n\
+             Authoritative structured input for 模块地图 / 系统边界 / 代码映射索引.\n\n\
+             {meta_body}\n\n"
+        )
+    };
+
+    Ok(format!(
+        "Update the existing Agent-facing architecture context document for project \
+         \"{project_slug}\".\n\n\
+         Output file (write with absolute path): {output_path}\n\
+         Repository: {repo_path}\n\n\
+         {rules}\
+         {evidence}\
+         {meta_section}\
+         ## Current directory structure (from agent pack)\n{directory_structure}\n\n\
+         ## Existing document (baseline — edit this, do not rewrite it)\n\
+         ```markdown\n{existing}\n```\n\n\
+         ## Output contract\n\
+         - Return the **complete updated markdown document** — Terrain persists your reply as the \
+           whole file, so omitting an untouched section deletes it.\n\
+         - Keep the same seven `##` sections in the same order: 项目概览, 架构设计, 模块地图, \
+           核心流程, 技术选型, 系统边界, 代码映射索引.\n\
+         - Keep tables and bullets over prose; hard limit ≤14000 characters.\n\
+         - Use grep_agent_pack only on the changed paths above; never paste code.\n\
+         - Return ONLY the markdown document. No reasoning, no commentary, no diff markers.\n",
+        project_slug = project_slug,
+        output_path = output_path,
+        repo_path = repo_path,
+        rules = plan.update_rules_block(crate::assets::IncrementalOutputMode::WholeDocumentReply),
+        evidence = plan.evidence_block(),
+        meta_section = meta_section,
+        directory_structure = directory_structure,
+        existing = existing,
+    ))
+}
+
 /// Normalize `## 1. Title` → `## Title` so section tools match the skill contract.
 fn normalize_context_headings(body: &str) -> String {
     let re = regex::Regex::new(r"(?m)^##\s+\d+\.\s*").expect("context heading regex");
@@ -247,6 +334,38 @@ pub fn write_agent_context(
         repo_path: stored_repo_path(Path::new(repo_path)),
         output_file: "context.md".into(),
         generated_at: Utc::now().to_rfc3339(),
+        section_count: body.matches("\n## ").count(),
+        char_count: body.len(),
+        baseline_git_head: git_snapshot(repo_path).head,
+    };
+    crate::doc::write_json(paths.agent_context_meta(project_slug), &meta)?;
+    Ok(meta)
+}
+
+/// Re-stamp `context-meta.json` at the current HEAD without touching `context.md`.
+///
+/// Used when a commit advanced HEAD but changed nothing the document describes (typically a
+/// commit of regenerated `.terrain/` assets). Without this, such a commit leaves the context
+/// permanently "behind HEAD" and every refresh pays for a full regeneration that changes nothing.
+pub fn refresh_agent_context_baseline(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+) -> Result<AgentContextMeta> {
+    let body = read_agent_context_body(paths, project_slug).ok_or_else(|| {
+        crate::error::CoreError::InvalidDoc("agent context is missing — nothing to re-stamp".into())
+    })?;
+    let previous =
+        crate::doc::read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)).ok();
+
+    let meta = AgentContextMeta {
+        project: project_slug.to_string(),
+        repo_path: stored_repo_path(Path::new(repo_path)),
+        output_file: "context.md".into(),
+        // Keep the original generation time — the document itself was not regenerated.
+        generated_at: previous
+            .map(|m| m.generated_at)
+            .unwrap_or_else(|| Utc::now().to_rfc3339()),
         section_count: body.matches("\n## ").count(),
         char_count: body.len(),
         baseline_git_head: git_snapshot(repo_path).head,

@@ -590,6 +590,9 @@
             setStatus(String(e), "error");
         } finally {
             project.quickRefreshBusy = false;
+            // Quick refresh may emit litho-progress (incremental human-doc update) without a
+            // litho-done event, so clear the label here rather than leaving it stuck.
+            setProjectTask(slug, { lithoProgress: "" });
         }
     }
 
@@ -611,7 +614,8 @@
         project.agentContextBusy = true;
         setStatus(UI_MESSAGES.agentContextGenerating, "progress", slug);
         try {
-            await runAgentContextGeneration(project.selectedRepoPath, slug);
+            // Overview 「生成」/「重新生成」 are explicit rebuild requests — never incremental.
+            await runAgentContextGeneration(project.selectedRepoPath, slug, true);
             setStatus(UI_MESSAGES.agentContextReady, "success");
             await Promise.all([loadProjectOverview(slug), loadHumanDocs(slug)]);
         } catch (e) {

@@ -34,6 +34,7 @@ export const UI_MESSAGES = {
   selectProjectWithRepo: "请先选择已关联仓库路径的项目。",
   selectProjectWithRepoPath: "请先选择已关联仓库路径的项目。",
   openFolderFailed: (e: unknown) => `打开文件夹失败：${e}`,
+  openPathFailed: (e: unknown) => `打开本地路径失败：${e}`,
   agentContextGenerating: "正在生成 Agent 友好的知识资产…",
   agentContextReady: "Agent 友好的知识资产已就绪",
   loadingDocument: "正在加载文档…",

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { FolderOpen } from "@lucide/svelte";
   import type { UsagePeriodEntry } from "../types";
 
   interface Props {
@@ -7,6 +8,10 @@
     rows: UsagePeriodEntry[];
     rowLabel: (row: UsagePeriodEntry) => string;
     emptyLabel?: string;
+    loading?: boolean;
+    loadingLabel?: string;
+    rowOpenPath?: (row: UsagePeriodEntry) => string | null | undefined;
+    onRowOpen?: (path: string) => void | Promise<void>;
   }
 
   let {
@@ -15,6 +20,10 @@
     rows,
     rowLabel,
     emptyLabel = "暂无明细数据",
+    loading = false,
+    loadingLabel = "正在加载…",
+    rowOpenPath,
+    onRowOpen,
   }: Props = $props();
 
   function formatTokens(n: number): string {
@@ -30,11 +39,22 @@
     if (row.agents.length > 0) return row.agents.join(", ");
     return row.agent ?? "—";
   }
+
+  function openPath(path: string) {
+    void onRowOpen?.(path);
+  }
 </script>
 
 <section>
   <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-tr-ink-3">{title}</h3>
-  {#if rows.length === 0}
+  {#if loading && rows.length === 0}
+    <div class="flex items-center justify-center gap-2 rounded-xl border border-tr-border-strong py-8 text-sm text-tr-ink-3">
+      <span
+        class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
+      ></span>
+      {loadingLabel}
+    </div>
+  {:else if rows.length === 0}
     <p class="py-6 text-center text-sm text-tr-ink-3">{emptyLabel}</p>
   {:else}
     <div class="overflow-x-auto rounded-xl border border-tr-border-strong">
@@ -51,8 +71,35 @@
         </thead>
         <tbody>
           {#each rows as row}
+            {@const path = rowOpenPath?.(row) ?? null}
             <tr class="border-b border-tr-border last:border-0 hover:bg-tr-elevated">
-              <td class="px-3 py-2 text-tr-ink-2">{rowLabel(row)}</td>
+              <td class="px-3 py-2 text-tr-ink-2">
+                <div class="flex min-w-0 items-center gap-1.5">
+                  {#if path && onRowOpen}
+                    <button
+                      type="button"
+                      class="tr-press group contents"
+                      title="在文件管理器中查看本地记录"
+                      aria-label={`在文件管理器中打开 ${rowLabel(row)}`}
+                      onclick={() => openPath(path)}
+                    >
+                      <span
+                        class="min-w-0 flex-1 truncate text-left underline decoration-tr-border-strong decoration-dotted underline-offset-2 group-hover:text-tr-accent group-hover:decoration-tr-accent/60"
+                      >
+                        {rowLabel(row)}
+                      </span>
+                      <FolderOpen
+                        size={12}
+                        strokeWidth={2}
+                        class="shrink-0 text-tr-ink-3 group-hover:text-tr-accent"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  {:else}
+                    <span class="min-w-0 flex-1 truncate">{rowLabel(row)}</span>
+                  {/if}
+                </div>
+              </td>
               <td class="px-3 py-2 text-tr-ink-2">{agentsLabel(row)}</td>
               <td class="px-3 py-2 text-right text-tr-ink-2">{formatTokens(row.input_tokens)}</td>
               <td class="px-3 py-2 text-right text-tr-ink-2">{formatTokens(row.output_tokens)}</td>

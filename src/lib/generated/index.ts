@@ -29,6 +29,8 @@ export type { FreshnessDriftFactor } from "./FreshnessDriftFactor";
 export type { FreshnessSummary } from "./FreshnessSummary";
 export type { HumanDocEntry } from "./HumanDocEntry";
 export type { IpcSourceSlice } from "./IpcSourceSlice";
+export type { KnowledgeRefreshMode } from "./KnowledgeRefreshMode";
+export type { KnowledgeSettings } from "./KnowledgeSettings";
 export type { LithoGenerationJob } from "./LithoGenerationJob";
 export type { LithoGenerationResult } from "./LithoGenerationResult";
 export type { LithoPlan } from "./LithoPlan";

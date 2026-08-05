@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use terrain_core::{
     agent_context_ready, count_human_docs, litho_human_complete_with_research, pack_agent_assets,
-    KnowledgePaths, ProgressEvent, ProjectInitResult, ProjectScanner, ScanReport,
+    KnowledgePaths, KnowledgeSettings, ProgressEvent, ProjectInitResult, ProjectScanner, ScanReport,
 };
 
 use crate::acp::{acp_available, execution_pure_acp, execution_uses_native_llm};
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::ChatEngine;
+use crate::litho::LithoRunMode;
 use crate::model::{llm_status, ModelConfig};
 use crate::settings::AcpSettings;
 
@@ -16,13 +17,17 @@ async fn run_agent_context_if_needed(
     paths: &KnowledgePaths,
     model_config: &ModelConfig,
     acp: &AcpSettings,
+    knowledge: &KnowledgeSettings,
     project_slug: &str,
     repo_path: &str,
     force_refresh: bool,
+    force_full: bool,
     on_progress: &impl Fn(ProgressEvent),
     notes: &mut Vec<String>,
 ) -> anyhow::Result<bool> {
-    let needs_context = !agent_context_ready(paths, project_slug) || force_refresh;
+    let context_ready = agent_context_ready(paths, project_slug);
+    // `force_refresh` here means Litho rewrote the human docs the context is derived from.
+    let needs_context = !context_ready || force_refresh;
     if !needs_context {
         return Ok(false);
     }
@@ -41,7 +46,7 @@ async fn run_agent_context_if_needed(
 
     on_progress(ProgressEvent::project_init(
         "agent_context",
-        if force_refresh && agent_context_ready(paths, project_slug) {
+        if force_refresh && context_ready {
             "正在根据 Litho 文档刷新 Agent 友好的知识资产…"
         } else {
             "正在生成 Agent 友好的知识资产…"
@@ -55,15 +60,28 @@ async fn run_agent_context_if_needed(
     } else {
         None
     };
-    run_agent_context_generation(paths, engine, acp, project_slug, repo_path).await?;
+    // A fresh Litho rebuild replaces the narrative the context summarizes, so a diff-driven
+    // update would have nothing useful to anchor on — rebuild the context too.
+    run_agent_context_generation(
+        paths,
+        engine,
+        acp,
+        project_slug,
+        repo_path,
+        knowledge,
+        force_full,
+    )
+    .await?;
     Ok(true)
 }
 
 /// Scan the repo, then generate missing human docs and agent context.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_project_initialization(
     paths: &KnowledgePaths,
     model_config: &ModelConfig,
     acp: &AcpSettings,
+    knowledge: &KnowledgeSettings,
     repo_path: &str,
     project_slug: Option<&str>,
     on_progress: impl Fn(ProgressEvent),
@@ -107,7 +125,8 @@ pub async fn run_project_initialization(
                 &project_slug,
                 repo_path,
                 acp,
-                false,
+                knowledge,
+                LithoRunMode::Auto,
                 &on_litho_progress,
             )
             .await?;
@@ -123,8 +142,10 @@ pub async fn run_project_initialization(
         paths,
         model_config,
         acp,
+        knowledge,
         &project_slug,
         repo_path,
+        litho_ran,
         litho_ran,
         &on_progress,
         &mut notes,

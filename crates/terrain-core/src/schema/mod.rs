@@ -12,7 +12,8 @@ mod sdd;
 pub use asset::{AgentPackMeta, AssetGenerator, AssetTrack, LithoPlan, TokenHeavyFile};
 pub use citation::{CitationKind, HumanDocEntry, SourceCitation, SourceSlice};
 pub use doc::{
-    DocFrontmatter, DocType, EventMeta, InterfaceMeta, ProjectMeta, RouteMeta, SyncMeta,
+    DocFrontmatter, DocType, EventMeta, HumanDocsMeta, InterfaceMeta, ProjectMeta, RouteMeta,
+    SyncMeta,
 };
 pub use freshness::{
     AssetFreshness, FreshnessAssets, FreshnessBaseline, FreshnessDrift, FreshnessDriftFactor,

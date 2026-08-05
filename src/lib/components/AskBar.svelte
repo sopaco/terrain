@@ -55,7 +55,7 @@
   }
 </script>
 
-<div class="border-t border-tr-border-strong bg-tr-page/95 px-4 py-4 backdrop-blur-sm">
+<div class="border-t border-tr-border-strong bg-tr-page/95 px-4 py-3 backdrop-blur-sm">
   <div class="mx-auto max-w-3xl">
     <div
       class={`flex items-stretch gap-2 rounded-2xl border bg-tr-surface p-1.5 shadow-lg transition-[border-color,box-shadow] duration-200 ${
@@ -65,7 +65,7 @@
       }`}
     >
       <textarea
-        class="min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed outline-none placeholder:text-tr-ink-3 disabled:cursor-not-allowed"
+        class="min-h-8 flex-1 resize-none bg-transparent px-3 py-1 text-sm leading-relaxed outline-none placeholder:text-tr-ink-3 disabled:cursor-not-allowed"
         rows="1"
         {placeholder}
         bind:value={input}
@@ -76,7 +76,7 @@
       ></textarea>
       <button
         type="button"
-        class="tr-press my-0.5 shrink-0 self-stretch rounded-xl bg-tr-accent px-5 text-sm font-medium text-white transition-colors hover:bg-tr-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+        class="tr-press my-0.5 shrink-0 self-stretch rounded-xl bg-tr-accent px-4 text-sm font-medium text-white transition-colors hover:bg-tr-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
         {disabled}
         onclick={onAskButtonClick}
       >
@@ -84,11 +84,7 @@
       </button>
     </div>
     {#if disabled && disabledReason}
-      <p class="mt-2 text-center text-xs text-tr-ink-3">{disabledReason}</p>
-    {:else}
-      <p class="mt-2 text-center text-[11px] text-tr-ink-3">
-        Enter 发送 · Shift+Enter 换行 · 中文输入法选词后再按 Enter
-      </p>
+      <p class="mt-1.5 text-center text-xs text-tr-ink-3">{disabledReason}</p>
     {/if}
   </div>
 </div>

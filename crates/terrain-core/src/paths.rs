@@ -110,6 +110,11 @@ impl KnowledgePaths {
         self.project_dir(project_slug).join(".meta/freshness.json")
     }
 
+    /// Sidecar for the Litho `human/` doc set — kept out of `human/` so it is not listed as a doc.
+    pub fn human_docs_meta_path(&self, project_slug: &str) -> PathBuf {
+        self.project_dir(project_slug).join(".meta/human.json")
+    }
+
     /// Human-editable project remark (versioned with the repo).
     pub fn project_note_path(&self, project_slug: &str) -> PathBuf {
         self.project_dir(project_slug).join("project-note.md")

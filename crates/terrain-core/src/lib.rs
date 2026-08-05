@@ -9,6 +9,7 @@ pub mod ingest;
 pub mod integrations;
 pub mod ipc;
 pub mod model_text;
+pub mod open_path;
 pub mod path_portable;
 pub mod platform;
 pub mod preset_skills;
@@ -34,17 +35,23 @@ pub mod usage;
 mod ts_ipc;
 
 pub use assets::{
-    agent_context_fresh, agent_context_ready, agent_context_synced_with_head,
-    build_agent_context_prompt, build_context_overview,
+    agent_context_baseline_head, agent_context_fresh, agent_context_ready,
+    agent_context_synced_with_head, build_agent_context_prompt,
+    build_agent_context_update_prompt, build_context_overview, build_litho_update_prompt,
     build_generation_plan, collect_knowledge_dir_inputs, collect_project_meta,
     count_knowledge_markdown_files, count_markdown_in_dir, default_agent_arch_skill_dir,
     default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
     extract_context_section, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
+    human_docs_baseline_head, list_human_doc_names,
     litho_human_complete, litho_human_complete_with_research, litho_research_ready, meta_inputs_ready,
-    meta_inputs_status, persist_meta_inputs, read_agent_context_status, read_agent_pack_file,
-    read_pack_text_cached, resolve_litho_skill_dir, resolve_sdd_skill_dir, sdd_phase_output_path,
-    split_context_sections, write_agent_context, AgentPackFileContent, AssetGenerationPlan,
-    ContextOverview, ContextSection, GrepMatch, META_FILENAME, AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS,
+    meta_inputs_status, persist_meta_inputs, plan_incremental_update, read_agent_context_body,
+    read_agent_context_status, read_agent_pack_file,
+    read_pack_text_cached, refresh_agent_context_baseline, reject_incremental_document,
+    resolve_litho_skill_dir, resolve_sdd_skill_dir, sdd_phase_output_path,
+    split_context_sections, write_agent_context, write_human_docs_meta, AgentPackFileContent,
+    AssetGenerationPlan, ContextOverview, ContextSection, GrepMatch, IncrementalOptions,
+    IncrementalOutputMode,
+    IncrementalPlan, KnowledgeUpdateMode, META_FILENAME, AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS,
     AGENT_CONTEXT_SAVE_MAX_CHARS, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS, LITHO_CORE_RESEARCH_FILES,
     LITHO_REQUIRED_HUMAN_FILES,
 };
@@ -61,8 +68,8 @@ pub use doc::{read_json, KnowledgeDoc, parse_markdown, parse_markdown_at, read_d
 pub use error::{ipc_string, CoreError, Result, TerrainError, TerrainErrorBody};
 pub use ipc::{
     AgentContextGenerationResult, AppBootstrap, AskStreamEvent, ChatPhase, ChatReply,
-    ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus, LithoGenerationJob,
-    LithoGenerationResult, LlmStatus, ProjectInitResult,
+    ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus, KnowledgeRefreshMode,
+    LithoGenerationJob, LithoGenerationResult, LlmStatus, ProjectInitResult,
 };
 pub use integrations::{
     apply_env_integration, bundled_terrain_cli, bundled_tools, deploy_agent_toolchain,
@@ -90,8 +97,10 @@ pub use sessions::{
     set_active_sdd_session,
 };
 pub use freshness::{
-    codegraph_drift, compute_freshness, format_freshness_trust_block, git_snapshot,
+    codegraph_drift, compute_freshness, format_freshness_trust_block, git_change_set,
+    git_commit_exists, git_snapshot,
     read_freshness_ledger, resolve_freshness_summary, write_freshness_ledger, CodegraphDriftReport,
+    GitChangeSet, GitChangedFile,
     FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD,
 };
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
@@ -117,11 +126,14 @@ pub use registry::{
     knowledge_root_for_repo, list_all_registry_projects, register_project, unregister_project,
     ProjectRegistryEntry, ProjectRegistryStatus,
 };
+pub use open_path::open_path_in_file_manager;
 pub use repo::validate_repo_path;
 pub use settings::{
     default_profile_for, load_model_settings, normalize_model_settings, profile_for_provider,
-    save_model_settings, settings_path, AcpSettings, AgentExecution, AskExecution, ModelSettings,
-    ProviderProfile, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY, DEFAULT_LMSTUDIO_API_KEY,
+    save_model_settings, settings_path, AcpSettings, AgentExecution, AskExecution,
+    KnowledgeSettings, ModelSettings,
+    ProviderProfile, DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
+    DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY, DEFAULT_LMSTUDIO_API_KEY,
     DEFAULT_LMSTUDIO_BASE_URL, DEFAULT_LMSTUDIO_MODEL, DEFAULT_OLLAMA_HOST, DEFAULT_OLLAMA_MODEL,
     DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,
 };
@@ -129,7 +141,7 @@ pub use schema::{
     AgentContextMeta, AgentContextStatus, AgentEnvStatus, AgentPackMeta, AssetGenerator, AssetTrack,
     AssetTrackHealth, CitationKind, DocCounts, DocFrontmatter, DocType, EventMeta, FreshnessDriftFactor,
     FreshnessSummary,
-    HumanDocEntry,
+    HumanDocEntry, HumanDocsMeta,
     InterfaceMeta, LithoPlan, LithoStatus, ProjectMeta, ProjectOverview, QuickRefreshResult,
     RouteMeta, SddPhase,
     SddPhaseInfo, SddPhaseResult, SddPlan, AskSessionInfo, SddSessionInfo, SddStatus, SourceCitation, SourceSlice, SyncMeta,

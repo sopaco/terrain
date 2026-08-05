@@ -108,3 +108,17 @@ pub struct SyncMeta {
     pub synced_at: String,
     pub collectors: Vec<String>,
 }
+
+/// Sidecar for the Litho `human/` doc set — the baseline an incremental update diffs against.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HumanDocsMeta {
+    pub project: String,
+    pub repo_path: String,
+    pub generated_at: String,
+    pub doc_count: usize,
+    /// Git HEAD when the doc set was last written; `None` for non-Git repositories.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_git_head: Option<String>,
+    /// `full` for a from-scratch pipeline run, `incremental` for a diff-driven update.
+    pub last_run_mode: String,
+}

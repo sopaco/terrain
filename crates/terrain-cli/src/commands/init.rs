@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use terrain_agent::{
-    resolve_acp_settings, resolve_model_config, run_project_initialization, run_quick_refresh,
+    resolve_acp_settings, resolve_knowledge_settings, resolve_model_config,
+    run_project_initialization, run_quick_refresh,
 };
 use terrain_core::KnowledgePaths;
 
@@ -24,6 +25,7 @@ pub async fn run(
         &paths,
         &model_config,
         &acp,
+        &resolve_knowledge_settings(),
         &repo,
         Some(&slug),
         |p| eprintln!("[{}] {}", p.stage, p.message),
@@ -45,6 +47,15 @@ pub async fn refresh(
     let model_config = resolve_model_config();
     let acp = resolve_acp_settings();
 
-    let result = run_quick_refresh(&paths, &model_config, &acp, &repo, &slug).await?;
+    let result = run_quick_refresh(
+        &paths,
+        &model_config,
+        &acp,
+        &resolve_knowledge_settings(),
+        &repo,
+        &slug,
+        |p| eprintln!("[litho:{}] {}", p.stage, p.message),
+    )
+    .await?;
     print_json(&result)
 }

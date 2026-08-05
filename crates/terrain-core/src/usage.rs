@@ -102,6 +102,8 @@ pub struct UsagePeriodEntry {
     pub total_cost_usd: f64,
     pub models_used: Vec<String>,
     pub model_breakdowns: Vec<UsageModelBreakdown>,
+    /// Resolved local log file or folder for session rows (when available).
+    pub source_path: Option<String>,
 }
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
@@ -265,7 +267,7 @@ fn build_snapshot(
         session_report
             .session
             .into_iter()
-            .map(map_entry)
+            .map(map_session_entry)
             .collect()
     } else {
         Vec::new()
@@ -590,7 +592,109 @@ fn map_entry(entry: CcusageEntry) -> UsagePeriodEntry {
                 cost_usd: m.cost,
             })
             .collect(),
+        source_path: None,
     }
+}
+
+fn map_session_entry(entry: CcusageEntry) -> UsagePeriodEntry {
+    let mut row = map_entry(entry);
+    row.source_path = resolve_usage_session_path(row.agent.as_deref(), &row.period)
+        .map(|p| p.display().to_string());
+    row
+}
+
+/// Resolve a usage session identifier to its local log file or folder.
+pub fn resolve_usage_session_path(agent: Option<&str>, period: &str) -> Option<PathBuf> {
+    if period.is_empty() {
+        return None;
+    }
+
+    match agent.unwrap_or("") {
+        "claude" => find_session_file(&claude_data_dirs(), period, "jsonl"),
+        "codex" => find_codex_session(&codex_data_dirs(), period),
+        "opencode" => find_opencode_session(&opencode_data_dirs(), period),
+        _ => find_session_file(&claude_data_dirs(), period, "jsonl")
+            .or_else(|| find_codex_session(&codex_data_dirs(), period))
+            .or_else(|| find_opencode_session(&opencode_data_dirs(), period)),
+    }
+}
+
+fn find_session_file(dirs: &[PathBuf], session_id: &str, ext: &str) -> Option<PathBuf> {
+    let filename = format!("{session_id}.{ext}");
+    for dir in dirs {
+        if let Some(path) = find_file_by_name(dir, &filename, 5) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn find_codex_session(dirs: &[PathBuf], period: &str) -> Option<PathBuf> {
+    for dir in dirs {
+        let candidate = dir.join(period);
+        let with_jsonl = if candidate.extension().is_none() {
+            candidate.with_extension("jsonl")
+        } else {
+            candidate.clone()
+        };
+        if with_jsonl.is_file() {
+            return Some(with_jsonl);
+        }
+        if candidate.is_dir() {
+            return Some(candidate);
+        }
+        if let Some(path) = find_file_by_name(dir, &format!("{period}.jsonl"), 6) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn find_opencode_session(dirs: &[PathBuf], period: &str) -> Option<PathBuf> {
+    for dir in dirs {
+        if let Some(path) = find_file_by_name(dir, &format!("{period}.json"), 6) {
+            return Some(path);
+        }
+        if let Some(path) = find_file_by_name(dir, period, 6) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn find_file_by_name(dir: &Path, filename: &str, max_depth: u32) -> Option<PathBuf> {
+    find_file_by_name_inner(dir, filename, max_depth, 0)
+}
+
+fn find_file_by_name_inner(
+    dir: &Path,
+    filename: &str,
+    max_depth: u32,
+    depth: u32,
+) -> Option<PathBuf> {
+    if depth > max_depth {
+        return None;
+    }
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return None;
+    };
+    for entry in read.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == filename)
+            {
+                return Some(path);
+            }
+        } else if path.is_dir() && depth < max_depth {
+            if let Some(found) = find_file_by_name_inner(&path, filename, max_depth, depth + 1) {
+                return Some(found);
+            }
+        }
+    }
+    None
 }
 
 fn sum_entries<'a>(entries: impl Iterator<Item = &'a UsagePeriodEntry>) -> UsageTotals {
@@ -707,6 +811,7 @@ struct CcusageSessionReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::user_home;
 
     #[test]
     fn probe_sources_returns_known_agents() {
@@ -720,5 +825,40 @@ mod tests {
         let s = since_days_ago(7);
         assert_eq!(s.len(), 8);
         assert!(s.chars().all(|c| c.is_ascii_digit()));
+    }
+
+    #[test]
+    fn resolve_claude_session_path_finds_jsonl() {
+        let Some(home) = user_home() else {
+            return;
+        };
+        let projects = home.join(".claude/projects");
+        if !projects.is_dir() {
+            return;
+        }
+        let Ok(read) = std::fs::read_dir(&projects) else {
+            return;
+        };
+        for project in read.flatten() {
+            let project_dir = project.path();
+            if !project_dir.is_dir() {
+                continue;
+            }
+            let Ok(files) = std::fs::read_dir(&project_dir) else {
+                continue;
+            };
+            for file in files.flatten() {
+                let path = file.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
+                    continue;
+                }
+                let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) else {
+                    continue;
+                };
+                let resolved = resolve_usage_session_path(Some("claude"), session_id);
+                assert_eq!(resolved.as_deref(), Some(path.as_path()));
+                return;
+            }
+        }
     }
 }

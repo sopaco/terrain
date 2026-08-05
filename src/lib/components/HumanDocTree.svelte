@@ -249,10 +249,10 @@
 {#snippet docButton(doc: HumanDocEntry, depth: number)}
   <button
     type="button"
-    class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-xs leading-snug transition-colors hover:bg-tr-elevated ${
+    class={`mb-0.5 flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-xs leading-snug transition-colors ${
       activePath === doc.path
-        ? "bg-tr-accent-soft-strong font-medium text-tr-on-accent"
-        : "text-tr-ink-2"
+        ? "bg-tr-accent-soft-strong font-medium text-tr-on-accent hover:bg-tr-accent-soft-strong"
+        : "text-tr-ink-2 hover:bg-tr-elevated"
     }`}
     style={`padding-left: ${rowIndent(depth)}`}
     onclick={() => onselect(doc)}

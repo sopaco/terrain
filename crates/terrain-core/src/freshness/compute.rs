@@ -90,14 +90,20 @@ pub fn compute_freshness(
     };
     let ctx_score = context_score_from_raw(ctx_score_raw, pack_score);
 
-    let human_days = sync_meta
+    // Litho writes its own sidecar; before that existed the pack baseline was the only proxy.
+    let human_meta =
+        read_json::<crate::schema::HumanDocsMeta>(paths.human_docs_meta_path(project_slug)).ok();
+    let human_baseline = human_meta
         .as_ref()
-        .map(|m| days_since_rfc3339(&m.synced_at))
+        .and_then(|m| m.baseline_git_head.clone())
+        .or_else(|| pack_baseline.clone())
+        .or_else(|| git.head.clone());
+    let human_days = human_meta
+        .as_ref()
+        .map(|m| days_since_rfc3339(&m.generated_at))
+        .or_else(|| sync_meta.as_ref().map(|m| days_since_rfc3339(&m.synced_at)))
         .unwrap_or(pack_days);
-    let human_drift = git_drift_since(
-        &repo_path,
-        pack_baseline.as_deref().or(git.head.as_deref()),
-    );
+    let human_drift = git_drift_since(&repo_path, human_baseline.as_deref());
     let human_score = score_asset(
         human_drift.commits_since_baseline,
         human_drift.changed_files.len() as u32,
@@ -212,8 +218,13 @@ pub fn compute_freshness(
             },
             human_docs: AssetFreshness {
                 path: "human/".into(),
-                synced_at: sync_meta.as_ref().map(|m| m.synced_at.clone()),
-                baseline_git_head: None,
+                synced_at: human_meta
+                    .as_ref()
+                    .map(|m| m.generated_at.clone())
+                    .or_else(|| sync_meta.as_ref().map(|m| m.synced_at.clone())),
+                baseline_git_head: human_meta
+                    .as_ref()
+                    .and_then(|m| m.baseline_git_head.clone()),
                 stale: human_score < FRESH_THRESHOLD,
                 stale_reason: stale_reason_for(
                     human_score,

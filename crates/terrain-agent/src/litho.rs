@@ -2,14 +2,37 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use terrain_core::{
-    build_litho_composition_prompt, build_litho_generation_prompt, count_markdown_in_dir,
-    has_litho_research_artifacts, litho_human_complete_with_research, litho_research_ready,
-    plan_litho_generation, KnowledgePaths, LithoGenerationJob, LithoGenerationResult, LithoPlan,
-    LithoProgress, ProgressEvent,
+    build_litho_composition_prompt, build_litho_generation_prompt, build_litho_update_prompt,
+    count_markdown_in_dir, has_litho_research_artifacts, human_docs_baseline_head,
+    list_human_doc_names, litho_human_complete_with_research, litho_research_ready,
+    plan_incremental_update, plan_litho_generation, write_human_docs_meta, IncrementalOptions,
+    KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode,
+    LithoGenerationJob, LithoGenerationResult, LithoPlan, LithoProgress, ProgressEvent,
 };
 
 use crate::acp::{acp_spawn_command, build_acp_config};
 use crate::settings::AcpSettings;
+
+/// Whether a Litho run may reuse the existing doc set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LithoRunMode {
+    /// Skip when complete and in sync; update incrementally when only a few files drifted.
+    Auto,
+    /// Wipe `human/` and the research workspace, then run the full four-phase pipeline.
+    /// This is what the UI's 「重新生成」 requests.
+    FullRebuild,
+}
+
+impl LithoRunMode {
+    /// Legacy `force_refresh` boolean from IPC callers.
+    pub fn from_force_refresh(force: bool) -> Self {
+        if force {
+            Self::FullRebuild
+        } else {
+            Self::Auto
+        }
+    }
+}
 
 const POLL_INTERVAL_SECS: u64 = 3;
 const POLL_INTERVAL_STABLE_SECS: u64 = 6;
@@ -69,6 +92,8 @@ fn build_result(
     response_excerpt: String,
     human_dir: &Path,
     litho_workspace: &Path,
+    refresh_mode: KnowledgeRefreshMode,
+    refresh_reason: Option<&str>,
 ) -> LithoGenerationResult {
     let human_doc_count = count_markdown_in_dir(human_dir);
     LithoGenerationResult {
@@ -76,6 +101,53 @@ fn build_result(
         response_excerpt,
         human_doc_count,
         human_docs_complete: human_complete(human_dir, litho_workspace),
+        refresh_mode,
+        refresh_reason: refresh_reason.map(str::to_string),
+    }
+}
+
+/// Await an ACP turn under the wall timeout, reporting progress on a fixed cadence.
+///
+/// Unlike [`prompt_agent_with_doc_poll`] this has no early-completion heuristic: an incremental
+/// update edits files in place, so doc counts never grow and "the full set is present" is true
+/// from the first tick — that loop would abort the session about a minute in, mid-edit.
+#[cfg(feature = "opencode")]
+async fn prompt_agent_with_heartbeat(
+    config: adk_acp::AcpAgentConfig,
+    prompt: String,
+    stage: &str,
+    waiting_message: String,
+    mut on_progress: impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    use adk_acp::prompt_agent;
+
+    let stage_label = stage.to_string();
+    let mut agent_handle = tokio::spawn(async move { prompt_agent(&config, &prompt).await });
+    let wall_timeout = litho_wall_timeout();
+    let started = Instant::now();
+
+    loop {
+        if started.elapsed() >= wall_timeout {
+            agent_handle.abort();
+            anyhow::bail!(
+                "Litho incremental update exceeded wall timeout ({}s)",
+                wall_timeout.as_secs()
+            );
+        }
+
+        tokio::select! {
+            result = &mut agent_handle => {
+                let inner = result.map_err(|e| anyhow::anyhow!("ACP litho task failed: {e}"))?;
+                return inner.map_err(|e| anyhow::anyhow!("ACP litho agent failed: {e}"));
+            }
+            _ = tokio::time::sleep(Duration::from_secs(POLL_INTERVAL_STABLE_SECS)) => {
+                let secs = started.elapsed().as_secs();
+                on_progress(ProgressEvent::litho(
+                    stage_label.clone(),
+                    format!("{waiting_message}（已用 {secs}s）"),
+                ));
+            }
+        }
     }
 }
 
@@ -250,13 +322,18 @@ async fn run_composition_with_retries(
 }
 
 /// Run Litho document generation via OpenCode ACP.
+///
+/// In [`LithoRunMode::Auto`] a complete doc set is either left alone (nothing drifted) or
+/// updated in place from the Git diff — the four-phase research pipeline only runs when there
+/// is no usable doc set to build on. [`LithoRunMode::FullRebuild`] always wipes and rebuilds.
 #[cfg(feature = "opencode")]
 pub async fn run_litho_generation(
     paths: &KnowledgePaths,
     project_slug: &str,
     repo_path: &str,
     acp_settings: &AcpSettings,
-    force_refresh: bool,
+    knowledge: &KnowledgeSettings,
+    mode: LithoRunMode,
     mut on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<LithoGenerationResult> {
     let job = prepare_litho_generation(paths, project_slug, repo_path, acp_settings);
@@ -267,16 +344,22 @@ pub async fn run_litho_generation(
     let human_dir = paths.human_docs_dir(project_slug);
     let litho_workspace = PathBuf::from(&job.plan.litho_workspace_dir);
 
-    if force_refresh {
+    if mode == LithoRunMode::FullRebuild {
         on_progress(ProgressEvent::litho("starting", "正在清理旧的人类友好知识库以便重新生成…"));
         clear_litho_outputs(&human_dir, &litho_workspace)?;
     } else if human_complete(&human_dir, &litho_workspace) {
-        let human_doc_count = count_markdown_in_dir(&human_dir);
-        on_progress(ProgressEvent::litho(
-            "done",
-            format!("人类友好的知识库已完整（{human_doc_count} 篇）"),
-        ));
-        return Ok(build_result(job, String::new(), &human_dir, &litho_workspace));
+        return run_litho_incremental_or_skip(
+            paths,
+            project_slug,
+            repo_path,
+            acp_settings,
+            knowledge,
+            job,
+            &human_dir,
+            &litho_workspace,
+            &mut on_progress,
+        )
+        .await;
     }
 
     on_progress(ProgressEvent::litho(
@@ -352,12 +435,141 @@ pub async fn run_litho_generation(
         );
     }
 
+    let _ = write_human_docs_meta(paths, project_slug, repo_path, "full");
+
     on_progress(ProgressEvent::litho(
         "done",
         format!("Generation finished — {human_doc_count} human doc(s) on disk"),
     ));
 
-    Ok(build_result(job, response_excerpt, &human_dir, &litho_workspace))
+    Ok(build_result(
+        job,
+        response_excerpt,
+        &human_dir,
+        &litho_workspace,
+        KnowledgeRefreshMode::Full,
+        None,
+    ))
+}
+
+/// Complete doc set on disk: update it from the Git diff, or leave it alone.
+#[cfg(feature = "opencode")]
+#[allow(clippy::too_many_arguments)]
+async fn run_litho_incremental_or_skip(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+    acp_settings: &AcpSettings,
+    knowledge: &KnowledgeSettings,
+    job: LithoGenerationJob,
+    human_dir: &Path,
+    litho_workspace: &Path,
+    on_progress: &mut impl FnMut(LithoProgress),
+) -> anyhow::Result<LithoGenerationResult> {
+    let human_doc_count = count_markdown_in_dir(human_dir);
+
+    // Docs written before the sidecar existed have no baseline; scan's `sync.json` cannot
+    // stand in for one (it records no commit), so those fall back to "leave alone".
+    let baseline = human_docs_baseline_head(paths, project_slug);
+    let mode = plan_incremental_update(
+        repo_path,
+        baseline.as_deref(),
+        true,
+        IncrementalOptions::from(knowledge),
+    );
+
+    let plan = match mode {
+        KnowledgeUpdateMode::Incremental(plan) => plan,
+        KnowledgeUpdateMode::UpToDate => {
+            // Only `.terrain/` moved; re-stamp so the next run starts from this commit.
+            let _ = write_human_docs_meta(paths, project_slug, repo_path, "skipped");
+            on_progress(ProgressEvent::litho(
+                "done",
+                format!("人类友好的知识库已与当前提交同步（{human_doc_count} 篇），已跳过"),
+            ));
+            return Ok(build_result(
+                job,
+                String::new(),
+                human_dir,
+                litho_workspace,
+                KnowledgeRefreshMode::Skipped,
+                Some("up_to_date"),
+            ));
+        }
+        KnowledgeUpdateMode::Full { reason } => {
+            tracing::info!(
+                project = project_slug,
+                reason,
+                "litho: complete doc set kept as-is (incremental update not applicable)"
+            );
+            if baseline.is_none() {
+                // Give future runs something to diff against without regenerating now.
+                let _ = write_human_docs_meta(paths, project_slug, repo_path, "baseline_only");
+            }
+            on_progress(ProgressEvent::litho(
+                "done",
+                if reason == "too_many_changed_files" {
+                    format!(
+                        "变更范围过大，已跳过增量更新（{human_doc_count} 篇），请使用「重新生成」"
+                    )
+                } else {
+                    format!("人类友好的知识库已完整（{human_doc_count} 篇）")
+                },
+            ));
+            return Ok(build_result(
+                job,
+                String::new(),
+                human_dir,
+                litho_workspace,
+                KnowledgeRefreshMode::Skipped,
+                Some(reason),
+            ));
+        }
+    };
+
+    let touched = plan.touched_file_count();
+    on_progress(ProgressEvent::litho(
+        "updating",
+        format!(
+            "正在按 git diff 增量更新人类友好的知识库（{touched} 个文件变更，基线 {}）…",
+            plan.short_baseline()
+        ),
+    ));
+    tracing::info!(
+        project = project_slug,
+        baseline = plan.short_baseline(),
+        touched,
+        "litho: incremental doc update from git diff"
+    );
+
+    let existing_docs = list_human_doc_names(human_dir);
+    let prompt = build_litho_update_prompt(&job.plan, &plan, &existing_docs);
+
+    let response = prompt_agent_with_heartbeat(
+        litho_acp_config(acp_settings, repo_path, &job.plan),
+        prompt,
+        "updating",
+        "正在按 git diff 增量更新人类友好的知识库…".into(),
+        &mut *on_progress,
+    )
+    .await?;
+
+    let _ = write_human_docs_meta(paths, project_slug, repo_path, "incremental");
+
+    let human_doc_count = count_markdown_in_dir(human_dir);
+    on_progress(ProgressEvent::litho(
+        "done",
+        format!("增量更新完成（{human_doc_count} 篇）"),
+    ));
+
+    Ok(build_result(
+        job,
+        response.chars().take(500).collect(),
+        human_dir,
+        litho_workspace,
+        KnowledgeRefreshMode::Incremental,
+        None,
+    ))
 }
 
 #[cfg(feature = "opencode")]
@@ -387,7 +599,8 @@ pub async fn run_litho_generation(
     _project_slug: &str,
     _repo_path: &str,
     _acp_settings: &AcpSettings,
-    _force_refresh: bool,
+    _knowledge: &KnowledgeSettings,
+    _mode: LithoRunMode,
     _on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<LithoGenerationResult> {
     anyhow::bail!("ACP support not enabled (rebuild with opencode feature)")
