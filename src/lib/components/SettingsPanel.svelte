@@ -1,9 +1,17 @@
 <script lang="ts">
   import { checkAcp, checkLlm, getModelSettings, saveModelSettings } from "../api";
   import { isPureAcp, normalizeAgentExecution } from "../agentExecution";
-  import type { AgentExecution, AcpSettings, LlmStatus, ModelSettings, ProviderProfile } from "../types";
+  import type {
+    AgentExecution,
+    AcpSettings,
+    KnowledgeSettings,
+    LlmStatus,
+    ModelSettings,
+    ProviderProfile,
+  } from "../types";
   import ModalShell from "./ModalShell.svelte";
   import {
+    DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
     DEFAULT_LMSTUDIO_BASE_URL,
     DEFAULT_LMSTUDIO_MODEL,
     DEFAULT_OLLAMA_HOST,
@@ -39,6 +47,9 @@
   let acpArgs = $state("acp");
   let acpCommand = $state("");
   let agentExecution = $state<AgentExecution>("acp");
+  let incrementalRefresh = $state(true);
+  let incrementalMaxChangedFiles = $state(DEFAULT_INCREMENTAL_MAX_CHANGED_FILES);
+  let incrementalHumanDocs = $state(false);
   let acpTestOk = $state<boolean | null>(null);
   let llmTestOk = $state<boolean | null>(null);
   let llmTestDetail = $state<string | null>(null);
@@ -137,6 +148,12 @@
     acpArgs = acp.args ?? "acp";
     acpCommand = acp.command ?? "";
     agentExecution = normalizeAgentExecution(acp.agent_execution);
+    const knowledge = s.knowledge;
+    incrementalRefresh = knowledge?.incremental_refresh ?? true;
+    incrementalMaxChangedFiles =
+      knowledge?.incremental_max_changed_files ||
+      DEFAULT_INCREMENTAL_MAX_CHANGED_FILES;
+    incrementalHumanDocs = knowledge?.incremental_human_docs ?? false;
   }
 
   $effect(() => {
@@ -164,6 +181,15 @@
       agent_execution: agentExecution,
       auto_approve: true,
     };
+    const knowledge: KnowledgeSettings = {
+      incremental_refresh: incrementalRefresh,
+      incremental_max_changed_files: Math.max(
+        1,
+        Math.round(incrementalMaxChangedFiles) ||
+          DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
+      ),
+      incremental_human_docs: incrementalHumanDocs,
+    };
     return {
       provider,
       model: active.model,
@@ -172,6 +198,7 @@
       ollama_host: active.ollama_host,
       profiles,
       acp,
+      knowledge,
     };
   }
 
@@ -231,7 +258,7 @@
   <header class="flex items-center justify-between border-b border-tr-border-strong px-5 py-4">
       <div>
         <h2 class="text-base font-semibold">设置</h2>
-        <p class="text-xs text-tr-ink-3">ACP 代理与执行模式（保存至 ~/.terrain/settings.json）</p>
+        <p class="text-xs text-tr-ink-3">ACP 代理、执行模式与知识资产保鲜（保存至 ~/.terrain/settings.json）</p>
       </div>
       <button
         type="button"
@@ -414,6 +441,73 @@
           {/if}
         </div>
       {/if}
+
+      <div class="space-y-3 rounded-xl border border-tr-border-strong bg-tr-elevated p-4">
+        <div>
+          <h3 class="text-sm font-medium text-tr-ink-2">知识资产保鲜</h3>
+          <p class="mt-0.5 text-[11px] leading-relaxed text-tr-ink-3">
+            仅对「快速保鲜」与自动保鲜生效。概览页的「重新生成」始终从零重新生成。
+          </p>
+        </div>
+
+        <label class="flex items-start gap-2.5">
+          <input
+            class="mt-0.5 accent-tr-accent"
+            type="checkbox"
+            checked={incrementalRefresh}
+            onchange={(e) =>
+              (incrementalRefresh = (e.currentTarget as HTMLInputElement).checked)}
+          />
+          <span class="space-y-0.5">
+            <span class="block text-xs font-medium text-tr-ink-2">增量更新知识资产</span>
+            <span class="block text-[11px] leading-relaxed text-tr-ink-3">
+              Git 仓库且已有知识资产时，把自基线提交以来的 git diff 交给大模型，在现有文档上做局部
+              修订；关闭后每次保鲜都完整重新生成。
+            </span>
+          </span>
+        </label>
+
+        <label class="block space-y-1.5" class:opacity-50={!incrementalRefresh}>
+          <span class="text-xs font-medium text-tr-ink-2">变更文件上限（超过则回退为完整重新生成）</span>
+          <input
+            class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
+            type="number"
+            min="1"
+            max="2000"
+            step="1"
+            disabled={!incrementalRefresh}
+            value={incrementalMaxChangedFiles}
+            oninput={(e) =>
+              (incrementalMaxChangedFiles = Number(
+                (e.currentTarget as HTMLInputElement).value,
+              ))}
+          />
+          <span class="block text-[11px] leading-relaxed text-tr-ink-3">
+            变更范围过大时，diff 已不能代表这次改动，增量更新既不更快也不更可靠。默认 {DEFAULT_INCREMENTAL_MAX_CHANGED_FILES}。
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2.5" class:opacity-50={!incrementalRefresh}>
+          <input
+            class="mt-0.5 accent-tr-accent"
+            type="checkbox"
+            disabled={!incrementalRefresh}
+            checked={incrementalHumanDocs}
+            onchange={(e) =>
+              (incrementalHumanDocs = (e.currentTarget as HTMLInputElement).checked)}
+          />
+          <span class="space-y-0.5">
+            <span class="block text-xs font-medium text-tr-ink-2">
+              快速保鲜时同步增量更新人类友好的知识库
+            </span>
+            <span class="block text-[11px] leading-relaxed text-tr-ink-3">
+              Litho 是最慢的一步，默认不在快速保鲜中触发。开启后会按 diff 就地修订受影响的
+              human/ 文档，仍比重新生成快，但会明显延长快速保鲜耗时。首次开启时会直接以当前代码
+              为基线记录，不会检查现有文档是否已经过时——如果怀疑现有文档已经过时，请先用「重新生成」。
+            </span>
+          </span>
+        </label>
+      </div>
 
       <p class="text-[11px] leading-relaxed text-tr-ink-3">
         每个 Provider 的配置会分别保存到 ~/.terrain/settings.json。

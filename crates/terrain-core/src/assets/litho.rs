@@ -78,6 +78,111 @@ pub fn build_litho_composition_prompt(plan: &LithoPlan) -> String {
     )
 }
 
+/// Prompt for an **incremental** update of the Litho `human/` doc set from a Git change set.
+///
+/// Skips phases 1–2 (preprocessing and C4 research) entirely: the existing docs are the
+/// research output, so a normal commit only needs the affected files touched up. Deep-dive
+/// files are per-module, which makes the changed-path list a direct routing signal.
+pub fn build_litho_update_prompt(
+    plan: &LithoPlan,
+    incremental: &crate::assets::IncrementalPlan,
+    existing_docs: &[String],
+) -> String {
+    let doc_list = if existing_docs.is_empty() {
+        "(none listed)".to_string()
+    } else {
+        existing_docs
+            .iter()
+            .map(|d| format!("- {d}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    format!(
+        "Incrementally update the existing human-facing documentation for project \"{project}\".\n\n\
+         Skill directory (read references/phase3-composition.md for the doc templates): {skill}\n\
+         Repository root: {repo}\n\
+         Documentation directory (edit files in place here): {out}\n\n\
+         {rules}\
+         {evidence}\
+         ## Existing documents\n{doc_list}\n\n\
+         ## How to work\n\
+         1. Read the change list above and build a docs-impact plan: for each changed path, decide \
+            which existing file (if any) makes a claim that is now wrong.\n\
+         2. Read only those files, and only the changed source paths needed to correct them.\n\
+         3. Edit those files in place with the smallest change that makes them accurate. Keep the \
+            existing structure, heading levels, tone and citation style.\n\
+         4. Add a `4.Deep-Exploration/{{module}}.md` file only when the changes introduce a genuinely \
+            new module; delete one only when its module was removed from the repository.\n\
+         5. Keep source file paths (and line numbers where practical) in the text for DeepWiki \
+            citations, and correct any citation whose path was moved or deleted.\n\n\
+         ## Hard constraints\n\
+         - Do NOT run preprocessing or C4 research; do NOT rebuild the intermediate workspace.\n\
+         - Do NOT delete or truncate existing files, and do NOT rewrite files end to end.\n\
+         - Do NOT touch a file that the change list does not affect — an untouched file is the \
+           correct outcome, not a missed step.\n\
+         - Edit at most 3 files unless the change list clearly justifies more.\n\
+         - If nothing in the change list invalidates any document, change nothing and say so.\n",
+        project = plan.project_slug,
+        skill = plan.skill_dir,
+        repo = plan.repo_path,
+        out = plan.human_output_dir,
+        rules = incremental.update_rules_block(),
+        evidence = incremental.evidence_block(),
+        doc_list = doc_list,
+    )
+}
+
+/// Markdown file names under `human/`, relative to the doc root (sorted, for prompt listings).
+pub fn list_human_doc_names(human_dir: impl AsRef<Path>) -> Vec<String> {
+    let dir = human_dir.as_ref();
+    if !dir.is_dir() {
+        return Vec::new();
+    }
+    let mut names: Vec<String> = walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
+        .filter_map(|e| {
+            e.path()
+                .strip_prefix(dir)
+                .ok()
+                .map(|p| p.to_string_lossy().replace('\\', "/"))
+        })
+        .collect();
+    names.sort();
+    names
+}
+
+/// Recorded baseline commit for the `human/` doc set, if a previous run wrote one.
+pub fn human_docs_baseline_head(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+) -> Option<String> {
+    crate::doc::read_json::<crate::schema::HumanDocsMeta>(paths.human_docs_meta_path(project_slug))
+        .ok()
+        .and_then(|meta| meta.baseline_git_head)
+}
+
+/// Persist the `human/` doc-set sidecar so the next refresh has a diff baseline.
+pub fn write_human_docs_meta(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: &str,
+    run_mode: &str,
+) -> crate::error::Result<crate::schema::HumanDocsMeta> {
+    let meta = crate::schema::HumanDocsMeta {
+        project: project_slug.to_string(),
+        repo_path: crate::path_portable::stored_repo_path(Path::new(repo_path)),
+        generated_at: chrono::Utc::now().to_rfc3339(),
+        doc_count: count_markdown_in_dir(paths.human_docs_dir(project_slug)),
+        baseline_git_head: crate::freshness::git_snapshot(repo_path).head,
+        last_run_mode: run_mode.to_string(),
+    };
+    crate::doc::write_json(paths.human_docs_meta_path(project_slug), &meta)?;
+    Ok(meta)
+}
+
 /// Any markdown research artifact exists (for UI hints).
 pub fn has_litho_research_artifacts(litho_workspace_dir: impl AsRef<Path>) -> bool {
     let dir = litho_workspace_dir.as_ref();

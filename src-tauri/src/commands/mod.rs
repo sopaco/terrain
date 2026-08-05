@@ -20,6 +20,10 @@ pub(crate) fn resolved_acp_settings() -> AcpSettings {
         .unwrap_or_else(resolve_acp_settings)
 }
 
+
+
+pub(crate) use terrain_agent::resolve_knowledge_settings as resolved_knowledge_settings;
+
 pub(crate) fn slugify_repo(repo_path: &str) -> String {
     slug::slugify(
         std::path::Path::new(repo_path)

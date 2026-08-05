@@ -9,7 +9,10 @@ mod scoring;
 
 pub use codegraph::{codegraph_drift, CodegraphDriftReport};
 pub use compute::{compute_freshness, format_freshness_trust_block, resolve_freshness_summary};
-pub use git::{baseline_matches_head, git_drift_since, git_snapshot, GitDrift, GitSnapshot};
+pub use git::{
+    baseline_matches_head, git_change_set, git_commit_exists, git_drift_since, git_snapshot,
+    GitChangeSet, GitChangedFile, GitDrift, GitSnapshot,
+};
 pub use ledger::{freshness_meta_path, read_freshness_ledger, write_freshness_ledger};
 pub use scoring::score_asset;
 

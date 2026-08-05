@@ -1,25 +1,32 @@
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_ready, agent_context_synced_with_head, compute_freshness, KnowledgePaths,
-    ProjectScanner, QuickRefreshResult,
+    agent_context_ready, agent_context_synced_with_head, compute_freshness,
+    litho_human_complete_with_research, KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings,
+    LithoProgress, ProjectScanner, QuickRefreshResult,
 };
 
-use crate::acp::{agent_execution_ready, execution_pure_acp, execution_uses_native_llm};
+use crate::acp::{acp_available, agent_execution_ready, execution_pure_acp, execution_uses_native_llm};
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::ChatEngine;
+use crate::litho::LithoRunMode;
 use crate::model::ModelConfig;
 use crate::settings::AcpSettings;
 
-/// Scan + repack + optional agent context regeneration (skips Litho).
+/// Scan + repack + agent context refresh; Litho only when explicitly opted into.
 ///
-/// Repomix packing runs once inside [`ProjectScanner::scan_repo`].
+/// Repomix packing runs once inside [`ProjectScanner::scan_repo`]. The context refresh is
+/// incremental when [`KnowledgeSettings::incremental_refresh`] is on, so a small commit costs a
+/// short diff-driven turn instead of a full architecture pass.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_quick_refresh(
     paths: &KnowledgePaths,
     model_config: &ModelConfig,
     acp: &AcpSettings,
+    knowledge: &KnowledgeSettings,
     repo_path: &str,
     project_slug: &str,
+    on_litho_progress: impl Fn(LithoProgress),
 ) -> anyhow::Result<QuickRefreshResult> {
     let mut notes = Vec::new();
 
@@ -45,8 +52,32 @@ pub async fn run_quick_refresh(
             } else {
                 None
             };
-            match run_agent_context_generation(paths, engine, acp, project_slug, repo_path).await {
-                Ok(_) => agent_context_regenerated = true,
+            match run_agent_context_generation(
+                paths,
+                engine,
+                acp,
+                project_slug,
+                repo_path,
+                knowledge,
+                false,
+            )
+            .await
+            {
+                Ok(result) => {
+                    agent_context_regenerated =
+                        result.refresh_mode != KnowledgeRefreshMode::Skipped;
+                    notes.push(match result.refresh_mode {
+                        KnowledgeRefreshMode::Incremental => {
+                            "Agent 友好的知识资产：已按 git diff 增量更新".into()
+                        }
+                        KnowledgeRefreshMode::Full => {
+                            "Agent 友好的知识资产：已重新生成".to_string()
+                        }
+                        KnowledgeRefreshMode::Skipped => {
+                            "Agent 友好的知识资产：源码无变更，仅更新基线".to_string()
+                        }
+                    });
+                }
                 Err(e) => notes.push(format!("Agent 知识资产：{e}")),
             }
         } else if agent_context_ready(paths, project_slug) {
@@ -56,6 +87,48 @@ pub async fn run_quick_refresh(
         notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
     } else {
         notes.push("Agent 友好的知识资产：请配置 ACP 代理与 LLM".into());
+    }
+
+    // Litho is the slowest stage, so quick refresh only touches it when the user opted in —
+    // and only to *update* an existing doc set. Generating one from scratch is a 数十分钟
+    // pipeline and belongs to initialization, not to 快速保鲜.
+    if knowledge.incremental_refresh && knowledge.incremental_human_docs {
+        let human_dir = paths.human_docs_dir(project_slug);
+        let litho_workspace = paths.litho_workspace_dir(project_slug);
+        if !litho_human_complete_with_research(&human_dir, Some(&litho_workspace)) {
+            notes.push("人类友好的知识库：尚未完整，需先完整生成，已跳过".into());
+        } else if acp_available(acp) {
+            match crate::litho::run_litho_generation(
+                paths,
+                project_slug,
+                repo_path,
+                acp,
+                knowledge,
+                LithoRunMode::Auto,
+                &on_litho_progress,
+            )
+            .await
+            {
+                Ok(result) => notes.push(match result.refresh_mode {
+                    KnowledgeRefreshMode::Incremental => {
+                        "人类友好的知识库：已按 git diff 增量更新".into()
+                    }
+                    KnowledgeRefreshMode::Full => "人类友好的知识库：已生成".to_string(),
+                    KnowledgeRefreshMode::Skipped => match result.refresh_reason.as_deref() {
+                        Some("too_many_changed_files") => {
+                            "人类友好的知识库：变更范围过大，需「重新生成」，已跳过".to_string()
+                        }
+                        Some("no_baseline") => {
+                            "人类友好的知识库：本次仅记录基线，下次起可增量更新".to_string()
+                        }
+                        _ => "人类友好的知识库：无需更新，已跳过".to_string(),
+                    },
+                }),
+                Err(e) => notes.push(format!("人类友好的知识库：{e}")),
+            }
+        } else {
+            notes.push("人类友好的知识库：请先在设置中配置 ACP 代理".into());
+        }
     }
 
     let freshness = compute_freshness(paths, project_slug, repo_path)?;

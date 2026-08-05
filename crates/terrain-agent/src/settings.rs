@@ -5,6 +5,13 @@ pub use terrain_core::settings::*;
 
 use crate::model::{LlmProvider, ModelConfig, parse_provider};
 
+/// Knowledge-refresh preferences from `~/.terrain/settings.json`, or defaults when absent.
+pub fn resolve_knowledge_settings() -> KnowledgeSettings {
+    load_model_settings()
+        .map(|s| s.knowledge)
+        .unwrap_or_default()
+}
+
 pub fn model_settings_from_config(config: &ModelConfig) -> ModelSettings {
     let provider = provider_name(config.provider).to_string();
     let profile = ProviderProfile {
@@ -28,6 +35,7 @@ pub fn model_settings_from_config(config: &ModelConfig) -> ModelSettings {
         ollama_host: profile.ollama_host.clone(),
         profiles,
         acp: AcpSettings::default(),
+        knowledge: KnowledgeSettings::default(),
     }
 }
 

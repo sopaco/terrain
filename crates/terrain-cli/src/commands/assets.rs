@@ -4,7 +4,8 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use terrain_agent::{
     agent_execution_ready, execution_uses_native_llm, prepare_litho_generation, resolve_acp_settings,
-    resolve_model_config, run_agent_context_generation, run_litho_generation, ChatEngine,
+    resolve_knowledge_settings, resolve_model_config, run_agent_context_generation,
+    run_litho_generation, ChatEngine, LithoRunMode,
 };
 use terrain_core::{
     build_generation_plan, grep_file, list_human_docs, pack_agent_assets, plan_litho_generation,
@@ -48,7 +49,8 @@ pub async fn run(paths: &KnowledgePaths, command: AssetCommands) -> Result<()> {
                 &slug,
                 &repo,
                 &acp,
-                force,
+                &resolve_knowledge_settings(),
+                LithoRunMode::from_force_refresh(force),
                 |p| eprintln!("[{}] {}", p.stage, p.message),
             )
             .await?;
@@ -108,7 +110,17 @@ async fn run_agent_context(
     } else {
         None
     };
-    let result = run_agent_context_generation(paths, engine, &acp, &slug, &repo).await?;
+    // `--force` already deleted the existing document, so this is a full rebuild either way.
+    let result = run_agent_context_generation(
+        paths,
+        engine,
+        &acp,
+        &slug,
+        &repo,
+        &resolve_knowledge_settings(),
+        force,
+    )
+    .await?;
     print_json(&result)
 }
 

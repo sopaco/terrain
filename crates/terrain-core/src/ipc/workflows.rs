@@ -36,6 +36,20 @@ pub struct LithoGenerationJob {
     pub status: String,
 }
 
+/// What a knowledge refresh actually did — surfaced so the UI can say so instead of guessing.
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export, rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum KnowledgeRefreshMode {
+    /// Regenerated from scratch.
+    Full,
+    /// Existing asset updated from a Git diff.
+    Incremental,
+    /// Already in sync — no model call was made.
+    Skipped,
+}
+
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize)]
@@ -44,6 +58,9 @@ pub struct LithoGenerationResult {
     pub response_excerpt: String,
     pub human_doc_count: usize,
     pub human_docs_complete: bool,
+    pub refresh_mode: KnowledgeRefreshMode,
+    /// Why the run took the mode it did, when that is not obvious (e.g. `too_many_changed_files`).
+    pub refresh_reason: Option<String>,
 }
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
@@ -68,4 +85,5 @@ pub struct AgentContextGenerationResult {
     pub output_path: String,
     pub meta: AgentContextMeta,
     pub response_excerpt: String,
+    pub refresh_mode: KnowledgeRefreshMode,
 }

@@ -16,7 +16,7 @@ use super::payloads::{
     LithoDonePayload, LithoProgressPayload, ProjectInitDonePayload, ProjectInitProgressPayload,
 };
 use super::util::{map_core_err, validate_repo};
-use super::{resolved_acp_settings, slugify_repo};
+use super::{resolved_acp_settings, resolved_knowledge_settings, slugify_repo};
 
 #[tauri::command]
 pub fn list_projects(state: State<'_, AppState>) -> Result<Vec<ProjectSummary>, String> {
@@ -94,6 +94,7 @@ pub async fn initialize_project_cmd(
         &paths,
         &model_config,
         &acp,
+        &resolved_knowledge_settings(),
         &repo_path,
         Some(&slug),
         emit_init,
@@ -112,6 +113,8 @@ pub async fn initialize_project_cmd(
                     response_excerpt: String::new(),
                     human_doc_count: result.human_doc_count,
                     human_docs_complete: result.human_docs_complete,
+                    refresh_mode: terrain_core::KnowledgeRefreshMode::Full,
+                    refresh_reason: None,
                 },
             },
         );
@@ -178,9 +181,10 @@ pub fn read_project_freshness_cached_cmd(
     read_freshness_ledger(state.paths(), &project_slug).map(|ledger| ledger.summary)
 }
 
-/// Scan + repack + optional agent context regeneration (skips Litho).
+/// Scan + repack + agent context refresh (incremental when enabled in settings).
 #[tauri::command]
 pub async fn run_quick_refresh_cmd(
+    app: AppHandle,
     state: State<'_, AppState>,
     repo_path: String,
     project_slug: Option<String>,
@@ -189,12 +193,28 @@ pub async fn run_quick_refresh_cmd(
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
     let acp = resolved_acp_settings();
     let model_config = state.model_config();
+
+    // Quick refresh can run an incremental Litho pass when enabled; reuse the litho channel so
+    // the overview shows what it is doing instead of a silent multi-minute wait.
+    let emit_litho = |p: LithoProgress| {
+        let _ = app.emit(
+            "litho-progress",
+            LithoProgressPayload {
+                project_slug: slug.clone(),
+                stage: p.stage,
+                message: p.message,
+            },
+        );
+    };
+
     run_quick_refresh(
         state.paths(),
         &model_config,
         &acp,
+        &resolved_knowledge_settings(),
         &repo_path,
         &slug,
+        emit_litho,
     )
     .await
     .map_err(|e| e.to_string())

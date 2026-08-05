@@ -220,10 +220,16 @@ export const saveSddOutput = (outputPath: string, content: string) =>
 export const removeProject = (projectSlug: string) =>
   invoke<void>("remove_project_cmd", { projectSlug });
 
-export const runAgentContextGeneration = (repoPath: string, projectSlug?: string) =>
+/** `forceFull` bypasses incremental refresh — what the 「重新生成」 buttons request. */
+export const runAgentContextGeneration = (
+  repoPath: string,
+  projectSlug?: string,
+  forceFull = false,
+) =>
   invoke<AgentContextGenerationResult>("run_agent_context_generation_cmd", {
     repoPath,
     projectSlug: projectSlug || null,
+    forceFull,
   });
 
 export const runSddPhase = (

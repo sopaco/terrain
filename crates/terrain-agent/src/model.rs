@@ -257,6 +257,7 @@ mod tests {
             ollama_host: None,
             profiles,
             acp: Default::default(),
+            knowledge: Default::default(),
         })
         .unwrap();
 

@@ -6,6 +6,7 @@ use terrain_core::{
 };
 
 use crate::acp::{execution_uses_native_llm, resolve_acp_settings};
+use crate::settings::resolve_knowledge_settings;
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::{ChatEngine, ChatPhase};
 use crate::model::ModelConfig;
@@ -55,7 +56,16 @@ pub async fn generate_agent_context_if_missing(
     } else {
         None
     };
-    run_agent_context_generation(paths, engine, &acp, project_slug, repo_path).await?;
+    run_agent_context_generation(
+        paths,
+        engine,
+        &acp,
+        project_slug,
+        repo_path,
+        &resolve_knowledge_settings(),
+        false,
+    )
+    .await?;
     Ok(true)
 }
 

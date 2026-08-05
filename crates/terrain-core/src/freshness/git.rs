@@ -20,6 +20,29 @@ pub struct GitDrift {
     pub changed_files: Vec<String>,
 }
 
+/// One changed path between a baseline commit and the working tree.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GitChangedFile {
+    /// `git diff --name-status` letter (`A`/`M`/`D`/`R`…), or `W` for worktree-only changes.
+    pub status: String,
+    pub path: String,
+}
+
+/// Everything an incremental update needs to know about `baseline..HEAD` plus the worktree.
+#[derive(Debug, Clone, Default)]
+pub struct GitChangeSet {
+    pub changed: Vec<GitChangedFile>,
+    /// `<short-sha> <subject>` lines, newest first (capped).
+    pub commit_log: Vec<String>,
+    /// `git diff --stat` output for `baseline..HEAD`.
+    pub diff_stat: String,
+    /// Uncommitted source paths (working tree + index), excluding `.terrain/`.
+    pub dirty_paths: Vec<String>,
+}
+
+/// How many commit subjects to carry into an incremental update prompt.
+const MAX_COMMIT_LOG_LINES: usize = 40;
+
 /// True when `baseline` matches current HEAD (or repo is not Git).
 pub fn baseline_matches_head(repo_path: &str, baseline: Option<&str>) -> bool {
     let git = git_snapshot(repo_path);
@@ -93,6 +116,114 @@ pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
         commits_since_baseline: count,
         changed_files,
     }
+}
+
+/// True when `commitish` resolves to a commit object in `repo`.
+///
+/// A baseline recorded before a rebase, squash or shallow re-clone is unreachable; diffing
+/// against it silently returns nothing, which would otherwise read as "no changes".
+pub fn git_commit_exists(repo_path: &str, commitish: &str) -> bool {
+    let repo = Path::new(repo_path);
+    if commitish.is_empty() || !repo.join(".git").exists() {
+        return false;
+    }
+    git_output(repo, &["rev-parse", "--verify", &format!("{commitish}^{{commit}}")]).is_some()
+}
+
+/// Collect committed and uncommitted changes since `baseline` (knowledge outputs filtered out).
+///
+/// Returns `None` when `repo_path` is not a Git repo or `baseline` is unreachable — callers
+/// must fall back to a full regeneration rather than assume an empty change set.
+pub fn git_change_set(repo_path: &str, baseline: &str) -> Option<GitChangeSet> {
+    if !git_commit_exists(repo_path, baseline) {
+        return None;
+    }
+    let repo = Path::new(repo_path);
+    let range = format!("{baseline}..HEAD");
+
+    let changed = git_output(
+        repo,
+        &[
+            "-c",
+            "core.quotepath=false",
+            "diff",
+            "--name-status",
+            "-M",
+            &range,
+        ],
+    )
+    .map(|out| parse_name_status(&out))
+    .unwrap_or_default();
+
+    let commit_log = git_output(
+        repo,
+        &[
+            "log",
+            "--no-merges",
+            "--format=%h %s",
+            &format!("--max-count={MAX_COMMIT_LOG_LINES}"),
+            &range,
+        ],
+    )
+    .map(|out| {
+        out.lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(str::to_string)
+            .collect()
+    })
+    .unwrap_or_default();
+
+    let diff_stat = git_output(
+        repo,
+        &[
+            "-c",
+            "core.quotepath=false",
+            "diff",
+            "--stat",
+            "--stat-width=100",
+            &range,
+        ],
+    )
+    .unwrap_or_default();
+
+    let dirty_paths = git_output(repo, &["-c", "core.quotepath=false", "status", "--porcelain"])
+        .map(|out| {
+            out.lines()
+                .map(porcelain_entry_path)
+                .filter(|p| !p.is_empty() && !is_knowledge_output_path(p))
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Some(GitChangeSet {
+        changed,
+        commit_log,
+        diff_stat,
+        dirty_paths,
+    })
+}
+
+/// Parse `git diff --name-status -M` output, dropping generated knowledge paths.
+///
+/// Rename entries carry two paths (`R100\told\tnew`); the destination is what matters for docs.
+fn parse_name_status(out: &str) -> Vec<GitChangedFile> {
+    out.lines()
+        .filter_map(|line| {
+            let mut cols = line.split('\t');
+            let status = cols.next()?.trim();
+            let paths: Vec<&str> = cols.map(str::trim).filter(|p| !p.is_empty()).collect();
+            let path = paths.last()?;
+            if status.is_empty() || path.is_empty() || is_knowledge_output_path(path) {
+                return None;
+            }
+            Some(GitChangedFile {
+                status: status.to_string(),
+                path: path.to_string(),
+            })
+        })
+        .collect()
 }
 
 /// Count commits in `baseline..HEAD` that touch at least one non-knowledge path.

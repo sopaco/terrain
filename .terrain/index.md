@@ -89,9 +89,8 @@ source: .
     - packages/
   - CLAUDE.md
   - .codegraph/
-    - codegraph.db-wal
-    - codegraph.db-shm
     - codegraph.db
+    - daemon.log
     - .gitignore
   - src/
     - main.ts

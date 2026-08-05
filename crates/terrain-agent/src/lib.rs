@@ -29,7 +29,7 @@ pub use context_generator::AgentContextGenerator;
 pub use agent_assets::{ensure_agent_assets, AgentAssetsEnsureReport};
 pub use agent_context::{agent_context_exists, run_agent_context_generation};
 pub use chat::ChatEngine;
-pub use litho::{prepare_litho_generation, run_litho_generation};
+pub use litho::{prepare_litho_generation, run_litho_generation, LithoRunMode};
 pub use runtime::Runtime;
 pub use workflows::{
     ask_knowledge, fallback_search_reply, llm_ready, run_project_initialization, run_quick_refresh,
@@ -42,13 +42,14 @@ pub use model::{
 };
 pub use settings::{
     default_profile_for, load_model_settings, model_config_from_settings, model_settings_from_config,
-    save_model_settings, AcpSettings, AgentExecution, AskExecution, ModelSettings, ProviderProfile,
-    DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
+    resolve_knowledge_settings,
+    save_model_settings, AcpSettings, AgentExecution, AskExecution, KnowledgeSettings,
+    ModelSettings, ProviderProfile, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
 };
 pub use terrain_core::{
     validate_repo_path, AgentContextGenerationResult, AskStreamEvent, ChatPhase, ChatReply,
-    ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus, LithoGenerationJob,
-    LithoGenerationResult, LlmStatus,
+    ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus, KnowledgeRefreshMode,
+    LithoGenerationJob, LithoGenerationResult, LlmStatus,
 };
 pub use terrain_core::settings::{
     DEFAULT_LMSTUDIO_BASE_URL, DEFAULT_LMSTUDIO_MODEL, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,

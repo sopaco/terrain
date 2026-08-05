@@ -2,6 +2,7 @@ mod agent_context;
 mod ask;
 mod context_layers;
 mod env;
+mod incremental;
 mod litho;
 mod pack_read;
 mod project_meta;
@@ -12,8 +13,10 @@ mod sdd;
 mod repomix;
 
 pub use agent_context::{
-    agent_context_fresh, agent_context_ready, agent_context_synced_with_head,
-    build_agent_context_prompt, read_agent_context_status, write_agent_context,
+    agent_context_baseline_head, agent_context_fresh, agent_context_ready,
+    agent_context_synced_with_head, build_agent_context_prompt,
+    build_agent_context_update_prompt, read_agent_context_body, read_agent_context_status,
+    refresh_agent_context_baseline, write_agent_context,
 };
 pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{
@@ -28,11 +31,16 @@ pub use context_layers::{
     AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS, AGENT_CONTEXT_SAVE_MAX_CHARS,
     AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
 };
+pub use incremental::{
+    plan_incremental_update, IncrementalOptions, IncrementalPlan, KnowledgeUpdateMode,
+};
 pub use litho::{
-    build_litho_composition_prompt, build_litho_generation_prompt, count_deep_exploration_modules,
-    count_litho_research_modules, count_markdown_in_dir, has_litho_research_artifacts,
+    build_litho_composition_prompt, build_litho_generation_prompt, build_litho_update_prompt,
+    count_deep_exploration_modules, count_litho_research_modules, count_markdown_in_dir,
+    has_litho_research_artifacts, human_docs_baseline_head, list_human_doc_names,
     litho_human_complete, litho_human_complete_with_research, litho_research_ready,
-    plan_litho_generation, LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES,
+    plan_litho_generation, write_human_docs_meta, LITHO_CORE_RESEARCH_FILES,
+    LITHO_REQUIRED_HUMAN_FILES,
 };
 pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
 pub use pack_read::{
