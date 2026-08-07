@@ -49,6 +49,7 @@
     askSessionLists,
     setActiveAskSessionId,
     setAskSessions,
+    setAskStreaming,
     showAskCompletionNotice,
   } from "../stores/chat.svelte";
   import {
@@ -117,6 +118,12 @@
 
   $effect(() => {
     currentSessionId = activeSessionId;
+  });
+
+  $effect(() => {
+    if (!projectSlug) return;
+    setAskStreaming(projectSlug, busy);
+    return () => setAskStreaming(projectSlug, false);
   });
 
   let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -529,19 +536,6 @@
 
     if (!projectSlug) return;
 
-    let sessionId = currentSessionId;
-    if (!sessionId) {
-      sessionId = await ensureAskSessionForQuestion(projectSlug, question);
-      currentSessionId = sessionId;
-    }
-
-    const userMessages: ChatMessage[] = [
-      ...messages,
-      { role: "user", content: question, timestamp: Date.now() },
-    ];
-    onmessageschange(() => userMessages);
-    void persistAskMessages(projectSlug, sessionId, userMessages);
-    input = "";
     busy = true;
     stickToBottom = true;
     turnCompleted = false;
@@ -550,6 +544,20 @@
     streamingUsage = null;
 
     try {
+      let sessionId = currentSessionId;
+      if (!sessionId) {
+        sessionId = await ensureAskSessionForQuestion(projectSlug, question);
+        currentSessionId = sessionId;
+      }
+
+      const userMessages: ChatMessage[] = [
+        ...messages,
+        { role: "user", content: question, timestamp: Date.now() },
+      ];
+      onmessageschange(() => userMessages);
+      void persistAskMessages(projectSlug, sessionId, userMessages);
+      input = "";
+
       const reply = await askKnowledge(
         question,
         projectSlug,

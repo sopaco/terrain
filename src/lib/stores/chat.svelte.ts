@@ -8,6 +8,14 @@ export const knowledgeSources = $state<Record<string, SourceSlice | null>>({});
 export const askSessionLists = $state<Record<string, AskSessionInfo[]>>({});
 export const activeAskSessionIds = $state<Record<string, string | null>>({});
 
+/** Project slugs with an in-flight Ask stream (panel may be closed). */
+export const askStreamingBySlug = $state<Record<string, true>>({});
+
+export function setAskStreaming(slug: string, streaming: boolean) {
+  if (streaming) askStreamingBySlug[slug] = true;
+  else delete askStreamingBySlug[slug];
+}
+
 export type AskCompletionNotice = {
   projectSlug: string;
   sessionId: string;
