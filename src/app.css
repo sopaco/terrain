@@ -88,6 +88,43 @@ body {
   color: var(--color-tr-ink);
 }
 
+/*
+ * Scrollbar theming. Tauri's Windows WebView2 is Chromium-based, so
+ * `::-webkit-scrollbar` applies there too (unlike plain desktop browsers on
+ * Windows, this isn't a "webkit only" dead end) — it just doesn't inherit
+ * macOS's slim overlay look, so Windows shows the default chunky bars unless
+ * we style them ourselves. `scrollbar-width`/`scrollbar-color` cover
+ * Gecko-based embeds for the same reason.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-tr-ink-4) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-tr-ink-4);
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-tr-ink-3);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 @layer base {
   button:not(:disabled),
   [role="button"]:not(:disabled) {
