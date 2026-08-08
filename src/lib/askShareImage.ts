@@ -1,31 +1,45 @@
-import { marked } from "marked";
-import { escapeHtml } from "./mermaid-utils";
-import { prepareMarkdownForRender } from "./markdownSanitize";
+import { mount, tick, unmount } from "svelte";
+import AskShareCard from "./components/AskShareCard.svelte";
+import { hasCompleteMermaidBlocks, prepareSvgForExport } from "./mermaid-utils";
+import { formatShareStamp } from "./timeFormat";
 
-const CARD_WIDTH = 720;
+/** PNG width in CSS px, echoing the Ask panel so shared images feel like the app. */
+const FRAME_WIDTH = 800;
 
-const COLORS = {
-  page: "#0a0d10",
-  surface: "#12161b",
-  elevated: "#181d23",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderStrong: "rgba(255, 255, 255, 0.14)",
-  ink: "#e8ecef",
-  ink2: "#a2acb5",
-  ink3: "#6c7680",
-  accent: "#1f8f84",
-  accentSoft: "rgba(31, 143, 132, 0.16)",
-  onAccent: "#f3fbfa",
-} as const;
+/**
+ * Target height of one page. A single answer can run tens of thousands of pixels;
+ * one image that tall is unusable in a chat client (previews collapse it to a
+ * line) and can exceed the WebKit canvas budget outright, so long answers are
+ * split into several pages instead of stretched into one strip.
+ */
+const PAGE_TARGET_HEIGHT = 2400;
+const MIN_PAGE_BUDGET = 600;
+const MAX_PAGES = 12;
 
-const FONT =
-  'Inter, ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
-const MONO = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+/**
+ * WebKit refuses to back a canvas past roughly 16.7M pixels and silently hands
+ * back a blank one, so the scale is chosen to stay under budget rather than
+ * assuming 2x always fits.
+ */
+const CANVAS_AREA_BUDGET = 14_000_000;
+const MAX_CANVAS_EDGE = 16_384;
+const MAX_SCALE = 2;
+
+const HIGHLIGHT_TIMEOUT_MS = 3_000;
+const MERMAID_TIMEOUT_MS = 6_000;
+const IMAGE_LOAD_TIMEOUT_MS = 2_000;
+const FRAME_WAIT_FALLBACK_MS = 120;
 
 export interface AskShareCardInput {
   question: string;
   answerMarkdown: string;
-  projectName?: string | null;
+}
+
+export interface AskShareImages {
+  /** One PNG per page, in reading order. Never empty. */
+  pages: Blob[];
+  /** Top-level answer blocks dropped because the answer exceeded `MAX_PAGES`. */
+  omittedBlocks: number;
 }
 
 export function formatUnknownError(error: unknown): string {
@@ -35,93 +49,331 @@ export function formatUnknownError(error: unknown): string {
   return "未知错误";
 }
 
-function markdownToShareHtml(markdown: string): string {
-  const body = prepareMarkdownForRender(markdown);
-  const renderer = new marked.Renderer();
-  renderer.code = ({ text, lang }) => {
-    if (lang === "mermaid") {
-      return `<div style="margin:0 0 12px;padding:10px 12px;border-radius:8px;border:1px dashed ${COLORS.borderStrong};background:${COLORS.elevated};color:${COLORS.ink3};font-size:12px;">图表（分享图片中省略）</div>`;
-    }
-    const language = lang ? ` class="language-${escapeHtml(lang)}"` : "";
-    return `<pre style="margin:0 0 12px;padding:12px 14px;border-radius:10px;border:1px solid ${COLORS.border};background:${COLORS.page};overflow-x:auto;"><code${language} style="font-family:${MONO};font-size:12px;line-height:1.65;color:${COLORS.ink};white-space:pre-wrap;word-break:break-word;">${escapeHtml(text)}</code></pre>`;
+interface Block {
+  el: HTMLElement;
+  top: number;
+  bottom: number;
+}
+
+interface PageSlice {
+  start: number;
+  end: number;
+}
+
+interface PageBudgets {
+  first: number;
+  rest: number;
+}
+
+interface CardParts {
+  frame: HTMLElement;
+  question: HTMLElement;
+  continuation: HTMLElement;
+  /** The badge's border/background box — only its `hidden` state is toggled. */
+  pageBadge: HTMLElement;
+  /** The text run inside the badge — carries the html2canvas baseline fix, so
+   *  page numbers are written here rather than on `pageBadge` directly. */
+  pageBadgeText: HTMLElement;
+  omitted: HTMLElement;
+  body: HTMLElement;
+}
+
+/** Render an Ask Q&A pair into share-ready PNG pages. */
+export async function renderAskShareImages(input: AskShareCardInput): Promise<AskShareImages> {
+  const question = input.question.trim();
+  const answerMarkdown = input.answerMarkdown.trim();
+  if (!question || !answerMarkdown) {
+    throw new Error("question and answer are required");
+  }
+
+  // Off-screen but genuinely laid out: html2canvas reads real client rects, and a
+  // `display: none` or zero-width host would give it nothing to measure. Height 0
+  // keeps a tall card from disturbing the app's own scroll height.
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText =
+    `position:absolute;left:-99999px;top:0;width:${FRAME_WIDTH}px;` +
+    "height:0;overflow:visible;pointer-events:none;";
+  document.body.appendChild(host);
+
+  const card = mount(AskShareCard, {
+    target: host,
+    props: {
+      question,
+      answerMarkdown,
+      generatedAt: formatShareStamp(Date.now()),
+      allowMermaid: hasCompleteMermaidBlocks(answerMarkdown),
+    },
+  });
+
+  try {
+    return await shootPages(host);
+  } finally {
+    void unmount(card);
+    host.remove();
+  }
+}
+
+async function shootPages(host: HTMLElement): Promise<AskShareImages> {
+  const parts = cardParts(host);
+  await settleCard(parts.body);
+
+  const blocks = measureBlocks(parts.body);
+  const budgets = measureBudgets(parts);
+  const slices = paginate(blocks, budgets);
+  const omittedBlocks = blocks.length - (slices[slices.length - 1]?.end ?? blocks.length);
+
+  const pages: Blob[] = [];
+  for (const [index, slice] of slices.entries()) {
+    applyPage(parts, blocks, slice, index, slices.length, omittedBlocks);
+    await nextFrame();
+    pages.push(await rasterize(parts.frame, host));
+  }
+  return { pages, omittedBlocks };
+}
+
+function cardParts(host: HTMLElement): CardParts {
+  return {
+    frame: requireEl(host, "[data-share-frame]"),
+    question: requireEl(host, "[data-share-question]"),
+    continuation: requireEl(host, "[data-share-continuation]"),
+    pageBadge: requireEl(host, "[data-share-page]"),
+    pageBadgeText: requireEl(host, "[data-share-page] .page-num"),
+    omitted: requireEl(host, "[data-share-omitted]"),
+    body: requireEl(host, "[data-share-answer] .markdown-body"),
   };
-  renderer.codespan = ({ text }) =>
-    `<code style="font-family:${MONO};font-size:0.9em;padding:0.1em 0.35em;border-radius:3px;background:${COLORS.elevated};color:${COLORS.accent};">${escapeHtml(text)}</code>`;
-  renderer.link = ({ text }) =>
-    `<span style="color:${COLORS.accent};text-decoration:underline;">${text}</span>`;
-  renderer.image = () =>
-    `<div style="margin:0 0 12px;padding:10px 12px;border-radius:8px;border:1px dashed ${COLORS.borderStrong};background:${COLORS.elevated};color:${COLORS.ink3};font-size:12px;">图片（分享图片中省略）</div>`;
-
-  const html = marked.parse(body, { renderer, async: false }) as string;
-  return `<div class="ask-share-md">${html}</div>`;
 }
 
-function shareMarkdownStyleText(): string {
-  return `
-    .ask-share-md { font-size:14px;line-height:1.7;color:${COLORS.ink};word-wrap:break-word; }
-    .ask-share-md h1,.ask-share-md h2,.ask-share-md h3,.ask-share-md h4,.ask-share-md h5,.ask-share-md h6 { font-weight:600;line-height:1.35;color:${COLORS.ink};margin:0 0 10px; }
-    .ask-share-md h1 { font-size:22px; }
-    .ask-share-md h2 { font-size:18px;padding-bottom:4px;border-bottom:1px solid ${COLORS.border}; }
-    .ask-share-md h3 { font-size:16px; }
-    .ask-share-md h4 { font-size:15px; }
-    .ask-share-md p,.ask-share-md ul,.ask-share-md ol,.ask-share-md blockquote,.ask-share-md table,.ask-share-md hr { margin:0 0 12px; }
-    .ask-share-md ul,.ask-share-md ol { padding-left:1.4em; }
-    .ask-share-md li { margin:0 0 4px; }
-    .ask-share-md blockquote { padding:8px 12px;border-left:3px solid ${COLORS.accent};background:${COLORS.elevated};border-radius:0 8px 8px 0;color:${COLORS.ink2}; }
-    .ask-share-md table { width:100%;border-collapse:collapse;font-size:13px; }
-    .ask-share-md th,.ask-share-md td { padding:8px 10px;border:1px solid ${COLORS.borderStrong};text-align:left; }
-    .ask-share-md th { background:${COLORS.elevated};font-weight:600; }
-    .ask-share-md hr { border:none;border-top:1px solid ${COLORS.borderStrong};margin:16px 0; }
-    .ask-share-md strong { font-weight:600;color:${COLORS.ink}; }
-  `;
+function requireEl(host: HTMLElement, selector: string): HTMLElement {
+  const el = host.querySelector<HTMLElement>(selector);
+  if (!el) throw new Error(`share card is missing ${selector}`);
+  return el;
 }
 
-const SHARE_MD_STYLE_ID = "terrain-ask-share-md";
-
-function mountShareMarkdownStyles(): void {
-  if (document.getElementById(SHARE_MD_STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = SHARE_MD_STYLE_ID;
-  style.textContent = shareMarkdownStyleText();
-  document.head.appendChild(style);
+/**
+ * Wait until the card is done becoming itself: fonts loaded, code highlighted,
+ * diagrams drawn. Shooting early is how a share image ends up with unstyled code
+ * or an empty diagram box. Each wait has a ceiling — a stalled dynamic import
+ * should degrade the image, not hang the button.
+ */
+async function settleCard(body: HTMLElement): Promise<void> {
+  await tick();
+  await nextFrame();
+  if (document.fonts?.ready) await document.fonts.ready;
+  await waitUntil(() => allHighlighted(body), HIGHLIGHT_TIMEOUT_MS);
+  await waitUntil(() => allMermaidSettled(body), MERMAID_TIMEOUT_MS);
+  await inlineMermaidDiagrams(body);
+  await nextFrame();
 }
 
-function unmountShareMarkdownStyles(): void {
-  document.getElementById(SHARE_MD_STYLE_ID)?.remove();
+function allHighlighted(body: HTMLElement): boolean {
+  return Array.from(body.querySelectorAll<HTMLElement>(".code-block code")).every(
+    (el) => el.dataset.highlighted === "true",
+  );
 }
 
-function buildShareCardHtml(input: AskShareCardInput): string {
-  const question = escapeHtml(input.question.trim());
-  const answerHtml = markdownToShareHtml(input.answerMarkdown);
-  const project = input.projectName?.trim();
-  const headerSubtitle = project
-    ? `<span style="color:${COLORS.ink3};font-size:12px;">${escapeHtml(project)}</span>`
-    : `<span style="color:${COLORS.ink3};font-size:12px;">Ask</span>`;
+function allMermaidSettled(body: HTMLElement): boolean {
+  return Array.from(body.querySelectorAll<HTMLElement>(".mermaid-wrap")).every(
+    (el) => el.dataset.rendered === "true" || el.dataset.rendered === "error",
+  );
+}
 
-  return `
-    <div style="box-sizing:border-box;width:${CARD_WIDTH}px;padding:28px;font-family:${FONT};background:${COLORS.page};color:${COLORS.ink};">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid ${COLORS.borderStrong};">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg, ${COLORS.accent}, ${COLORS.page});display:flex;align-items:center;justify-content:center;color:${COLORS.onAccent};font-size:14px;font-weight:700;">T</div>
-          <div style="display:flex;flex-direction:column;gap:2px;">
-            <span style="font-size:14px;font-weight:600;color:${COLORS.ink};">Terrain</span>
-            ${headerSubtitle}
-          </div>
-        </div>
-      </div>
-      <div style="margin-bottom:16px;padding:14px 16px;border-radius:12px;background:${COLORS.accentSoft};border:1px solid rgba(31, 143, 132, 0.28);">
-        <div style="margin-bottom:8px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${COLORS.accent};">You</div>
-        <div style="font-size:14px;line-height:1.65;color:${COLORS.ink};white-space:pre-wrap;word-break:break-word;">${question}</div>
-      </div>
-      <div style="padding:14px 16px;border-radius:12px;background:${COLORS.surface};border:1px solid ${COLORS.borderStrong};">
-        <div style="margin-bottom:10px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${COLORS.ink3};">Terrain</div>
-        ${answerHtml}
-      </div>
-      <div style="margin-top:18px;padding-top:14px;border-top:1px solid ${COLORS.border};font-size:11px;color:${COLORS.ink3};text-align:center;">
-        Generated by Terrain
-      </div>
-    </div>
-  `;
+/**
+ * Swap each rendered diagram for a data-URI `<img>` of the same size. html2canvas
+ * can draw a serialized SVG far more reliably than a live one, and inlining here
+ * keeps the diagrams in the picture instead of dropping them for a placeholder.
+ */
+async function inlineMermaidDiagrams(body: HTMLElement): Promise<void> {
+  for (const svg of Array.from(body.querySelectorAll<SVGSVGElement>(".mermaid-wrap svg"))) {
+    const rect = svg.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    clone.removeAttribute("style");
+    clone.setAttribute("width", String(width));
+    clone.setAttribute("height", String(height));
+
+    let markup: string;
+    try {
+      markup = prepareSvgForExport(new XMLSerializer().serializeToString(clone));
+    } catch {
+      continue;
+    }
+
+    const img = document.createElement("img");
+    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(markup)))}`;
+    img.style.width = `${width}px`;
+    img.style.height = `${height}px`;
+    img.alt = "";
+    // `decode()` can hang indefinitely on a detached SVG image, so wait on the
+    // load events instead. A diagram that will not load stays a live <svg>.
+    if (await imageLoaded(img, IMAGE_LOAD_TIMEOUT_MS)) {
+      svg.replaceWith(img);
+    }
+  }
+}
+
+function measureBlocks(body: HTMLElement): Block[] {
+  const bodyTop = body.getBoundingClientRect().top;
+  return Array.from(body.children)
+    .filter((el): el is HTMLElement => el instanceof HTMLElement)
+    .map((el) => {
+      const rect = el.getBoundingClientRect();
+      return { el, top: rect.top - bodyTop, bottom: rect.bottom - bodyTop };
+    });
+}
+
+/**
+ * How much answer fits on a page, measured rather than guessed: page 1 carries the
+ * question block, later pages carry the narrower "continued" line instead.
+ */
+function measureBudgets(parts: CardParts): PageBudgets {
+  const chrome = () => Math.max(0, parts.frame.offsetHeight - parts.body.offsetHeight);
+  const badgeWasHidden = parts.pageBadge.hidden;
+
+  parts.pageBadge.hidden = false;
+  parts.pageBadgeText.textContent = "1 / 9";
+  parts.question.hidden = false;
+  parts.continuation.hidden = true;
+  const first = PAGE_TARGET_HEIGHT - chrome();
+
+  parts.question.hidden = true;
+  parts.continuation.hidden = false;
+  const rest = PAGE_TARGET_HEIGHT - chrome();
+
+  parts.question.hidden = false;
+  parts.continuation.hidden = true;
+  parts.pageBadge.hidden = badgeWasHidden;
+
+  return {
+    first: Math.max(MIN_PAGE_BUDGET, first),
+    rest: Math.max(MIN_PAGE_BUDGET, rest),
+  };
+}
+
+/**
+ * Greedy block packing. A block never straddles a page boundary — cutting mid
+ * paragraph or mid code block is exactly the kind of mangled output this replaces
+ * — so a block taller than the budget gets a page to itself and is allowed to
+ * overflow it.
+ */
+function paginate(blocks: Block[], budgets: PageBudgets): PageSlice[] {
+  if (blocks.length === 0) return [{ start: 0, end: 0 }];
+
+  const slices: PageSlice[] = [];
+  let start = 0;
+  for (let i = 0; i < blocks.length; i += 1) {
+    const budget = slices.length === 0 ? budgets.first : budgets.rest;
+    if (i > start && blocks[i].bottom - blocks[start].top > budget) {
+      slices.push({ start, end: i });
+      start = i;
+      if (slices.length >= MAX_PAGES) return slices;
+    }
+  }
+  slices.push({ start, end: blocks.length });
+  return slices;
+}
+
+function applyPage(
+  parts: CardParts,
+  blocks: Block[],
+  slice: PageSlice,
+  index: number,
+  total: number,
+  omittedBlocks: number,
+): void {
+  blocks.forEach((block, i) => {
+    const visible = i >= slice.start && i < slice.end;
+    block.el.style.display = visible ? "" : "none";
+    if (visible && i === slice.start) {
+      block.el.setAttribute("data-share-first", "");
+    } else {
+      block.el.removeAttribute("data-share-first");
+    }
+  });
+
+  parts.question.hidden = index !== 0;
+  parts.continuation.hidden = index === 0;
+  parts.pageBadge.hidden = total < 2;
+  parts.pageBadgeText.textContent = `${index + 1} / ${total}`;
+
+  const showOmitted = index === total - 1 && omittedBlocks > 0;
+  parts.omitted.hidden = !showOmitted;
+  parts.omitted.textContent = showOmitted
+    ? `回答过长，还有 ${omittedBlocks} 个段落未收录，可用「复制 Markdown」获取完整内容。`
+    : "";
+}
+
+async function rasterize(frame: HTMLElement, host: HTMLElement): Promise<Blob> {
+  const { default: html2canvas } = await import("html2canvas");
+  const width = frame.offsetWidth;
+  const height = frame.offsetHeight;
+  let lastError: unknown = null;
+
+  for (const scale of scaleCandidates(width, height)) {
+    try {
+      const canvas = await html2canvas(frame, {
+        backgroundColor: pageBackground(),
+        scale,
+        useCORS: true,
+        logging: false,
+        // The clone would otherwise duplicate and re-lay-out the whole app for
+        // every page. `<head>` is left alone so the app's real CSS still applies.
+        ignoreElements: (el) => el.parentElement === document.body && el !== host,
+      });
+      if (canvasLooksPainted(canvas)) return await canvasToPngBlob(canvas);
+      lastError = new Error(`画布过大（${width}×${height}），已尝试降级仍无法渲染`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(formatUnknownError(lastError ?? new Error("图片渲染失败")));
+}
+
+/** Highest scale that fits the canvas budget, then progressively safer fallbacks. */
+function scaleCandidates(width: number, height: number): number[] {
+  const area = Math.max(1, width * height);
+  const edgeLimit = Math.min(
+    MAX_CANVAS_EDGE / Math.max(1, width),
+    MAX_CANVAS_EDGE / Math.max(1, height),
+  );
+  const best = Math.min(MAX_SCALE, Math.sqrt(CANVAS_AREA_BUDGET / area), edgeLimit);
+  const rounded = [best, best * 0.75, 1, 0.6]
+    .filter((scale) => scale <= edgeLimit)
+    .map((scale) => Math.max(0.5, Math.round(scale * 100) / 100));
+  return Array.from(new Set(rounded));
+}
+
+/**
+ * An oversized canvas comes back fully transparent instead of throwing, so sample
+ * a few pixels: the card paints an opaque background everywhere it succeeded.
+ */
+function canvasLooksPainted(canvas: HTMLCanvasElement): boolean {
+  if (canvas.width === 0 || canvas.height === 0) return false;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+
+  const maxX = canvas.width - 1;
+  const maxY = canvas.height - 1;
+  const points: [number, number][] = [
+    [Math.min(1, maxX), Math.min(1, maxY)],
+    [maxX >> 1, maxY >> 1],
+    [Math.max(0, maxX - 1), Math.max(0, maxY - 1)],
+  ];
+  try {
+    return points.some(([x, y]) => ctx.getImageData(x, y, 1, 1).data[3] > 0);
+  } catch {
+    // Tainted canvas — unreadable, but that means it drew something.
+    return true;
+  }
+}
+
+function pageBackground(): string {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue("--color-tr-page")
+    .trim();
+  return value || "#0a0d10";
 }
 
 async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -132,57 +384,47 @@ async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return blob;
 }
 
-async function htmlToPngBlob(html: string, width: number): Promise<Blob> {
-  const { default: html2canvas } = await import("html2canvas");
-  const host = document.createElement("div");
-  host.style.cssText =
-    "position:fixed;left:-12000px;top:0;width:0;height:0;overflow:visible;pointer-events:none;";
-  host.innerHTML = html.trim();
-  const card = host.firstElementChild;
-  if (!(card instanceof HTMLElement)) {
-    throw new Error("share card markup missing");
-  }
-  document.body.appendChild(host);
-  mountShareMarkdownStyles();
-
-  try {
-    await document.fonts.ready;
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-    });
-
-    const height = Math.max(1, card.scrollHeight);
-    const canvas = await html2canvas(card, {
-      backgroundColor: COLORS.page,
-      scale: 2,
-      width,
-      height,
-      windowWidth: width,
-      windowHeight: height,
-      useCORS: true,
-      logging: false,
-      onclone: (doc) => {
-        const style = doc.createElement("style");
-        style.textContent = shareMarkdownStyleText();
-        doc.head.appendChild(style);
-      },
-    });
-    return canvasToPngBlob(canvas);
-  } catch (error) {
-    throw new Error(formatUnknownError(error));
-  } finally {
-    document.body.removeChild(host);
-    unmountShareMarkdownStyles();
-  }
+/**
+ * Two frames, or a timer — whichever lands first. A hidden or minimised window
+ * stops servicing `requestAnimationFrame` entirely, and waiting on a frame that
+ * will never arrive would leave the share button spinning forever.
+ */
+function nextFrame(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(settle, FRAME_WAIT_FALLBACK_MS);
+    requestAnimationFrame(() => requestAnimationFrame(settle));
+  });
 }
 
-/** Render an Ask Q&A pair into a PNG blob suitable for sharing. */
-export async function renderAskSharePng(input: AskShareCardInput): Promise<Blob> {
-  const question = input.question.trim();
-  const answer = input.answerMarkdown.trim();
-  if (!question || !answer) {
-    throw new Error("question and answer are required");
+function imageLoaded(img: HTMLImageElement, timeoutMs: number): Promise<boolean> {
+  const decoded = () => img.complete && img.naturalWidth > 0;
+  if (decoded()) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    const settle = (ok: boolean) => {
+      clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+      resolve(ok);
+    };
+    const timer = setTimeout(() => settle(decoded()), timeoutMs);
+    img.onload = () => settle(true);
+    img.onerror = () => settle(false);
+  });
+}
+
+async function waitUntil(check: () => boolean, timeoutMs: number): Promise<void> {
+  const deadline = performance.now() + timeoutMs;
+  while (!check()) {
+    if (performance.now() > deadline) return;
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 40);
+    });
   }
-  const html = buildShareCardHtml({ ...input, question, answerMarkdown: answer });
-  return htmlToPngBlob(html, CARD_WIDTH);
 }

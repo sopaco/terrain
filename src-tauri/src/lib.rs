@@ -66,6 +66,7 @@ pub fn run() {
             commands::save_model_settings_cmd,
             commands::copy_image_to_clipboard,
             commands::copy_text_to_clipboard,
+            commands::save_png_files,
             commands::pack_agent_assets_cmd,
             commands::compute_freshness_cmd,
             commands::read_project_freshness_cached_cmd,

@@ -1,16 +1,26 @@
 .markdown-body {
   font-size: 0.9375rem;
-  line-height: 1.8;
+  line-height: 1.7;
   color: var(--color-tr-ink);
   word-wrap: break-word;
 }
 
-/* Long-form knowledge docs: lighter copy, headings stay at --color-tr-ink. */
+/*
+ * Long-form knowledge docs: lighter copy, headings stay at --color-tr-ink.
+ * Tighter line-height than the base + a wider paragraph gap (below) makes a
+ * paragraph read as one visual unit instead of blurring into the next one at
+ * a glance — the two have to move together, not just the gap alone.
+ */
 .markdown-body.reading {
   font-weight: 400;
+  line-height: 1.65;
   color: var(--color-tr-ink-reading);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.markdown-body.reading p {
+  margin-bottom: 1.5rem;
 }
 
 .markdown-body > :first-child {
@@ -53,6 +63,12 @@
   margin: 1.25rem 0 0.625rem;
 }
 
+/*
+ * Tailwind's preflight zeroes every element's margin, `p` included — without
+ * this, paragraphs sit back-to-back with nothing but line-height between
+ * them, so a paragraph break looks identical to a line break inside one.
+ */
+.markdown-body p,
 .markdown-body ul,
 .markdown-body ol,
 .markdown-body blockquote,
@@ -62,9 +78,23 @@
   margin: 0 0 1.125rem;
 }
 
+/* Tailwind's preflight resets `list-style` globally; markdown prose needs its
+   markers back, or an ordered list reads as unexplained indentation. */
 .markdown-body ul,
 .markdown-body ol {
   padding-left: 1.5rem;
+}
+
+.markdown-body ul {
+  list-style: disc outside;
+}
+
+.markdown-body ol {
+  list-style: decimal outside;
+}
+
+.markdown-body ul ul {
+  list-style-type: circle;
 }
 
 .markdown-body li + li {
@@ -183,7 +213,10 @@
 
 .markdown-body th,
 .markdown-body td {
-  padding: 0.625rem 0.875rem;
+  padding: 0.4375rem 0.875rem;
+  /* Cells otherwise inherit the prose line-height (up to 1.8 in reading
+     mode), which pads out even a single line of text into a tall row. */
+  line-height: 1.45;
   border: 1px solid var(--color-tr-border-strong);
   text-align: left;
 }
@@ -265,7 +298,11 @@
 
 .markdown-body.compact {
   font-size: 0.875rem;
-  line-height: 1.7;
+  line-height: 1.65;
+}
+
+.markdown-body.compact p {
+  margin-bottom: 0.75rem;
 }
 
 .markdown-body .mermaid-pending {
