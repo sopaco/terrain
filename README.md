@@ -17,7 +17,7 @@ Engineering environment management for human developers and AI coding assistants
 
 Terrain is a **standardized, AI-friendly engineering environment** built for the age of AI-assisted development. Point it at a Git repository and it delivers three things:
 
-- **🗺️ Engineering knowledge assets** — auto-generated, always-in-sync C4 docs and agent context, **produced from your code and consumed by both humans and AI agents**.
+- **🗺️ Engineering knowledge** — auto-generated, always-in-sync C4 docs and agent context, **produced from your code and consumed by both humans and AI agents**.
 - **🤝 A standardized environment for AI agents** — one shared "knowledge contract" (Skills, `AGENTS.md`, CLIs) so every coding agent reads the project the same way instead of blind-grepping the live repo.
 - **⚙️ Auto-deployed agent enhancement tools** — one command installs the toolchain your agents need (CodeGraph, RTK, preset Skills); no per-repo yak-shaving.
 
