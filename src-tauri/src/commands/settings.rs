@@ -97,6 +97,80 @@ pub fn copy_image_to_clipboard(png_base64: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Write share-image pages into `dir`, returning the paths written.
+///
+/// Multi-page exports are numbered; an existing file is never overwritten — the
+/// name gains a `-2`, `-3`, … suffix instead, so re-exporting the same answer in
+/// the same minute cannot silently replace the earlier images.
+#[tauri::command]
+pub fn save_png_files(
+    dir: String,
+    base_name: String,
+    pngs_base64: Vec<String>,
+) -> Result<Vec<String>, String> {
+    use base64::Engine;
+
+    let dir = std::path::PathBuf::from(dir);
+    if !dir.is_dir() {
+        return Err(format!("目录不存在：{}", dir.display()));
+    }
+    if pngs_base64.is_empty() {
+        return Err("没有可导出的图片".to_string());
+    }
+
+    let stem = sanitize_file_stem(&base_name);
+    let numbered = pngs_base64.len() > 1;
+    let mut written = Vec::with_capacity(pngs_base64.len());
+
+    for (index, png) in pngs_base64.iter().enumerate() {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(png.trim())
+            .map_err(|e| e.to_string())?;
+        let name = if numbered {
+            format!("{stem}-{:02}", index + 1)
+        } else {
+            stem.clone()
+        };
+        let path = unique_png_path(&dir, &name);
+        std::fs::write(&path, &bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        written.push(path.to_string_lossy().to_string());
+    }
+
+    Ok(written)
+}
+
+fn sanitize_file_stem(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        if ch.is_alphanumeric() || ch == '-' || ch == '_' {
+            out.push(ch);
+        } else if !out.ends_with('-') {
+            out.push('-');
+        }
+    }
+    let trimmed = out.trim_matches('-');
+    let stem: String = trimmed.chars().take(64).collect();
+    if stem.is_empty() {
+        "terrain-ask".to_string()
+    } else {
+        stem
+    }
+}
+
+fn unique_png_path(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
+    let first = dir.join(format!("{name}.png"));
+    if !first.exists() {
+        return first;
+    }
+    for n in 2..1000 {
+        let candidate = dir.join(format!("{name}-{n}.png"));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    first
+}
+
 #[tauri::command]
 pub fn copy_text_to_clipboard(text: String) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;

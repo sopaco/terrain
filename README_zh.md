@@ -15,16 +15,29 @@
 
 ## 什么是 Terrain？
 
-Terrain 是一款面向 AI 辅助开发时代的**工程环境管理平台**。只需指向一个 Git 仓库，它就能帮你完成以下工作：
+Terrain 是一款**标准化、对 AI 友好的工程环境**，面向 AI 辅助开发时代。只需指向一个 Git 仓库，它就能交付三件事：
 
-- **扫描**代码库，建立项目结构索引
-- **生成**人类可读的 C4 架构文档（Litho）
-- **维护** `.terrain/` 目录下 AI 友好的结构化知识资产
-- **回答**架构问题——通过 DeepWiki 对你的知识库进行 RAG 检索
-- **驱动**标准化开发工作流（SDD：需求 → 设计 → 代码生成 → 评审）
-- **集成** Skills、工具以及面向外部编程 Agent 的 `AGENTS.md` 指引
+- **🗺️ 工程知识资产** —— 自动生成、与代码实时同步的 C4 文档与 Agent 上下文，**从你的代码提炼，供人类与 AI Agent 共同消费**。
+- **🤝 面向 AI Agent 的标准化环境** —— 一份共享的"知识契约"（Skills、`AGENTS.md`、CLI），让每个编程 Agent 都用同一种方式读懂项目，而不是对着仓库盲目 grep。
+- **⚙️ 自动部署的 Agent 增强工具** —— 一条命令装好 Agent 所需的工具链（CodeGraph、RTK、预设 Skills），无需逐仓库手工配置。
 
-知识就存放在**仓库里**，而不是某个远程数据库。每个分支都自带一份文档。人类开发者通过 **Tauri 桌面应用**或 **CLI** 使用；外部 AI 编程助手（OpenCode、Cursor 等）则通过 ACP 调用 `terrain tools`，读取同一套知识体系。
+知识就存放在**仓库里**，而不是某个远程数据库。每个分支都自带一份文档。人类开发者通过 **Tauri 桌面应用**或 **CLI** 使用；外部 AI 编程助手（Claude Code、Codex、OpenCode、Cursor 等）则通过 ACP 调用 `terrain tools`，读取同一套知识体系。
+
+### 应用预览
+
+| 项目总览 | 工程知识资产 | DeepWiki 问答 | Agent 环境 |
+|----------|--------------|---------------|------------|
+| <img width="200" alt="带新鲜度评分的项目总览" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a"> | <img width="200" alt="自动生成的 C4 架构文档" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e"> | <img width="200" alt="带引用来源的智能问答" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09"> | <img width="200" alt="一键部署的 Agent 工具" src="assets/screenshots/05-env.png"> |
+
+*从左到右：带新鲜度评分的项目列表、自动生成的 C4 文档、基于知识的智能问答、一键部署的 Agent 工具链。*
+
+### 三支柱速览
+
+| 支柱 | 隐喻 | 你能得到什么 |
+|------|------|--------------|
+| **工程知识资产** | *地图* | `.terrain/` 中的双轨文档——从代码**提炼**，供人类与 Agent **消费** |
+| **标准化 AI 环境** | *道路* | Skills、CLI 和 `AGENTS.md`，引导 Agent 找到正确的知识与工具 |
+| **Agent 增强工具** | *齿轮* | 一条命令部署 CodeGraph、RTK 与预设 Skills |
 
 ### 双轨知识体系
 
@@ -47,9 +60,9 @@ Terrain 是一款面向 AI 辅助开发时代的**工程环境管理平台**。�
 
 | 没有 Terrain | 有了 Terrain |
 |--------------|--------------|
-| 架构知识散落在 Wiki、Slack 和老员工的脑子里 | C4 文档和 Agent 上下文直接从代码生成 |
+| 架构知识散落在 Wiki、Slack 和老员工的脑子里 | 工程知识资产直接从代码生成 |
 | AI 助手只能对着仓库盲目 grep | Agent 先读 `context.md`，再按需查看 repomix 源码切片 |
-| 每次重构后文档就和代码对不上了 | 新鲜度追踪自动标记过期内容；知识跟着 Git 分支走 |
+| 每次重构后文档就和代码对不上了 | 增量更新 + 新鲜度追踪；知识跟着 Git 分支走 |
 | 每个团队都在重复造"怎么让 AI 上手我们的仓库"这个轮子 | 一键集成 Skills、CodeGraph、RTK 和 `AGENTS.md` 配置 |
 
 **适合谁用：**
@@ -58,30 +71,54 @@ Terrain 是一款面向 AI 辅助开发时代的**工程环境管理平台**。�
 - **技术负责人**——让架构文档始终紧跟代码演进
 - **团队**——引入 AI 编程助手后，需要一份共享的知识契约
 - **CI/CD 流水线**——在代码合并时自动刷新知识资产
-- **ACP 集成方**——把 `terrain tools` 接入 OpenCode 或其他兼容 Agent
+- **ACP 集成方**——把 `terrain tools` 接入 Claude Code、Codex、OpenCode 或兼容 Agent
+
+---
+
+## 从 Litho (deepwiki-rs) 到 Terrain
+
+Terrain 的知识引擎是 **Litho** 的直接继承者——Litho 即以 [deepwiki-rs](https://github.com/sopaco/deepwiki-rs)（**1.7k★**）发布的 AI 文档生成器。Litho 已在大规模实践中验证了核心命题：*从代码生成架构文档、与代码保持同步、并让 Agent 开箱即用*。Terrain 把这套成熟实践进一步打磨成平台：
+
+- **知识库增量更新。** 不再全量重生成，而是追踪 Git HEAD 与工作区状态，只更新变化的部分，让知识库在每次提交后保持新鲜，而无需付出全量成本（新鲜度评分 + 可恢复流水线）。
+- **更广的语言与框架适配。** 生成内核语言无关，并对 Rust、TypeScript/JavaScript、Python、Go、Java、C# 等做了调优，支持框架感知的结构提取。
+- **面向 Agent 的 ACP 模式。** Terrain 支持 Agent Client Protocol，Claude Code、Codex、OpenCode、Cursor 都能通过 `terrain tools` 拉取项目知识，而不是瞎猜。
+- **内置 Litho Book。** 原 Litho Book 的 Markdown 阅读器与基于知识的问答，现已整合进 Terrain 桌面应用——阅读与提问一处搞定。
+
+简而言之：如果你喜欢 Litho 的文档能力，Terrain 就是 Litho 的知识内核 **加上** 环绕它的环境、工作流与 Agent 桥接。
 
 ---
 
 ## 功能与能力
 
-### Litho — C4 架构文档
+### 1. 工程知识资产 —— 生成与消费
 
-自动化的四阶段流水线（调研 → 撰写），产出六份标准文档：
+Terrain 把代码库变成一份人类与 Agent 共用的双轨知识库。它源自 Litho（deepwiki-rs，1.7k★），保留了经过验证的文档生成内核，并增加了增量、多语言、对接 Agent 的投递能力。
 
-1. 项目概述
-2. 系统架构
-3. 核心工作流
-4. 模块深入解析
-5. 边界与接口
-6. 数据库概览
+- **生成** —— 四阶段流水线产出六份标准人类文档（项目概述、系统架构、核心工作流、模块深入解析、边界与接口、数据库概览），外加结构化的 `agent/context.md` 与便于 grep 的 `repomix.md` 源码包。
+- **消费** —— DeepWiki 基于知识库用自然语言问答，每条回答都附带引用来源与工具调用链路；外部 Agent 通过 `terrain tools` 消费同一套三层知识。
+- **保持新鲜** —— 代码变更时增量再生，并用新鲜度评分标记过期资产。
+- **阅读与提问一处搞定** —— 原独立的 Litho Book 阅读器与问答，现已整合进桌面应用。
 
-中间调研产物保存在 `.terrain/.litho-agent/` 下，即使生成过程中断也能无缝恢复。
+> 同样的 Litho 成功实践，如今增量更新、多语言、并接入你的 Agent。
 
-### DeepWiki — 基于知识的智能问答
+### 2. 标准化、对 AI 友好的工程环境
 
-用自然语言向你的项目知识库提问。Chat 引擎会先加载 `agent/context.md` 中的宏观上下文，按需拉取中观章节内容，再通过 repomix grep/read 定位微观层面的源码细节。每条回答都附带引用来源和工具调用链路。
+一份共享的"知识契约"，让每个编程 Agent 都用同一种方式读懂你的仓库：
 
-### SDD — 标准化开发工作流
+- **`AGENTS.md`** —— 托管配置片段，引导 Agent 优先走知识层。
+- **预设 Skills** —— 标准操作手册（terrain-knowledge → repomix → codegraph → rtk），Agent 可直接加载。
+- **约定即路标** —— 跨仓库一致的工作流与访问模式。
+
+### 3. 自动部署的 Agent 增强工具
+
+一条命令装好 Agent 所需的工具链——无需逐仓库配置：
+
+- **CodeGraph** —— 通过 `bunx codegraph` 查询符号的调用关系与影响范围。
+- **RTK** —— 压缩 shell 输出、为 Agent 节省 Token。
+- **Terrain CLI / `terrain tools`** —— 负责 scan、资产管理与 ACP 访问。
+- `terrain env apply` 按正确依赖顺序（terrain-knowledge → repomix → codegraph → rtk）安装 Skills、CLI 与 `AGENTS.md`。
+
+### 4. SDD —— 标准化开发工作流
 
 四个阶段依次推进，每步都产出可评审的 Markdown 文档：
 
@@ -94,21 +131,7 @@ Terrain 是一款面向 AI 辅助开发时代的**工程环境管理平台**。�
 
 会话产物保存在 `~/.terrain/sdd/{project}/sessions/{id}/outputs/`（仅存本地，不纳入版本控制）。
 
-### Env — AI 工程环境一键集成
-
-自动检测并安装你的编程 Agent 所需的工具链：
-
-- **Skills** — terrain-knowledge、repomix-context、codegraph、rtk
-- **Tools** — CodeGraph CLI、RTK 令牌优化器
-- **AGENTS.md** — 托管配置片段——引导 Agent 优先走知识层
-
-依赖顺序自动处理：`terrain-knowledge` → `repomix` → `codegraph` → `rtk`。
-
-### ACP 工具 — 给外部 Agent 用的 CLI
-
-当 Terrain 运行在 ACP 模式下，外部 Agent 通过 `terrain tools`（JSON 标准输出）进行调用，而非使用内置函数工具。同样遵循三层模型：宏观（预加载）→ 中观（`read-context`）→ 微观（`grep-pack` / `read-pack-file`）。
-
-### 新鲜度追踪
+### 5. 新鲜度追踪
 
 基于 Git HEAD 和工作区脏状态，自动为知识资产打分。当 `freshness_score < 50` 时，Agent 应当降低对这些上下文的信任权重。
 
@@ -120,13 +143,13 @@ Terrain 是一个 **Agent 优先的工程环境平台**。它为每个 Git 仓�
 
 | 支柱 | 隐喻 | Agent 获得什么 |
 |------|------|----------------|
-| **知识** | *地图* | `.terrain/` 中的结构化资产——从代码中**提炼**，通过分层访问**消费** |
-| **环境** | *道路* | Skills、CLI 和 `AGENTS.md`，引导 Agent 找到正确的知识和工具 |
-| **工作流** | *路标* | SDD——从需求到代码评审的四阶段标准流程 |
+| **工程知识资产** | *地图* | `.terrain/` 中的结构化资产——从代码**提炼**，通过分层访问**消费** |
+| **标准化 AI 环境** | *道路* | Skills、CLI 和 `AGENTS.md`，引导 Agent 找到正确的知识与工具 |
+| **开发工作流（SDD）** | *路标* | 从需求到代码评审的四阶段标准流程 |
 
 > **知识即地图，工具即道路，约定即路标。**
 
-人类通过**桌面应用**或 **CLI** 使用；外部编程 Agent（Cursor、OpenCode 等）则通过 **`terrain tools`**（JSON 标准输出）接入同一套体系。知识资产存放在**仓库内部**（`.terrain/` 随分支流转）；`~/.terrain/registry.json` 只记录项目指针，不存放知识内容。
+人类通过**桌面应用**或 **CLI** 使用；外部编程 Agent（Claude Code、Codex、OpenCode 等）则通过 **`terrain tools`**（JSON 标准输出）接入同一套体系。知识资产存放在**仓库内部**（`.terrain/` 随分支流转）；`~/.terrain/registry.json` 只记录项目指针，不存放知识内容。
 
 ### 系统概览
 
@@ -138,8 +161,8 @@ graph TB
     end
 
     subgraph Terrain["Terrain"]
-        K["知识<br/>提炼 · 消费"]
-        E["环境<br/>skills · tools · AGENTS.md"]
+        K["工程知识资产<br/>提炼 · 消费"]
+        E["标准化 AI 环境<br/>skills · tools · AGENTS.md"]
         W["工作流<br/>SDD"]
     end
 
@@ -169,7 +192,7 @@ graph TB
     W --> LLM
 ```
 
-### ① 知识 — 地图
+### ① 工程知识资产 —— 地图
 
 同一座工厂产出两条线的资产——叙述式 `human/` 给人看，结构化 `agent/` 给机器读：
 
@@ -177,7 +200,7 @@ graph TB
 .terrain/
 ├── agent/context.md    宏观架构概览
 ├── agent/repomix.md    便于 grep 的源码包
-├── human/              Litho C4 文档
+├── human/              工程知识文档（源自 Litho）
 ├── knowledge/          领域词汇表
 └── .meta/freshness.json
 ```
@@ -188,11 +211,11 @@ graph TB
 Git ──scan──► index.md
     ──pack──► repomix.md
     ──context (LLM)──► context.md
-    ──litho (ACP)──► human/ + .litho-agent/ 检查点
+    ──docs (ACP)──► human/ + .litho-agent/ 检查点
     ──track──► freshness.json
 ```
 
-**消费** — DeepWiki 和 `terrain tools` 共享同一套三层访问模型：
+**消费** —— DeepWiki 和 `terrain tools` 共享同一套三层访问模型：
 
 | 层级 | 来源 | API |
 |------|------|-----|
@@ -202,7 +225,7 @@ Git ──scan──► index.md
 
 来源冲突时的优先级：**repomix 源码 > CodeGraph > context.md > human/**。当 `freshness_score < 50` 时应降低宏观上下文的权重。
 
-### ② 环境 — 道路
+### ② 标准化 AI 环境 —— 道路
 
 一条 `terrain env apply` 命令，装好 Agent 需要的导航设施，让它们不再各走各的路：
 
@@ -212,7 +235,7 @@ Git ──scan──► index.md
 | **Tools** | `~/.terrain/bin/` — CodeGraph、RTK、`terrain` CLI（ACP 场景用 `terrain tools`） |
 | **AGENTS.md** | 托管配置片段——知识优先的工作流、用 repomix 查代码、用 RTK 处理 shell 输出 |
 
-### ③ 工作流 — 路标
+### ③ 开发工作流 —— 路标
 
 SDD 定义了一条可复用的开发路径，每个阶段都有对应的可评审产出：
 
@@ -223,7 +246,7 @@ SDD 定义了一条可复用的开发路径，每个阶段都有对应的可评�
 | 代码生成 | `3.implementation.md` + 仓库变更 | ACP Agent |
 | 代码评审 | `4.code-review.md` | 原生 LLM |
 
-Litho 也采用了同样的可恢复设计——调研检查点保存在 `.terrain/.litho-agent/` 下。
+知识流水线同样采用可恢复设计——调研检查点保存在 `.terrain/.litho-agent/` 下。
 
 ### 运行时
 
@@ -237,7 +260,7 @@ graph LR
     Core --> FS[".terrain/ · Git · registry"]
 ```
 
-Core 负责 scan、pack、search、freshness 和 env，全程不依赖 LLM。Agent 模块编排 DeepWiki、Litho、SDD 和上下文生成——轻量任务走原生 LLM，重度工具调用走 ACP 子进程。
+Core 负责 scan、pack、search、freshness 和 env，全程不依赖 LLM。Agent 模块编排 DeepWiki、知识生成、SDD 和上下文生成——轻量任务走原生 LLM，重度工具调用走 ACP 子进程。
 
 ### `.terrain/` 目录结构（每个项目）
 
@@ -248,12 +271,12 @@ Core 负责 scan、pack、search、freshness 和 env，全程不依赖 LLM。Age
 │   ├── context.md           # 面向 Agent 的宏观架构上下文
 │   ├── repomix.md           # 源码包（自动生成，通常加入 gitignore）
 │   └── meta.json            # 包元数据
-├── human/                   # Litho C4 文档（1.概述.md, 2.架构.md, …）
+├── human/                   # 工程知识文档（1.概述.md, 2.架构.md, …）
 ├── knowledge/               # 领域词汇表与团队约定
 ├── .meta/
 │   ├── sync.json            # Scan 同步状态
 │   └── freshness.json       # 资产新鲜度评分
-└── .litho-agent/            # Litho 调研工作区（临时文件）
+└── .litho-agent/            # Litho/知识 调研工作区（临时文件）
 ```
 
 项目注册信息（slug ↔ 仓库路径）保存在本地 `~/.terrain/registry.json`——只有指针，没有知识文件。
@@ -266,56 +289,15 @@ Terrain 能和你已有的 AI 工具链无缝配合：
 
 | 组件 | 角色 |
 |------|------|
-| **OpenCode / ACP Agent** | 在隔离进程中执行 Litho 撰写、SDD 代码生成和工具调用 |
+| **Claude Code / Codex / OpenCode / ACP Agent** | 在隔离进程中执行知识撰写、SDD 代码生成与工具调用 |
 | **Repomix** | 把源码打包成便于 grep 的索引，供 Agent 使用 |
 | **CodeGraph** | 通过 `bunx codegraph` 查询符号的调用关系和影响范围 |
 | **RTK** | 压缩 shell 输出以节省 Token（npm 上的 `@terrain-ai/rtk`，或 `~/.terrain/bin/rtk`） |
 | **Terrain CLI** | Scan、资产管理、ACP 场景用 `terrain tools`（npm 上的 `@terrain-ai/cli`，或 `~/.terrain/bin/terrain`） |
-| **预设 Skills** | `preset_skills/` 中的 LLM 工作流指令（Litho、SDD、Ask、Context） |
-| **DeepWiki MCP** | 桌面 UI 中可选的 GitHub 仓库文档接入 |
+| **预设 Skills** | `preset_skills/` 中的 LLM 工作流指令（知识、SDD、Ask、Context） |
+| **DeepWiki / Litho Book** | 基于知识的问答与 Markdown 阅读器，整合进桌面 UI |
 
 编程 Agent 的信任模型：来源冲突时，**repomix 源码 > codegraph > context.md > human 文档**。
-
----
-
-## UI 展示
-
-> 当前截图为占位图，后续会替换为桌面应用的真实截图。
-
-### 概览
-
-<!-- 截图：带新鲜度指示器的桌面应用项目列表 -->
-<img height="1200" alt="image" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a" />
-
-*项目列表、注册状态和新鲜度评分一览。*
-
-### 知识与 Litho
-
-<!-- 截图：人类文档树，Litho C4 文档打开 -->
-<img height="1200" alt="image" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e" />
-
-*Litho 流水线自动生成的人类可读 C4 架构文档。*
-
-### DeepWiki
-
-<!-- 截图：DeepWiki 提问面板，含问题和带引用的回答 -->
-<img height="1200" alt="image" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09" />
-
-*基于知识库的智能问答，每条回答都附带引用来源和工具调用链路。*
-
-### SDD 工作流
-
-<!-- 截图：SDD 会话面板，展示各阶段产物 -->
-<img src="assets/screenshots/04-sdd.png" alt="Terrain — SDD 工作流" width="800" />
-
-*四阶段标准化开发流程：从需求分析到代码评审，一气呵成。*
-
-### 环境集成
-
-<!-- 截图：环境面板，集成状态和应用操作 -->
-<img src="assets/screenshots/05-env.png" alt="Terrain — 环境集成" width="800" />
-
-*Skills、工具和 AGENTS.md 的集成状态，一目了然。*
 
 ---
 
@@ -324,10 +306,9 @@ Terrain 能和你已有的 AI 工具链无缝配合：
 ### 前置条件
 
 - **Rust** 1.94+（版本由 [rust-toolchain.toml](rust-toolchain.toml) 锁定）
-- **Bun** — 前端及可选工具的 Node 工具链
-- **Git** — 仓库必须是 Git 工作区
-- **ACP Agent** — OpenCode 或兼容 Agent，用于 Litho 文档撰写和 SDD 代码生成
-- **LLM 访问**（可选）— OpenAI 兼容 API、Ollama 或 LM Studio（在桌面应用的**设置**面板中配置）
+- **Bun** —— 前端及可选工具的 Node 工具链
+- **LLM 访问**（可选）—— OpenAI 兼容 API、Ollama 或 LM Studio（在桌面应用的**设置**面板中配置）
+- **主流编程 Agent** —— 如 Codex、DeepSeek Harness 或 Claude Code，用于知识撰写与 SDD 代码生成
 
 ### 从源码构建
 

@@ -34,10 +34,11 @@
   } from "../types";
   import { formatTime } from "../timeFormat";
   import { assistantMessageMarkdown, assistantStepsMarkdown } from "../assistantMarkdown";
-  import { renderAskSharePng, formatUnknownError } from "../askShareImage";
+  import { renderAskShareImages, formatUnknownError } from "../askShareImage";
   import { copyPngBlobToClipboard, copyTextToClipboard } from "../clipboard";
+  import { pickDirectory, savePngPages, shareFileBaseName } from "../shareExport";
   import { CHAT_PHASE_LABELS, UI_MESSAGES } from "../terminology";
-  import CopyImageButton from "./CopyImageButton.svelte";
+  import ShareImageButton from "./ShareImageButton.svelte";
   import CopyMarkdownButton from "./CopyMarkdownButton.svelte";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
@@ -49,6 +50,7 @@
     askSessionLists,
     setActiveAskSessionId,
     setAskSessions,
+    setAskStreaming,
     showAskCompletionNotice,
   } from "../stores/chat.svelte";
   import {
@@ -103,6 +105,8 @@
   let copiedMarkdownKey = $state<string | null>(null);
   let copyingImageKey = $state<string | null>(null);
   let copiedImageKey = $state<string | null>(null);
+  let exportingImageKey = $state<string | null>(null);
+  let exportedImageKey = $state<string | null>(null);
   let copyToast = $state<{ text: string; ok: boolean } | null>(null);
   let sessionMenuOpen = $state(false);
   let sessionBusy = $state(false);
@@ -119,8 +123,15 @@
     currentSessionId = activeSessionId;
   });
 
+  $effect(() => {
+    if (!projectSlug) return;
+    setAskStreaming(projectSlug, busy);
+    return () => setAskStreaming(projectSlug, false);
+  });
+
   let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
   let copiedImageResetTimer: ReturnType<typeof setTimeout> | undefined;
+  let exportedImageResetTimer: ReturnType<typeof setTimeout> | undefined;
   let copyToastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sourceOpen = $derived(Boolean(sourceSlice));
@@ -272,6 +283,16 @@
     }, 2200);
   }
 
+  function markImageExported(key: string) {
+    clearTimeout(exportedImageResetTimer);
+    exportedImageKey = key;
+    exportedImageResetTimer = setTimeout(() => {
+      if (exportedImageKey === key) {
+        exportedImageKey = null;
+      }
+    }, 2200);
+  }
+
   function questionBeforeIndex(index: number): string | null {
     for (let j = index - 1; j >= 0; j -= 1) {
       if (messages[j].role === "user") return messages[j].content.trim();
@@ -309,18 +330,48 @@
 
     copyingImageKey = key;
     try {
-      const blob = await renderAskSharePng({
-        question: q,
-        answerMarkdown: answer,
-        projectName: projectName ?? projectSlug,
-      });
-      await copyPngBlobToClipboard(blob);
+      const { pages } = await renderAskShareImages({ question: q, answerMarkdown: answer });
+      // The clipboard holds a single image, so a paginated answer copies its first
+      // page and points at the export button for the rest.
+      await copyPngBlobToClipboard(pages[0]);
       markImageCopied(key);
-      showCopyToast("图片已复制到剪贴板");
+      showCopyToast(
+        pages.length > 1
+          ? `回答较长，已复制第 1 张（共 ${pages.length} 张），可用「导出长图」保存全部`
+          : "图片已复制到剪贴板",
+      );
     } catch (e) {
       showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
     } finally {
       copyingImageKey = null;
+    }
+  }
+
+  async function exportImages(key: string, question: string | null, answerMarkdown: string) {
+    const q = question?.trim();
+    const answer = answerMarkdown.trim();
+    if (!q || !answer || exportingImageKey) return;
+
+    // Ask for the destination before rendering: cancelling should cost nothing.
+    const dir = await pickDirectory("选择导出目录");
+    if (!dir) return;
+
+    exportingImageKey = key;
+    try {
+      const { pages, omittedBlocks } = await renderAskShareImages({
+        question: q,
+        answerMarkdown: answer,
+      });
+      const files = await savePngPages(dir, shareFileBaseName(q), pages);
+      markImageExported(key);
+      showCopyToast(
+        `已导出 ${files.length} 张图片到 ${dir}` +
+          (omittedBlocks > 0 ? `（另有 ${omittedBlocks} 个段落过长未收录）` : ""),
+      );
+    } catch (e) {
+      showCopyToast(`导出失败：${formatUnknownError(e)}`, false);
+    } finally {
+      exportingImageKey = null;
     }
   }
 
@@ -529,19 +580,6 @@
 
     if (!projectSlug) return;
 
-    let sessionId = currentSessionId;
-    if (!sessionId) {
-      sessionId = await ensureAskSessionForQuestion(projectSlug, question);
-      currentSessionId = sessionId;
-    }
-
-    const userMessages: ChatMessage[] = [
-      ...messages,
-      { role: "user", content: question, timestamp: Date.now() },
-    ];
-    onmessageschange(() => userMessages);
-    void persistAskMessages(projectSlug, sessionId, userMessages);
-    input = "";
     busy = true;
     stickToBottom = true;
     turnCompleted = false;
@@ -550,6 +588,20 @@
     streamingUsage = null;
 
     try {
+      let sessionId = currentSessionId;
+      if (!sessionId) {
+        sessionId = await ensureAskSessionForQuestion(projectSlug, question);
+        currentSessionId = sessionId;
+      }
+
+      const userMessages: ChatMessage[] = [
+        ...messages,
+        { role: "user", content: question, timestamp: Date.now() },
+      ];
+      onmessageschange(() => userMessages);
+      void persistAskMessages(projectSlug, sessionId, userMessages);
+      input = "";
+
       const reply = await askKnowledge(
         question,
         projectSlug,
@@ -781,11 +833,18 @@
                   {#if msg.role === "assistant" && assistantMessageMarkdown(msg)}
                     {@const copyKey = `done-${msg.timestamp ?? i}`}
                     <div class="flex shrink-0 items-center gap-1.5">
-                      <CopyImageButton
+                      <ShareImageButton
                         copied={copiedImageKey === copyKey}
                         copying={copyingImageKey === copyKey}
                         onclick={() =>
                           void copyImage(copyKey, questionBeforeIndex(i), assistantMessageMarkdown(msg))}
+                      />
+                      <ShareImageButton
+                        mode="export"
+                        copied={exportedImageKey === copyKey}
+                        copying={exportingImageKey === copyKey}
+                        onclick={() =>
+                          void exportImages(copyKey, questionBeforeIndex(i), assistantMessageMarkdown(msg))}
                       />
                       <CopyMarkdownButton
                         copied={copiedMarkdownKey === copyKey}
@@ -861,11 +920,22 @@
                   {/if}
                   {#if assistantStepsMarkdown(streamSteps)}
                     <div class="flex shrink-0 items-center gap-1.5">
-                      <CopyImageButton
+                      <ShareImageButton
                         copied={copiedImageKey === "streaming"}
                         copying={copyingImageKey === "streaming"}
                         onclick={() =>
                           void copyImage(
+                            "streaming",
+                            lastUserQuestion(),
+                            assistantStepsMarkdown(streamSteps),
+                          )}
+                      />
+                      <ShareImageButton
+                        mode="export"
+                        copied={exportedImageKey === "streaming"}
+                        copying={exportingImageKey === "streaming"}
+                        onclick={() =>
+                          void exportImages(
                             "streaming",
                             lastUserQuestion(),
                             assistantStepsMarkdown(streamSteps),

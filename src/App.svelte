@@ -61,6 +61,7 @@
     } from "./lib/stores/status.svelte";
     import { readerLayout, toggleDocTree } from "./lib/stores/readerLayout.svelte";
     import {
+        askStreamingBySlug,
         chatSessions,
         deepWikiSources,
         knowledgeSources,
@@ -153,8 +154,16 @@
         }
     });
 
+    const keepDeepWikiPanel = $derived(
+        Boolean(
+            project.selectedSlug &&
+                (project.deepWikiOpen ||
+                    Boolean(askStreamingBySlug[project.selectedSlug])),
+        ),
+    );
+
     $effect(() => {
-        if (project.deepWikiOpen && project.selectedSlug && !DeepWikiPanel) {
+        if (keepDeepWikiPanel && project.selectedSlug && !DeepWikiPanel) {
             void import("./lib/components/DeepWikiPanel.svelte").then((m) => {
                 DeepWikiPanel = m.default;
             });
@@ -1400,7 +1409,7 @@
     </div>
 </div>
 
-{#if project.selectedSlug && project.deepWikiOpen && DeepWikiPanel}
+{#if project.selectedSlug && DeepWikiPanel && keepDeepWikiPanel}
     <DeepWikiPanel
         open={project.deepWikiOpen}
         projectSlug={project.selectedSlug}

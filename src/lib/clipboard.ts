@@ -5,14 +5,19 @@ export async function copyTextToClipboard(text: string): Promise<void> {
   await invoke("copy_text_to_clipboard", { text });
 }
 
-export async function copyPngBlobToClipboard(blob: Blob): Promise<void> {
+/** Chunked rather than per-byte: a share image runs to several megabytes. */
+export async function blobToBase64(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
+  const chunkSize = 0x8000;
   let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
-  const pngBase64 = btoa(binary);
-  await invoke("copy_image_to_clipboard", { pngBase64 });
+  return btoa(binary);
+}
+
+export async function copyPngBlobToClipboard(blob: Blob): Promise<void> {
+  await invoke("copy_image_to_clipboard", { pngBase64: await blobToBase64(blob) });
 }
 
 export async function copySvgAsImage(svg: string): Promise<"image" | "text"> {
