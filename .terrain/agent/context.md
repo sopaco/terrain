@@ -87,7 +87,8 @@ Terrain 是面向 AI 编码助手时代的**工程环境管理平台**（Sopaco 
 
 - **Rust**：workspace（terrain-core/terrain-agent/terrain-cli/terrain-ts-export/src-tauri），edition 2024，rust-version 1.94。
 - **桌面壳**：Tauri 2（capabilities ACL、plugin-dialog/shell、托盘 + Usage 窗口）。
-- **前端**：Svelte 5（runes）+ Vite 8 + Tailwind 4 + marked/mermaid/highlight.js/html2canvas、@lucide/svelte。
+- **前端**：Svelte 5（runes）+ Vite 8 + Tailwind 4 + marked/mermaid/highlight.js、@lucide/svelte。
+- **Ask 分享图片**：离屏挂载真实 `AskShareCard`（复用 MarkdownViewer/markdown.css/mermaid）→ 长文分页 → 原生 canvas 栅格化 PNG；剪贴板经 `copy_image_to_clipboard`、落盘经 `save_png_files`。
 - **IPC 类型**：ts-rs 10 + schemars；`bun run gen:types` 生成 `src/lib/generated/`。
 - **Agent 运行时**：ADK Rust 1.0 家族（adk-core/agent/runner/session/tool/model `{openai,ollama}`/acp）+ agent-client-protocol 0.11.1（ACP 子进程），本地 `[patch]` tokio 层。
 - **源码索引**：repomix-core 2.0（repomix-rs Rust 锈化）打包 `agent/repomix.md`；CodeGraph（SQLite 符号图）做 drift 交叉验证；RTK 压缩 shell 输出。
@@ -130,5 +131,6 @@ Terrain 是面向 AI 编码助手时代的**工程环境管理平台**（Sopaco 
 | IPC 类型 | `crates/terrain-core/src/schema/`、`ipc/`、`crates/terrain-agent/src/chat/types.rs` | ts-export 注解 |
 | Tauri 命令层 | `src-tauri/src/commands/` | project/sessions/workflows/knowledge/env/usage/assets |
 | 前端 IPC 封装 | `src/lib/api.ts`、`types.ts`、`types.client.ts` | invoke + 生成类型入口 |
+| Ask 分享/长图导出 | `src/lib/askShareImage.ts`、`components/AskShareCard.svelte`、`ShareImageButton.svelte`、`shareExport.ts`、`clipboard.ts`、`src-tauri/src/commands/settings.rs` | 离屏渲染真实 MarkdownViewer、分页栅格化 PNG；复制/导出经 `copy_image_to_clipboard`/`save_png_files` |
 | CLI + Ask tools | `crates/terrain-cli/src/cli.rs`、`commands/tools.rs` | `terrain tools` 知识层 |
 | ACP 协议 patch | `crates/agent-client-protocol-tokio-patched/src/acp_agent.rs` | Cargo patch |
