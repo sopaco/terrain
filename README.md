@@ -280,8 +280,6 @@ Trust model for coding agents: when sources conflict, **repomix source > codegra
 
 ## UI Showcase
 
-Screenshots are placeholders — replace with captures from the desktop app when ready.
-
 ### Overview
 
 <!-- Capture: Desktop app project list with freshness indicators -->
