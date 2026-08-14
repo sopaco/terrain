@@ -15,16 +15,29 @@ Engineering environment management for human developers and AI coding assistants
 
 ## What is Terrain?
 
-Terrain is an **engineering environment management platform** built for the age of AI-assisted development. Point it at a Git repository and it will:
+Terrain is a **standardized, AI-friendly engineering environment** built for the age of AI-assisted development. Point it at a Git repository and it delivers three things:
 
-- **Scan** the codebase and index project structure
-- **Generate** human-readable C4 architecture documentation (Litho)
-- **Maintain** AI-friendly structured knowledge assets under `.terrain/`
-- **Answer** architecture questions via DeepWiki (RAG over your knowledge base)
-- **Run** standardized development workflows (SDD: requirements → design → codegen → review)
-- **Integrate** Skills, tools, and `AGENTS.md` guidance for external coding agents
+- **🗺️ Engineering knowledge assets** — auto-generated, always-in-sync C4 docs and agent context, **produced from your code and consumed by both humans and AI agents**.
+- **🤝 A standardized environment for AI agents** — one shared "knowledge contract" (Skills, `AGENTS.md`, CLIs) so every coding agent reads the project the same way instead of blind-grepping the live repo.
+- **⚙️ Auto-deployed agent enhancement tools** — one command installs the toolchain your agents need (CodeGraph, RTK, preset Skills); no per-repo yak-shaving.
 
-Knowledge lives **in the repository** — not in a central database. Every branch carries its own docs. Human developers use the **Tauri desktop app** or **CLI**; external AI coding assistants (OpenCode, Cursor, etc.) call `terrain tools` over ACP to read the same knowledge layers.
+Knowledge lives **in the repository** — not in a central database. Every branch carries its own docs. Human developers use the **Tauri desktop app** or **CLI**; external AI coding assistants (Claude Code, Codex, OpenCode, Cursor, …) call `terrain tools` over **ACP** to read the same knowledge layers.
+
+### App preview
+
+| Project overview | Engineering knowledge assets | DeepWiki Q&A | Agent environment |
+|------------------|------------------------------|--------------|-------------------|
+| <img width="200" alt="Project overview with freshness scores" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a"> | <img width="200" alt="Auto-generated C4 architecture docs" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e"> | <img width="200" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09"> | <img width="200" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
+
+*From left to right: project list with freshness scores, auto-generated C4 docs, knowledge-grounded Q&A, and one-command agent tooling setup.*
+
+### Three pillars at a glance
+
+| Pillar | Metaphor | What you get |
+|--------|----------|--------------|
+| **Engineering knowledge assets** | *Map* | Dual-track docs in `.terrain/` — **produced** from code, **consumed** by humans and agents |
+| **Standardized AI environment** | *Roads* | Skills, CLIs, and `AGENTS.md` that route agents to the right knowledge and tools |
+| **Agent enhancement tools** | *Gear* | One-command deployment of CodeGraph, RTK, and preset Skills |
 
 ### Dual-track knowledge
 
@@ -47,9 +60,9 @@ Onboarding to a new codebase usually means days of reading source and stale wiki
 
 | Without Terrain | With Terrain |
 |------------------|---------------|
-| Architecture knowledge scattered across wikis, Slack, and senior engineers | C4 docs and agent context generated from the actual codebase |
+| Architecture knowledge scattered across wikis, Slack, and senior engineers | Engineering knowledge assets generated from the actual codebase |
 | AI assistants grep the live repo blindly | Agents read `context.md` first, then targeted repomix slices |
-| Docs drift from code on every refactor | Freshness tracking flags stale assets; knowledge travels with Git branches |
+| Docs drift from code on every refactor | Incremental updates + freshness tracking; knowledge travels with Git branches |
 | Every team reinvents "how to onboard an AI to our repo" | Env integration installs Skills, CodeGraph, RTK, and `AGENTS.md` snippets |
 
 **Built for:**
@@ -58,30 +71,54 @@ Onboarding to a new codebase usually means days of reading source and stale wiki
 - **Tech leads** who want architecture docs that stay close to the code
 - **Teams** adopting AI coding assistants and need a shared knowledge contract
 - **CI/CD** pipelines that regenerate knowledge assets on merge
-- **ACP integrators** wiring `terrain tools` into OpenCode or compatible agents
+- **ACP integrators** wiring `terrain tools` into Claude Code, Codex, OpenCode, or compatible agents
+
+---
+
+## From Litho (deepwiki-rs) to Terrain
+
+Terrain's knowledge engine is the direct successor of **Litho**, the AI documentation generator published as [deepwiki-rs](https://github.com/sopaco/deepwiki-rs) (**1.7k★**). Litho proved the core thesis at scale — *generate architecture docs from code, keep them in sync, make them agent-ready*. Terrain takes that successful practice and hardens it into a platform:
+
+- **Incremental knowledge-base updates.** Instead of regenerating from scratch, Terrain tracks Git HEAD and working-tree state and updates only what changed, so the knowledge base stays fresh on every commit without the full cost (freshness scoring + resumable pipelines).
+- **Broad language & framework adaptation.** The generation core is language-agnostic and tuned for Rust, TypeScript/JavaScript, Python, Go, Java, C#, and more, with framework-aware structure extraction.
+- **ACP mode for your agents.** Terrain speaks the Agent Client Protocol, so Claude Code, Codex, OpenCode, and Cursor can pull project knowledge through `terrain tools` instead of guessing.
+- **Litho Book, built in.** The original Litho Book Markdown reader and its knowledge-grounded Q&A are now integrated into the Terrain desktop app — browse and ask in one place.
+
+In short: if you liked Litho for docs, Terrain is Litho's knowledge core **plus** the environment, workflow, and agent bridge around it.
 
 ---
 
 ## Features & Capabilities
 
-### Litho — C4 architecture documentation
+### 1. Engineering knowledge assets — generate & consume
 
-Automated four-phase pipeline (research → composition) produces six standard human docs:
+Terrain turns a codebase into a dual-track knowledge base that both people and agents use. Born from Litho (deepwiki-rs, 1.7k★), it keeps the proven doc-generation core and adds incremental, multi-language, agent-connected delivery.
 
-1. Overview
-2. Architecture
-3. Workflows
-4. Deep module exploration
-5. Boundary interfaces
-6. Database overview
+- **Generate** — a four-phase pipeline produces six standard human docs (overview, architecture, workflows, deep module exploration, boundary interfaces, database overview) plus a structured `agent/context.md` and a grep-friendly `repomix.md` source pack.
+- **Consume** — DeepWiki answers natural-language questions over the knowledge base with citations and tool-call traces; external agents consume the same three layers through `terrain tools`.
+- **Stay fresh** — incremental regeneration on code change and a freshness score that flags stale assets.
+- **Read & ask in one place** — the integrated Litho Book reader and Q&A (formerly a separate tool) now live inside the desktop app.
 
-Intermediate research artifacts persist under `.terrain/.litho-agent/` so generation can resume after interruption.
+> The same Litho success story, now incremental, multi-language, and wired to your agents.
 
-### DeepWiki — knowledge-grounded Q&A
+### 2. Standardized, AI-friendly engineering environment
 
-Ask natural-language questions against your project's knowledge base. The Chat engine preloads macro context from `agent/context.md`, fetches meso sections on demand, and uses repomix grep/read for micro-level source detail. Answers include citations and tool-call traces.
+A shared "knowledge contract" so every coding agent reads your repo the same way:
 
-### SDD — standardized development workflow
+- **`AGENTS.md`** — managed snippets that point agents to the knowledge layers first.
+- **Preset Skills** — standard playbooks (terrain-knowledge → repomix → codegraph → rtk) your agents can load.
+- **Conventions as trail markers** — consistent workflow and access patterns across repositories.
+
+### 3. Auto-deployed agent enhancement tools
+
+One command wires up the toolchain your agents need — no per-repo setup:
+
+- **CodeGraph** — symbol callers/callees/impact queries via `bunx codegraph`.
+- **RTK** — shell-output token optimizer that saves agents tokens.
+- **Terrain CLI / `terrain tools`** — scan, assets, and ACP access.
+- `terrain env apply` installs Skills, CLIs, and `AGENTS.md` in the right dependency order (`terrain-knowledge` → `repomix` → `codegraph` → `rtk`).
+
+### 4. SDD — standardized development workflow
 
 Four sequential phases, each producing a reviewable Markdown artifact:
 
@@ -94,21 +131,7 @@ Four sequential phases, each producing a reviewable Markdown artifact:
 
 Session outputs live under `~/.terrain/sdd/{project}/sessions/{id}/outputs/` (local, not versioned).
 
-### Env — AI engineering environment integration
-
-Detect and install the toolchain your coding agents need:
-
-- **Skills** — terrain-knowledge, repomix-context, codegraph, rtk
-- **Tools** — CodeGraph CLI, RTK token optimizer
-- **AGENTS.md** — managed snippets guiding agents to the knowledge layers
-
-Dependency order is respected: `terrain-knowledge` → `repomix` → `codegraph` → `rtk`.
-
-### ACP tools — CLI for external agents
-
-When Terrain runs in ACP mode, external agents call `terrain tools` (JSON stdout) instead of built-in function tools. Same three-layer model: macro (preloaded) → meso (`read-context`) → micro (`grep-pack` / `read-pack-file`).
-
-### Freshness tracking
+### 5. Freshness tracking
 
 Git HEAD and dirty-state monitoring score knowledge assets. Agents should down-weight context when `freshness_score < 50`.
 
@@ -120,13 +143,13 @@ Terrain is an **agent-first engineering environment platform**. For each Git rep
 
 | Pillar | Metaphor | What agents get |
 |--------|----------|-----------------|
-| **Knowledge** | *Map* | Structured assets in `.terrain/` — **produced** from code, **consumed** through layered access |
-| **Environment** | *Roads* | Skills, CLIs, and `AGENTS.md` that route agents to the right knowledge and tools |
-| **Workflow** | *Trail markers* | SDD — a four-phase convention from requirements through code review |
+| **Engineering knowledge assets** | *Map* | Structured assets in `.terrain/` — **produced** from code, **consumed** through layered access |
+| **Standardized AI environment** | *Roads* | Skills, CLIs, and `AGENTS.md` that route agents to the right knowledge and tools |
+| **Development workflow (SDD)** | *Trail markers* | A four-phase convention from requirements through code review |
 
 > **Knowledge as the map, tools as the roads, conventions as the trail markers.**
 
-Humans use the **desktop app** or **CLI**; external coding agents (Cursor, OpenCode, …) use the same contract via **`terrain tools`** (JSON stdout). Assets live **in-repo** (`.terrain/` travels with branches); `~/.terrain/registry.json` holds project pointers only.
+Humans use the **desktop app** or **CLI**; external coding agents (Claude Code, Codex, OpenCode, …) use the same contract via **`terrain tools`** (JSON stdout). Assets live **in-repo** (`.terrain/` travels with branches); `~/.terrain/registry.json` holds project pointers only.
 
 ### System overview
 
@@ -138,8 +161,8 @@ graph TB
     end
 
     subgraph Terrain["Terrain"]
-        K["Knowledge<br/>produce · consume"]
-        E["Environment<br/>skills · tools · AGENTS.md"]
+        K["Engineering knowledge assets<br/>produce · consume"]
+        E["Standardized AI environment<br/>skills · tools · AGENTS.md"]
         W["Workflow<br/>SDD"]
     end
 
@@ -169,7 +192,7 @@ graph TB
     W --> LLM
 ```
 
-### ① Knowledge — the map
+### ① Engineering knowledge assets — the map
 
 Dual-track assets from one factory — narrative `human/` for people, structured `agent/` for machines:
 
@@ -177,7 +200,7 @@ Dual-track assets from one factory — narrative `human/` for people, structured
 .terrain/
 ├── agent/context.md    macro overview
 ├── agent/repomix.md    grep-friendly source pack
-├── human/              Litho C4 docs
+├── human/              engineering knowledge docs (from Litho)
 ├── knowledge/          domain glossary
 └── .meta/freshness.json
 ```
@@ -188,7 +211,7 @@ Dual-track assets from one factory — narrative `human/` for people, structured
 Git ──scan──► index.md
     ──pack──► repomix.md
     ──context (LLM)──► context.md
-    ──litho (ACP)──► human/ + .litho-agent/ checkpoints
+    ──docs (ACP)──► human/ + .litho-agent/ checkpoints
     ──track──► freshness.json
 ```
 
@@ -202,7 +225,7 @@ Git ──scan──► index.md
 
 When sources conflict: **repomix > CodeGraph > context.md > human/**. Down-weight macro context when `freshness_score < 50`.
 
-### ② Environment — the roads
+### ② Standardized AI environment — the roads
 
 `terrain env apply` installs the navigation layer so agents don't improvise:
 
@@ -212,7 +235,7 @@ When sources conflict: **repomix > CodeGraph > context.md > human/**. Down-weigh
 | **Tools** | `~/.terrain/bin/` — CodeGraph, RTK, `terrain` CLI (`terrain tools` for ACP) |
 | **AGENTS.md** | Managed snippets — knowledge-first workflow, repomix for code, RTK for shell |
 
-### ③ Workflow — the trail markers
+### ③ Development workflow — the trail markers
 
 SDD defines a repeatable path; each phase produces a reviewable Markdown artifact:
 
@@ -223,7 +246,7 @@ SDD defines a repeatable path; each phase produces a reviewable Markdown artifac
 | Codegen | `3.implementation.md` + repo changes | ACP agent |
 | Code review | `4.code-review.md` | Native LLM |
 
-Litho uses the same resumable pattern — research checkpoints under `.terrain/.litho-agent/`.
+The knowledge pipeline uses the same resumable pattern — research checkpoints under `.terrain/.litho-agent/`.
 
 ### Runtime
 
@@ -237,7 +260,7 @@ graph LR
     Core --> FS[".terrain/ · Git · registry"]
 ```
 
-Core handles scan, pack, search, freshness, and env without an LLM. Agent orchestrates DeepWiki, Litho, SDD, and context generation — lightweight tasks via native LLM, heavy tool-using work via ACP subprocess.
+Core handles scan, pack, search, freshness, and env without an LLM. Agent orchestrates DeepWiki, knowledge generation, SDD, and context generation — lightweight tasks via native LLM, heavy tool-using work via ACP subprocess.
 
 ### `.terrain/` directory (per project)
 
@@ -248,12 +271,12 @@ Core handles scan, pack, search, freshness, and env without an LLM. Agent orches
 │   ├── context.md           # Macro architecture context for agents
 │   ├── repomix.md           # Source pack (generated, often gitignored)
 │   └── meta.json            # Pack metadata
-├── human/                   # Litho C4 docs (1.概述.md, 2.架构.md, …)
+├── human/                   # Engineering knowledge docs (1.概述.md, 2.架构.md, …)
 ├── knowledge/               # Domain glossary and conventions
 ├── .meta/
 │   ├── sync.json            # Scan sync state
 │   └── freshness.json       # Asset freshness scores
-└── .litho-agent/            # Litho research workspace (transient)
+└── .litho-agent/            # Litho/knowledge research workspace (transient)
 ```
 
 Project registration (slug ↔ repo path) is stored locally at `~/.terrain/registry.json` — pointers only, not knowledge files.
@@ -266,58 +289,15 @@ Terrain composes with the tools your AI workflow already uses:
 
 | Component | Role |
 |-----------|------|
-| **OpenCode / ACP agents** | Execute Litho composition, SDD codegen, and tool calls in an isolated process |
+| **Claude Code / Codex / OpenCode / ACP agents** | Execute knowledge composition, SDD codegen, and tool calls in an isolated process |
 | **Repomix** | Packs source into a grep-friendly index for agents |
 | **CodeGraph** | Symbol callers/callees/impact queries via `bunx codegraph` |
 | **RTK** | Compresses shell output to save tokens (`@terrain-ai/rtk` on npm, or `~/.terrain/bin/rtk`) |
 | **Terrain CLI** | Scan, assets, `terrain tools` for ACP (`@terrain-ai/cli` on npm, or `~/.terrain/bin/terrain`) |
-| **Preset Skills** | LLM workflow instructions in `preset_skills/` (Litho, SDD, Ask, Context) |
-| **DeepWiki MCP** | Optional GitHub repo documentation in the desktop UI |
+| **Preset Skills** | LLM workflow instructions in `preset_skills/` (knowledge, SDD, Ask, Context) |
+| **DeepWiki / Litho Book** | Knowledge-grounded Q&A and Markdown reader, integrated in the desktop UI |
 
 Trust model for coding agents: when sources conflict, **repomix source > codegraph > context.md > human docs**.
-
----
-
-## UI Showcase
-
-### Overview
-
-<!-- Capture: Desktop app project list with freshness indicators -->
-<img height="1200" alt="image" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a" />
-
-
-
-*Project list, registration status, and freshness scores.*
-
-### Knowledge & Litho
-
-<!-- Capture: Human docs tree with Litho C4 document open -->
-<img height="1200" alt="image" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e" />
-
-
-*Human-facing C4 architecture docs generated by the Litho pipeline.*
-
-### DeepWiki
-
-<!-- Capture: DeepWiki Ask panel with a question and cited answer -->
-<img height="1200" alt="image" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09" />
-
-
-*Knowledge-grounded Q&A with citations and tool-call traces.*
-
-### SDD Workflow
-
-<!-- Capture: SDD session panel showing phase outputs -->
-<img src="assets/screenshots/04-sdd.png" alt="Terrain — SDD workflow" width="800" />
-
-*Four-phase standardized development: requirements through code review.*
-
-### Env Integration
-
-<!-- Capture: Env panel with integration status and apply action -->
-<img src="assets/screenshots/05-env.png" alt="Terrain — environment integration" width="800" />
-
-*Skills, tools, and AGENTS.md integration status for coding agents.*
 
 ---
 
@@ -327,9 +307,8 @@ Trust model for coding agents: when sources conflict, **repomix source > codegra
 
 - **Rust** 1.94+ ([rust-toolchain.toml](rust-toolchain.toml) pins the version)
 - **Bun** — Node toolchain for frontend and optional tools
-- **Git** — repositories must be Git workspaces
-- **ACP agent** — OpenCode or compatible agent for Litho composition and SDD codegen
 - **LLM access** (optional) — OpenAI-compatible API, Ollama, or LM Studio (configure in the desktop app **Settings** panel)
+- **Mainstream coding agent** — e.g. Codex, DeepSeek Harness, or Claude Code, for knowledge composition and SDD codegen
 
 ### Build from source
 
