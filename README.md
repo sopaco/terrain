@@ -27,7 +27,7 @@ Knowledge lives **in the repository** — not in a central database. Every branc
 
 | Project overview | Engineering knowledge assets | DeepWiki Q&A | Agent environment |
 |------------------|------------------------------|--------------|-------------------|
-| <img width="200" alt="Project overview with freshness scores" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a"> | <img width="200" alt="Auto-generated C4 architecture docs" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e"> | <img width="200" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09"> | <img width="200" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
+| <img width="2394" height="1596" alt="image" src="https://github.com/user-attachments/assets/30ab7366-4159-4ccd-bcba-fdc145c901b5" /> | <img width="200" alt="Auto-generated C4 architecture docs" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e"> | <img width="200" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09"> | <img width="200" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
 
 *From left to right: project list with freshness scores, auto-generated C4 docs, knowledge-grounded Q&A, and one-command agent tooling setup.*
 
