@@ -96,5 +96,6 @@ source: .
     - main.ts
     - app.css
     - App.svelte
+    - vite-env.d.ts
     - lib/
     - UsageWindow.svelte
