@@ -7,6 +7,7 @@
 
 Engineering environment management for human developers and AI coding assistants — knowledge as the map, tools as the roads, conventions as the trail markers.
 
+<a href="https://github.com/sopaco/terrain/tree/dev/.terrain/human"><img alt="Litho Docs" src="https://img.shields.io/badge/Litho-Docs-green?logo=Gitbook&color=%23008a60"/></a>
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -21,7 +22,8 @@ Terrain is a **standardized, AI-friendly engineering environment** built for the
 - **🤝 A standardized environment for AI agents** — one shared "knowledge contract" (Skills, `AGENTS.md`, CLIs) so every coding agent reads the project the same way instead of blind-grepping the live repo.
 - **⚙️ Auto-deployed agent enhancement tools** — one command installs the toolchain your agents need (CodeGraph, RTK, preset Skills); no per-repo yak-shaving.
 
-Knowledge lives **in the repository** — not in a central database. Every branch carries its own docs. Human developers use the **Tauri desktop app** or **CLI**; external AI coding assistants (Claude Code, Codex, OpenCode, Cursor, …) call `terrain tools` over **ACP** to read the same knowledge layers.
+Terrain provides both **GUI** and **CLI** modes. Through the CLI, you can conveniently integrate engineering knowledge generation and Deepwiki's Q&A functionality into PR and CI/CD pipelines. Human developers use the **Tauri desktop app** or **CLI**.
+For specific usage of the CLI, see [Terrain CLI Guides](https://github.com/sopaco/terrain/blob/dev/.terrain/human/5.%E8%BE%B9%E7%95%8C%E6%8E%A5%E5%8F%A3.md#%E5%91%BD%E4%BB%A4%E8%A1%8C%E6%8E%A5%E5%8F%A3-cli).
 
 ### App preview
 
