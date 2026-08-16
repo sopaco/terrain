@@ -303,14 +303,18 @@ Trust model for coding agents: when sources conflict, **repomix source > codegra
 
 ## Getting Started
 
-### Prerequisites
+### Use Prebuilt Installer (Recommend)
+Recommend downloading the pre-compiled software package from the [**Github Release**](https://github.com/sopaco/tarrain/releases), ready to use out of the box.
 
+### Build from source (Optional & DIY)
+
+#### Prerequisites
 - **Rust** 1.94+ ([rust-toolchain.toml](rust-toolchain.toml) pins the version)
-- **Bun** — Node toolchain for frontend and optional tools
+- **NodeJS /Bun** — Node toolchain for frontend and optional tools
 - **LLM access** (optional) — OpenAI-compatible API, Ollama, or LM Studio (configure in the desktop app **Settings** panel)
 - **Mainstream coding agent** — e.g. Codex, DeepSeek Harness, or Claude Code, for knowledge composition and SDD codegen
 
-### Build from source
+### Build
 
 ```bash
 # Clone and install frontend dependencies
