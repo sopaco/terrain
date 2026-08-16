@@ -1,19 +1,20 @@
-# .gitignore — terrain-git-policy: v1 · 由 Terrain 生成并维护
+# .gitignore — terrain-git-policy: v2 · 由 Terrain 生成并维护
 # 决定 .terrain/ 下哪些文件进版本库（策略说明见下）
 # 需要自定义时删除本文件顶部的 `terrain-git-policy: v<n>` 标记行，
 # Terrain 就不再覆盖它（Terrain 也不会再为你升级策略）。
 
 # ── 不入库：本机衍生物 ─────────────────────────────────────────
-# 源码索引包及其派生物
+# 源码索引包及其派生物（纯本地产物，可由 scan 在本地重建）
 agent/repomix.md
 agent/repomix.index.json
 agent/meta.json
 agent/meta-inputs.md
 agent/meta-inputs-manifest.json
-agent/context-meta.json
 
-# 保鲜 / 同步快照（含时间戳与 baseline git HEAD，逐机器不同）
-.meta/
+# 保鲜 / 同步快照（含时间戳的本机缓存）
+# 注意用 .meta/* 而非 .meta/，以便单独放行 human.json
+.meta/*
+!.meta/human.json
 
 # 本机环境状态（工具路径、集成清单）
 env/
@@ -29,3 +30,7 @@ env/
 # knowledge/   人为维护的私域知识 —— 真正需要逐行合并的部分
 # agent/context.md, human/, index.md, project-note.md
 #              生成的知识文档；合并策略见同目录 .gitattributes
+# agent/context-meta.json, .meta/human.json
+#              已入库文档的出处元数据（baseline git HEAD / 生成时间）。
+#              内容走到哪，provenance 就跟到哪——否则另一台设备会拿本机
+#              旧 baseline 给新内容计分，新鲜度跨设备不一致且保鲜无法修复。
