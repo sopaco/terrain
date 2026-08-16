@@ -84,7 +84,8 @@ Coding Agent **必须先加载** `terrain-knowledge-skill`，并按其中分层�
 |------|------|----------|
 | 人为维护的私域知识 | `knowledge/` | 入库，正常三方合并 |
 | 生成的知识文档 | `agent/context.md`、`human/`、`index.md` | 入库，但 **`-merge`：禁用自动合并** |
-| 本机衍生物 | `agent/repomix*`、`agent/meta*.json`、`.meta/`、`env/`、`.litho-agent/`、`.sdd-agent/` | **不入库**，由 scan 本地重建 |
+| 入库文档的出处元数据 | `agent/context-meta.json`、`.meta/human.json` | 入库（记录文档的 baseline git HEAD / 生成时间，须随内容走，否则他机新鲜度评分失真） |
+| 本机衍生物 | `agent/repomix*`、`agent/meta.json`、`agent/meta-inputs*`、`.meta/` 其余缓存、`env/`、`.litho-agent/`、`.sdd-agent/` | **不入库**，由 scan 本地重建 |
 
 - **不要**把本机衍生物 `git add -f` 进版本库；它们体积大、含时间戳与 baseline git HEAD，入库必然产生冲突。
 - `agent/context.md`、`human/**` 由 LLM 生成，**非确定性** —— 同一份代码两次生成措辞与结构都不同。冲突时**不要手工合并**（合并结果会是"既不是 A 也不是 B"的自相矛盾文档）：保留任一版本结束冲突，然后重新运行 Terrain scan 基于合并后的代码重生成。
