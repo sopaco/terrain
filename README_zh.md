@@ -27,7 +27,7 @@ Terrain 是一款**标准化、对 AI 友好的工程环境**，面向 AI 辅助
 
 | 项目总览 | 工程知识资产 | DeepWiki 问答 | Agent 环境 |
 |----------|--------------|---------------|------------|
-| <img height="150" alt="image" src="assets/screenshots/01-overview.webp" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="assets/screenshots/02-knowledge-litho.webp"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/a43de728-15b1-479d-9229-912205503270"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
+| <img height="150" alt="image" src="assets/screenshots/01-overview.webp" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="assets/screenshots/02-knowledge-litho.webp"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="assets/screenshots/03-deepwiki-ask.webp"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
 
 *从左到右：带新鲜度评分的项目列表、自动生成的 C4 文档、基于知识的智能问答、一键部署的 Agent 工具链。*
 

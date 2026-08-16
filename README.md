@@ -29,7 +29,7 @@ For specific usage of the CLI, see [**Terrain CLI Guides**](https://github.com/s
 
 | Project overview | Engineering knowledge | DeepWiki Q&A | Agent environment |
 |------------------|------------------------------|--------------|-------------------|
-| <img height="150" alt="image" src="assets/screenshots/01-overview.webp" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="assets/screenshots/02-knowledge-litho.webp"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/a43de728-15b1-479d-9229-912205503270"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
+| <img height="150" alt="image" src="assets/screenshots/01-overview.webp" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="assets/screenshots/02-knowledge-litho.webp"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="assets/screenshots/03-deepwiki-ask.webp"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
 
 *From left to right: project list with freshness scores, auto-generated C4 docs, knowledge-grounded Q&A, and one-command agent tooling setup.*
 
