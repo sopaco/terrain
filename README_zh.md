@@ -27,9 +27,11 @@ Terrain 是一款**标准化、对 AI 友好的工程环境**，面向 AI 辅助
 
 | 项目总览 | 工程知识资产 | DeepWiki 问答 | Agent 环境 |
 |----------|--------------|---------------|------------|
-| <img width="200" alt="带新鲜度评分的项目总览" src="https://github.com/user-attachments/assets/3ecebd00-7a7c-4219-b02b-fe4a8bd17e7a"> | <img width="200" alt="自动生成的 C4 架构文档" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e"> | <img width="200" alt="带引用来源的智能问答" src="https://github.com/user-attachments/assets/759dde08-984a-4d23-98ac-0bbb0f467c09"> | <img width="200" alt="一键部署的 Agent 工具" src="assets/screenshots/05-env.png"> |
+| <img height="150" alt="image" src="assets/screenshots/01-overview.webp" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="assets/screenshots/02-knowledge-litho.webp"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/a43de728-15b1-479d-9229-912205503270"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
 
 *从左到右：带新鲜度评分的项目列表、自动生成的 C4 文档、基于知识的智能问答、一键部署的 Agent 工具链。*
+
+![terrain_caseflow](./assets/intro/terrain_caseflow_en.webp)
 
 ### 三支柱速览
 
@@ -152,45 +154,7 @@ Terrain 是一个 **Agent 优先的工程环境平台**。它为每个 Git 仓�
 人类通过**桌面应用**或 **CLI** 使用；外部编程 Agent（Claude Code、Codex、OpenCode 等）则通过 **`terrain tools`**（JSON 标准输出）接入同一套体系。知识资产存放在**仓库内部**（`.terrain/` 随分支流转）；`~/.terrain/registry.json` 只记录项目指针，不存放知识内容。
 
 ### 系统概览
-
-```mermaid
-graph TB
-    subgraph Actors
-        Dev[开发者]
-        ExtAgent[外部编程 Agent]
-    end
-
-    subgraph Terrain["Terrain"]
-        K["工程知识资产<br/>提炼 · 消费"]
-        E["标准化 AI 环境<br/>skills · tools · AGENTS.md"]
-        W["工作流<br/>SDD"]
-    end
-
-    subgraph Output
-        DotTerrain[".terrain/"]
-        EnvDot[".agents/ · AGENTS.md"]
-        SddDir["~/.terrain/sdd/"]
-    end
-
-    subgraph External
-        Git[Git 仓库]
-        LLM[LLM API]
-        ACP[ACP Agent]
-    end
-
-    Dev --> K
-    Dev --> E
-    Dev --> W
-    ExtAgent --> K
-    ExtAgent --> E
-    K --> DotTerrain
-    E --> EnvDot
-    W --> SddDir
-    K --> Git
-    K --> LLM
-    W --> ACP
-    W --> LLM
-```
+![terrain_caseflow](./assets/intro/terrain_caseflow_zh.webp)
 
 ### ① 工程知识资产 —— 地图
 
