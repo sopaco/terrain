@@ -7,6 +7,7 @@
 
 Engineering environment management for human developers and AI coding assistants — knowledge as the map, tools as the roads, conventions as the trail markers.
 
+<a href="https://github.com/sopaco/terrain/tree/dev/.terrain/human"><img alt="Litho Docs" src="https://img.shields.io/badge/Litho-Docs-green?logo=Gitbook&color=%23008a60"/></a>
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -21,15 +22,18 @@ Terrain is a **standardized, AI-friendly engineering environment** built for the
 - **🤝 A standardized environment for AI agents** — one shared "knowledge contract" (Skills, `AGENTS.md`, CLIs) so every coding agent reads the project the same way instead of blind-grepping the live repo.
 - **⚙️ Auto-deployed agent enhancement tools** — one command installs the toolchain your agents need (CodeGraph, RTK, preset Skills); no per-repo yak-shaving.
 
-Knowledge lives **in the repository** — not in a central database. Every branch carries its own docs. Human developers use the **Tauri desktop app** or **CLI**; external AI coding assistants (Claude Code, Codex, OpenCode, Cursor, …) call `terrain tools` over **ACP** to read the same knowledge layers.
+Terrain provides both **GUI** and **CLI** modes. Through the CLI, you can conveniently integrate engineering knowledge generation and Deepwiki's Q&A functionality into PR and CI/CD pipelines. Human developers use the **Tauri desktop app** or **CLI**.
+For specific usage of the CLI, see [**Terrain CLI Guides**](https://github.com/sopaco/terrain/blob/dev/.terrain/human/5.%E8%BE%B9%E7%95%8C%E6%8E%A5%E5%8F%A3.md#%E5%91%BD%E4%BB%A4%E8%A1%8C%E6%8E%A5%E5%8F%A3-cli).
 
 ### App preview
 
 | Project overview | Engineering knowledge | DeepWiki Q&A | Agent environment |
 |------------------|------------------------------|--------------|-------------------|
-| <img height="150" alt="image" src="https://github.com/user-attachments/assets/30ab7366-4159-4ccd-bcba-fdc145c901b5" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="https://github.com/user-attachments/assets/bbec023f-7275-4378-a763-8bbda9ceef8e"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="https://github.com/user-attachments/assets/a43de728-15b1-479d-9229-912205503270"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
+| <img height="150" alt="image" src="assets/screenshots/01-overview.webp" /> | <img height="150" alt="Auto-generated C4 architecture docs" src="assets/screenshots/02-knowledge-litho.webp"> | <img height="150" alt="Knowledge-grounded Q&A with citations" src="assets/screenshots/03-deepwiki-ask.webp"> | <img height="150" alt="One-command agent tooling setup" src="assets/screenshots/05-env.png"> |
 
 *From left to right: project list with freshness scores, auto-generated C4 docs, knowledge-grounded Q&A, and one-command agent tooling setup.*
+
+![terrain_caseflow](./assets/intro/terrain_caseflow_en.webp)
 
 ### Three pillars at a glance
 
@@ -152,45 +156,7 @@ Terrain is an **agent-first engineering environment platform**. For each Git rep
 Humans use the **desktop app** or **CLI**; external coding agents (Claude Code, Codex, OpenCode, …) use the same contract via **`terrain tools`** (JSON stdout). Assets live **in-repo** (`.terrain/` travels with branches); `~/.terrain/registry.json` holds project pointers only.
 
 ### System overview
-
-```mermaid
-graph TB
-    subgraph Actors
-        Dev[Developer]
-        ExtAgent[External coding agent]
-    end
-
-    subgraph Terrain["Terrain"]
-        K["Engineering knowledge assets<br/>produce · consume"]
-        E["Standardized AI environment<br/>skills · tools · AGENTS.md"]
-        W["Workflow<br/>SDD"]
-    end
-
-    subgraph Output
-        DotTerrain[".terrain/"]
-        EnvDot[".agents/ · AGENTS.md"]
-        SddDir["~/.terrain/sdd/"]
-    end
-
-    subgraph External
-        Git[Git repo]
-        LLM[LLM API]
-        ACP[ACP agent]
-    end
-
-    Dev --> K
-    Dev --> E
-    Dev --> W
-    ExtAgent --> K
-    ExtAgent --> E
-    K --> DotTerrain
-    E --> EnvDot
-    W --> SddDir
-    K --> Git
-    K --> LLM
-    W --> ACP
-    W --> LLM
-```
+![terrain_caseflow](./assets/intro/terrain_caseflow_en.webp)
 
 ### ① Engineering knowledge assets — the map
 
