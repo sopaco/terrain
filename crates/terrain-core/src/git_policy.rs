@@ -7,9 +7,14 @@
 //!   non-deterministic: two runs over the same commit differ in wording and
 //!   structure, so a line-level three-way merge yields a document that is
 //!   neither side's output. Keep one side, then regenerate.
-//! - **Per-machine derivatives** (`agent/repomix.*`, `agent/meta*.json`,
-//!   `.meta/`, `env/`) — large, timestamped, and dependent on the local scan
-//!   environment. Never commit them.
+//! - **Per-machine derivatives** (`agent/repomix.*`, `agent/meta.json`,
+//!   `agent/meta-inputs*`, `.meta/` cache files, `env/`) — large, timestamped,
+//!   and dependent on the local scan environment. Never commit them.
+//! - **Provenance metadata of committed documents** (`agent/context-meta.json`,
+//!   `.meta/human.json`) — records the baseline Git HEAD / generation time of a
+//!   *committed* document. It describes the content, not the machine, so it must
+//!   travel with the content; otherwise another clone pairs fresh documents with
+//!   a stale local baseline and freshness scoring diverges across devices.
 //!
 //! Encoding that split as a nested `.gitignore` / `.gitattributes` *inside*
 //! `.terrain/` keeps the policy self-contained: it is written when the
@@ -21,23 +26,24 @@
 use std::path::{Path, PathBuf};
 
 /// Bumped whenever the managed bodies below change; older managed copies get rewritten.
-pub const GIT_POLICY_VERSION: u32 = 1;
+pub const GIT_POLICY_VERSION: u32 = 2;
 
 /// Marker that identifies a Terrain-managed file. Removing it opts the file out of updates.
 const MARKER_PREFIX: &str = "terrain-git-policy: v";
 
 const GITIGNORE_BODY: &str = r#"
 # ── 不入库：本机衍生物 ─────────────────────────────────────────
-# 源码索引包及其派生物
+# 源码索引包及其派生物（纯本地产物，可由 scan 在本地重建）
 agent/repomix.md
 agent/repomix.index.json
 agent/meta.json
 agent/meta-inputs.md
 agent/meta-inputs-manifest.json
-agent/context-meta.json
 
-# 保鲜 / 同步快照（含时间戳与 baseline git HEAD，逐机器不同）
-.meta/
+# 保鲜 / 同步快照（含时间戳的本机缓存）
+# 注意用 .meta/* 而非 .meta/，以便单独放行 human.json
+.meta/*
+!.meta/human.json
 
 # 本机环境状态（工具路径、集成清单）
 env/
@@ -53,6 +59,10 @@ env/
 # knowledge/   人为维护的私域知识 —— 真正需要逐行合并的部分
 # agent/context.md, human/, index.md, project-note.md
 #              生成的知识文档；合并策略见同目录 .gitattributes
+# agent/context-meta.json, .meta/human.json
+#              已入库文档的出处元数据（baseline git HEAD / 生成时间）。
+#              内容走到哪，provenance 就跟到哪——否则另一台设备会拿本机
+#              旧 baseline 给新内容计分，新鲜度跨设备不一致且保鲜无法修复。
 "#;
 
 const GITATTRIBUTES_BODY: &str = r#"
@@ -215,7 +225,14 @@ mod tests {
         let ignore = std::fs::read_to_string(root.join(".gitignore")).unwrap();
         assert!(ignore.contains("agent/repomix.index.json"));
         assert!(ignore.contains("agent/meta.json"));
-        assert!(ignore.contains(".meta/"));
+        // Per-machine `.meta/` cache stays ignored, but the human-docs provenance
+        // meta must be re-included so it travels with the committed `human/` docs.
+        assert!(ignore.contains(".meta/*"));
+        assert!(ignore.contains("!.meta/human.json"));
+        // Committed documents' provenance must not be ignored — otherwise another
+        // clone pairs fresh content with a stale local baseline.
+        assert!(!ignore.lines().any(|l| l.trim() == "agent/context-meta.json"));
+        assert!(!ignore.lines().any(|l| l.trim() == ".meta/"));
         // knowledge/ must stay committable.
         assert!(!ignore.lines().any(|l| l.trim() == "knowledge/"));
 
@@ -239,9 +256,10 @@ mod tests {
     fn upgrades_older_managed_version() {
         let root = tmp("upgrade");
         std::fs::create_dir_all(&root).unwrap();
+        // v1 policy: context-meta ignored and the whole `.meta/` directory ignored.
         std::fs::write(
             root.join(".gitignore"),
-            "# .gitignore — terrain-git-policy: v0 · 由 Terrain 生成并维护\nagent/repomix.md\n",
+            "# .gitignore — terrain-git-policy: v1 · 由 Terrain 生成并维护\nagent/repomix.md\nagent/context-meta.json\n.meta/\n",
         )
         .unwrap();
 
@@ -253,8 +271,11 @@ mod tests {
             .map(|r| r.outcome);
         assert_eq!(ignore_outcome, Some(PolicyOutcome::Upgraded));
 
-        let ignore = std::fs::read_to_string(root.join(".gitignore")).unwrap();
-        assert!(ignore.contains("agent/meta.json"));
+        let ignore_out = std::fs::read_to_string(root.join(".gitignore")).unwrap();
+        assert!(ignore_out.contains("agent/meta.json"));
+        assert!(!ignore_out.lines().any(|l| l.trim() == "agent/context-meta.json"));
+        assert!(!ignore_out.lines().any(|l| l.trim() == ".meta/"));
+        assert!(ignore_out.contains("!.meta/human.json"));
         let _ = std::fs::remove_dir_all(&root);
     }
 
