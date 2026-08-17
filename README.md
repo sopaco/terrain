@@ -23,7 +23,7 @@ Terrain is a **standardized, AI-friendly engineering environment** built for the
 - **⚙️ Auto-deployed agent enhancement tools** — one command installs the toolchain your agents need (CodeGraph, RTK, preset Skills); no per-repo yak-shaving.
 
 Terrain provides both **GUI** and **CLI** modes. Through the CLI, you can conveniently integrate engineering knowledge generation and Deepwiki's Q&A functionality into PR and CI/CD pipelines. Human developers use the **Tauri desktop app** or **CLI**.
-For specific usage of the CLI, see [**Terrain CLI Guides**](https://github.com/sopaco/terrain/blob/dev/.terrain/human/5.Boundaries-Interfaces.md).
+For specific usage of the CLI, see [**Terrain CLI Guides**](.terrain/human/5.Boundaries-Interfaces.md).
 
 ### App preview
 

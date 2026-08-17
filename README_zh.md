@@ -22,7 +22,7 @@ Terrain 是一个为 AI 辅助开发生态量身定制的**标准化、AI 友好
 - **🤝 面向 AI Agent 的标准化环境**——统一的"知识契约"（Skills、`AGENTS.md`、CLI），让每个编码 Agent 都以一致的视角阅读项目，而不再是盲目地对实时仓库 grep。
 - **⚙️ 自动部署的 Agent 增强工具**——一条命令即可安装 Agent 所需的工具链（CodeGraph、RTK、预设 Skills）；无需为每个仓库做繁琐的重复配置。
 
-Terrain 同时提供 **GUI** 和 **CLI** 两种模式。通过 CLI，可便捷地将工程知识生成和 Deepwiki 问答功能集成到 PR 与 CI/CD 流水线。人类开发者使用 **Tauri 桌面应用**或 **CLI**。CLI 的具体用法请见 [**Terrain CLI 指南**](https://github.com/sopaco/terrain/blob/dev/.terrain/human/5.Boundaries-Interfaces.md)。
+Terrain 同时提供 **GUI** 和 **CLI** 两种模式。通过 CLI，可便捷地将工程知识生成和 Deepwiki 问答功能集成到 PR 与 CI/CD 流水线。人类开发者使用 **Tauri 桌面应用**或 **CLI**。CLI 的具体用法请见 [**Terrain CLI 指南**](.terrain/human/5.Boundaries-Interfaces.md)。
 
 ### 应用预览
 
