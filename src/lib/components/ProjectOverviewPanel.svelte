@@ -6,12 +6,7 @@
         registryDisplayName,
         registryRepairDetail,
     } from "../projectRegistry";
-    import {
-        generateLabel,
-        SHORT_TERMS,
-        TERMS,
-        UI_MESSAGES,
-    } from "../terminology";
+    import { tr } from "../i18n";
     import FreshnessHelpPanel from "./FreshnessHelpPanel.svelte";
     import OverviewActionBanner, {
         type OverviewActionItem,
@@ -129,9 +124,21 @@
         const needsAcp = !acpOk;
         if (!needsLlm && !needsAcp) return null;
         const parts: string[] = [];
-        if (needsLlm) parts.push(`LLM（${TERMS.agentKnowledge}）`);
-        if (needsAcp) parts.push(`ACP（${TERMS.humanKnowledge}）`);
-        return `部分步骤需要配置：${parts.join("、")}，可在设置中完成后再试`;
+        if (needsLlm)
+            parts.push(
+                tr("overview.initHint.needsLlm", {
+                    term: tr("terms.agentKnowledge"),
+                }),
+            );
+        if (needsAcp)
+            parts.push(
+                tr("overview.initHint.needsAcp", {
+                    term: tr("terms.humanKnowledge"),
+                }),
+            );
+        return tr("overview.initHint.configRequired", {
+            parts: parts.join("、"),
+        });
     });
 
     const knowledgePath = $derived(
@@ -159,30 +166,36 @@
 
         if (freshness?.overall_stale && overview.repo_path && onQuickRefresh) {
             const driftParts: string[] = [
-                `新鲜度 ${freshness.overall_score}/100`,
+                tr("freshness.score", { score: freshness.overall_score }),
             ];
             if (freshness.commits_since_baseline > 0) {
                 driftParts.push(
-                    `落后 ${freshness.commits_since_baseline} 个提交`,
+                    tr("freshness.behind", {
+                        count: freshness.commits_since_baseline,
+                    }),
                 );
             }
             if (freshness.changed_files_count > 0) {
                 driftParts.push(
-                    `${freshness.changed_files_count} 个文件已变更`,
+                    tr("freshness.changedFiles", {
+                        count: freshness.changed_files_count,
+                    }),
                 );
             }
             if (freshness.working_tree_dirty) {
-                driftParts.push("工作区有未提交修改");
+                driftParts.push(tr("freshness.dirtyTree"));
             }
             items.push({
                 id: "stale",
                 priority: 1,
                 accent: "rose",
-                title: "知识可能已过期",
-                detail: `${driftParts.join(" · ")}。过期架构知识可能误导 Agent 问答。`,
-                hint: "建议运行「快速保鲜」更新源码索引与 Agent 知识资产（跳过 Litho）。",
-                actionLabel: "快速保鲜",
-                busyLabel: "保鲜中…",
+                title: tr("overview.actions.staleTitle"),
+                detail: tr("overview.actions.staleDetail", {
+                    drift: driftParts.join(" · "),
+                }),
+                hint: tr("overview.actions.staleHint"),
+                actionLabel: tr("overview.actions.quickRefresh"),
+                busyLabel: tr("overview.actions.quickRefreshing"),
                 onAction: onQuickRefresh,
                 disabled: initBusy,
                 busy: quickRefreshBusy,
@@ -194,11 +207,16 @@
                 id: "init",
                 priority: 2,
                 accent: "amber",
-                title: "部分知识资产尚未就绪",
-                detail: `当前 ${readyCount}/${assetTotal} 项就绪。可一键完成扫描、源码索引、${TERMS.agentKnowledge} 与 ${TERMS.humanKnowledge}。`,
+                title: tr("overview.actions.initTitle"),
+                detail: tr("overview.actions.initDetail", {
+                    ready: readyCount,
+                    total: assetTotal,
+                    agentKnowledge: tr("terms.agentKnowledge"),
+                    humanKnowledge: tr("terms.humanKnowledge"),
+                }),
                 hint: initHint ?? undefined,
-                actionLabel: "一键初始化",
-                busyLabel: "初始化中…",
+                actionLabel: tr("overview.actions.init"),
+                busyLabel: tr("overview.actions.initializing"),
                 onAction: () =>
                     onInitializeProject(overview.repo_path, overview.slug),
                 disabled: initBusy,
@@ -211,9 +229,13 @@
                 id: "env",
                 priority: 3,
                 accent: "violet",
-                title: `${TERMS.agentEnv}尚未配置`,
-                detail: `为 Coding Agent 集成 Skills、工具链与 AGENTS.md。当前 ${overview.agent_env.summary}。`,
-                actionLabel: "前往配置",
+                title: tr("overview.actions.envTitle", {
+                    term: tr("terms.agentEnv"),
+                }),
+                detail: tr("overview.actions.envDetail", {
+                    summary: overview.agent_env.summary,
+                }),
+                actionLabel: tr("overview.actions.envConfigure"),
                 onAction: onOpenEnv,
             });
         }
@@ -233,8 +255,8 @@
             title: registryDisplayName(entry),
             detail: registryRepairDetail(entry),
             hint: initHint ?? undefined,
-            actionLabel: "重新初始化",
-            busyLabel: "重新初始化中…",
+            actionLabel: tr("overview.actions.reinit"),
+            busyLabel: tr("overview.actions.reinitializing"),
             onAction: onInitializeProject
                 ? () => onInitializeProject(entry.repo_path, entry.slug)
                 : undefined,
@@ -250,11 +272,11 @@
                 id: `stale-selected-${selectedRegistry.slug}`,
                 priority: 1,
                 accent: "amber" as const,
-                title: "知识库数据丢失",
+                title: tr("overview.actions.dataLostTitle"),
                 detail: registryRepairDetail(selectedRegistry),
                 hint: initHint ?? undefined,
-                actionLabel: "重新初始化",
-                busyLabel: "重新初始化中…",
+                actionLabel: tr("overview.actions.reinit"),
+                busyLabel: tr("overview.actions.reinitializing"),
                 onAction: onInitializeProject
                     ? () =>
                           onInitializeProject(
@@ -292,15 +314,19 @@
 
     function humanKnowledgeMeta(o: ProjectOverview): string {
         if (o.litho.human_docs_complete) {
-            return `${o.litho.human_doc_count} 篇文档`;
+            return tr("overview.meta.docCount", {
+                count: o.litho.human_doc_count,
+            });
         }
         if (o.litho.has_human_docs) {
-            return `${o.litho.human_doc_count} 篇（未完成）`;
+            return tr("overview.meta.docCountIncomplete", {
+                count: o.litho.human_doc_count,
+            });
         }
         if (o.litho.has_research_artifacts) {
-            return "研究稿已就绪，待编排";
+            return tr("overview.meta.researchReady");
         }
-        return "尚未生成";
+        return tr("overview.meta.notGenerated");
     }
 
     function assetPrimaryAction(
@@ -312,41 +338,61 @@
     } | null {
         if (asset.track === "human") {
             if (asset.ready && onOpenHumanOverview) {
-                return { label: "浏览", onClick: onOpenHumanOverview };
+                return {
+                    label: tr("overview.actions.browse"),
+                    onClick: onOpenHumanOverview,
+                };
             }
             if (onGenerateHuman) {
                 return {
-                    label: generateLabel(TERMS.humanKnowledge, lithoBusy),
+                    label: lithoBusy
+                        ? tr("terms.generating")
+                        : tr("terms.generate", {
+                              term: tr("terms.humanKnowledge"),
+                          }),
                     onClick: onGenerateHuman,
                     disabled: lithoBusy || !acpOk,
                 };
             }
         } else if (asset.track === "agent_context") {
             if (asset.ready && onOpenArchitectureDoc) {
-                return { label: "浏览", onClick: onOpenArchitectureDoc };
+                return {
+                    label: tr("overview.actions.browse"),
+                    onClick: onOpenArchitectureDoc,
+                };
             }
             if (onGenerateAgentContext) {
                 return {
                     label: asset.ready
                         ? agentContextBusy
-                            ? "生成中…"
-                            : "重新生成"
-                        : generateLabel(TERMS.agentKnowledge, false),
+                            ? tr("common.generating")
+                            : tr("common.regenerate")
+                        : tr("terms.generate", {
+                              term: tr("terms.agentKnowledge"),
+                          }),
                     onClick: onGenerateAgentContext,
                     disabled: agentContextBusy || !llmReady,
                 };
             }
         } else if (asset.track === "agent_pack" && onRepack) {
             return {
-                label: repackBusy ? UI_MESSAGES.repacking : UI_MESSAGES.repack,
+                label: repackBusy
+                    ? tr("terms.msg.repacking")
+                    : tr("terms.msg.repack"),
                 onClick: onRepack,
                 disabled: repackBusy,
             };
         } else if (asset.track === "structured") {
             if (asset.ready && onOpenStructured) {
-                return { label: "浏览", onClick: onOpenStructured };
+                return {
+                    label: tr("overview.actions.browse"),
+                    onClick: onOpenStructured,
+                };
             }
-            return { label: "扫描项目", onClick: onOpenKnowledge };
+            return {
+                label: tr("overview.actions.scanProject"),
+                onClick: onOpenKnowledge,
+            };
         }
         return null;
     }
@@ -402,8 +448,8 @@
         <button
             type="button"
             class="tr-press shrink-0 rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
-            title="复制"
-            aria-label={`复制${label}`}
+            title={tr("common.copy")}
+            aria-label={tr("overview.copyLabel", { label })}
             onclick={() => copyPath(path)}
         >
             {#if copiedPath === path}
@@ -421,8 +467,8 @@
             <button
                 type="button"
                 class="tr-press shrink-0 rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
-                title="在 Finder 中打开"
-                aria-label={`打开${label}`}
+                title={tr("overview.openInFinder")}
+                aria-label={tr("overview.openLabel", { label })}
                 onclick={() => onOpenPath(path)}
             >
                 <FolderOpen size={12} strokeWidth={2} aria-hidden="true" />
@@ -439,7 +485,7 @@
             <span
                 class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
             ></span>
-            <span>加载项目概览…</span>
+            <span>{tr("overview.loading")}</span>
         </div>
     {:else if selectedRegistry?.status === "stale"}
         <div
@@ -452,15 +498,18 @@
                     </h2>
                     <span
                         class="rounded-full bg-tr-watch-soft px-2 py-0.5 text-[11px] font-medium text-tr-watch"
-                        >需修复</span
+                        >{tr("overview.needsRepair")}</span
                     >
                 </div>
                 <p class="font-mono text-xs text-tr-ink-3">
                     {selectedRegistry.repo_path}
                 </p>
                 <p class="text-sm leading-relaxed text-tr-ink-2">
-                    知识索引 <code class="text-tr-ink">index.md</code> 缺失或
-                    <code class="text-tr-ink">.terrain/</code> 已损坏，无法加载项目概览。
+                    {tr("overview.staleIndex")}
+                    <code class="text-tr-ink">index.md</code>
+                    {tr("overview.staleMissingOr")}
+                    <code class="text-tr-ink">.terrain/</code>
+                    {tr("overview.staleCorrupted")}
                 </p>
             </header>
 
@@ -477,7 +526,7 @@
                         onclick={() => onOpenPath(selectedRegistry.repo_path)}
                     >
                         <FolderOpen size={15} strokeWidth={2} />
-                        打开仓库
+                        {tr("overview.openRepo")}
                     </button>
                 </div>
             {/if}
@@ -490,14 +539,14 @@
                 class="rounded-2xl border border-tr-border bg-tr-surface px-6 py-8"
             >
                 <h2 class="text-xl font-semibold text-tr-ink">
-                    欢迎使用 Terrain
+                    {tr("overview.welcomeTitle")}
                 </h2>
                 <p class="mt-2 text-sm leading-relaxed text-tr-ink-2">
-                    添加本地仓库后将自动完成索引与知识资产生成，可在本页查看状态并进入知识库阅读。
+                    {tr("overview.welcomeBody")}
                 </p>
                 {#if staleRegistryProjects.length === 0}
                     <p class="mt-4 text-xs text-tr-ink-3">
-                        通过顶部项目选择器添加本地仓库；若索引失败，添加后可在本页初始化。
+                        {tr("overview.welcomeHint")}
                     </p>
                 {/if}
             </section>
@@ -505,7 +554,7 @@
             {#if staleRegistryProjects.length > 0}
                 <section class="space-y-3">
                     <h3 class="text-sm font-medium text-tr-ink-2">
-                        检测到知识库数据丢失
+                        {tr("overview.staleDetected")}
                     </h3>
                     <OverviewActionBanner
                         items={staleActionItems}
@@ -531,7 +580,7 @@
                             <textarea
                                 class="w-full resize-y rounded-xl border border-tr-border-strong bg-tr-surface px-3 py-2 text-sm text-tr-ink placeholder:text-tr-ink-3 focus:border-tr-accent focus:outline-none"
                                 rows="2"
-                                placeholder="填写项目备注，将保存至 .terrain/project-note.md"
+                                placeholder={tr("overview.remarkPlaceholder")}
                                 bind:value={remarkDraft}
                                 disabled={remarkSaving}></textarea>
                             <div class="flex flex-wrap gap-2">
@@ -542,7 +591,9 @@
                                         !onSaveProjectRemark}
                                     onclick={saveRemark}
                                 >
-                                    {remarkSaving ? "保存中…" : "保存备注"}
+                                    {remarkSaving
+                                        ? tr("common.saving")
+                                        : tr("overview.saveRemark")}
                                 </button>
                                 <button
                                     type="button"
@@ -550,7 +601,7 @@
                                     disabled={remarkSaving}
                                     onclick={cancelRemarkEdit}
                                 >
-                                    取消
+                                    {tr("common.cancel")}
                                 </button>
                             </div>
                         </div>
@@ -564,7 +615,7 @@
                                 </span>
                             {:else}
                                 <p class="text-sm text-tr-ink-3">
-                                    添加项目备注，便于团队识别此仓库
+                                    {tr("overview.remarkEmpty")}
                                 </p>
                             {/if}
                             {#if onSaveProjectRemark}
@@ -573,7 +624,7 @@
                                     class="shrink-0 text-[11px] text-tr-ink-3 transition-colors hover:text-tr-accent"
                                     onclick={startRemarkEdit}
                                 >
-                                    编辑
+                                    {tr("common.edit")}
                                 </button>
                             {/if}
                         </div>
@@ -583,7 +634,9 @@
                         class="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-tr-ink-3 [font-variant-numeric:tabular-nums]"
                     >
                         <span
-                            >最后同步 {formatSyncedAt(overview.synced_at)}</span
+                            >{tr("overview.lastSynced", {
+                                time: formatSyncedAt(overview.synced_at),
+                            })}</span
                         >
                         {#if overview.collectors.length}
                             <span class="text-tr-ink-4">·</span>
@@ -602,7 +655,8 @@
                         {/if}
                         {#if freshness?.working_tree_dirty}
                             <span class="text-tr-ink-4">·</span>
-                            <span class="text-tr-watch">工作区有未提交修改</span
+                            <span class="text-tr-watch"
+                                >{tr("freshness.dirtyTree")}</span
                             >
                         {/if}
                     </p>
@@ -614,7 +668,7 @@
                             class="tr-press rounded-xl border border-tr-border-strong px-4 py-2 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
                             onclick={() => onOpenPath(overview.repo_path)}
                         >
-                            打开仓库
+                            {tr("overview.openRepo")}
                         </button>
                     {/if}
                     <button
@@ -622,7 +676,7 @@
                         class="tr-press rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover"
                         onclick={onOpenAsk}
                     >
-                        提问 Ask
+                        {tr("overview.ask")}
                     </button>
                 </div>
             </header>
@@ -648,12 +702,13 @@
                     ></span>
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-center gap-1">
-                            <span class="text-xs text-tr-ink-2">结构就绪度</span
+                            <span class="text-xs text-tr-ink-2"
+                                >{tr("overview.readiness")}</span
                             >
                             <HelpButton
                                 onclick={() => (readinessHelpOpen = true)}
-                                title="查看各项知识资产就绪情况"
-                                ariaLabel="就绪度说明"
+                                title={tr("overview.readinessHelpTitle")}
+                                ariaLabel={tr("overview.readinessAria")}
                                 size={14}
                             />
                         </div>
@@ -705,17 +760,20 @@
                     ></span>
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-center gap-1">
-                            <span class="text-xs text-tr-ink-2">知识新鲜度</span
+                            <span class="text-xs text-tr-ink-2"
+                                >{tr("freshness.name")}</span
                             >
                             <HelpButton
                                 onclick={() => (freshnessHelpOpen = true)}
-                                title="了解新鲜度如何计算及本项目的偏离原因"
-                                ariaLabel="知识新鲜度说明"
+                                title={tr("freshness.helpButtonTitle")}
+                                ariaLabel={tr("freshness.title")}
                                 size={14}
                             />
                         </div>
                         {#if freshnessLoading && !freshness}
-                            <span class="text-xs text-tr-ink-3">计算中…</span>
+                            <span class="text-xs text-tr-ink-3"
+                                >{tr("freshness.computing")}</span
+                            >
                         {:else if freshnessScore != null}
                             <span
                                 class={`text-2xl font-semibold [font-variant-numeric:tabular-nums] ${
@@ -761,14 +819,16 @@
                         </div>
                         <p class="mt-2 text-[11px] text-tr-ink-3">
                             {#if freshnessLoading}
-                                更新中…
+                                {tr("freshness.updating")}
                             {:else if freshness?.is_git_repo && freshness.current_git_head}
-                                基于 Git 提交对比 · HEAD {freshness.current_git_head}
+                                {tr("freshness.gitBased", {
+                                    head: freshness.current_git_head,
+                                })}
                                 {#if freshness.working_tree_dirty}
-                                    · 工作区有未提交修改
+                                    · {tr("freshness.dirtyTree")}
                                 {/if}
                             {:else if freshness && !freshness.is_git_repo}
-                                未检测到 Git，分数按知识资产同步时间估算
+                                {tr("freshness.noGit")}
                             {/if}
                         </p>
                     {/if}
@@ -778,23 +838,31 @@
             <!-- 知识资产域 -->
             <section class="space-y-3">
                 <div>
-                    <h3 class="text-sm font-medium text-tr-ink-2">知识资产</h3>
+                    <h3 class="text-sm font-medium text-tr-ink-2">
+                        {tr("terms.knowledgeTab")}
+                    </h3>
                     <p class="mt-0.5 text-xs text-tr-ink-3">
-                        仓库内 <code class="text-tr-ink-2">.terrain/</code> 的三种读取方式，按用途区分
+                        {tr("overview.assetsDesc1")}
+                        <code class="text-tr-ink-2">.terrain/</code>
+                        {tr("overview.assetsDesc2")}
                     </p>
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <OverviewKnowledgeCard
-                        title={SHORT_TERMS.humanKnowledge}
-                        subtitle="Litho C4 文档，从 1.概述 开始阅读"
+                        title={tr("terms.short.humanKnowledge")}
+                        subtitle={tr("overview.card.humanSubtitle")}
                         meta={humanKnowledgeMeta(overview)}
                         ready={overview.litho.human_docs_complete}
                         icon="book"
                         featured={true}
                         primaryLabel={overview.litho.human_docs_complete
-                            ? "打开"
-                            : generateLabel(TERMS.humanKnowledge, lithoBusy)}
+                            ? tr("common.open")
+                            : lithoBusy
+                              ? tr("terms.generating")
+                              : tr("terms.generate", {
+                                    term: tr("terms.humanKnowledge"),
+                                })}
                         onPrimary={overview.litho.human_docs_complete
                             ? onOpenHumanOverview
                             : onGenerateHuman}
@@ -803,8 +871,8 @@
                             : lithoBusy || !acpOk || !onGenerateHuman}
                         secondaryLabel={overview.litho.human_docs_complete
                             ? lithoBusy
-                                ? "生成中…"
-                                : "重新生成"
+                                ? tr("common.generating")
+                                : tr("common.regenerate")
                             : undefined}
                         onSecondary={overview.litho.human_docs_complete
                             ? onGenerateHuman
@@ -812,19 +880,22 @@
                         secondaryDisabled={lithoBusy || !acpOk}
                     />
                     <OverviewKnowledgeCard
-                        title={SHORT_TERMS.agentKnowledge}
-                        subtitle="模块地图、架构与流程等，供 Agent 与问答使用"
+                        title={tr("terms.short.agentKnowledge")}
+                        subtitle={tr("overview.card.agentSubtitle")}
                         meta={overview.agent_context.ready
-                            ? `${overview.agent_context.section_count} 个章节`
-                            : "尚未生成"}
+                            ? tr("overview.meta.sectionCount", {
+                                  count: overview.agent_context.section_count,
+                              })
+                            : tr("overview.meta.notGenerated")}
                         ready={overview.agent_context.ready}
                         icon="compass"
                         primaryLabel={overview.agent_context.ready
-                            ? "打开"
-                            : generateLabel(
-                                  TERMS.agentKnowledge,
-                                  agentContextBusy,
-                              )}
+                            ? tr("common.open")
+                            : agentContextBusy
+                              ? tr("terms.generating")
+                              : tr("terms.generate", {
+                                    term: tr("terms.agentKnowledge"),
+                                })}
                         onPrimary={overview.agent_context.ready
                             ? onOpenArchitectureDoc
                             : onGenerateAgentContext}
@@ -835,8 +906,8 @@
                               !onGenerateAgentContext}
                         secondaryLabel={overview.agent_context.ready
                             ? agentContextBusy
-                                ? "生成中…"
-                                : "重新生成"
+                                ? tr("common.generating")
+                                : tr("common.regenerate")
                             : undefined}
                         onSecondary={overview.agent_context.ready
                             ? onGenerateAgentContext
@@ -847,12 +918,13 @@
                         {@const structuredAction =
                             assetPrimaryAction(structuredAsset)}
                         <OverviewKnowledgeCard
-                            title="结构化条目"
-                            subtitle="terrain-meta.json 派生的元数据，供工具消费"
+                            title={tr("overview.card.structuredTitle")}
+                            subtitle={tr("overview.card.structuredSubtitle")}
                             meta={structuredAsset.summary}
                             ready={structuredAsset.ready}
                             icon="list"
-                            primaryLabel={structuredAction?.label ?? "打开"}
+                            primaryLabel={structuredAction?.label ??
+                                tr("common.open")}
                             onPrimary={structuredAction?.onClick}
                             primaryDisabled={structuredAction?.disabled ??
                                 !structuredAction}
@@ -865,15 +937,19 @@
                         class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tr-border bg-tr-surface px-4 py-3"
                     >
                         <p class="text-xs text-tr-ink-2">
-                            生成知识资产需要 Terrain 生成能力：
+                            {tr("overview.genSetupIntro")}
                             {#if hybridNativeLlm && !llmReady}
-                                <span class="text-tr-watch">LLM 未配置</span>
+                                <span class="text-tr-watch"
+                                    >{tr("overview.llmNotConfigured")}</span
+                                >
                             {/if}
                             {#if hybridNativeLlm && !llmReady && !acpOk}
                                 <span class="text-tr-ink-4"> · </span>
                             {/if}
                             {#if !acpOk}
-                                <span class="text-tr-watch">ACP 未连接</span>
+                                <span class="text-tr-watch"
+                                    >{tr("overview.acpNotConnected")}</span
+                                >
                             {/if}
                         </p>
                         {#if onOpenSettings}
@@ -882,7 +958,7 @@
                                 class="shrink-0 text-xs text-tr-accent transition-colors hover:text-tr-accent-hover"
                                 onclick={onOpenSettings}
                             >
-                                前往设置
+                                {tr("overview.goToSettings")}
                             </button>
                         {/if}
                     </div>
@@ -893,10 +969,10 @@
             <section class="space-y-3">
                 <div>
                     <h3 class="text-sm font-medium text-tr-ink-2">
-                        {TERMS.agentEnv}
+                        {tr("terms.agentEnv")}
                     </h3>
                     <p class="mt-0.5 text-xs text-tr-ink-3">
-                        Skills、工具链与 AGENTS.md，供 Coding Agent 在仓库中协作
+                        {tr("overview.envSubtitle")}
                     </p>
                 </div>
 
@@ -925,13 +1001,12 @@
                                     }`}
                                 >
                                     {overview.agent_env.ready
-                                        ? "就绪"
-                                        : "待配置"}
+                                        ? tr("overview.status.ready")
+                                        : tr("overview.status.pendingConfig")}
                                 </span>
                             </div>
                             <p class="mt-1 text-xs text-tr-ink-3">
-                                与知识资产生成无关，用于优化外部 Coding Agent
-                                在本仓库的工作体验。
+                                {tr("overview.envNote")}
                             </p>
                         </div>
                     </div>
@@ -941,7 +1016,9 @@
                             class="tr-press shrink-0 rounded-xl bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover"
                             onclick={onOpenEnv}
                         >
-                            {overview.agent_env.ready ? "管理集成" : "前往配置"}
+                            {overview.agent_env.ready
+                                ? tr("overview.manageIntegrations")
+                                : tr("overview.actions.envConfigure")}
                         </button>
                     {/if}
                 </div>
@@ -952,10 +1029,10 @@
                     class="flex flex-col gap-2 rounded-xl border border-tr-border bg-tr-surface px-4 py-3"
                 >
                     {#if overview.repo_path}
-                        {@render metaRow("仓库路径", overview.repo_path)}
+                        {@render metaRow(tr("overview.repoPathLabel"), overview.repo_path)}
                     {/if}
                     {#if knowledgePath}
-                        {@render metaRow("知识库路径", knowledgePath)}
+                        {@render metaRow(tr("overview.knowledgePathLabel"), knowledgePath)}
                     {/if}
                 </div>
             {/if}

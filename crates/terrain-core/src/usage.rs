@@ -148,6 +148,7 @@ pub fn probe_usage_sources() -> UsageProbeResult {
 
 /// Load usage snapshot (summary or full). Uses in-memory cache unless `force_refresh`.
 pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> UsageSnapshot {
+    let lang = crate::language::current_language();
     if !force_refresh
         && let Some(cached) = read_cache(detail) {
             return cached;
@@ -168,8 +169,11 @@ pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> Usa
             generated_at,
             cached: false,
             error: Some(
-                "未检测到用量分析环境。请安装 bun 或 Node.js 后重试。"
-                    .into(),
+                lang.tr(
+                    "未检测到用量分析环境。请安装 bun 或 Node.js 后重试。",
+                    "Usage analysis environment not detected. Install bun or Node.js and try again.",
+                )
+                .into(),
             ),
         };
     }
@@ -186,8 +190,11 @@ pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> Usa
             generated_at,
             cached: false,
             error: Some(
-                "未检测到本地 Agent 用量日志（Claude Code、OpenCode、Codex 等）。开始使用编码 Agent 后将自动出现。"
-                    .into(),
+                lang.tr(
+                    "未检测到本地 Agent 用量日志（Claude Code、OpenCode、Codex 等）。开始使用编码 Agent 后将自动出现。",
+                    "No local agent usage logs detected (Claude Code, OpenCode, Codex, etc.). They will appear automatically once you start using a coding agent.",
+                )
+                .into(),
             ),
         };
     }

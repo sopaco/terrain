@@ -102,7 +102,7 @@ pub fn create_sdd_session(
 ) -> crate::error::Result<SddSessionInfo> {
     let title = title.trim();
     let title = if title.is_empty() {
-        "新需求"
+        crate::language::current_language().tr("新需求", "New requirement")
     } else {
         title
     };
@@ -164,7 +164,11 @@ pub fn resolve_sdd_session_id(paths: &KnowledgePaths, project_slug: &str) -> Str
         let _ = set_active_sdd_session(paths, project_slug, &first.id);
         return first.id.clone();
     }
-    create_sdd_session(paths, project_slug, "默认需求")
+    create_sdd_session(
+        paths,
+        project_slug,
+        crate::language::current_language().tr("默认需求", "Default requirement"),
+    )
         .map(|s| s.id)
         .unwrap_or_else(|_| "default".into())
 }
@@ -327,7 +331,8 @@ pub fn build_sdd_phase_prompt(plan: &SddPlan, phase: SddPhase, user_input: &str)
         format!("\n\n## Human feedback / instructions\n\n{user_input}")
     };
 
-    match phase {
+    let lang = crate::language::current_language();
+    let prompt = match phase {
         SddPhase::Requirements => format!(
             "Run SDD Phase 1 — Requirement clarification for project \"{}\" (session \"{}\").\n\n\
              Skill directory (read SKILL.md): {}\n\
@@ -392,7 +397,9 @@ pub fn build_sdd_phase_prompt(plan: &SddPlan, phase: SddPhase, user_input: &str)
             plan.sdd_output_dir,
             phase.output_filename(),
         ),
-    }
+    };
+
+    format!("{prompt}\n\n{}", lang.asset_language_directive())
 }
 
 pub fn build_sdd_llm_prompt(plan: &SddPlan, phase: SddPhase, user_input: &str) -> String {

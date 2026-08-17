@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 export type UsageBadgePeriod = "day" | "month";
 
 const STORAGE_KEY = "terrain.usage.badgePeriod";
@@ -20,5 +22,5 @@ export function setUsageBadgePeriod(period: UsageBadgePeriod) {
 }
 
 export function usageBadgePeriodLabel(period: UsageBadgePeriod): string {
-  return period === "month" ? "本月" : "今日";
+  return period === "month" ? t("usage.period.month") : t("usage.period.today");
 }

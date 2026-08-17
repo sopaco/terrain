@@ -36,6 +36,7 @@ pub async fn apply_env_integration(
     reinstall_ids: &[String],
     on_progress: impl Fn(EnvApplyProgress),
 ) -> Result<EnvApplyResult> {
+    let lang = crate::language::current_language();
     let catalog = load_catalog()?;
     let status = get_env_status(repo)?;
     let integrated: std::collections::HashMap<_, _> = status
@@ -80,13 +81,20 @@ pub async fn apply_env_integration(
 
         on_progress(ProgressEvent::env(
             def.id.clone(),
-            format!("正在集成 {}…", def.label),
+            lang.tr(
+                &format!("正在集成 {}…", def.label),
+                &format!("Integrating {}…", def.label),
+            )
+            .to_string(),
         ));
 
         let result = match def.kind.as_str() {
             "skill" => apply_skill(repo, def),
             "tool" => apply_tool(repo, def).await,
-            "agents_md" => patch_agents_md(repo).map(|p| format!("已更新 {p}")),
+            "agents_md" => patch_agents_md(repo).map(|p| {
+                lang.tr(&format!("已更新 {p}"), &format!("Updated {p}"))
+                    .to_string()
+            }),
             "terrain_ignore" => apply_terrain_git_policy(repo),
             "gitignore" => apply_gitignore(repo, &def.patterns),
             _ => Err(CoreError::InvalidDoc(format!("unknown kind {}", def.kind))),
@@ -148,12 +156,17 @@ fn apply_skill(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<Stri
 }
 
 async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<String> {
+    let lang = crate::language::current_language();
     if def.id == "tool-bun" {
         if tool_check_passes(repo, def) {
-            return Ok("bun 已存在".into());
+            return Ok(lang.tr("bun 已存在", "bun is already installed").into());
         }
         return Err(CoreError::InvalidDoc(
-            "bun 未安装，请从 https://bun.sh 安装后重试".into(),
+            lang.tr(
+                "bun 未安装，请从 https://bun.sh 安装后重试",
+                "bun is not installed; install it from https://bun.sh and retry",
+            )
+            .into(),
         ));
     }
 
@@ -162,11 +175,18 @@ async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result
     }
 
     if tool_check_passes(repo, def) {
-        return Ok(format!("{} 已存在，跳过安装", def.label));
+        return Ok(lang
+            .tr(
+                &format!("{} 已存在，跳过安装", def.label),
+                &format!("{} is already installed, skipping", def.label),
+            )
+            .to_string());
     }
 
     if def.install_steps.is_empty() {
-        return Err(CoreError::InvalidDoc("无安装步骤".into()));
+        return Err(CoreError::InvalidDoc(
+            lang.tr("无安装步骤", "No install steps").into(),
+        ));
     }
 
     let mut messages = Vec::new();
@@ -183,37 +203,71 @@ async fn apply_bundled_tool(
     def: &super::catalog::IntegrationDef,
 ) -> Result<String> {
     let _ = repo;
+    let lang = crate::language::current_language();
     let manifest = REPO_AGENT_TOOLS_MANIFEST;
 
     match def.id.as_str() {
         "tool-rtk" => {
             let rtk = bundled_rtk().ok_or_else(|| {
-                CoreError::InvalidDoc("Terrain 内置 RTK 不可用".into())
+                CoreError::InvalidDoc(
+                    lang.tr("Terrain 内置 RTK 不可用", "Terrain-bundled RTK is unavailable")
+                        .into(),
+                )
             })?;
             if !run_bundled_check(&rtk, &["gain"], repo) {
-                return Err(CoreError::InvalidDoc(format!(
-                    "内置 RTK 无法执行: {}",
-                    rtk.display()
-                )));
+                return Err(CoreError::InvalidDoc(
+                    lang.tr(
+                        &format!("内置 RTK 无法执行: {}", rtk.display()),
+                        &format!("Bundled RTK cannot be executed: {}", rtk.display()),
+                    )
+                    .to_string(),
+                ));
             }
-            Ok(format!(
-                "RTK 已部署至 ~/.terrain/bin/rtk（详见 {manifest}）"
-            ))
+            Ok(lang
+                .tr(
+                    &format!("RTK 已部署至 ~/.terrain/bin/rtk（详见 {manifest}）"),
+                    &format!("RTK deployed to ~/.terrain/bin/rtk (see {manifest})"),
+                )
+                .to_string())
         }
         "tool-codegraph" => {
             let codegraph = bundled_codegraph().ok_or_else(|| {
-                CoreError::InvalidDoc("Terrain 内置 CodeGraph 不可用".into())
+                CoreError::InvalidDoc(
+                    lang.tr(
+                        "Terrain 内置 CodeGraph 不可用",
+                        "Terrain-bundled CodeGraph is unavailable",
+                    )
+                    .into(),
+                )
             })?;
             if tool_check_passes(repo, def) {
-                Ok(format!("CodeGraph 索引已就绪（Agent 路径见 {manifest}）"))
+                Ok(lang
+                    .tr(
+                        &format!("CodeGraph 索引已就绪（Agent 路径见 {manifest}）"),
+                        &format!("CodeGraph index is ready (agent path: see {manifest})"),
+                    )
+                    .to_string())
             } else {
                 run_binary(repo, &codegraph, &["init", "-i"]).await?;
-                Ok(format!(
-                    "CodeGraph 已初始化 .codegraph/（Agent 使用 ~/.terrain/bin/codegraph，见 {manifest}）"
-                ))
+                Ok(lang
+                    .tr(
+                        &format!(
+                            "CodeGraph 已初始化 .codegraph/（Agent 使用 ~/.terrain/bin/codegraph，见 {manifest}）"
+                        ),
+                        &format!(
+                            "CodeGraph initialized .codegraph/ (agents use ~/.terrain/bin/codegraph, see {manifest})"
+                        ),
+                    )
+                    .to_string())
             }
         }
-        _ => Err(CoreError::InvalidDoc(format!("未知内置工具 {}", def.id))),
+        _ => Err(CoreError::InvalidDoc(
+            lang.tr(
+                &format!("未知内置工具 {}", def.id),
+                &format!("Unknown bundled tool {}", def.id),
+            )
+            .to_string(),
+        )),
     }
 }
 
@@ -268,6 +322,7 @@ async fn run_command(cwd: &Path, cmd: &str, args: &[String]) -> Result<()> {
 fn apply_terrain_git_policy(repo: &Path) -> Result<String> {
     use crate::git_policy::{ensure_git_policy, PolicyOutcome};
 
+    let lang = crate::language::current_language();
     let root = crate::registry::knowledge_root_for_repo(repo);
     let report = ensure_git_policy(&root)?;
 
@@ -284,23 +339,39 @@ fn apply_terrain_git_policy(repo: &Path) -> Result<String> {
 
     let mut parts = Vec::new();
     if !written.is_empty() {
-        parts.push(format!("已写入 .terrain/{{{}}}", written.join(", ")));
+        parts.push(
+            lang.tr(
+                &format!("已写入 .terrain/{{{}}}", written.join(", ")),
+                &format!("Wrote .terrain/{{{}}}", written.join(", ")),
+            )
+            .to_string(),
+        );
     }
     if !user_owned.is_empty() {
-        parts.push(format!(
-            "跳过自定义文件 .terrain/{{{}}}（无 Terrain 标记）",
-            user_owned.join(", ")
-        ));
+        parts.push(
+            lang.tr(
+                &format!(
+                    "跳过自定义文件 .terrain/{{{}}}（无 Terrain 标记）",
+                    user_owned.join(", ")
+                ),
+                &format!(
+                    "Skipped custom file .terrain/{{{}}} (no Terrain marker)",
+                    user_owned.join(", ")
+                ),
+            )
+            .to_string(),
+        );
     }
     if parts.is_empty() {
-        parts.push("已是最新".into());
+        parts.push(lang.tr("已是最新", "Already up to date").into());
     }
     Ok(parts.join("；"))
 }
 
 fn apply_gitignore(repo: &Path, patterns: &[String]) -> Result<String> {
+    let lang = crate::language::current_language();
     if gitignore_has_patterns(repo, patterns) {
-        return Ok("已存在".into());
+        return Ok(lang.tr("已存在", "Already present").into());
     }
     let path = repo.join(".gitignore");
     let mut content = if path.is_file() {
@@ -317,7 +388,12 @@ fn apply_gitignore(repo: &Path, patterns: &[String]) -> Result<String> {
         content.push('\n');
     }
     fs::write(&path, content)?;
-    Ok(format!("追加 {} 条规则", patterns.len()))
+    Ok(lang
+        .tr(
+            &format!("追加 {} 条规则", patterns.len()),
+            &format!("Appended {} rule(s)", patterns.len()),
+        )
+        .to_string())
 }
 
 fn ensure_knowledge_dir(repo: &Path) -> Result<()> {

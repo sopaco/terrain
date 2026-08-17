@@ -12,7 +12,7 @@
     setActiveSddSession,
   } from "../api";
   import type { SddPhase, SddPhaseInfo, SddStatus } from "../types";
-  import { TERMS } from "../terminology";
+  import { tr } from "../i18n";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SddSessionSelector from "./SddSessionSelector.svelte";
 
@@ -43,12 +43,15 @@
   let viewMode = $state<"preview" | "edit">("preview");
   let sessionPickerOpen = $state(false);
 
-  const phaseDescriptions: Record<SddPhase, string> = {
-    requirements: "交互式澄清需求、用户故事与验收标准，产出结构化需求文档。",
-    tech_design: `结合 ${TERMS.humanKnowledge} 与 ${TERMS.agentKnowledge}，输出可实施的技术方案。`,
-    code_gen: "委派 OpenCode 按技术方案在仓库中实现代码（需 OpenCode）。",
-    code_review: "对照需求与方案，对实现进行智能 Code Review。",
-  };
+  const phaseDescriptions = $derived<Record<SddPhase, string>>({
+    requirements: tr("sdd.phaseDesc.requirements"),
+    tech_design: tr("sdd.phaseDesc.tech_design", {
+      human: tr("terms.humanKnowledge"),
+      agent: tr("terms.agentKnowledge"),
+    }),
+    code_gen: tr("sdd.phaseDesc.code_gen"),
+    code_review: tr("sdd.phaseDesc.code_review"),
+  });
 
   const activePhaseLabel = $derived(
     status?.phases.find((p) => p.phase === activePhase)?.label ?? "",
@@ -82,29 +85,34 @@
 
   async function runPhase(phase: SddPhase, includeFeedback = false) {
     if (!projectSlug || !repoPath) {
-      onStatus?.("请先选择已索引的项目。", "error");
+      onStatus?.(tr("sdd.msg.selectProject"), "error");
       return;
     }
     if (!status?.active_session_id) {
-      onStatus?.("请先新建或选择一个 SDD 需求。", "error");
+      onStatus?.(tr("sdd.msg.selectSession"), "error");
       return;
     }
     if (!acpOk && (phase === "code_gen" || !hybridNativeLlm)) {
       onStatus?.(
         phase === "code_gen"
-          ? "代码生成需要 ACP 代理，请在设置中配置并确保其在 PATH 上。"
-          : "请先在设置中配置 ACP 代理。",
+          ? tr("sdd.msg.codeGenNeedsAcp")
+          : tr("sdd.msg.configureAcp"),
         "error",
       );
       return;
     }
     if (hybridNativeLlm && phase !== "code_gen" && !llmReady) {
-      onStatus?.("请先在设置中配置 LLM。", "error");
+      onStatus?.(tr("sdd.msg.configureLlm"), "error");
       return;
     }
 
     busyPhase = phase;
-    onStatus?.(`正在运行：${status?.phases.find((p) => p.phase === phase)?.label ?? phase}`, "progress");
+    onStatus?.(
+      tr("sdd.msg.runningPhase", {
+        label: status?.phases.find((p) => p.phase === phase)?.label ?? phase,
+      }),
+      "progress",
+    );
 
     try {
       const result = await runSddPhase(
@@ -114,7 +122,7 @@
         buildUserInput(phase, includeFeedback),
         status.active_session_id,
       );
-      onStatus?.(`${result.output_path.split("/").pop()} 已生成`, "success");
+      onStatus?.(tr("sdd.msg.generated", { name: result.output_path.split("/").pop() ?? "" }), "success");
       hitlFeedback = "";
       await loadStatus();
       await viewOutput(result.output_path, phase, true);
@@ -126,7 +134,7 @@
   }
 
   async function viewOutput(path: string, phase?: SddPhase, skipDirtyCheck = false) {
-    if (!skipDirtyCheck && dirty && !confirm("有未保存的编辑，确定切换文档吗？")) return;
+    if (!skipDirtyCheck && dirty && !confirm(tr("sdd.msg.confirmSwitchDoc"))) return;
     activeOutput = path;
     activePhase = phase ?? status?.phases.find((p) => p.output_path === path)?.phase ?? null;
     outputLoading = true;
@@ -137,7 +145,7 @@
       editBody = doc.body;
       dirty = false;
     } catch (e) {
-      outputBody = `_无法读取文档：${e}_`;
+      outputBody = tr("sdd.msg.readFailed", { error: String(e) });
       editBody = outputBody;
     } finally {
       outputLoading = false;
@@ -152,7 +160,7 @@
       outputBody = editBody;
       dirty = false;
       viewMode = "preview";
-      onStatus?.("已保存人工修改", "success");
+      onStatus?.(tr("sdd.msg.savedEdits"), "success");
       await loadStatus();
     } catch (e) {
       onStatus?.(String(e), "error");
@@ -163,11 +171,11 @@
 
   async function submitHitlRevision() {
     if (!activePhase) {
-      onStatus?.("请先打开某一阶段的输出文档。", "error");
+      onStatus?.(tr("sdd.msg.openOutputFirst"), "error");
       return;
     }
     if (!hitlFeedback.trim()) {
-      onStatus?.("请填写修订反馈后再提交。", "error");
+      onStatus?.(tr("sdd.msg.fillFeedback"), "error");
       return;
     }
     if (dirty) {
@@ -181,7 +189,7 @@
       sessionPickerOpen = false;
       return;
     }
-    if (dirty && !confirm("有未保存的编辑，确定切换需求吗？")) return;
+    if (dirty && !confirm(tr("sdd.msg.confirmSwitchSession"))) return;
     sessionPickerOpen = false;
     try {
       status = await setActiveSddSession(projectSlug, sessionId);
@@ -190,7 +198,7 @@
       editBody = "";
       hitlFeedback = "";
       dirty = false;
-      onStatus?.("已切换需求", "success");
+      onStatus?.(tr("sdd.msg.switched"), "success");
     } catch (e) {
       onStatus?.(String(e), "error");
     }
@@ -208,7 +216,7 @@
       editBody = "";
       dirty = false;
       await loadStatus();
-      onStatus?.(`已创建需求：${title}`, "success");
+      onStatus?.(tr("sdd.msg.created", { title }), "success");
     } catch (e) {
       onStatus?.(String(e), "error");
     } finally {
@@ -229,7 +237,7 @@
         hitlFeedback = "";
         dirty = false;
       }
-      onStatus?.("已删除需求及关联产出", "success");
+      onStatus?.(tr("sdd.msg.deleted"), "success");
     } catch (e) {
       onStatus?.(String(e), "error");
     } finally {
@@ -289,17 +297,17 @@
   <div class="w-[420px] shrink-0 overflow-y-auto border-r border-tr-border-strong bg-tr-surface p-5">
     {#if !projectSlug}
       <div class="flex h-full flex-col items-center justify-center text-center text-sm text-tr-ink-3">
-        <p>选择项目以开始 SDD 工作流</p>
+        <p>{tr("sdd.emptyState")}</p>
       </div>
     {:else if loading && !status}
-      <div class="flex h-full items-center justify-center text-sm text-tr-ink-3">加载中…</div>
+      <div class="flex h-full items-center justify-center text-sm text-tr-ink-3">{tr("common.loading")}</div>
     {:else if status}
       <div class="mb-4">
-        <h2 class="text-lg font-semibold">SDD 标准化工作流</h2>
-        <p class="mt-1 text-xs text-tr-ink-3">需求澄清 → 技术方案 → 代码生成 → Code Review</p>
+        <h2 class="text-lg font-semibold">{tr("sdd.title")}</h2>
+        <p class="mt-1 text-xs text-tr-ink-3">{tr("sdd.subtitle")}</p>
         {#if !status.skill_ready}
           <p class="mt-2 rounded-lg border border-tr-watch/30 bg-tr-watch-soft px-3 py-2 text-xs text-tr-watch">
-            SDD Skill 未找到，部分 ACP 功能可能受限。
+            {tr("sdd.skillMissing")}
           </p>
         {/if}
       </div>
@@ -317,7 +325,7 @@
 
       {#if !status.active_session_id}
         <p class="mb-4 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-3 text-xs text-tr-ink-3">
-          从上方选择器新建 SDD 需求后，即可开始四阶段工作流。
+          {tr("sdd.noSessionHint")}
         </p>
       {:else}
         <div class="space-y-4">
@@ -358,7 +366,7 @@
                     <textarea
                       class="mt-3 w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-xs outline-none focus:border-tr-accent"
                       rows="3"
-                      placeholder="描述你的需求、背景或用户故事…"
+                      placeholder={tr("sdd.requirementPlaceholder")}
                       bind:value={requirementInput}
                       disabled={!!busyPhase}
                     ></textarea>
@@ -371,7 +379,7 @@
                       disabled={!canRun(phaseInfo)}
                       onclick={() => runPhase(phaseInfo.phase)}
                     >
-                      {busyPhase === phaseInfo.phase ? "运行中…" : phaseInfo.ready ? "重新生成" : "运行"}
+                      {busyPhase === phaseInfo.phase ? tr("sdd.running") : phaseInfo.ready ? tr("common.regenerate") : tr("sdd.run")}
                     </button>
                     {#if phaseInfo.ready}
                       <button
@@ -383,7 +391,7 @@
                         }`}
                         onclick={() => viewOutput(phaseInfo.output_path, phaseInfo.phase)}
                       >
-                        审核输出
+                        {tr("sdd.reviewOutput")}
                       </button>
                     {/if}
                   </div>
@@ -398,7 +406,7 @@
 
   <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
     {#if outputLoading}
-      <div class="flex flex-1 items-center justify-center text-sm text-tr-ink-3">加载文档…</div>
+      <div class="flex flex-1 items-center justify-center text-sm text-tr-ink-3">{tr("sdd.loadingDoc")}</div>
     {:else if activeOutput}
       <header class="flex shrink-0 items-center gap-2 border-b border-tr-border-strong bg-tr-surface/60 px-5 py-3">
         <div class="min-w-0 flex-1">
@@ -411,14 +419,14 @@
             class={`rounded-md px-2.5 py-1 text-xs ${viewMode === "preview" ? "bg-tr-elevated text-white" : "text-tr-ink-3 hover:text-tr-ink-2"}`}
             onclick={() => (viewMode = "preview")}
           >
-            预览
+            {tr("sdd.preview")}
           </button>
           <button
             type="button"
             class={`rounded-md px-2.5 py-1 text-xs ${viewMode === "edit" ? "bg-tr-elevated text-white" : "text-tr-ink-3 hover:text-tr-ink-2"}`}
             onclick={() => (viewMode = "edit")}
           >
-            编辑
+            {tr("common.edit")}
           </button>
         </div>
         {#if viewMode === "edit"}
@@ -428,7 +436,7 @@
             disabled={!dirty || saving}
             onclick={saveEdits}
           >
-            {saving ? "保存中…" : dirty ? "保存修改" : "已保存"}
+            {saving ? tr("common.saving") : dirty ? tr("sdd.saveChanges") : tr("common.saved")}
           </button>
         {/if}
       </header>
@@ -452,15 +460,15 @@
       <footer class="shrink-0 border-t border-tr-accent-soft-strong bg-tr-accent-soft px-5 py-4">
         <div class="mb-2 flex items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-medium text-tr-ink-2">人工修订（HITL）</p>
-            <p class="text-[10px] text-tr-ink-3">填写反馈后点击按钮，模型将基于当前文档与你的意见重新生成</p>
+            <p class="text-xs font-medium text-tr-ink-2">{tr("sdd.hitl.title")}</p>
+            <p class="text-[10px] text-tr-ink-3">{tr("sdd.hitl.hint")}</p>
           </div>
         </div>
         <textarea
           id="hitl-feedback"
           class="mb-3 w-full rounded-lg border border-tr-border-strong bg-tr-page px-3 py-2 text-xs outline-none focus:border-tr-accent"
           rows="3"
-          placeholder="例如：补充验收标准、调整技术选型、修正术语、缩小实现范围…"
+          placeholder={tr("sdd.feedbackPlaceholder")}
           bind:value={hitlFeedback}
           disabled={!!busyPhase}
         ></textarea>
@@ -472,7 +480,7 @@
               disabled={saving || !!busyPhase}
               onclick={saveEdits}
             >
-              先保存编辑
+              {tr("sdd.hitl.saveFirst")}
             </button>
           {/if}
           <button
@@ -481,14 +489,14 @@
             disabled={!!busyPhase || !hitlFeedback.trim()}
             onclick={submitHitlRevision}
           >
-            {busyPhase ? "修订中…" : "提交反馈并修订"}
+            {busyPhase ? tr("sdd.hitl.revising") : tr("sdd.hitl.submit")}
           </button>
         </div>
       </footer>
     {:else}
       <div class="flex h-full flex-col items-center justify-center gap-2 px-8 text-center text-tr-ink-3">
-        <p class="text-tr-ink-2">阶段输出将显示在这里</p>
-        <p class="text-sm">完成任一阶段后点击「审核输出」，在下方提交修订反馈</p>
+        <p class="text-tr-ink-2">{tr("sdd.outputEmpty")}</p>
+        <p class="text-sm">{tr("sdd.outputEmptyHint")}</p>
       </div>
     {/if}
   </main>

@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use terrain_core::{
     agent_context_baseline_head, agent_context_ready, agent_pack_ready,
-    build_agent_context_prompt, build_agent_context_update_prompt, pack_agent_assets,
-    plan_incremental_update, prepare_model_markdown, read_agent_context_body,
+    build_agent_context_prompt, build_agent_context_update_prompt, context_body_ready,
+    pack_agent_assets, plan_incremental_update, prepare_model_markdown, read_agent_context_body,
     refresh_agent_context_baseline, reject_incremental_document, write_agent_context,
     AgentContextGenerationResult, IncrementalOptions, IncrementalPlan, KnowledgePaths,
     KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode,
@@ -182,6 +182,31 @@ pub async fn run_agent_context_generation(
         anyhow::bail!("Agent context generation produced empty output after sanitization");
     }
 
+    // ACP agents are told to return the full document, but often write it to
+    // TERRAIN_AGENT_CONTEXT_OUTPUT and reply with only a completion summary. Terrain persists the
+    // reply verbatim, so recover the real document from disk when the reply is not usable.
+    if !context_body_ready(&body) && execution_pure_acp(acp_settings) {
+        let on_disk = read_agent_context_body(paths, project_slug).unwrap_or_default();
+        if context_body_ready(&on_disk) {
+            tracing::info!(
+                project = project_slug,
+                "agent context: recovered document from disk (ACP wrote file; reply was summary only)"
+            );
+            body = on_disk;
+            refresh_reason = refresh_reason.or_else(|| {
+                Some("recovered_from_disk_after_summary_reply".into())
+            });
+        }
+    }
+
+    if !context_body_ready(&body) {
+        anyhow::bail!(
+            "Agent context generation produced an incomplete document (need ≥500 chars and ≥4 \
+             ## sections) — {} left unchanged",
+            paths.agent_context_main(project_slug).display()
+        );
+    }
+
     let meta = write_agent_context(paths, project_slug, repo_path, &body)?;
     let output_path = paths.agent_context_main(project_slug);
     let excerpt: String = body.chars().take(300).collect();
@@ -299,19 +324,13 @@ fn build_agent_context_acp_prompt(
         .unwrap_or_default();
     let output_path = paths.agent_context_main(project_slug).display().to_string();
 
-    // The skill tells the agent to write TERRAIN_AGENT_CONTEXT_OUTPUT itself, and Terrain also
-    // persists the reply — two writers for one file. On a full run both produce the same complete
-    // document so the redundancy is harmless. On an incremental run it is not: "edit it in place"
-    // invites an agent to patch the file and reply with a summary, which Terrain would then write
-    // over the very edit it just made. Name Terrain as the only writer for that case.
-    let write_contract = if update.is_some() {
-        "**Terrain is the only writer for this turn.** Do NOT create, edit or write \
+    // Terrain persists the reply as the complete file. The agent must not also write
+    // TERRAIN_AGENT_CONTEXT_OUTPUT — a second writer often leaves a good file on disk but a
+    // one-line summary in the reply, which Terrain would then persist over the real document.
+    let write_contract = "**Terrain is the only writer for this turn.** Do NOT create, edit or write \
          TERRAIN_AGENT_CONTEXT_OUTPUT (or any other file) — not with an editor tool, not with a \
-         shell redirect. Terrain persists your reply verbatim as the complete file, so the updated \
-         document must arrive as your reply text and nowhere else.\n"
-    } else {
-        ""
-    };
+         shell redirect. Terrain persists your reply verbatim as the complete file, so the \
+         document must arrive as your reply text and nowhere else.\n";
 
     Ok(format!(
         "You are Terrain Agent Context generation running in **ACP mode**. \

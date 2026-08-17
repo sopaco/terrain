@@ -16,18 +16,7 @@ const MENU_QUIT: &str = "quit";
 pub fn init(app: &tauri::App) -> tauri::Result<()> {
     attach_main_window_close_handler(app)?;
 
-    let show_main =
-        MenuItem::with_id(app, MENU_SHOW_MAIN, "显示主窗口", true, None::<&str>)?;
-    let usage =
-        MenuItem::with_id(app, MENU_USAGE, "Token 用量看板", true, None::<&str>)?;
-    let about = MenuItem::with_id(app, MENU_ABOUT, "关于", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, MENU_QUIT, "退出", true, None::<&str>)?;
-    let sep = PredefinedMenuItem::separator(app)?;
-
-    let menu = Menu::with_items(
-        app,
-        &[&show_main, &usage, &sep, &about, &sep, &quit],
-    )?;
+    let menu = build_tray_menu(app)?;
 
     let icon = tauri::include_image!("icons/64x64.png");
 
@@ -46,6 +35,39 @@ pub fn init(app: &tauri::App) -> tauri::Result<()> {
         .build(app)?;
 
     Ok(())
+}
+
+/// Rebuild tray labels after the user changes the UI language.
+pub fn refresh_menu(app: &AppHandle) -> tauri::Result<()> {
+    let Some(tray) = app.tray_by_id("terrain-tray") else {
+        return Ok(());
+    };
+    let menu = build_tray_menu(app)?;
+    tray.set_menu(Some(menu))?;
+    Ok(())
+}
+
+fn build_tray_menu<R: tauri::Runtime>(app: &impl Manager<R>) -> tauri::Result<Menu<R>> {
+    let lang = terrain_core::current_language();
+    let show_main = MenuItem::with_id(
+        app,
+        MENU_SHOW_MAIN,
+        lang.tr("显示主窗口", "Show Main Window"),
+        true,
+        None::<&str>,
+    )?;
+    let usage = MenuItem::with_id(
+        app,
+        MENU_USAGE,
+        lang.tr("Token 用量看板", "Token Usage Dashboard"),
+        true,
+        None::<&str>,
+    )?;
+    let about = MenuItem::with_id(app, MENU_ABOUT, lang.tr("关于", "About"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, MENU_QUIT, lang.tr("退出", "Quit"), true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+
+    Menu::with_items(app, &[&show_main, &usage, &sep, &about, &sep, &quit])
 }
 
 #[cfg(target_os = "macos")]
@@ -91,8 +113,9 @@ pub fn open_usage_window(app: &AppHandle) {
         return;
     }
 
+    let lang = terrain_core::current_language();
     let _ = WebviewWindowBuilder::new(app, USAGE_WINDOW_ID, WebviewUrl::App("index.html".into()))
-        .title("Token 用量看板")
+        .title(lang.tr("Token 用量看板", "Token Usage Dashboard"))
         .inner_size(720.0, 840.0)
         .min_inner_size(480.0, 560.0)
         .resizable(true)

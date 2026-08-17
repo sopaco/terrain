@@ -5,10 +5,13 @@
     AgentExecution,
     AcpSettings,
     KnowledgeSettings,
+    LanguageSetting,
     LlmStatus,
     ModelSettings,
     ProviderProfile,
   } from "../types";
+  import { applyLocale, tr, t } from "../i18n";
+  import { setStatus } from "../stores/status.svelte";
   import ModalShell from "./ModalShell.svelte";
   import {
     DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
@@ -50,6 +53,8 @@
   let incrementalRefresh = $state(true);
   let incrementalMaxChangedFiles = $state(DEFAULT_INCREMENTAL_MAX_CHANGED_FILES);
   let incrementalHumanDocs = $state(false);
+  let language = $state<LanguageSetting>("system");
+  let savedLanguage = $state<LanguageSetting>("system");
   let acpTestOk = $state<boolean | null>(null);
   let llmTestOk = $state<boolean | null>(null);
   let llmTestDetail = $state<string | null>(null);
@@ -57,9 +62,9 @@
   const pureAcp = $derived(isPureAcp(agentExecution));
 
   const providerOptions = [
-    { id: "openai" as const, label: "OpenAI 兼容 (NVIDIA Integrate 等)" },
-    { id: "lmstudio" as const, label: "LM Studio (本地)" },
-    { id: "ollama" as const, label: "Ollama (本地)" },
+    { id: "openai" as const },
+    { id: "lmstudio" as const },
+    { id: "ollama" as const },
   ];
 
   const current = $derived(drafts[provider]);
@@ -154,6 +159,8 @@
       knowledge?.incremental_max_changed_files ||
       DEFAULT_INCREMENTAL_MAX_CHANGED_FILES;
     incrementalHumanDocs = knowledge?.incremental_human_docs ?? false;
+    language = s.language ?? "system";
+    savedLanguage = language;
   }
 
   $effect(() => {
@@ -199,6 +206,7 @@
       profiles,
       acp,
       knowledge,
+      language,
     };
   }
 
@@ -222,7 +230,15 @@
     error = null;
     try {
       const status = await saveModelSettings(buildSettings());
+      // Apply the language immediately; if it changed, knowledge assets keep
+      // their previous language until the user regenerates them.
+      const languageChanged = language !== savedLanguage;
+      applyLocale(language);
+      savedLanguage = language;
       onsaved(status);
+      if (languageChanged) {
+        setStatus(t("settings.language.assetsStale"), "success", null, 8000);
+      }
       if (closeAfter) {
         onclose();
         return;
@@ -257,29 +273,44 @@
 <ModalShell {open} {onclose} dialogClass="max-w-[min(560px,92vw)] bg-tr-surface">
   <header class="flex items-center justify-between border-b border-tr-border-strong px-5 py-4">
       <div>
-        <h2 class="text-base font-semibold">设置</h2>
-        <p class="text-xs text-tr-ink-3">ACP 代理、执行模式与知识资产保鲜（保存至 ~/.terrain/settings.json）</p>
+        <h2 class="text-base font-semibold">{tr("settings.title")}</h2>
+        <p class="text-xs text-tr-ink-3">{tr("settings.subtitle")}</p>
       </div>
       <button
         type="button"
         class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
         onclick={onclose}
       >
-        关闭
+        {tr("common.close")}
       </button>
     </header>
 
     <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
       <label class="block space-y-1.5">
-        <span class="text-xs font-medium text-tr-ink-2">执行模式</span>
+        <span class="text-xs font-medium text-tr-ink-2">{tr("settings.language.label")}</span>
+        <select
+          class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
+          value={language}
+          onchange={(e) =>
+            (language = (e.currentTarget as HTMLSelectElement).value as LanguageSetting)}
+        >
+          <option value="system">{tr("settings.language.system")}</option>
+          <option value="zh-CN">简体中文</option>
+          <option value="en">English</option>
+        </select>
+        <p class="text-xs text-tr-ink-3">{tr("settings.language.hint")}</p>
+      </label>
+
+      <label class="block space-y-1.5">
+        <span class="text-xs font-medium text-tr-ink-2">{tr("settings.executionMode.label")}</span>
         <select
           class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
           value={agentExecution}
           onchange={(e) =>
             (agentExecution = (e.currentTarget as HTMLSelectElement).value as AgentExecution)}
         >
-          <option value="acp">纯ACP模式</option>
-          <option value="acp_native">Native LLM（BYOK） + ACP</option>
+          <option value="acp">{tr("settings.executionMode.pureAcp")}</option>
+          <option value="acp_native">{tr("settings.executionMode.hybridOption")}</option>
         </select>
       </label>
 
@@ -289,21 +320,20 @@
       >
         {#if pureAcp}
           <p>
-            问答、Litho、SDD、Agent 上下文等全部由外部 ACP 代理处理，只需配置下方 ACP 命令，无需填写
-            Native LLM。默认 <code class="rounded bg-tr-page px-1 py-0.5 text-tr-accent">opencode acp</code>。
+            {tr("settings.modeNote.pureAcpBefore")}<code class="rounded bg-tr-page px-1 py-0.5 text-tr-accent">opencode acp</code>{tr("settings.modeNote.pureAcpAfter")}
           </p>
         {:else}
           <p>
-            Native LLM（BYOK）处理问答、SDD 文档阶段与 Agent Context，支持流式输出与工具调用详情；ACP 处理 Litho 与 SDD 代码生成。请同时配置下方两项。
+            {tr("settings.modeNote.hybrid")}
           </p>
         {/if}
       </div>
 
       <div class="space-y-3 rounded-xl border border-tr-border-strong bg-tr-elevated p-4">
-        <h3 class="text-sm font-medium text-tr-ink-2">ACP 代理</h3>
+        <h3 class="text-sm font-medium text-tr-ink-2">{tr("settings.acp.title")}</h3>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-tr-ink-2">Binary（PATH 上的可执行文件）</span>
+          <span class="text-xs font-medium text-tr-ink-2">{tr("settings.acp.binary")}</span>
           <input
             class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="text"
@@ -318,7 +348,7 @@
         </label>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-tr-ink-2">参数（跟在 binary 后）</span>
+          <span class="text-xs font-medium text-tr-ink-2">{tr("settings.acp.args")}</span>
           <input
             class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="text"
@@ -333,7 +363,7 @@
         </label>
 
         <label class="block space-y-1.5">
-          <span class="text-xs font-medium text-tr-ink-2">完整命令覆盖（可选，优先于 binary + args）</span>
+          <span class="text-xs font-medium text-tr-ink-2">{tr("settings.acp.commandOverride")}</span>
           <input
             class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="text"
@@ -353,18 +383,18 @@
           disabled={saving}
           onclick={testAcp}
         >
-          检测 ACP 代理
+          {tr("settings.acp.test")}
         </button>
         {#if acpTestOk === true}
-          <p class="text-[11px] text-tr-good">检测通过</p>
+          <p class="text-[11px] text-tr-good">{tr("settings.acp.testOk")}</p>
         {:else if acpTestOk === false}
-          <p class="text-[11px] text-tr-watch">未检测到，请检查 binary 或 command</p>
+          <p class="text-[11px] text-tr-watch">{tr("settings.acp.testFailed")}</p>
         {/if}
       </div>
 
       {#if !pureAcp}
         <div class="space-y-3 rounded-xl border border-tr-accent-soft-strong bg-tr-accent-soft p-4">
-          <h3 class="text-sm font-medium text-tr-ink-2">Native LLM</h3>
+          <h3 class="text-sm font-medium text-tr-ink-2">{tr("settings.llm.title")}</h3>
 
           <label class="block space-y-1.5">
             <span class="text-xs font-medium text-tr-ink-2">Provider</span>
@@ -374,7 +404,7 @@
               onchange={(e) => (provider = (e.currentTarget as HTMLSelectElement).value as ProviderId)}
             >
               {#each providerOptions as opt}
-                <option value={opt.id}>{opt.label}</option>
+                <option value={opt.id}>{tr(`settings.provider.${opt.id}`)}</option>
               {/each}
             </select>
           </label>
@@ -432,21 +462,21 @@
             disabled={saving}
             onclick={testConnection}
           >
-            测试 LLM 连接
+            {tr("settings.llm.test")}
           </button>
           {#if llmTestOk === true}
-            <p class="text-[11px] text-tr-good">连接正常</p>
+            <p class="text-[11px] text-tr-good">{tr("settings.llm.testOk")}</p>
           {:else if llmTestOk === false}
-            <p class="text-[11px] text-tr-watch">{llmTestDetail ?? "连接失败，请检查配置"}</p>
+            <p class="text-[11px] text-tr-watch">{llmTestDetail ?? tr("settings.llm.testFailed")}</p>
           {/if}
         </div>
       {/if}
 
       <div class="space-y-3 rounded-xl border border-tr-border-strong bg-tr-elevated p-4">
         <div>
-          <h3 class="text-sm font-medium text-tr-ink-2">知识资产保鲜</h3>
+          <h3 class="text-sm font-medium text-tr-ink-2">{tr("settings.freshness.title")}</h3>
           <p class="mt-0.5 text-[11px] leading-relaxed text-tr-ink-3">
-            仅对「快速保鲜」与自动保鲜生效。概览页的「重新生成」始终从零重新生成。
+            {tr("settings.freshness.hint")}
           </p>
         </div>
 
@@ -459,16 +489,15 @@
               (incrementalRefresh = (e.currentTarget as HTMLInputElement).checked)}
           />
           <span class="space-y-0.5">
-            <span class="block text-xs font-medium text-tr-ink-2">增量更新知识资产</span>
+            <span class="block text-xs font-medium text-tr-ink-2">{tr("settings.freshness.incremental")}</span>
             <span class="block text-[11px] leading-relaxed text-tr-ink-3">
-              Git 仓库且已有知识资产时，把自基线提交以来的 git diff 交给大模型，在现有文档上做局部
-              修订；关闭后每次保鲜都完整重新生成。
+              {tr("settings.freshness.incrementalHint")}
             </span>
           </span>
         </label>
 
         <label class="block space-y-1.5" class:opacity-50={!incrementalRefresh}>
-          <span class="text-xs font-medium text-tr-ink-2">变更文件上限（超过则回退为完整重新生成）</span>
+          <span class="text-xs font-medium text-tr-ink-2">{tr("settings.freshness.maxChangedFiles")}</span>
           <input
             class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             type="number"
@@ -483,7 +512,7 @@
               ))}
           />
           <span class="block text-[11px] leading-relaxed text-tr-ink-3">
-            变更范围过大时，diff 已不能代表这次改动，增量更新既不更快也不更可靠。默认 {DEFAULT_INCREMENTAL_MAX_CHANGED_FILES}。
+            {tr("settings.freshness.maxChangedFilesHint", { count: DEFAULT_INCREMENTAL_MAX_CHANGED_FILES })}
           </span>
         </label>
 
@@ -498,20 +527,17 @@
           />
           <span class="space-y-0.5">
             <span class="block text-xs font-medium text-tr-ink-2">
-              快速保鲜时同步增量更新人类友好的知识库
+              {tr("settings.freshness.syncHumanDocs")}
             </span>
             <span class="block text-[11px] leading-relaxed text-tr-ink-3">
-              Litho 是最慢的一步，默认不在快速保鲜中触发。开启后会按 diff 就地修订受影响的
-              human/ 文档，仍比重新生成快，但会明显延长快速保鲜耗时。首次开启时会直接以当前代码
-              为基线记录，不会检查现有文档是否已经过时——如果怀疑现有文档已经过时，请先用「重新生成」。
+              {tr("settings.freshness.syncHumanDocsHint")}
             </span>
           </span>
         </label>
       </div>
 
       <p class="text-[11px] leading-relaxed text-tr-ink-3">
-        每个 Provider 的配置会分别保存到 ~/.terrain/settings.json。
-        仅在没有设置文件时，才会读取 `.env` 中的默认值。
+        {tr("settings.saveHint")}
       </p>
 
       {#if error}
@@ -526,7 +552,7 @@
         disabled={saving}
         onclick={() => save(true)}
       >
-        {saving ? "保存中…" : "保存"}
+        {saving ? tr("common.saving") : tr("common.save")}
       </button>
     </footer>
 </ModalShell>

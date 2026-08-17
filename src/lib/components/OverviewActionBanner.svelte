@@ -1,5 +1,6 @@
 <script lang="ts">
     import { CircleAlert, Settings2, TriangleAlert } from "@lucide/svelte";
+    import { tr } from "../i18n";
 
     import ChevronIcon from "./icons/ChevronIcon.svelte";
 
@@ -95,11 +96,11 @@
                     disabled={item.disabled || item.busy}
                     onclick={item.onAction}
                     title={item.busy
-                        ? (item.busyLabel ?? "处理中…")
+                        ? (item.busyLabel ?? tr("overview.banner.processing"))
                         : item.actionLabel}
                 >
                     {item.busy
-                        ? (item.busyLabel ?? "处理中…")
+                        ? (item.busyLabel ?? tr("overview.banner.processing"))
                         : item.actionLabel}
                 </button>
             </div>
@@ -124,7 +125,9 @@
                         size={12}
                         class="shrink-0 text-tr-ink-3"
                     />
-                    还有 {secondary.length} 项待处理
+                    {tr("overview.banner.morePending", {
+                        count: secondary.length,
+                    })}
                 </button>
 
                 {#if moreOpen}

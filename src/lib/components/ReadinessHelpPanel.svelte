@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { AssetTrackHealth } from "../types";
-  import { TERMS } from "../terminology";
+  import { tr } from "../i18n";
   import CloseButton from "./icons/CloseButton.svelte";
   import ModalShell from "./ModalShell.svelte";
 
@@ -44,9 +44,9 @@
 >
   <header class="flex shrink-0 items-start justify-between gap-3 border-b border-tr-border-strong px-5 py-4">
       <div class="min-w-0">
-        <h2 id="readiness-help-title" class="text-base font-semibold text-tr-ink">知识资产就绪说明</h2>
+        <h2 id="readiness-help-title" class="text-base font-semibold text-tr-ink">{tr("overview.readinessHelp.title")}</h2>
         <p class="mt-0.5 text-xs text-tr-ink-3">
-          当前 <span class="font-medium text-tr-ink-2">{readyCount}/{assetTotal}</span> 项就绪
+          {tr("overview.readinessHelp.currentPrefix")} <span class="font-medium text-tr-ink-2">{readyCount}/{assetTotal}</span> {tr("overview.readinessHelp.currentSuffix")}
         </p>
       </div>
       <CloseButton onclick={onclose} class="py-1 text-sm" />
@@ -55,19 +55,21 @@
     <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
       <section>
         <p class="text-sm leading-relaxed text-tr-ink-2">
-          就绪度衡量仓库内 <code class="text-tr-ink-2">.terrain/</code> 各项知识资产是否已生成并可供 Agent 与人类阅读使用，包括源码索引、架构上下文、人类文档等。
+          {tr("overview.readinessHelp.body1")} <code class="text-tr-ink-2">.terrain/</code> {tr("overview.readinessHelp.body2")}
         </p>
       </section>
 
       <section class="space-y-2">
         <div class="flex items-center justify-between gap-2">
-          <h3 class="text-xs font-medium text-tr-ink-3">各项资产</h3>
+          <h3 class="text-xs font-medium text-tr-ink-3">{tr("overview.readinessHelp.assetsHeading")}</h3>
           <button
             type="button"
             class="text-xs text-tr-accent transition-colors hover:text-tr-accent-hover"
             onclick={onOpenKnowledge}
           >
-            进入{TERMS.knowledgeTab}
+            {tr("overview.readinessHelp.enterKnowledge", {
+              knowledgeTab: tr("terms.knowledgeTab"),
+            })}
           </button>
         </div>
         {#each rows as row (row.asset.label)}
@@ -86,13 +88,17 @@
                       : "bg-tr-watch-soft text-tr-watch"
                   }`}
                 >
-                  {row.asset.ready ? "就绪" : "待生成"}
+                  {row.asset.ready
+                    ? tr("overview.status.ready")
+                    : tr("overview.status.pendingGenerate")}
                 </span>
                 {#if row.asset.freshness_score != null}
                   <span
                     class={`rounded-full px-2 py-0.5 text-[10px] font-medium ${freshnessBadgeClass(row.asset.freshness_score, row.asset.stale)}`}
                   >
-                    新鲜度 {row.asset.freshness_score}
+                    {tr("freshness.scoreShort", {
+                      score: row.asset.freshness_score,
+                    })}
                   </span>
                 {/if}
               </div>

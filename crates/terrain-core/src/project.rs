@@ -250,6 +250,8 @@ fn build_asset_health(
     use crate::assets::has_repo_meta_configured;
     use crate::schema::AssetTrackHealth;
 
+    let lang = crate::language::current_language();
+
     let repo_meta_configured = if !repo_path.is_empty() {
         has_repo_meta_configured(Path::new(repo_path))
     } else {
@@ -263,23 +265,36 @@ fn build_asset_health(
     vec![
         AssetTrackHealth {
             track: "human".into(),
-            label: "人类友好的知识库".into(),
+            label: lang.tr("人类友好的知识库", "Human-friendly knowledge base").into(),
             ready: litho.human_docs_complete,
             summary: if litho.human_docs_complete {
-                format!("{} 篇 Litho 文档", litho.human_doc_count)
+                lang.tr(
+                    &format!("{} 篇 Litho 文档", litho.human_doc_count),
+                    &format!("{} Litho docs", litho.human_doc_count),
+                )
+                .to_string()
             } else if litho.has_human_docs {
-                format!("{} 篇（未完成）", litho.human_doc_count)
+                lang.tr(
+                    &format!("{} 篇（未完成）", litho.human_doc_count),
+                    &format!("{} docs (incomplete)", litho.human_doc_count),
+                )
+                .to_string()
             } else {
-                "未生成".into()
+                lang.tr("未生成", "Not generated").into()
             },
             detail: if litho.human_docs_complete {
-                "适合新人阅读与 DeepWiki".into()
+                lang.tr("适合新人阅读与 DeepWiki", "Good for onboarding and DeepWiki").into()
             } else if litho.has_research_artifacts {
-                "有 Litho 研究中间产物，编排未完成".into()
+                lang.tr(
+                    "有 Litho 研究中间产物，编排未完成",
+                    "Litho research artifacts exist, but orchestration is incomplete",
+                )
+                .into()
             } else if litho.has_human_docs {
-                "Litho 文档不完整，请重新生成".into()
+                lang.tr("Litho 文档不完整，请重新生成", "Litho docs are incomplete; please regenerate")
+                    .into()
             } else {
-                "适合新人阅读与 DeepWiki".into()
+                lang.tr("适合新人阅读与 DeepWiki", "Good for onboarding and DeepWiki").into()
             },
             freshness_score: None,
             stale: None,
@@ -287,47 +302,71 @@ fn build_asset_health(
         },
         AssetTrackHealth {
             track: "agent_context".into(),
-            label: "Agent 友好的知识资产".into(),
+            label: lang.tr("Agent 友好的知识资产", "Agent-friendly knowledge assets").into(),
             ready: agent_ctx.ready,
             summary: if agent_ctx.ready {
-                format!("{} 个章节", agent_ctx.section_count)
+                lang.tr(
+                    &format!("{} 个章节", agent_ctx.section_count),
+                    &format!("{} sections", agent_ctx.section_count),
+                )
+                .to_string()
             } else {
-                "未生成".into()
+                lang.tr("未生成", "Not generated").into()
             },
-            detail: "架构/模块/流程，无代码细节".into(),
+            detail: lang
+                .tr("架构/模块/流程，无代码细节", "Architecture/modules/flows, no code details")
+                .into(),
             freshness_score: None,
             stale: None,
             stale_reason: None,
         },
         AssetTrackHealth {
             track: "agent_pack".into(),
-            label: "Agent 源码索引".into(),
+            label: lang.tr("Agent 源码索引", "Agent source index").into(),
             ready: pack.is_some(),
             summary: pack
-                .map(|p| format!("{} tokens · {} 文件", p.total_tokens, p.total_files))
-                .unwrap_or_else(|| "未打包".into()),
-            detail: "repomix 压缩签名，按需 grep".into(),
+                .map(|p| {
+                    lang.tr(
+                        &format!("{} tokens · {} 文件", p.total_tokens, p.total_files),
+                        &format!("{} tokens · {} files", p.total_tokens, p.total_files),
+                    )
+                    .to_string()
+                })
+                .unwrap_or_else(|| lang.tr("未打包", "Not packed").into()),
+            detail: lang
+                .tr("repomix 压缩签名，按需 grep", "Repomix compressed signatures, grep on demand")
+                .into(),
             freshness_score: None,
             stale: None,
             stale_reason: None,
         },
         AssetTrackHealth {
             track: "structured".into(),
-            label: "结构化条目".into(),
+            label: lang.tr("结构化条目", "Structured entries").into(),
             ready: meta_ready || openapi_count > 0 || repo_meta_configured,
             summary: if meta_ready {
                 meta_summary.to_string()
             } else if repo_meta_configured {
-                "已配置 terrain-meta.json（待生成上下文）".into()
-            } else if openapi_count > 0 {
-                format!(
-                    "{} 接口 · {} 路由",
-                    counts.interfaces, counts.routes
+                lang.tr(
+                    "已配置 terrain-meta.json（待生成上下文）",
+                    "terrain-meta.json configured (context pending)",
                 )
+                .into()
+            } else if openapi_count > 0 {
+                lang.tr(
+                    &format!("{} 接口 · {} 路由", counts.interfaces, counts.routes),
+                    &format!("{} interfaces · {} routes", counts.interfaces, counts.routes),
+                )
+                .to_string()
             } else {
-                "未配置".into()
+                lang.tr("未配置", "Not configured").into()
             },
-            detail: "开发者 terrain-meta.json + OpenAPI 采集".into(),
+            detail: lang
+                .tr(
+                    "开发者 terrain-meta.json + OpenAPI 采集",
+                    "Developer terrain-meta.json + OpenAPI collection",
+                )
+                .into(),
             freshness_score: None,
             stale: None,
             stale_reason: None,
@@ -371,13 +410,20 @@ fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
     use crate::assets::{count_knowledge_markdown_files, get_env_status};
     use crate::schema::AgentEnvStatus;
 
+    let lang = crate::language::current_language();
+
     if repo_path.is_empty() {
         return AgentEnvStatus {
             ready: false,
             integrated_count: 0,
             total_count: 0,
-            summary: "未检测".into(),
-            detail: "打开工程环境页以配置 Skills、工具链与 AGENTS.md".into(),
+            summary: lang.tr("未检测", "Not detected").into(),
+            detail: lang
+                .tr(
+                    "打开工程环境页以配置 Skills、工具链与 AGENTS.md",
+                    "Open the project environment page to configure Skills, toolchain and AGENTS.md",
+                )
+                .into(),
         };
     }
 
@@ -394,17 +440,30 @@ fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
             integrated_count: status.ready_count,
             total_count: status.total_count,
             summary: status.summary,
-            detail: format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
+            detail: lang
+                .tr(
+                    &format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
+                    &format!("Skills · Toolchain · AGENTS.md · {knowledge_count} private knowledge docs"),
+                )
+                .to_string(),
         },
         Err(_) => crate::assets::summarize_agent_env_light(repo, knowledge_count),
     }
 }
 
 fn read_overview_excerpt(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {
-    let candidates = [
-        paths.human_docs_dir(project_slug).join("1.概述.md"),
-        paths.human_docs_dir(project_slug).join("1.overview.md"),
-    ];
+    // Overview doc is `1.概述.md` (zh) / `1.Overview.md` (en); accept any `1.*.md`.
+    let dir = paths.human_docs_dir(project_slug);
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with("1.") && name.to_lowercase().ends_with(".md") {
+                candidates.push(entry.path());
+            }
+        }
+    }
+    candidates.sort();
     for path in candidates {
         if let Ok(doc) = read_doc(&path) {
             let excerpt: String = doc.body.chars().take(800).collect();

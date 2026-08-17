@@ -112,7 +112,9 @@ fn list_agent_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<Vec<Hum
     let candidates = [
         (
             paths.agent_context_main(project_slug),
-            "Agent 友好的知识资产".to_string(),
+            crate::language::current_language()
+                .tr("Agent 友好的知识资产", "Agent-friendly knowledge assets")
+                .to_string(),
             "agent/context.md",
         ),
         (

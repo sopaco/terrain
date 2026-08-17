@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ArrowUp } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import MarkdownArticleToc from "./MarkdownArticleToc.svelte";
   import type { SourceCitation } from "../types";
@@ -63,7 +64,7 @@
   <header class="knowledge-article-header">
     <div class="knowledge-article-header-inner">
       <div class="knowledge-article-heading">
-        <nav class="knowledge-article-crumbs" aria-label="文档路径" title={path}>
+        <nav class="knowledge-article-crumbs" aria-label={tr("knowledge.article.pathAria")} title={path}>
           {#each crumbs as crumb, i}
             {#if i > 0}<span class="knowledge-article-crumb-sep" aria-hidden="true">/</span>{/if}
             <span class="knowledge-article-crumb" class:is-last={i === crumbs.length - 1}
@@ -79,11 +80,11 @@
           type="button"
           class="knowledge-article-top"
           onclick={scrollToTop}
-          aria-label="回到顶部"
-          title="回到顶部"
+          aria-label={tr("knowledge.article.backToTop")}
+          title={tr("knowledge.article.backToTop")}
         >
           <ArrowUp size={13} strokeWidth={2} aria-hidden="true" />
-          顶部
+          {tr("knowledge.article.top")}
         </button>
       {/if}
     </div>

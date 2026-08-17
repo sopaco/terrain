@@ -13,6 +13,8 @@ use crate::schema::DocType;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchHit {
     pub path: String,
+    /// Path relative to the project knowledge root (`.terrain/`), suitable for `read_doc`.
+    pub rel_path: String,
     pub project: String,
     pub doc_type: DocType,
     pub title: Option<String>,
@@ -90,8 +92,13 @@ impl<'a> KnowledgeSearch<'a> {
                     continue;
                 }
 
+                let rel_path = path
+                    .strip_prefix(&root)
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| path.display().to_string());
                 hits.push(SearchHit {
                     path: path.display().to_string(),
+                    rel_path,
                     project: frontmatter.project.clone(),
                     doc_type: frontmatter.doc_type,
                     title: frontmatter.title.clone(),
@@ -232,6 +239,17 @@ pub fn read_doc_at(paths: &KnowledgePaths, rel_or_abs: &str) -> Result<crate::do
     read_doc_at_in_project(paths, rel_or_abs, None)
 }
 
+/// Knowledge subdirectories searched when resolving a bare filename.
+const DOC_SUBDIRS: &[&str] = &[
+    "human",
+    "modules",
+    "interfaces",
+    "routes",
+    "events",
+    "knowledge",
+    "agent",
+];
+
 /// Strip repo-relative `.terrain/` prefixes so paths match knowledge-root layout.
 fn normalize_knowledge_doc_rel(path: &str) -> String {
     let p = path.trim().trim_start_matches("./").trim_start_matches('/');
@@ -245,6 +263,89 @@ fn normalize_knowledge_doc_rel(path: &str) -> String {
         return "agent/context.md".to_string();
     }
     p.to_string()
+}
+
+fn is_bare_doc_ref(path: &str) -> bool {
+    !path.is_empty() && !path.contains('/') && !path.contains('\\')
+}
+
+fn doc_filename(path: &str) -> String {
+    if path.ends_with(".md") {
+        path.to_string()
+    } else {
+        format!("{path}.md")
+    }
+}
+
+/// Expand a bare filename (e.g. `1.概述.md`, `core`) into knowledge-root-relative candidates.
+fn expand_doc_path_candidates(rel: &str) -> Vec<String> {
+    if !is_bare_doc_ref(rel) {
+        return vec![rel.to_string()];
+    }
+
+    let filename = doc_filename(rel);
+    DOC_SUBDIRS
+        .iter()
+        .map(|subdir| format!("{subdir}/{filename}"))
+        .collect()
+}
+
+fn push_doc_candidates(
+    rel: &str,
+    root: &Path,
+    tried: &mut std::collections::HashSet<PathBuf>,
+    queue: &mut Vec<PathBuf>,
+) {
+    for variant in expand_doc_path_candidates(rel) {
+        let candidate = root.join(&variant);
+        if tried.insert(candidate.clone()) {
+            queue.push(candidate);
+        }
+    }
+}
+
+fn find_docs_by_basename(
+    roots: &[(Option<String>, PathBuf)],
+    basename: &str,
+) -> Vec<(Option<String>, String)> {
+    let filename = doc_filename(basename);
+    let mut matches = Vec::new();
+
+    for (slug, root) in roots {
+        for subdir in DOC_SUBDIRS {
+            let base = root.join(subdir);
+            if !base.is_dir() {
+                continue;
+            }
+            for entry in WalkDir::new(&base)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_file())
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
+            {
+                if entry.file_name().to_str() != Some(filename.as_str()) {
+                    continue;
+                }
+                if entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|n| n == "repomix.md")
+                {
+                    continue;
+                }
+                let rel = entry
+                    .path()
+                    .strip_prefix(root)
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| entry.path().display().to_string());
+                matches.push((slug.clone(), rel));
+            }
+        }
+    }
+
+    matches.sort();
+    matches.dedup();
+    matches
 }
 
 /// Resolve a knowledge document path against registry-backed project roots.
@@ -263,32 +364,40 @@ pub fn read_doc_at_in_project(
     }
 
     let mut tried = HashSet::new();
-    let mut push = |candidate: PathBuf, queue: &mut Vec<PathBuf>| {
-        if tried.insert(candidate.clone()) {
-            queue.push(candidate);
-        }
-    };
-
     let mut candidates = Vec::new();
     let path = Path::new(trimmed);
 
     if path.is_absolute() {
-        push(path.to_path_buf(), &mut candidates);
+        let candidate = path.to_path_buf();
+        if tried.insert(candidate.clone()) {
+            candidates.push(candidate);
+        }
     }
 
     let rel = normalize_knowledge_doc_rel(trimmed);
 
+    let mut search_roots: Vec<(Option<String>, PathBuf)> = Vec::new();
     if let Some(slug) = project_slug
         && let Ok(root) = paths.try_project_dir(slug) {
-            push(root.join(&rel), &mut candidates);
+            search_roots.push((Some(slug.to_string()), root));
         }
 
     if let Some(root) = paths.workspace_knowledge_root() {
-        push(root.join(&rel), &mut candidates);
+        search_roots.push((project_slug.map(str::to_string), root));
     }
 
-    for (_slug, root) in paths.indexed_project_roots() {
-        push(root.join(&rel), &mut candidates);
+    for (slug, root) in paths.indexed_project_roots() {
+        if project_slug.is_some_and(|s| s != slug) {
+            continue;
+        }
+        search_roots.push((Some(slug), root));
+    }
+
+    search_roots.sort_by(|a, b| a.1.cmp(&b.1));
+    search_roots.dedup_by(|a, b| a.1 == b.1);
+
+    for (_slug, root) in &search_roots {
+        push_doc_candidates(&rel, root, &mut tried, &mut candidates);
     }
 
     for candidate in candidates {
@@ -297,8 +406,45 @@ pub fn read_doc_at_in_project(
         }
     }
 
+    if is_bare_doc_ref(&rel) {
+        let basename_matches = find_docs_by_basename(&search_roots, &rel);
+        match basename_matches.len() {
+            0 => {}
+            1 => {
+                let (_slug, rel_path) = &basename_matches[0];
+                for (_slug, root) in &search_roots {
+                    let candidate = root.join(rel_path);
+                    if candidate.is_file() {
+                        return read_doc(&candidate);
+                    }
+                }
+            }
+            _ => {
+                let listing = basename_matches
+                    .iter()
+                    .map(|(slug, rel_path)| match slug {
+                        Some(s) => format!("{s}:{rel_path}"),
+                        None => rel_path.clone(),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                return Err(crate::error::CoreError::InvalidDoc(format!(
+                    "ambiguous document basename '{rel}': pass a full path. Matches: {listing}"
+                )));
+            }
+        }
+    }
+
+    let hint = if is_bare_doc_ref(&rel) {
+        format!(
+            " Bare filenames are resolved under human/, modules/, interfaces/, routes/, events/, knowledge/, agent/. \
+             Pass `project` when multiple projects are indexed."
+        )
+    } else {
+        String::new()
+    };
     Err(crate::error::CoreError::InvalidDoc(format!(
-        "document not found: {rel_or_abs}"
+        "document not found: {rel_or_abs}.{hint}"
     )))
 }
 
@@ -367,5 +513,67 @@ mod read_doc_tests {
         let doc =
             read_doc_at_in_project(&paths, ".terrain/agent/context.md", Some(&slug)).unwrap();
         assert!(doc.body.contains("Modules overview"));
+    }
+
+    #[test]
+    fn resolves_bare_human_filename() {
+        let (paths, slug, _guard) = test_setup("read-doc-bare-human");
+        let doc_path = paths.human_docs_dir(&slug).join("1.概述.md");
+        let fm = DocFrontmatter {
+            doc_type: DocType::Human,
+            project: slug.clone(),
+            title: Some("概述".into()),
+            source: None,
+            refs: vec![],
+            deps: vec![],
+            extra: Default::default(),
+            module: None,
+        };
+        write_doc(&doc_path, &fm, "# 概述\n\nBare filename works.").unwrap();
+
+        let doc = read_doc_at_in_project(&paths, "1.概述.md", Some(&slug)).unwrap();
+        assert!(doc.body.contains("Bare filename works."));
+    }
+
+    #[test]
+    fn resolves_module_slug_without_extension() {
+        let (paths, slug, _guard) = test_setup("read-doc-module-slug");
+        let doc_path = paths.doc_path(&slug, DocType::Module, "core");
+        let fm = DocFrontmatter {
+            doc_type: DocType::Module,
+            project: slug.clone(),
+            module: Some("core".into()),
+            title: Some("core".into()),
+            source: None,
+            refs: vec![],
+            deps: vec![],
+            extra: Default::default(),
+        };
+        write_doc(&doc_path, &fm, "# core\n\nModule body.").unwrap();
+
+        let doc = read_doc_at_in_project(&paths, "core", Some(&slug)).unwrap();
+        assert!(doc.body.contains("Module body."));
+    }
+
+    #[test]
+    fn resolves_nested_human_doc_by_basename() {
+        let (paths, slug, _guard) = test_setup("read-doc-nested-human");
+        let nested_dir = paths.human_docs_dir(&slug).join("4.Deep-Exploration");
+        std::fs::create_dir_all(&nested_dir).unwrap();
+        let doc_path = nested_dir.join("terrain-agent.md");
+        let fm = DocFrontmatter {
+            doc_type: DocType::Human,
+            project: slug.clone(),
+            title: Some("terrain-agent".into()),
+            source: None,
+            refs: vec![],
+            deps: vec![],
+            extra: Default::default(),
+            module: None,
+        };
+        write_doc(&doc_path, &fm, "# terrain-agent\n\nNested doc.").unwrap();
+
+        let doc = read_doc_at_in_project(&paths, "terrain-agent.md", Some(&slug)).unwrap();
+        assert!(doc.body.contains("Nested doc."));
     }
 }

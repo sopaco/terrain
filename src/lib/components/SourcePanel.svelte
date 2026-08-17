@@ -1,6 +1,7 @@
 <script lang="ts">
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourceCodeViewer from "./SourceCodeViewer.svelte";
+  import { tr } from "../i18n";
   import type { SourceCitation, SourceSlice } from "../types";
 
   interface Props {
@@ -30,7 +31,7 @@
       class="text-xs text-tr-ink-3 transition-colors hover:text-tr-ink-2"
       onclick={onclose}
     >
-      关闭
+      {tr("common.close")}
     </button>
   </div>
   <div class="border-b border-tr-border-strong px-3 py-2 text-xs text-tr-ink-3">
@@ -38,10 +39,10 @@
     {#if slice.format !== "markdown"}
       {#if slice.focus_line}
         <div class="mt-1">
-          第 {slice.start_line}–{slice.end_line} 行 · 引用行 {slice.focus_line}
+          {tr("ask.source.linesWithFocus", { start: slice.start_line, end: slice.end_line, focus: slice.focus_line })}
         </div>
       {:else if slice.start_line > 0 && slice.end_line > 0}
-        <div class="mt-1">第 {slice.start_line}–{slice.end_line} 行</div>
+        <div class="mt-1">{tr("ask.source.lines", { start: slice.start_line, end: slice.end_line })}</div>
       {/if}
     {/if}
   </div>
@@ -56,7 +57,7 @@
         <div
           class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-tr-accent-soft-strong border-t-tr-accent"
         ></div>
-        <p class="text-sm text-tr-ink-2">正在加载…</p>
+        <p class="text-sm text-tr-ink-2">{tr("ask.source.loading")}</p>
       </div>
       <div class="space-y-2">
         {#each Array.from({ length: 8 }, (_, i) => i) as i (i)}
@@ -69,7 +70,7 @@
     </div>
   {:else if errored}
     <div class="flex-1 overflow-y-auto p-4 text-sm text-tr-critical">
-      <p class="font-medium">无法加载源文件</p>
+      <p class="font-medium">{tr("ask.source.loadFailed")}</p>
       <p class="mt-2 whitespace-pre-wrap text-tr-ink-3">{slice.content}</p>
     </div>
   {:else if slice.format === "markdown"}

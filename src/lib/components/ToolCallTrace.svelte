@@ -3,7 +3,7 @@
   import { formatDuration, formatTime } from "../timeFormat";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
 
-  import { TOOL_LABELS, TOOL_STATUS_LABELS } from "../terminology";
+  import { tr } from "../i18n";
 
   interface Props {
     toolCalls: ToolCallRecord[];
@@ -20,7 +20,9 @@
   });
 
   function label(name: string): string {
-    return TOOL_LABELS[name] ?? name;
+    const key = `terms.tool.${name}`;
+    const value = tr(key);
+    return value === key ? name : value;
   }
 
   function summary(call: ToolCallRecord): string {
@@ -58,9 +60,9 @@
   }
 
   function statusLabel(status: ToolCallRecord["status"]): string {
-    if (status === "running") return TOOL_STATUS_LABELS.running;
-    if (status === "error") return TOOL_STATUS_LABELS.error;
-    return TOOL_STATUS_LABELS.ok;
+    if (status === "running") return tr("terms.toolStatus.running");
+    if (status === "error") return tr("terms.toolStatus.error");
+    return tr("terms.toolStatus.ok");
   }
 </script>
 
@@ -73,7 +75,9 @@
     >
       <ChevronIcon direction={panelOpen ? "down" : "right"} size={12} class="shrink-0 text-tr-ink-3" />
       <span class="font-medium text-tr-ink-2">
-        {toolCalls.length} tool {toolCalls.length === 1 ? "call" : "calls"}
+        {toolCalls.length === 1
+          ? tr("ask.toolTrace.headerOne")
+          : tr("ask.toolTrace.headerMany", { count: toolCalls.length })}
       </span>
       {#if toolCalls.some((c) => c.status === "running")}
         <span class="ml-auto inline-block h-3 w-3 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"></span>
@@ -119,7 +123,7 @@
                   {#if call.duration_ms != null}
                     · {formatDuration(call.duration_ms)}
                   {:else if call.status === "running"}
-                    · running…
+                    · {tr("terms.toolStatus.running")}…
                   {/if}
                 </p>
               </div>
@@ -128,21 +132,21 @@
             {#if open}
               <div class="space-y-2 border-t border-tr-border px-3 py-2">
                 <div>
-                  <p class="mb-1 text-[10px] uppercase tracking-wide text-tr-ink-3">Arguments</p>
+                  <p class="mb-1 text-[10px] uppercase tracking-wide text-tr-ink-3">{tr("ask.toolTrace.arguments")}</p>
                   <pre class="max-h-48 overflow-auto rounded bg-tr-page p-2 font-mono text-[11px] leading-relaxed text-tr-ink-2">{formatJson(call.arguments)}</pre>
                 </div>
                 {#if call.error}
                   <div>
-                    <p class="mb-1 text-[10px] uppercase tracking-wide text-tr-critical">错误</p>
+                    <p class="mb-1 text-[10px] uppercase tracking-wide text-tr-critical">{tr("common.error")}</p>
                     <pre class="overflow-auto rounded bg-tr-critical-soft p-2 font-mono text-[11px] text-tr-critical">{call.error}</pre>
                   </div>
                 {:else if call.result !== undefined}
                   <div>
-                    <p class="mb-1 text-[10px] uppercase tracking-wide text-tr-ink-3">Result</p>
+                    <p class="mb-1 text-[10px] uppercase tracking-wide text-tr-ink-3">{tr("ask.toolTrace.result")}</p>
                     <pre class="max-h-64 overflow-auto rounded bg-tr-page p-2 font-mono text-[11px] leading-relaxed text-tr-good">{formatJson(call.result)}</pre>
                   </div>
                 {:else if call.status === "running"}
-                  <p class="text-[11px] text-tr-ink-3">Waiting for result…</p>
+                  <p class="text-[11px] text-tr-ink-3">{tr("ask.toolTrace.waiting")}</p>
                 {/if}
               </div>
             {/if}

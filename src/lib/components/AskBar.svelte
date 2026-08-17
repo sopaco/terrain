@@ -1,7 +1,7 @@
 <script lang="ts">
   import { shouldSubmitOnEnter } from "../ime";
   import { parseAskSlashCommand } from "../askSlashCommands";
-  import { UI_MESSAGES } from "../terminology";
+  import { tr } from "../i18n";
 
   interface Props {
     disabled?: boolean;
@@ -15,11 +15,15 @@
   let {
     disabled = false,
     disabledReason = null,
-    placeholder = UI_MESSAGES.askPlaceholder,
+    placeholder = "",
     onask,
     onopen,
     onclear,
   }: Props = $props();
+
+  const effectivePlaceholder = $derived(
+    placeholder || tr("terms.msg.askPlaceholder"),
+  );
 
   let input = $state("");
   let composing = $state(false);
@@ -67,7 +71,7 @@
       <textarea
         class="min-h-8 flex-1 resize-none bg-transparent px-3 py-1 text-sm leading-relaxed outline-none placeholder:text-tr-ink-3 disabled:cursor-not-allowed"
         rows="1"
-        {placeholder}
+        placeholder={effectivePlaceholder}
         bind:value={input}
         onkeydown={onKeydown}
         oncompositionstart={() => (composing = true)}

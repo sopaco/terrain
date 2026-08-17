@@ -55,6 +55,7 @@ source: .
   - README_zh.md
   - scripts/
     - cross-windows-terrain.sh
+    - check-i18n-parity.ts
   - packages/
     - codegraph/
     - terrain/
@@ -78,6 +79,7 @@ source: .
     - app_icon_re.png
     - screenshots/
     - graph_knowledge_factory.webp
+    - intro/
     - app-icon.png
     - banner.webp
   - npm/
@@ -98,4 +100,4 @@ source: .
     - App.svelte
     - vite-env.d.ts
     - lib/
-    - UsageWindow.svelte
+  - …

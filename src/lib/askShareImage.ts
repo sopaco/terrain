@@ -1,5 +1,6 @@
 import { mount, tick, unmount } from "svelte";
 import AskShareCard from "./components/AskShareCard.svelte";
+import { t } from "./i18n";
 import { hasCompleteMermaidBlocks, prepareSvgForExport } from "./mermaid-utils";
 import { formatShareStamp } from "./timeFormat";
 
@@ -44,9 +45,9 @@ export interface AskShareImages {
 
 export function formatUnknownError(error: unknown): string {
   if (error instanceof Error) return error.message;
-  if (error instanceof Event) return "图片渲染失败，请稍后重试";
+  if (error instanceof Event) return t("ask.shareImage.renderRetry");
   if (typeof error === "string") return error;
-  return "未知错误";
+  return t("ask.shareImage.unknownError");
 }
 
 interface Block {
@@ -301,7 +302,7 @@ function applyPage(
   const showOmitted = index === total - 1 && omittedBlocks > 0;
   parts.omitted.hidden = !showOmitted;
   parts.omitted.textContent = showOmitted
-    ? `回答过长，还有 ${omittedBlocks} 个段落未收录，可用「复制 Markdown」获取完整内容。`
+    ? t("ask.shareImage.omitted", { count: omittedBlocks })
     : "";
 }
 
@@ -323,12 +324,12 @@ async function rasterize(frame: HTMLElement, host: HTMLElement): Promise<Blob> {
         ignoreElements: (el) => el.parentElement === document.body && el !== host,
       });
       if (canvasLooksPainted(canvas)) return await canvasToPngBlob(canvas);
-      lastError = new Error(`画布过大（${width}×${height}），已尝试降级仍无法渲染`);
+      lastError = new Error(t("ask.shareImage.canvasTooLarge", { width, height }));
     } catch (error) {
       lastError = error;
     }
   }
-  throw new Error(formatUnknownError(lastError ?? new Error("图片渲染失败")));
+  throw new Error(formatUnknownError(lastError ?? new Error(t("ask.shareImage.renderFailed"))));
 }
 
 /** Highest scale that fits the canvas budget, then progressively safer fallbacks. */

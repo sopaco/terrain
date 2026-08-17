@@ -25,11 +25,12 @@ impl SddPhase {
     }
 
     pub fn label(self) -> &'static str {
+        let lang = crate::language::current_language();
         match self {
-            Self::Requirements => "需求澄清",
-            Self::TechDesign => "技术方案",
-            Self::CodeGen => "代码生成",
-            Self::CodeReview => "Code Review",
+            Self::Requirements => lang.tr("需求澄清", "Requirements"),
+            Self::TechDesign => lang.tr("技术方案", "Tech Design"),
+            Self::CodeGen => lang.tr("代码生成", "Code Generation"),
+            Self::CodeReview => lang.tr("代码审查", "Code Review"),
         }
     }
 

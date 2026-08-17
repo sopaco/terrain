@@ -1,5 +1,6 @@
 <script lang="ts">
   import { FolderOpen } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import type { UsagePeriodEntry } from "../types";
 
   interface Props {
@@ -19,12 +20,15 @@
     labelColumn,
     rows,
     rowLabel,
-    emptyLabel = "暂无明细数据",
+    emptyLabel,
     loading = false,
-    loadingLabel = "正在加载…",
+    loadingLabel,
     rowOpenPath,
     onRowOpen,
   }: Props = $props();
+
+  const emptyText = $derived(emptyLabel ?? tr("usage.table.empty"));
+  const loadingText = $derived(loadingLabel ?? tr("usage.table.loading"));
 
   function formatTokens(n: number): string {
     return n.toLocaleString();
@@ -52,10 +56,10 @@
       <span
         class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
       ></span>
-      {loadingLabel}
+      {loadingText}
     </div>
   {:else if rows.length === 0}
-    <p class="py-6 text-center text-sm text-tr-ink-3">{emptyLabel}</p>
+    <p class="py-6 text-center text-sm text-tr-ink-3">{emptyText}</p>
   {:else}
     <div class="overflow-x-auto rounded-xl border border-tr-border-strong">
       <table class="w-full min-w-[36rem] text-left text-xs">
@@ -63,10 +67,10 @@
           <tr>
             <th class="px-3 py-2 font-medium">{labelColumn}</th>
             <th class="px-3 py-2 font-medium">Agent</th>
-            <th class="px-3 py-2 font-medium text-right">输入</th>
-            <th class="px-3 py-2 font-medium text-right">输出</th>
-            <th class="px-3 py-2 font-medium text-right">Cache</th>
-            <th class="px-3 py-2 font-medium text-right">成本</th>
+            <th class="px-3 py-2 font-medium text-right">{tr("usage.table.input")}</th>
+            <th class="px-3 py-2 font-medium text-right">{tr("usage.table.output")}</th>
+            <th class="px-3 py-2 font-medium text-right">{tr("usage.table.cache")}</th>
+            <th class="px-3 py-2 font-medium text-right">{tr("usage.metric.cost")}</th>
           </tr>
         </thead>
         <tbody>
@@ -79,8 +83,8 @@
                     <button
                       type="button"
                       class="tr-press group contents"
-                      title="在文件管理器中查看本地记录"
-                      aria-label={`在文件管理器中打开 ${rowLabel(row)}`}
+                      title={tr("usage.table.viewInFileManager")}
+                      aria-label={tr("usage.table.openInFileManager", { label: rowLabel(row) })}
                       onclick={() => openPath(path)}
                     >
                       <span

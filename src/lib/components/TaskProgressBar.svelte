@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tr } from "../i18n";
+
   interface Props {
     projectSlug: string;
     stage?: string | null;
@@ -20,7 +22,7 @@
 
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-sm font-medium text-tr-ink">正在生成知识资产</span>
+        <span class="text-sm font-medium text-tr-ink">{tr("misc.progress.generating")}</span>
         <span class="rounded-full bg-tr-page px-2 py-0.5 text-[10px] uppercase tracking-wide text-tr-watch">
           {projectSlug}
         </span>
@@ -44,7 +46,7 @@
         class="tr-press mt-0.5 shrink-0 rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated"
         onclick={oncancel}
       >
-        关闭
+        {tr("common.close")}
       </button>
     {/if}
   </div>

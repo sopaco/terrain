@@ -132,7 +132,12 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
 
     if paths.rtk.is_none() && paths.codegraph.is_none() && paths.terrain.is_none() {
         return Err(CoreError::InvalidDoc(
-            "无可用内置工具可部署到 ~/.terrain/bin/".into(),
+            crate::language::current_language()
+                .tr(
+                    "无可用内置工具可部署到 ~/.terrain/bin/",
+                    "No bundled tools available to deploy to ~/.terrain/bin/",
+                )
+                .into(),
         ));
     }
 

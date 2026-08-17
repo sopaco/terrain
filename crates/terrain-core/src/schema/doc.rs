@@ -121,4 +121,7 @@ pub struct HumanDocsMeta {
     pub baseline_git_head: Option<String>,
     /// `full` for a from-scratch pipeline run, `incremental` for a diff-driven update.
     pub last_run_mode: String,
+    /// Language the doc set was generated in (`zh-CN` / `en`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }

@@ -185,11 +185,13 @@ deepwiki-rs 的 `has_database_files()` 不仅检查 `.sql` 文件，还检查目
 
 根据 `target_language` 参数调整：
 
-| 语言 | 文件命名 | 界面语言 |
+| 语言 | 文件命名（完整清单） | 界面语言 |
 |------|---------|---------|
-| `zh`（默认）| `1.概述.md`、`2.架构.md`... | 中文 |
-| `en` | `1.Overview.md`、`2.Architecture.md`... | 英文 |
+| `zh`（默认）| `1.概述.md`、`2.架构.md`、`3.工作流.md`、`4.Deep-Exploration/{模块}.md`、`5.边界接口.md`、`6.数据库概览.md` | 中文 |
+| `en` | `1.Overview.md`、`2.Architecture.md`、`3.Workflows.md`、`4.Deep-Exploration/{module}.md`、`5.Boundaries-Interfaces.md`、`6.Database-Overview.md` | 英文 |
 | `ja` | `1.概要.md`、`2.アーキテクチャ.md`... | 日文 |
 | `ko` | `1.개요.md`、`2.아키텍처.md`... | 韩文 |
+
+> Terrain 会在生成 prompt 中通过 `target_language` 明确指定语言与对应文件清单；以 prompt 为准。
 
 文档正文语言应与目标语言一致，但技术术语（函数名、类名、框架名等）保持原文。

@@ -143,23 +143,21 @@ static GLUED_UNORDERED_LIST_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static PROMOTE_REQUIRED_H3_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?m)^### (项目概览|架构设计|模块地图|核心流程|技术选型|系统边界|代码映射索引)\s*$")
-        .expect("promote required h3 regex")
+    let escaped: Vec<String> = crate::language::all_agent_context_section_titles()
+        .into_iter()
+        .map(regex::escape)
+        .collect();
+    let pattern = format!(r"(?im)^### ({})\s*$", escaped.join("|"));
+    Regex::new(&pattern).expect("promote required h3 regex")
 });
 
-const REQUIRED_CONTEXT_SECTIONS: &[&str] = &[
-    "项目概览",
-    "架构设计",
-    "模块地图",
-    "核心流程",
-    "技术选型",
-    "系统边界",
-    "代码映射索引",
-];
+fn required_context_sections() -> Vec<&'static str> {
+    crate::language::all_agent_context_section_titles()
+}
 
 fn break_before_known_sections(text: &str) -> String {
     let mut out = text.to_string();
-    for title in REQUIRED_CONTEXT_SECTIONS {
+    for title in required_context_sections() {
         let before = format!(r"([^\n])(## {title})");
         if let Ok(re) = Regex::new(&before) {
             out = re.replace_all(&out, "$1\n\n$2").into_owned();
@@ -228,7 +226,7 @@ pub fn unwrap_markdown_fence(text: &str) -> String {
 pub fn extract_markdown_body(text: &str) -> String {
     let text = text.trim();
     // Agent context: start at the first required section, not a later `\n##`.
-    for title in REQUIRED_CONTEXT_SECTIONS {
+    for title in required_context_sections() {
         let marker = format!("## {title}");
         if let Some(idx) = text.find(&marker) {
             return text[idx..].to_string();

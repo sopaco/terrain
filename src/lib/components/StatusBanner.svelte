@@ -2,7 +2,7 @@
   export type StatusKind = "idle" | "loading" | "progress" | "success" | "error";
 
   import { Check, CircleAlert } from "@lucide/svelte";
-  import { STATUS_CHIP_LABELS } from "../terminology";
+  import { tr } from "../i18n";
 
   interface Props {
     message: string;
@@ -20,7 +20,13 @@
     error: "border-tr-critical/30 bg-tr-critical-soft text-tr-critical",
   };
 
-  const labels = STATUS_CHIP_LABELS;
+  const labels = $derived({
+    idle: tr("terms.statusChip.idle"),
+    loading: tr("terms.statusChip.loading"),
+    progress: tr("terms.statusChip.progress"),
+    success: tr("terms.statusChip.success"),
+    error: tr("terms.statusChip.error"),
+  } as Record<StatusKind, string>);
 </script>
 
 <div

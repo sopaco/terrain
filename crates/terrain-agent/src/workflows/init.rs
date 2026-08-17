@@ -25,6 +25,7 @@ async fn run_agent_context_if_needed(
     on_progress: &impl Fn(ProgressEvent),
     notes: &mut Vec<String>,
 ) -> anyhow::Result<bool> {
+    let lang = terrain_core::current_language();
     let context_ready = agent_context_ready(paths, project_slug);
     // `force_refresh` here means Litho rewrote the human docs the context is derived from.
     let needs_context = !context_ready || force_refresh;
@@ -33,23 +34,47 @@ async fn run_agent_context_if_needed(
     }
     if execution_pure_acp(acp) {
         if !acp_available(acp) {
-            notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
+            notes.push(
+                lang.tr(
+                    "Agent 友好的知识资产：请先在设置中配置 ACP 代理",
+                    "Agent knowledge assets: please configure an ACP agent in Settings first",
+                )
+                .into(),
+            );
             return Ok(false);
         }
     } else if !acp_available(acp) {
-        notes.push("Agent 友好的知识资产：请先在设置中配置 ACP 代理".into());
+        notes.push(
+            lang.tr(
+                "Agent 友好的知识资产：请先在设置中配置 ACP 代理",
+                "Agent knowledge assets: please configure an ACP agent in Settings first",
+            )
+            .into(),
+        );
         return Ok(false);
     } else if !llm_status(model_config).ready {
-        notes.push("Agent 友好的知识资产：请先在设置中配置 LLM".into());
+        notes.push(
+            lang.tr(
+                "Agent 友好的知识资产：请先在设置中配置 LLM",
+                "Agent knowledge assets: please configure an LLM in Settings first",
+            )
+            .into(),
+        );
         return Ok(false);
     }
 
     on_progress(ProgressEvent::project_init(
         "agent_context",
         if force_refresh && context_ready {
-            "正在根据 Litho 文档刷新 Agent 友好的知识资产…"
+            lang.tr(
+                "正在根据 Litho 文档刷新 Agent 友好的知识资产…",
+                "Refreshing agent knowledge assets from the Litho docs…",
+            )
         } else {
-            "正在生成 Agent 友好的知识资产…"
+            lang.tr(
+                "正在生成 Agent 友好的知识资产…",
+                "Generating agent knowledge assets…",
+            )
         },
     ));
     if !terrain_core::agent_pack_ready(paths, project_slug) {
@@ -87,11 +112,15 @@ pub async fn run_project_initialization(
     on_progress: impl Fn(ProgressEvent),
     on_litho_progress: impl Fn(ProgressEvent),
 ) -> anyhow::Result<ProjectInitResult> {
+    let lang = terrain_core::current_language();
     let mut notes = Vec::new();
 
     on_progress(ProgressEvent::project_init(
         "scan",
-        "正在扫描仓库并建立索引…",
+        lang.tr(
+            "正在扫描仓库并建立索引…",
+            "Scanning the repository and building the index…",
+        ),
     ));
 
     let scanner = ProjectScanner::new(paths.clone());
@@ -118,7 +147,10 @@ pub async fn run_project_initialization(
         if acp_available(acp) {
             on_progress(ProgressEvent::project_init(
                 "human_docs",
-                "正在生成人类友好的知识库（Litho）…",
+                lang.tr(
+                    "正在生成人类友好的知识库（Litho）…",
+                    "Generating the human-friendly knowledge base (Litho)…",
+                ),
             ));
             let result = crate::litho::run_litho_generation(
                 paths,
@@ -134,7 +166,13 @@ pub async fn run_project_initialization(
             human_docs_complete = result.human_docs_complete;
             litho_ran = true;
         } else {
-            notes.push("人类友好的知识库：请先在设置中配置 ACP 代理".into());
+            notes.push(
+                lang.tr(
+                    "人类友好的知识库：请先在设置中配置 ACP 代理",
+                    "Human docs: please configure an ACP agent in Settings first",
+                )
+                .into(),
+            );
         }
     }
 
@@ -155,7 +193,7 @@ pub async fn run_project_initialization(
     on_progress(ProgressEvent::new(
         terrain_core::ProgressKind::Done,
         "done",
-        "项目初始化完成",
+        lang.tr("项目初始化完成", "Project initialization complete"),
     ));
 
     Ok(ProjectInitResult {

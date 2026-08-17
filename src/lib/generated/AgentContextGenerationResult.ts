@@ -2,4 +2,9 @@
 import type { AgentContextMeta } from "./AgentContextMeta";
 import type { KnowledgeRefreshMode } from "./KnowledgeRefreshMode";
 
-export type AgentContextGenerationResult = { output_path: string, meta: AgentContextMeta, response_excerpt: string, refresh_mode: KnowledgeRefreshMode, };
+export type AgentContextGenerationResult = { output_path: string, meta: AgentContextMeta, response_excerpt: string, refresh_mode: KnowledgeRefreshMode, 
+/**
+ * Why the run took the mode it did, when that is not obvious — e.g. `sections_lost` when an
+ * incremental reply was rejected and a full regeneration ran instead.
+ */
+refresh_reason: string | null, };

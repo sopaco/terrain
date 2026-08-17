@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { FreshnessSummary } from "../types";
-    import { TERMS } from "../terminology";
+    import { tr } from "../i18n";
     import CloseButton from "./icons/CloseButton.svelte";
     import ModalShell from "./ModalShell.svelte";
 
@@ -24,32 +24,32 @@
     const VERIFY_THRESHOLD = 70;
     const MACRO_THRESHOLD = 50;
 
-    const scoreBands = [
+    const scoreBands = $derived([
         {
             min: FRESH_THRESHOLD,
-            label: "新鲜",
+            label: tr("freshness.bands.fresh"),
             tone: "text-tr-good",
-            hint: "Ask 可信任预加载的架构概览",
+            hint: tr("freshness.bands.freshHint"),
         },
         {
             min: VERIFY_THRESHOLD,
-            label: "需核对",
+            label: tr("freshness.bands.verify"),
             tone: "text-tr-watch",
-            hint: "架构类回答应用源码索引交叉验证",
+            hint: tr("freshness.bands.verifyHint"),
         },
         {
             min: MACRO_THRESHOLD,
-            label: "偏低",
+            label: tr("freshness.bands.low"),
             tone: "text-tr-watch",
-            hint: "谨慎引用模块地图与系统边界",
+            hint: tr("freshness.bands.lowHint"),
         },
         {
             min: 0,
-            label: "过期风险",
+            label: tr("freshness.bands.stale"),
             tone: "text-tr-critical",
-            hint: "Ask 不预加载宏观架构，以 repomix 为准",
+            hint: tr("freshness.bands.staleHint"),
         },
-    ];
+    ]);
 
     function severityStyle(severity: string): string {
         switch (severity) {
@@ -67,13 +67,13 @@
     function severityLabel(severity: string): string {
         switch (severity) {
             case "high":
-                return "影响较大";
+                return tr("freshness.severity.high");
             case "medium":
-                return "有影响";
+                return tr("freshness.severity.medium");
             case "low":
-                return "轻微";
+                return tr("freshness.severity.low");
             default:
-                return "说明";
+                return tr("freshness.severity.info");
         }
     }
 
@@ -111,16 +111,19 @@
                 id="freshness-help-title"
                 class="text-base font-semibold text-tr-ink"
             >
-                知识新鲜度说明
+                {tr("freshness.title")}
             </h2>
             <p class="mt-0.5 text-xs text-tr-ink-3">
                 {#if freshness}
-                    当前综合分 <span class="font-medium text-tr-ink-2"
+                    {tr("freshness.help.currentScorePrefix")}
+                    <span class="font-medium text-tr-ink-2"
                         >{freshness.overall_score}/100</span
                     >
-                    · 更新于 {formatComputedAt(freshness.last_computed_at)}
+                    · {tr("freshness.help.updatedAt", {
+                        time: formatComputedAt(freshness.last_computed_at),
+                    })}
                 {:else}
-                    打开项目概览后将显示本项目的计算结果
+                    {tr("freshness.help.noData")}
                 {/if}
             </p>
         </div>
@@ -132,11 +135,10 @@
             <h3
                 class="text-xs font-semibold uppercase tracking-wider text-tr-ink-3"
             >
-                分数含义
+                {tr("freshness.help.scoreMeaning")}
             </h3>
             <p class="mt-2 text-sm leading-relaxed text-tr-ink-2">
-                新鲜度衡量「知识资产」与「当前代码仓库」的接近程度。分数越高，Ask
-                与 Agent 引用架构说明时越可靠。
+                {tr("freshness.help.scoreMeaningBody")}
             </p>
             <ul class="mt-3 space-y-2">
                 {#each scoreBands as band}
@@ -157,27 +159,29 @@
             <h3
                 class="text-xs font-semibold uppercase tracking-wider text-tr-ink-3"
             >
-                如何计算
+                {tr("freshness.help.howCalculated")}
             </h3>
             <p class="mt-2 text-xs leading-relaxed text-tr-ink-2">
-                从 100
-                分起评，按下列因素扣分（各项有上限）。三层资产分别计分后，<strong
-                    class="font-medium text-tr-ink-2">综合分取最低值</strong
-                >：
+                {tr("freshness.help.calcBody1")}<strong
+                    class="font-medium text-tr-ink-2"
+                    >{tr("freshness.help.calcBodyStrong")}</strong
+                >{tr("freshness.help.calcBody2")}
             </p>
             <ul
                 class="mt-3 list-inside list-disc space-y-1.5 text-xs text-tr-ink-3"
             >
                 <li>
-                    <span class="text-tr-ink-2">源码索引</span>（repomix）—
-                    对比打包时的 Git baseline 与当前 HEAD
+                    <span class="text-tr-ink-2"
+                        >{tr("freshness.help.sourceIndex")}</span
+                    >{tr("freshness.help.sourceIndexDesc")}
                 </li>
                 <li>
-                    <span class="text-tr-ink-2">{TERMS.agentKnowledge}</span> —
-                    按自己的生成 baseline 对比；作为 LLM 派生资产再乘 0.9（故该层上限 90 分，综合分同此上限），且不高于源码索引分数
+                    <span class="text-tr-ink-2">{tr("terms.agentKnowledge")}</span
+                    >{tr("freshness.help.agentKnowledgeDesc")}
                 </li>
                 <li>
-                    <span class="text-tr-ink-2">{TERMS.humanKnowledge}</span> — 主要参考项目扫描时间与提交漂移
+                    <span class="text-tr-ink-2">{tr("terms.humanKnowledge")}</span>
+                    {tr("freshness.help.humanKnowledgeDesc")}
                 </li>
             </ul>
             <div
@@ -186,22 +190,22 @@
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
                 >
-                    每落后 1 个改动源码的提交 · 约 −2 分（上限 40）
+                    {tr("freshness.help.penaltyCommit")}
                 </div>
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
                 >
-                    变更文件占比 · 最多 −30 分
+                    {tr("freshness.help.penaltyFiles")}
                 </div>
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
                 >
-                    距上次同步每多 1 天 · 约 −1 分（上限 5）
+                    {tr("freshness.help.penaltyDays")}
                 </div>
                 <div
                     class="rounded-lg border border-tr-border bg-tr-page px-3 py-2"
                 >
-                    源码路径有未提交改动 · −5 分
+                    {tr("freshness.help.penaltyDirty")}
                 </div>
             </div>
         </section>
@@ -211,13 +215,15 @@
                 <h3
                     class="text-xs font-semibold uppercase tracking-wider text-tr-ink-3"
                 >
-                    分层得分
+                    {tr("freshness.help.layerScores")}
                 </h3>
                 <div class="mt-2 grid gap-2 sm:grid-cols-3">
                     <div
                         class="rounded-xl border border-tr-border-strong bg-tr-page px-3 py-2.5"
                     >
-                        <p class="text-[10px] text-tr-ink-3">源码索引</p>
+                        <p class="text-[10px] text-tr-ink-3">
+                            {tr("freshness.help.sourceIndex")}
+                        </p>
                         <p class="text-lg font-semibold text-tr-ink">
                             {freshness.agent_pack_score}
                         </p>
@@ -230,7 +236,9 @@
                     <div
                         class="rounded-xl border border-tr-border-strong bg-tr-page px-3 py-2.5"
                     >
-                        <p class="text-[10px] text-tr-ink-3">Agent 上下文</p>
+                        <p class="text-[10px] text-tr-ink-3">
+                            {tr("freshness.help.agentContextLayer")}
+                        </p>
                         <p class="text-lg font-semibold text-tr-ink">
                             {freshness.agent_context_score}
                         </p>
@@ -243,7 +251,9 @@
                     <div
                         class="rounded-xl border border-tr-border-strong bg-tr-page px-3 py-2.5"
                     >
-                        <p class="text-[10px] text-tr-ink-3">人类文档</p>
+                        <p class="text-[10px] text-tr-ink-3">
+                            {tr("freshness.help.humanDocsLayer")}
+                        </p>
                         <p class="text-lg font-semibold text-tr-ink">
                             {freshness.human_docs_score}
                         </p>
@@ -256,14 +266,14 @@
                     class="text-xs font-semibold uppercase tracking-wider text-tr-ink-3"
                 >
                     {#if negativeFactors.length > 0}
-                        本项目的偏离原因
+                        {tr("freshness.help.driftReasons")}
                     {:else}
-                        当前状态
+                        {tr("freshness.help.currentStatus")}
                     {/if}
                 </h3>
                 {#if negativeFactors.length === 0 && infoFactors.length === 0}
                     <p class="mt-2 text-sm text-tr-ink-3">
-                        暂无详细分析。请重新打开概览或运行一次「快速保鲜」以刷新计算。
+                        {tr("freshness.help.noAnalysis")}
                     </p>
                 {:else}
                     <ul class="mt-2 space-y-2">
@@ -284,7 +294,9 @@
                                     {#if factor.points_lost != null && factor.points_lost > 0}
                                         <span
                                             class="text-[10px] text-tr-critical"
-                                            >约 −{factor.points_lost} 分</span
+                                            >{tr("freshness.help.pointsLost", {
+                                                points: factor.points_lost,
+                                            })}</span
                                         >
                                     {/if}
                                 </div>
@@ -305,7 +317,9 @@
                         <p
                             class="text-[10px] font-semibold uppercase tracking-wider text-tr-ink-3"
                         >
-                            部分变更文件（共 {freshness.changed_files_count} 个）
+                            {tr("freshness.help.changedFilesList", {
+                                count: freshness.changed_files_count,
+                            })}
                         </p>
                         <ul
                             class="mt-2 max-h-28 space-y-0.5 overflow-y-auto font-mono text-[11px] text-tr-ink-3"
@@ -340,30 +354,31 @@
             <section
                 class="rounded-xl border border-tr-accent-soft-strong bg-tr-accent-soft px-4 py-3"
             >
-                <h3 class="text-xs font-semibold text-tr-accent">可以怎么做</h3>
+                <h3 class="text-xs font-semibold text-tr-accent">
+                    {tr("freshness.help.whatToDo")}
+                </h3>
                 <ul
                     class="mt-2 list-inside list-disc space-y-1 text-xs leading-relaxed text-tr-ink-2"
                 >
                     {#if freshness.working_tree_dirty}
                         <li>
-                            提交或暂存<strong>源码</strong
-                            >改动，避免「未提交修改」持续扣分（`.terrain/`
-                            产出不计入）
+                            {tr("freshness.help.tipCommitBefore")}<strong
+                                >{tr("freshness.help.tipCommitStrong")}</strong
+                            >{tr("freshness.help.tipCommitAfter")}`.terrain/`
+                            {tr("freshness.help.tipCommitSuffix")}
                         </li>
                     {/if}
                     {#if freshness.commits_since_baseline > 0 || freshness.changed_files_count > 0}
                         <li>
-                            代码已前进时，使用「快速保鲜」更新源码索引与 Agent
-                            知识资产（无需重跑 Litho）
+                            {tr("freshness.help.tipQuickRefresh")}
                         </li>
                     {/if}
                     {#if freshness.overall_stale}
                         <li>
-                            分数低于 80 时，架构类问题请以源码索引 grep
-                            结果为准，不要只信 context.md
+                            {tr("freshness.help.tipLowScore")}
                         </li>
                     {:else}
-                        <li>保持当前节奏即可；大重构后记得再次保鲜</li>
+                        <li>{tr("freshness.help.tipKeepUp")}</li>
                     {/if}
                 </ul>
                 {#if onQuickRefresh}
@@ -376,7 +391,9 @@
                             onclose();
                         }}
                     >
-                        {quickRefreshBusy ? "保鲜中…" : "立即快速保鲜"}
+                        {quickRefreshBusy
+                            ? tr("freshness.refreshing")
+                            : tr("freshness.quickRefreshNow")}
                     </button>
                 {/if}
             </section>

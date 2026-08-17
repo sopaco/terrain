@@ -14,17 +14,24 @@ Produce `agent/context.md` — a **dense, architecture-oriented** document for C
 
 ## Output contract
 
-Write to `TERRAIN_AGENT_CONTEXT_OUTPUT` or the path given in the prompt.
+When Terrain runs context generation, return the **complete** markdown document as your reply;
+Terrain persists it as `agent/context.md`. Do **not** write the output file yourself in that
+mode — a reply that is only a completion summary will overwrite a good on-disk document.
 
-Required sections (Markdown `##` headings):
+When a prompt explicitly delegates file writing to you (no “Terrain will persist your reply”
+clause), write to `TERRAIN_AGENT_CONTEXT_OUTPUT` or the path given in the prompt.
 
-1. **项目概览** — purpose, consumers, key constraints (≤120 words)
-2. **架构设计** — containers, layers, major dependencies (table/bullets)
-3. **模块地图** — table: Module | Responsibility | Primary paths (≤12 rows)
-4. **核心流程** — 2–4 critical flows as numbered steps (no code)
-5. **技术选型** — stack, frameworks, infra (bullet list)
-6. **系统边界** — external APIs, DBs, third-party, trust boundaries
-7. **代码映射索引** — table: Concept | Location (paths only) | Notes (≤15 rows)
+Required sections (Markdown `##` headings), in the language specified by the
+prompt's `LANGUAGE` directive (Chinese names below; English equivalents in
+parentheses — the prompt's explicit section list takes precedence):
+
+1. **项目概览** (Project Overview) — purpose, consumers, key constraints (≤120 words)
+2. **架构设计** (Architecture) — containers, layers, major dependencies (table/bullets)
+3. **模块地图** (Module Map) — table: Module | Responsibility | Primary paths (≤12 rows)
+4. **核心流程** (Core Flows) — 2–4 critical flows as numbered steps (no code)
+5. **技术选型** (Tech Stack) — stack, frameworks, infra (bullet list)
+6. **系统边界** (System Boundaries) — external APIs, DBs, third-party, trust boundaries
+7. **代码映射索引** (Code Map Index) — table: Concept | Location (paths only) | Notes (≤15 rows)
 
 ## Developer meta (`terrain-meta.json`)
 

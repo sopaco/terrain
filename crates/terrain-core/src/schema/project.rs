@@ -39,6 +39,9 @@ pub struct AgentContextMeta {
     /// Git HEAD when context was generated.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub baseline_git_head: Option<String>,
+    /// Language the context document was generated in (`zh-CN` / `en`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]

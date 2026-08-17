@@ -28,6 +28,27 @@ pub fn run(command: SettingsCommands) -> Result<()> {
                 "llm": status,
             }))
         }
+        SettingsCommands::Language { value } => {
+            use terrain_core::language::{LanguageSetting, resolve_language};
+
+            let mut settings = load_model_settings()
+                .unwrap_or_else(|| model_settings_from_config(&resolve_model_config()));
+            if let Some(raw) = value {
+                let parsed = LanguageSetting::parse(&raw).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "unsupported language: {raw} (expected system | zh-CN | en)"
+                    )
+                })?;
+                settings.language = parsed;
+                save_model_settings(&settings)?;
+            }
+            let resolved = resolve_language(settings.language);
+            print_json(&serde_json::json!({
+                "language": settings.language.as_str(),
+                "resolved": resolved.code(),
+                "system_detected": terrain_core::detect_system_language().code(),
+            }))
+        }
         SettingsCommands::CheckLlm => {
             let status = llm_status(&resolve_model_config());
             print_json(&status)

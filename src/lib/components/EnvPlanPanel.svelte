@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { EnvPlan } from "../types";
+  import { tr } from "../i18n";
   import CloseButton from "./icons/CloseButton.svelte";
   import ModalShell from "./ModalShell.svelte";
 
@@ -20,11 +21,11 @@
 >
   <header class="flex shrink-0 items-start justify-between gap-3 border-b border-tr-border-strong px-5 py-4">
     <div class="min-w-0">
-      <h2 id="env-plan-title" class="text-base font-semibold text-tr-ink">执行计划</h2>
+      <h2 id="env-plan-title" class="text-base font-semibold text-tr-ink">{tr("env.plan.title")}</h2>
       <p class="mt-0.5 text-xs text-tr-ink-3">
-        本次集成将按以下顺序执行
+        {tr("env.plan.subtitle")}
         {#if plan}
-          <span class="font-medium text-tr-ink-2">（{plan.steps.length} 步）</span>
+          <span class="font-medium text-tr-ink-2">{tr("env.plan.stepCount", { count: plan.steps.length })}</span>
         {/if}
       </p>
     </div>
@@ -43,11 +44,11 @@
       </ol>
       {#if plan.skipped.length > 0}
         <p class="mt-4 rounded-lg border border-tr-border bg-tr-elevated px-3 py-2 text-xs text-tr-ink-3">
-          跳过：{plan.skipped.join("；")}
+          {tr("env.plan.skipped", { items: plan.skipped.join(tr("env.plan.skipSeparator")) })}
         </p>
       {/if}
     {:else}
-      <p class="text-sm text-tr-ink-3">暂无执行步骤。</p>
+      <p class="text-sm text-tr-ink-3">{tr("env.plan.empty")}</p>
     {/if}
   </div>
 </ModalShell>

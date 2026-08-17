@@ -125,6 +125,7 @@ async fn prompt_agent_with_heartbeat(
     let mut agent_handle = tokio::spawn(async move { prompt_agent(&config, &prompt).await });
     let wall_timeout = litho_wall_timeout();
     let started = Instant::now();
+    let ui_lang = terrain_core::current_language();
 
     loop {
         if started.elapsed() >= wall_timeout {
@@ -144,7 +145,12 @@ async fn prompt_agent_with_heartbeat(
                 let secs = started.elapsed().as_secs();
                 on_progress(ProgressEvent::litho(
                     stage_label.clone(),
-                    format!("{waiting_message}（已用 {secs}s）"),
+                    ui_lang
+                        .tr(
+                            &format!("{waiting_message}（已用 {secs}s）"),
+                            &format!("{waiting_message} ({secs}s elapsed)"),
+                        )
+                        .to_string(),
                 ));
             }
         }
@@ -180,6 +186,7 @@ async fn prompt_agent_with_doc_poll(
         .map(count_markdown_in_dir)
         .unwrap_or(0);
     let mut stable_ticks = 0u32;
+    let ui_lang = terrain_core::current_language();
 
     loop {
         if started.elapsed() >= wall_timeout {
@@ -212,16 +219,35 @@ async fn prompt_agent_with_doc_poll(
                     last_research = research;
                     stable_ticks = 0;
                     let detail = if research_dir.is_some() && research > 0 {
-                        format!("{waiting_message}（human {human} 篇，研究稿 {research} 篇）")
+                        ui_lang
+                            .tr(
+                                &format!("{waiting_message}（human {human} 篇，研究稿 {research} 篇）"),
+                                &format!(
+                                    "{waiting_message} (human {human} doc(s), research draft(s) {research})"
+                                ),
+                            )
+                            .to_string()
                     } else {
-                        format!("{waiting_message}（已写入 {human} 篇）")
+                        ui_lang
+                            .tr(
+                                &format!("{waiting_message}（已写入 {human} 篇）"),
+                                &format!("{waiting_message} ({human} doc(s) written)"),
+                            )
+                            .to_string()
                     };
                     on_progress(ProgressEvent::litho(stage_label.clone(), detail));
                 } else if human_complete(&human_dir, &litho_workspace) {
                     stable_ticks += 1;
                     on_progress(ProgressEvent::litho(
                         stage_label.clone(),
-                        format!("{waiting_message}（已写入 {human} 篇，等待 Agent 结束…）"),
+                        ui_lang
+                            .tr(
+                                &format!("{waiting_message}（已写入 {human} 篇，等待 Agent 结束…）"),
+                                &format!(
+                                    "{waiting_message} ({human} doc(s) written, waiting for the agent to finish…)"
+                                ),
+                            )
+                            .to_string(),
                     ));
                     if stable_ticks >= STABLE_TICKS {
                         agent_handle.abort();
@@ -231,16 +257,30 @@ async fn prompt_agent_with_doc_poll(
                         );
                         on_progress(ProgressEvent::litho(
                             "done",
-                            format!(
-                                "已检测到完整的 Litho 文档集（{human} 篇），Agent 会话超时已结束等待"
-                            ),
+                            ui_lang
+                                .tr(
+                                    &format!(
+                                        "已检测到完整的 Litho 文档集（{human} 篇），Agent 会话超时已结束等待"
+                                    ),
+                                    &format!(
+                                        "Complete Litho doc set detected ({human} doc(s)); the agent session timed out, so waiting has ended"
+                                    ),
+                                )
+                                .to_string(),
                         ));
                         return Ok(String::new());
                     }
                 } else {
                     stable_ticks = 0;
                     let detail = if research_dir.is_some() {
-                        format!("{waiting_message}（human {human} 篇，研究稿 {research} 篇）")
+                        ui_lang
+                            .tr(
+                                &format!("{waiting_message}（human {human} 篇，研究稿 {research} 篇）"),
+                                &format!(
+                                    "{waiting_message} (human {human} doc(s), research draft(s) {research})"
+                                ),
+                            )
+                            .to_string()
                     } else {
                         waiting_message.clone()
                     };
@@ -260,7 +300,14 @@ async fn run_composition_phase(
     litho_workspace: PathBuf,
     on_progress: &mut impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
-    on_progress(ProgressEvent::litho("composing", "正在将研究结果整理为人类友好的知识库…"));
+    let lang = terrain_core::current_language();
+    on_progress(ProgressEvent::litho(
+        "composing",
+        lang.tr(
+            "正在将研究结果整理为人类友好的知识库…",
+            "Composing research results into a human-friendly knowledge base…",
+        ),
+    ));
     let composition_prompt = build_litho_composition_prompt(&job.plan);
     prompt_agent_with_doc_poll(
         litho_acp_config(acp_settings, repo_path, &job.plan),
@@ -269,7 +316,11 @@ async fn run_composition_phase(
         None,
         litho_workspace,
         "composing",
-        "正在将研究结果整理为人类友好的知识库…".into(),
+        lang.tr(
+            "正在将研究结果整理为人类友好的知识库…",
+            "Composing research results into a human-friendly knowledge base…",
+        )
+        .into(),
         on_progress,
     )
     .await
@@ -284,14 +335,21 @@ async fn run_composition_with_retries(
     litho_workspace: PathBuf,
     on_progress: &mut impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
+    let lang = terrain_core::current_language();
     let mut last_excerpt = String::new();
     for attempt in 1..=MAX_COMPOSITION_ATTEMPTS {
         if attempt > 1 {
             on_progress(ProgressEvent::litho(
                 "composing",
-                format!(
-                    "Litho 文档仍不完整，正在重试编排（第 {attempt}/{MAX_COMPOSITION_ATTEMPTS} 次）…"
-                ),
+                lang.tr(
+                    &format!(
+                        "Litho 文档仍不完整，正在重试编排（第 {attempt}/{MAX_COMPOSITION_ATTEMPTS} 次）…"
+                    ),
+                    &format!(
+                        "Litho docs still incomplete; retrying composition (attempt {attempt}/{MAX_COMPOSITION_ATTEMPTS})…"
+                    ),
+                )
+                .to_string(),
             ));
         }
         let response = run_composition_phase(
@@ -341,11 +399,18 @@ pub async fn run_litho_generation(
         anyhow::bail!("Litho skill not found at {}", job.plan.skill_dir);
     }
 
+    let lang = terrain_core::current_language();
     let human_dir = paths.human_docs_dir(project_slug);
     let litho_workspace = PathBuf::from(&job.plan.litho_workspace_dir);
 
     if mode == LithoRunMode::FullRebuild {
-        on_progress(ProgressEvent::litho("starting", "正在清理旧的人类友好知识库以便重新生成…"));
+        on_progress(ProgressEvent::litho(
+            "starting",
+            lang.tr(
+                "正在清理旧的人类友好知识库以便重新生成…",
+                "Clearing the old human-friendly knowledge base for regeneration…",
+            ),
+        ));
         clear_litho_outputs(&human_dir, &litho_workspace)?;
     } else if human_complete(&human_dir, &litho_workspace) {
         return run_litho_incremental_or_skip(
@@ -383,7 +448,13 @@ pub async fn run_litho_generation(
         )
         .await?
     } else {
-        on_progress(ProgressEvent::litho("generating", "Agent 正在分析仓库并生成人类友好的知识库…"));
+        on_progress(ProgressEvent::litho(
+            "generating",
+            lang.tr(
+                "Agent 正在分析仓库并生成人类友好的知识库…",
+                "The agent is analyzing the repository and generating a human-friendly knowledge base…",
+            ),
+        ));
 
         let prompt = build_litho_generation_prompt(&job.plan);
         let response = prompt_agent_with_doc_poll(
@@ -393,7 +464,11 @@ pub async fn run_litho_generation(
             Some(litho_workspace.clone()),
             litho_workspace.clone(),
             "generating",
-            "Agent 正在分析仓库并生成人类友好的知识库…".into(),
+            lang.tr(
+                "Agent 正在分析仓库并生成人类友好的知识库…",
+                "The agent is analyzing the repository and generating a human-friendly knowledge base…",
+            )
+            .into(),
             &mut on_progress,
         )
         .await?;
@@ -466,6 +541,7 @@ async fn run_litho_incremental_or_skip(
     litho_workspace: &Path,
     on_progress: &mut impl FnMut(LithoProgress),
 ) -> anyhow::Result<LithoGenerationResult> {
+    let lang = terrain_core::current_language();
     let human_doc_count = count_markdown_in_dir(human_dir);
 
     // Docs written before the sidecar existed have no baseline; scan's `sync.json` cannot
@@ -485,7 +561,13 @@ async fn run_litho_incremental_or_skip(
             let _ = write_human_docs_meta(paths, project_slug, repo_path, "skipped");
             on_progress(ProgressEvent::litho(
                 "done",
-                format!("人类友好的知识库已与当前提交同步（{human_doc_count} 篇），已跳过"),
+                lang.tr(
+                    &format!("人类友好的知识库已与当前提交同步（{human_doc_count} 篇），已跳过"),
+                    &format!(
+                        "Human docs are in sync with the current commit ({human_doc_count} doc(s)); skipped"
+                    ),
+                )
+                .to_string(),
             ));
             return Ok(build_result(
                 job,
@@ -509,11 +591,21 @@ async fn run_litho_incremental_or_skip(
             on_progress(ProgressEvent::litho(
                 "done",
                 if reason == "too_many_changed_files" {
-                    format!(
-                        "变更范围过大，已跳过增量更新（{human_doc_count} 篇），请使用「重新生成」"
+                    lang.tr(
+                        &format!(
+                            "变更范围过大，已跳过增量更新（{human_doc_count} 篇），请使用「重新生成」"
+                        ),
+                        &format!(
+                            "Change scope too large; incremental update skipped ({human_doc_count} doc(s)). Please use \"Regenerate\""
+                        ),
                     )
+                    .to_string()
                 } else {
-                    format!("人类友好的知识库已完整（{human_doc_count} 篇）")
+                    lang.tr(
+                        &format!("人类友好的知识库已完整（{human_doc_count} 篇）"),
+                        &format!("Human docs are complete ({human_doc_count} doc(s))"),
+                    )
+                    .to_string()
                 },
             ));
             return Ok(build_result(
@@ -530,10 +622,17 @@ async fn run_litho_incremental_or_skip(
     let touched = plan.touched_file_count();
     on_progress(ProgressEvent::litho(
         "updating",
-        format!(
-            "正在按 git diff 增量更新人类友好的知识库（{touched} 个文件变更，基线 {}）…",
-            plan.short_baseline()
-        ),
+        lang.tr(
+            &format!(
+                "正在按 git diff 增量更新人类友好的知识库（{touched} 个文件变更，基线 {}）…",
+                plan.short_baseline()
+            ),
+            &format!(
+                "Incrementally updating the human-friendly knowledge base from git diff ({touched} file(s) changed, baseline {})…",
+                plan.short_baseline()
+            ),
+        )
+        .to_string(),
     ));
     tracing::info!(
         project = project_slug,
@@ -549,7 +648,11 @@ async fn run_litho_incremental_or_skip(
         litho_acp_config(acp_settings, repo_path, &job.plan),
         prompt,
         "updating",
-        "正在按 git diff 增量更新人类友好的知识库…".into(),
+        lang.tr(
+            "正在按 git diff 增量更新人类友好的知识库…",
+            "Incrementally updating the human-friendly knowledge base from git diff…",
+        )
+        .into(),
         &mut *on_progress,
     )
     .await?;
@@ -559,7 +662,11 @@ async fn run_litho_incremental_or_skip(
     let human_doc_count = count_markdown_in_dir(human_dir);
     on_progress(ProgressEvent::litho(
         "done",
-        format!("增量更新完成（{human_doc_count} 篇）"),
+        lang.tr(
+            &format!("增量更新完成（{human_doc_count} 篇）"),
+            &format!("Incremental update complete ({human_doc_count} doc(s))"),
+        )
+        .to_string(),
     ));
 
     Ok(build_result(

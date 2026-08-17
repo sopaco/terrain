@@ -54,6 +54,7 @@ pub(crate) fn bundled_tool_runtime_ready(def: &IntegrationDef) -> bool {
 }
 
 pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<EnvIntegrationStatus> {
+    let lang = crate::language::current_language();
     let integrated = integration_is_ready(repo, def);
     let detail = match def.kind.as_str() {
         "skill" => {
@@ -66,9 +67,13 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
             if missing.is_empty() {
                 format!(".agents/skills/{name} · .claude/skills/{name}")
             } else if missing.len() == super::super::apply::SKILL_DEPLOY_DIRS.len() {
-                "未注入".into()
+                lang.tr("未注入", "Not injected").into()
             } else {
-                format!("缺少 {}/{name}（重新集成以补齐）", missing.join(", "))
+                lang.tr(
+                    &format!("缺少 {}/{name}（重新集成以补齐）", missing.join(", ")),
+                    &format!("Missing {}/{name} (re-integrate to restore)", missing.join(", ")),
+                )
+                .to_string()
             }
         }
         "tool" => {
@@ -77,26 +82,34 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
         }
         "agents_md" => {
             if integrated {
-                "AGENTS.md 含 Terrain 托管片段".into()
+                lang.tr(
+                    "AGENTS.md 含 Terrain 托管片段",
+                    "AGENTS.md contains the Terrain managed section",
+                )
+                .into()
             } else {
-                "未配置".into()
+                lang.tr("未配置", "Not configured").into()
             }
         }
         "terrain_ignore" => {
             if integrated {
-                ".terrain/.gitignore + .gitattributes 已就绪".into()
+                lang.tr(
+                    ".terrain/.gitignore + .gitattributes 已就绪",
+                    ".terrain/.gitignore + .gitattributes are ready",
+                )
+                .into()
             } else {
-                "未配置或版本过旧".into()
+                lang.tr("未配置或版本过旧", "Not configured or outdated").into()
             }
         }
         "gitignore" => {
             if integrated {
-                "repomix.md 已忽略".into()
+                lang.tr("repomix.md 已忽略", "repomix.md is ignored").into()
             } else {
-                "未配置".into()
+                lang.tr("未配置", "Not configured").into()
             }
         }
-        _ => "未知类型".into(),
+        _ => lang.tr("未知类型", "Unknown type").into(),
     };
 
     let locked = def.bundled && bundled_tool_runtime_ready(def);
@@ -165,23 +178,35 @@ fn skill_target_name(def: &IntegrationDef) -> String {
 }
 
 fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool) -> String {
+    let lang = crate::language::current_language();
     if locked {
         return match def.id.as_str() {
-            "tool-rtk" => "约定路径 ~/.terrain/bin/rtk（无 Terrain 时 bunx @terrain-ai/rtk）".into(),
-            "tool-codegraph" if ok => {
-                "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 仓库索引已就绪".into()
-            }
-            "tool-codegraph" => {
-                "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 待初始化 .codegraph/".into()
-            }
-            _ => "Terrain 内置".into(),
+            "tool-rtk" => lang
+                .tr(
+                    "约定路径 ~/.terrain/bin/rtk（无 Terrain 时 bunx @terrain-ai/rtk）",
+                    "Expected path ~/.terrain/bin/rtk (without Terrain: bunx @terrain-ai/rtk)",
+                )
+                .into(),
+            "tool-codegraph" if ok => lang
+                .tr(
+                    "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 仓库索引已就绪",
+                    "Expected path ~/.terrain/bin/codegraph (without Terrain: bunx codegraph) · repo index ready",
+                )
+                .into(),
+            "tool-codegraph" => lang
+                .tr(
+                    "约定路径 ~/.terrain/bin/codegraph（无 Terrain 时 bunx codegraph）· 待初始化 .codegraph/",
+                    "Expected path ~/.terrain/bin/codegraph (without Terrain: bunx codegraph) · .codegraph/ pending initialization",
+                )
+                .into(),
+            _ => lang.tr("Terrain 内置", "Bundled with Terrain").into(),
         };
     }
     if !ok {
         return if def.id == "tool-bun" {
-            "可选：bun 未检测到".into()
+            lang.tr("可选：bun 未检测到", "Optional: bun not detected").into()
         } else {
-            "未安装".into()
+            lang.tr("未安装", "Not installed").into()
         };
     }
 
@@ -191,21 +216,25 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
                 .as_ref()
                 .is_some_and(|p| run_bundled_check(p, &["gain"], repo))
             {
-                "已安装（Terrain bundled）".into()
+                lang.tr("已安装（Terrain bundled）", "Installed (Terrain bundled)").into()
             } else if command_succeeds("rtk", &["gain"], repo) {
-                "已安装（PATH）".into()
+                lang.tr("已安装（PATH）", "Installed (PATH)").into()
             } else {
-                "已安装（项目本地）".into()
+                lang.tr("已安装（项目本地）", "Installed (project-local)").into()
             }
         }
         "tool-codegraph" => {
             if codegraph_index_ready(repo) {
-                "已安装（Terrain bundled · 索引就绪）".into()
+                lang.tr(
+                    "已安装（Terrain bundled · 索引就绪）",
+                    "Installed (Terrain bundled · index ready)",
+                )
+                .into()
             } else {
-                "已安装".into()
+                lang.tr("已安装", "Installed").into()
             }
         }
-        _ => "已安装".into(),
+        _ => lang.tr("已安装", "Installed").into(),
     }
 }
 

@@ -1,16 +1,20 @@
 import type { StatusKind } from "../components/StatusBanner.svelte";
+import { isIdleStatusMessage, tr } from "../i18n/translate";
 
 export const STATUS_AUTO_DISMISS_MS = 3_000;
 
-const DEFAULT_MESSAGE = "就绪";
 const DEFAULT_KIND: StatusKind = "idle";
+
+function defaultMessage(): string {
+  return tr("terms.statusChip.idle");
+}
 
 export const status = $state<{
   message: string;
   kind: StatusKind;
   detail: string | null;
 }>({
-  message: DEFAULT_MESSAGE,
+  message: defaultMessage(),
   kind: DEFAULT_KIND,
   detail: null,
 });
@@ -18,13 +22,20 @@ export const status = $state<{
 let dismissTimer: ReturnType<typeof setTimeout> | undefined;
 let dismissGeneration = 0;
 
+/** Re-translate the default idle message after a locale switch. */
+export function syncStatusLocale(): void {
+  if (status.kind === "idle" && isIdleStatusMessage(status.message)) {
+    status.message = tr("terms.statusChip.idle");
+  }
+}
+
 export function clearStatus() {
   dismissGeneration++;
   if (dismissTimer) {
     clearTimeout(dismissTimer);
     dismissTimer = undefined;
   }
-  status.message = DEFAULT_MESSAGE;
+  status.message = defaultMessage();
   status.kind = DEFAULT_KIND;
   status.detail = null;
 }

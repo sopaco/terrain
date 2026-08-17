@@ -1,7 +1,7 @@
 <script lang="ts">
   import { FileText, PanelLeftClose, Search, X } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import type { HumanDocEntry } from "../types";
-  import { generateLabel, TERMS, UI_MESSAGES } from "../terminology";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
@@ -30,22 +30,22 @@
     depth: number;
   };
 
-  const SECTION_LABELS: Record<string, string> = {
-    human: TERMS.humanKnowledge,
-    agent: TERMS.agentKnowledge,
-    structured: "结构化索引",
-  };
+  const SECTION_LABELS: Record<string, string> = $derived({
+    human: tr("terms.humanKnowledge"),
+    agent: tr("terms.agentKnowledge"),
+    structured: tr("knowledge.tree.sectionStructured"),
+  });
 
-  const FOLDER_LABELS: Record<string, string> = {
-    modules: "模块",
-    interfaces: "接口",
-    routes: "路由",
-    events: "事件",
-    "4.Deep-Exploration": "深度探索",
-    "4.deep-exploration": "深度探索",
-    "deep-exploration": "深度探索",
-    "Deep-Exploration": "深度探索",
-  };
+  const FOLDER_LABELS: Record<string, string> = $derived({
+    modules: tr("knowledge.tree.folderModules"),
+    interfaces: tr("knowledge.tree.folderInterfaces"),
+    routes: tr("knowledge.tree.folderRoutes"),
+    events: tr("knowledge.tree.folderEvents"),
+    "4.Deep-Exploration": tr("knowledge.tree.folderDeepExploration"),
+    "4.deep-exploration": tr("knowledge.tree.folderDeepExploration"),
+    "deep-exploration": tr("knowledge.tree.folderDeepExploration"),
+    "Deep-Exploration": tr("knowledge.tree.folderDeepExploration"),
+  });
 
   let openNodes = $state<Record<string, boolean>>({});
   let filter = $state("");
@@ -320,15 +320,17 @@
 <div class="flex min-h-0 flex-1 flex-col">
   <div class="border-b border-tr-border-strong px-3 py-2.5">
     <div class="flex items-center gap-2">
-      <span class="min-w-0 flex-1 text-xs font-semibold text-tr-ink-2">文档目录</span>
+      <span class="min-w-0 flex-1 text-xs font-semibold text-tr-ink-2">{tr("knowledge.tree.title")}</span>
       {#if loading}
         <span class="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-tr-accent">
           <span class="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent"></span>
-          {UI_MESSAGES.loadingDocs}
+          {tr("terms.msg.loadingDocs")}
         </span>
       {:else}
         <span class="shrink-0 text-[10px] text-tr-ink-3">
-          {query ? `${visibleDocs.length}/${docs.length}` : `${docs.length} 篇`}
+          {query
+            ? tr("knowledge.tree.countFiltered", { visible: visibleDocs.length, total: docs.length })
+            : tr("knowledge.tree.count", { count: docs.length })}
         </span>
       {/if}
       {#if oncollapse}
@@ -336,8 +338,8 @@
           type="button"
           class="tr-press -mr-1 inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
           onclick={oncollapse}
-          aria-label="收起文档目录"
-          title="收起文档目录"
+          aria-label={tr("knowledge.tree.collapse")}
+          title={tr("knowledge.tree.collapse")}
         >
           <PanelLeftClose size={14} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -353,8 +355,8 @@
       />
       <input
         class="w-full rounded-md border border-tr-border bg-tr-elevated py-1 pl-6 pr-6 text-xs text-tr-ink outline-none placeholder:text-tr-ink-4 focus:border-tr-accent"
-        placeholder="筛选文档…"
-        aria-label="筛选文档"
+        placeholder={tr("knowledge.tree.filterPlaceholder")}
+        aria-label={tr("knowledge.tree.filterAria")}
         bind:value={filter}
       />
       {#if filter}
@@ -362,8 +364,8 @@
           type="button"
           class="absolute right-1 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded p-0.5 text-tr-ink-4 transition-colors hover:text-tr-ink"
           onclick={() => (filter = "")}
-          aria-label="清除筛选"
-          title="清除筛选"
+          aria-label={tr("knowledge.tree.clearFilter")}
+          title={tr("knowledge.tree.clearFilter")}
         >
           <X size={12} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -395,11 +397,11 @@
       </div>
     {:else if query}
       <p class="px-2 py-4 text-xs leading-relaxed text-tr-ink-3">
-        没有匹配「<span class="text-tr-ink-2">{filter.trim()}</span>」的文档。
+        {tr("knowledge.tree.noMatchPrefix")}<span class="text-tr-ink-2">{filter.trim()}</span>{tr("knowledge.tree.noMatchSuffix")}
       </p>
     {:else if !loading}
       <p class="px-2 py-4 text-xs leading-relaxed text-tr-ink-3">
-        尚无{TERMS.humanKnowledge}。请在工具栏点击 <span class="text-tr-ink-2">{generateLabel(TERMS.humanKnowledge, false)}</span>。
+        {tr("knowledge.tree.emptyPrefix", { term: tr("terms.humanKnowledge") })}<span class="text-tr-ink-2">{tr("terms.generate", { term: tr("terms.humanKnowledge") })}</span>{tr("knowledge.tree.emptySuffix")}
       </p>
     {/if}
   </div>

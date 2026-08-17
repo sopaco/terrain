@@ -11,6 +11,7 @@
     sourceRefDataAttr,
   } from "../sourceRef";
   import { copyTextToClipboard } from "../clipboard";
+  import { tr } from "../i18n";
   import MermaidLightbox from "./MermaidLightbox.svelte";
   import "../syntax-tokens.css";
   import "../markdown.css";
@@ -71,7 +72,7 @@
     renderer.code = ({ text, lang }) => {
       if (lang === "mermaid") {
         if (!allowMermaid) {
-          return `<div class="mermaid-pending"><span class="mermaid-pending-label">Diagram (loading)</span><pre><code>${escapeHtml(text)}</code></pre></div>`;
+          return `<div class="mermaid-pending"><span class="mermaid-pending-label">${escapeHtml(tr("knowledge.markdown.diagramLoading"))}</span><pre><code>${escapeHtml(text)}</code></pre></div>`;
         }
         return `<div class="mermaid-wrap" data-mermaid-source="${encodeURIComponent(text)}"></div>`;
       }
@@ -81,8 +82,8 @@
       return (
         `<div class="code-block tr-syntax"${langAttr}>` +
         `<div class="code-block-bar">` +
-        `<span class="code-block-lang">${escapeHtml(label || "text")}</span>` +
-        `<button type="button" class="code-copy" aria-label="复制代码">复制</button>` +
+        `<span class="code-block-lang">${escapeHtml(label || tr("knowledge.markdown.diagramLangFallback"))}</span>` +
+        `<button type="button" class="code-copy" aria-label="${escapeHtml(tr("knowledge.markdown.copyCode"))}">${escapeHtml(tr("common.copy"))}</button>` +
         `</div>` +
         `<pre><code${langClass}>${escapeHtml(text)}</code></pre>` +
         `</div>`
@@ -202,9 +203,9 @@
     const original = button.textContent;
     try {
       await copyTextToClipboard(text);
-      button.textContent = "已复制";
+      button.textContent = tr("common.copied");
     } catch {
-      button.textContent = "复制失败";
+      button.textContent = tr("common.copyFailed");
     }
     setTimeout(() => {
       // The block may have been re-rendered while the label was swapped.

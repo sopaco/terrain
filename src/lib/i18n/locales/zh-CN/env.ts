@@ -1,0 +1,46 @@
+/** Agent 工程环境集成（Skills、工具链、AGENTS.md）相关文案。 */
+export default {
+  descLine1: "为 Coding Agent（Claude Code、Cursor 等）配置 Skills、工具链与 AGENTS.md。",
+  descAssetsPre: "知识资产使用仓库内 ",
+  descAssetsPost: "，由 Terrain 生成。",
+  noProject: "请先选择已索引的项目。",
+  detectingTitle: "正在检测 {env}",
+  loading: {
+    readingList: "正在读取集成清单…",
+    detecting: "正在检测 Skills 与工具链…",
+    planning: "正在生成本次集成计划…",
+    scanHint: "首次打开会扫描 Skills、AGENTS.md 与 CodeGraph 索引，通常很快完成。",
+  },
+  section: {
+    tools: "工具链",
+    config: "配置",
+  },
+  selectAllPending: "全选待集成",
+  clearSelection: "清空可选",
+  applying: "集成中…",
+  applySelected: "集成所选 ({count})",
+  planHelpTitle: "查看执行计划详情",
+  planHelpAria: "执行计划说明",
+  badge: {
+    bundled: "Terrain 内置",
+    integrated: "已集成",
+    reinstall: "将重新安装",
+  },
+  cancelReinstall: "取消重新安装",
+  redeployBundled: "重新部署内置工具",
+  markReinstall: "标记为重新安装",
+  apply: {
+    preparing: "准备集成…",
+    progress: "正在集成 Agent 友好的工程环境…",
+    partialFailed: "部分失败：{errors}",
+    success: "已集成 {count} 项",
+  },
+  plan: {
+    title: "执行计划",
+    subtitle: "本次集成将按以下顺序执行",
+    stepCount: "（{count} 步）",
+    skipped: "跳过：{items}",
+    skipSeparator: "；",
+    empty: "暂无执行步骤。",
+  },
+} as const;

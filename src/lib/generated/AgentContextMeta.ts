@@ -4,4 +4,8 @@ export type AgentContextMeta = { project: string, repo_path: string, output_file
 /**
  * Git HEAD when context was generated.
  */
-baseline_git_head: string | null, };
+baseline_git_head: string | null, 
+/**
+ * Language the context document was generated in (`zh-CN` / `en`).
+ */
+language: string | null, };

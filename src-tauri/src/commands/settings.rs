@@ -68,12 +68,19 @@ pub fn get_model_settings(state: State<'_, AppState>) -> ModelSettings {
 
 #[tauri::command]
 pub fn save_model_settings_cmd(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     settings: ModelSettings,
 ) -> Result<terrain_agent::LlmStatus, String> {
+    let previous = terrain_core::current_language();
     save_model_settings(&settings).map_err(|e| e.to_string())?;
     let config = resolve_model_config();
     state.set_model_config(config);
+    state.runtime.invalidate_chat_engine();
+    let current = terrain_core::current_language();
+    if current != previous {
+        let _ = crate::tray::refresh_menu(&app);
+    }
     Ok(llm_status(&state.model_config()))
 }
 
@@ -110,12 +117,18 @@ pub fn save_png_files(
 ) -> Result<Vec<String>, String> {
     use base64::Engine;
 
+    let lang = terrain_core::current_language();
     let dir = std::path::PathBuf::from(dir);
     if !dir.is_dir() {
-        return Err(format!("目录不存在：{}", dir.display()));
+        return Err(lang
+            .tr(
+                &format!("目录不存在：{}", dir.display()),
+                &format!("Directory does not exist: {}", dir.display()),
+            )
+            .to_string());
     }
     if pngs_base64.is_empty() {
-        return Err("没有可导出的图片".to_string());
+        return Err(lang.tr("没有可导出的图片", "No images to export").to_string());
     }
 
     let stem = sanitize_file_stem(&base_name);

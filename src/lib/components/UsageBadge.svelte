@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ChartColumn } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import {
     usageBadgePeriodLabel,
     usageDisplay,
@@ -50,8 +51,8 @@
   type="button"
   class="tr-press hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:bg-tr-elevated sm:inline-flex
     {loading ? 'border-tr-border-strong text-tr-ink-3' : hasData ? 'border-tr-accent-soft-strong bg-tr-accent-soft text-tr-on-accent' : 'border-tr-border-strong text-tr-ink-3'}"
-  title="开发用量 · 花费（USD）与 Token 数（{periodLabel}），点击查看明细"
-  aria-label="开发用量：花费与 Token 数，{periodLabel}"
+  title={tr("usage.badge.tooltip", { period: periodLabel })}
+  aria-label={tr("usage.badge.ariaLabel", { period: periodLabel })}
   disabled={loading && !snapshot}
   onclick={onclick}
 >
@@ -62,16 +63,16 @@
     aria-hidden="true"
   />
   {#if loading && !snapshot}
-    <span>用量…</span>
+    <span>{tr("usage.badge.loading")}</span>
   {:else if unavailable}
-    <span>用量 —</span>
+    <span>{tr("usage.badge.unavailable")}</span>
   {:else if noSources}
-    <span>用量 —</span>
+    <span>{tr("usage.badge.unavailable")}</span>
   {:else if hasData && activeTotals}
     <span class="flex items-center gap-1.5">
       <span class="text-tr-ink-3">{periodLabel}</span>
       <span class="flex items-center gap-1">
-        <span class="text-tr-ink-3">花费</span>
+        <span class="text-tr-ink-3">{tr("usage.badge.cost")}</span>
         <span class="font-medium tabular-nums text-tr-ink">{formatCost(activeTotals.total_cost_usd)}</span>
       </span>
       <span class="text-tr-ink-4">·</span>
@@ -81,6 +82,6 @@
       </span>
     </span>
   {:else}
-    <span>{periodLabel} 花费 $0</span>
+    <span>{tr("usage.badge.zero", { period: periodLabel })}</span>
   {/if}
 </button>
