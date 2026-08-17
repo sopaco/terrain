@@ -143,10 +143,14 @@ static GLUED_UNORDERED_LIST_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static PROMOTE_REQUIRED_H3_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?m)^### (项目概览|架构设计|模块地图|核心流程|技术选型|系统边界|代码映射索引)\s*$")
-        .expect("promote required h3 regex")
+    Regex::new(
+        r"(?im)^### (项目概览|架构设计|模块地图|核心流程|技术选型|系统边界|代码映射索引|Project Overview|Architecture|Module Map|Core Flows|Tech Stack|System Boundaries|Code Map Index)\s*$",
+    )
+    .expect("promote required h3 regex")
 });
 
+/// Required `agent/context.md` section headings in every supported language
+/// (see `language::ResolvedLanguage::agent_context_sections`).
 const REQUIRED_CONTEXT_SECTIONS: &[&str] = &[
     "项目概览",
     "架构设计",
@@ -155,6 +159,13 @@ const REQUIRED_CONTEXT_SECTIONS: &[&str] = &[
     "技术选型",
     "系统边界",
     "代码映射索引",
+    "Project Overview",
+    "Architecture",
+    "Module Map",
+    "Core Flows",
+    "Tech Stack",
+    "System Boundaries",
+    "Code Map Index",
 ];
 
 fn break_before_known_sections(text: &str) -> String {

@@ -31,6 +31,7 @@ walkdir = "2"
 ignore = "0.4"
 futures = "0.3"
 dotenvy = "0.15"
+sys-locale = "0.3"
 
 adk-acp = "1.0.0"
 # OpenCode sends `usage_update`; enable until ACP SDK stabilizes it upstream.

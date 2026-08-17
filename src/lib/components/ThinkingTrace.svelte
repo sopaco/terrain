@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { THINKING_TRACE_LABELS } from "../terminology";
+  import { tr } from "../i18n";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
 
@@ -13,7 +13,9 @@
 
   let panelOpen = $state(false);
 
-  const label = $derived(active ? THINKING_TRACE_LABELS.active : THINKING_TRACE_LABELS.done);
+  const label = $derived(
+    active ? tr("terms.thinkingTrace.active") : tr("terms.thinkingTrace.done"),
+  );
 </script>
 
 {#if content.trim()}

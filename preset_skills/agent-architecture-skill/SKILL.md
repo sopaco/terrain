@@ -16,15 +16,17 @@ Produce `agent/context.md` — a **dense, architecture-oriented** document for C
 
 Write to `TERRAIN_AGENT_CONTEXT_OUTPUT` or the path given in the prompt.
 
-Required sections (Markdown `##` headings):
+Required sections (Markdown `##` headings), in the language specified by the
+prompt's `LANGUAGE` directive (Chinese names below; English equivalents in
+parentheses — the prompt's explicit section list takes precedence):
 
-1. **项目概览** — purpose, consumers, key constraints (≤120 words)
-2. **架构设计** — containers, layers, major dependencies (table/bullets)
-3. **模块地图** — table: Module | Responsibility | Primary paths (≤12 rows)
-4. **核心流程** — 2–4 critical flows as numbered steps (no code)
-5. **技术选型** — stack, frameworks, infra (bullet list)
-6. **系统边界** — external APIs, DBs, third-party, trust boundaries
-7. **代码映射索引** — table: Concept | Location (paths only) | Notes (≤15 rows)
+1. **项目概览** (Project Overview) — purpose, consumers, key constraints (≤120 words)
+2. **架构设计** (Architecture) — containers, layers, major dependencies (table/bullets)
+3. **模块地图** (Module Map) — table: Module | Responsibility | Primary paths (≤12 rows)
+4. **核心流程** (Core Flows) — 2–4 critical flows as numbered steps (no code)
+5. **技术选型** (Tech Stack) — stack, frameworks, infra (bullet list)
+6. **系统边界** (System Boundaries) — external APIs, DBs, third-party, trust boundaries
+7. **代码映射索引** (Code Map Index) — table: Concept | Location (paths only) | Notes (≤15 rows)
 
 ## Developer meta (`terrain-meta.json`)
 

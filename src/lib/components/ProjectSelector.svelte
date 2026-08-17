@@ -6,7 +6,7 @@
     selectedProjectDisplayName,
     statusBadgeLabel,
   } from "../projectRegistry";
-  import { UI_MESSAGES } from "../terminology";
+  import { tr } from "../i18n";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
 
   interface Props {
@@ -37,7 +37,7 @@
     selectedProjectDisplayName(
       selectedSlug,
       registryProjects,
-      UI_MESSAGES.selectProject,
+      tr("terms.msg.selectProject"),
     ),
   );
 
@@ -75,11 +75,7 @@
   function confirmRemove(entry: ProjectRegistryEntry, e: MouseEvent) {
     e.stopPropagation();
     const label = registryDisplayName(entry);
-    if (
-      !confirm(
-        `从列表中移除「${label}」？\n\n仅移除 Terrain 登记，不会删除仓库或 .terrain/ 知识资产。`,
-      )
-    ) {
+    if (!confirm(tr("misc.projects.removeConfirm", { label }))) {
       return;
     }
     onremove?.(entry);
@@ -158,7 +154,7 @@
               <button
                 type="button"
                 class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink-2"
-                title="打开仓库目录"
+                title={tr("misc.projects.openFolder")}
                 aria-label={`Open folder for ${registryDisplayName(entry)}`}
                 onclick={(e) => {
                   e.stopPropagation();
@@ -172,8 +168,8 @@
               <button
                 type="button"
                 class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical"
-                title="从列表移除"
-                aria-label={`从列表移除 ${registryDisplayName(entry)}`}
+                title={tr("misc.projects.remove")}
+                aria-label={tr("misc.projects.removeAria", { label: registryDisplayName(entry) })}
                 onclick={(e) => confirmRemove(entry, e)}
               >
                 <X size={14} strokeWidth={2} aria-hidden="true" />
@@ -181,7 +177,7 @@
             {/if}
           </li>
         {:else}
-          <li class="px-3 py-4 text-sm text-tr-ink-3">尚无项目，请添加仓库。</li>
+          <li class="px-3 py-4 text-sm text-tr-ink-3">{tr("misc.projects.empty")}</li>
         {/each}
       </ul>
       <div class="border-t border-tr-border-strong p-2">
@@ -192,7 +188,7 @@
           onclick={onadd}
         >
           <Plus size={14} strokeWidth={2} aria-hidden="true" />
-          {addBusy ? "正在添加并初始化…" : "添加并初始化仓库"}
+          {addBusy ? tr("misc.projects.adding") : tr("misc.projects.add")}
         </button>
       </div>
     </div>

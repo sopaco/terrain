@@ -1,5 +1,6 @@
 <script lang="ts">
   import { copySvgAsImage } from "../clipboard";
+  import { tr } from "../i18n";
 
   interface Props {
     svg: string;
@@ -65,9 +66,11 @@
     try {
       const mode = await copySvgAsImage(svg);
       copyStatus =
-        mode === "image" ? "图片已复制到剪贴板" : "SVG 源码已复制到剪贴板";
+        mode === "image"
+          ? tr("misc.mermaid.copiedImage")
+          : tr("misc.mermaid.copiedSvg");
     } catch (e) {
-      copyStatus = `复制失败：${e}`;
+      copyStatus = tr("misc.mermaid.copyFailed", { error: String(e) });
     } finally {
       copying = false;
     }
@@ -90,13 +93,13 @@
   role="presentation"
 >
   <header class="flex shrink-0 items-center gap-2 border-b border-tr-border-strong px-4 py-3">
-    <span class="text-sm font-medium text-tr-ink-2">Mermaid 图表</span>
+    <span class="text-sm font-medium text-tr-ink-2">{tr("misc.mermaid.title")}</span>
     <div class="flex-1"></div>
     <button
       type="button"
       class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={zoomOut}
-      title="缩小 (-)"
+      title={tr("misc.mermaid.zoomOut")}
     >
       −
     </button>
@@ -105,7 +108,7 @@
       type="button"
       class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={zoomIn}
-      title="放大 (+)"
+      title={tr("misc.mermaid.zoomIn")}
     >
       +
     </button>
@@ -113,9 +116,9 @@
       type="button"
       class="tr-press rounded-lg border border-tr-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={resetView}
-      title="重置视图 (0)"
+      title={tr("misc.mermaid.resetView")}
     >
-      重置
+      {tr("common.reset")}
     </button>
     <button
       type="button"
@@ -123,14 +126,14 @@
       disabled={copying}
       onclick={copyImage}
     >
-      {copying ? "复制中…" : "复制图片"}
+      {copying ? tr("misc.mermaid.copying") : tr("misc.mermaid.copyImage")}
     </button>
     <button
       type="button"
       class="tr-press rounded-lg border border-tr-border-strong px-3 py-1 text-xs transition-colors hover:bg-tr-elevated"
       onclick={onclose}
     >
-      关闭
+      {tr("common.close")}
     </button>
   </header>
 

@@ -131,14 +131,38 @@ pub fn build_agent_context_prompt(
     project_slug: &str,
     repo_path: &str,
 ) -> Result<String> {
+    let lang = crate::language::current_language();
+    let sections = lang.agent_context_sections();
+
     let index = read_doc(paths.project_index(project_slug))?;
     let meta_path = paths.agent_pack_meta(project_slug);
     let pack_meta = crate::doc::read_json::<crate::schema::AgentPackMeta>(&meta_path).ok();
 
-    let human_hint = read_doc(paths.human_docs_dir(project_slug).join("1.概述.md"))
-        .ok()
-        .map(|d| d.body.chars().take(1200).collect::<String>())
-        .unwrap_or_default();
+    // Prefer the overview doc in the current language, fall back to the Chinese
+    // name used by older assets, then any `1.*.md`.
+    let human_dir = paths.human_docs_dir(project_slug);
+    let human_hint = [
+        lang.litho_overview_filename().to_string(),
+        crate::language::ResolvedLanguage::ZhCn
+            .litho_overview_filename()
+            .to_string(),
+    ]
+    .iter()
+    .find_map(|name| read_doc(human_dir.join(name)).ok())
+    .or_else(|| {
+        let mut names: Vec<String> = std::fs::read_dir(&human_dir)
+            .ok()?
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("1.") && n.ends_with(".md"))
+            .collect();
+        names.sort();
+        names
+            .into_iter()
+            .find_map(|n| read_doc(human_dir.join(n)).ok())
+    })
+    .map(|d| d.body.chars().take(1200).collect::<String>())
+    .unwrap_or_default();
 
     let output_path = paths.agent_context_main(project_slug).display().to_string();
     let skill_dir = default_agent_arch_skill_dir();
@@ -165,15 +189,19 @@ pub fn build_agent_context_prompt(
             format!(
                 "## Developer meta (`terrain-meta.json`)\n\
                  The following was collected programmatically from repository meta config. \
-                 **Use it as authoritative structured input** when writing 模块地图, 系统边界, and 代码映射索引. \
+                 **Use it as authoritative structured input** when writing {s2}, {s5}, and {s6}. \
                  Supplement with grep_agent_pack discovery; do not invent modules that contradict this bundle.\n\n\
-                 {body}\n\n"
+                 {body}\n\n",
+                s2 = sections[2],
+                s5 = sections[5],
+                s6 = sections[6],
             )
         }
     };
 
     Ok(format!(
         "Generate an Agent-facing architecture context document for project \"{project_slug}\".\n\n\
+         {lang_directive}\n\n\
          Output file (write with absolute path): {output_path}\n\
          Repository: {repo_path}\n\n\
          ## Agent architecture skill (preloaded — do NOT call read_doc on skill files)\n\
@@ -185,25 +213,26 @@ pub fn build_agent_context_prompt(
          - Focus: architecture, modules, core flows, tech choices, system boundaries\n\
          - **Structured entries (模块/接口/边界)**: synthesize from Developer meta below + repomix discovery — not from fixed directory rules\n\
          - Module ↔ path mappings as **compact tables** (≤12 rows per table)\n\
-         - 代码映射索引: file paths only — details live in agent/repomix.md\n\
+         - {s6}: file paths only — details live in agent/repomix.md\n\
          - **Hard limit: ≤14000 characters total** — tables & bullets over prose; trimmed to 16 KiB on save\n\
-         - Keep 项目概览 + 架构设计 + 模块地图 dense; other sections concise\n\
+         - Keep {s0} + {s1} + {s2} dense; other sections concise\n\
          - Use grep_agent_pack only to discover paths, not to paste code\n\n\
          {meta_section}\
          ## Project index\n{index_body}\n\n\
          ## Directory structure (from agent pack)\n{directory_structure}\n\n\
          {human_section}\n\
          Write the complete markdown to the output path. Required sections:\n\
-         1. ## 项目概览\n\
-         2. ## 架构设计\n\
-         3. ## 模块地图\n\
-         4. ## 核心流程\n\
-         5. ## 技术选型\n\
-         6. ## 系统边界\n\
-         7. ## 代码映射索引\n\n\
+         1. ## {s0}\n\
+         2. ## {s1}\n\
+         3. ## {s2}\n\
+         4. ## {s3}\n\
+         5. ## {s4}\n\
+         6. ## {s5}\n\
+         7. ## {s6}\n\n\
          Return ONLY the final markdown document in your reply. \
          Do not include reasoning, thinking, or commentary outside the document.\n",
         project_slug = project_slug,
+        lang_directive = lang.asset_language_directive(),
         skill_dir_display = skill_dir_display,
         skill_excerpt = skill_excerpt,
         output_path = output_path,
@@ -211,10 +240,20 @@ pub fn build_agent_context_prompt(
         index_body = index.body,
         directory_structure = directory_structure,
         meta_section = meta_section,
+        s0 = sections[0],
+        s1 = sections[1],
+        s2 = sections[2],
+        s3 = sections[3],
+        s4 = sections[4],
+        s5 = sections[5],
+        s6 = sections[6],
         human_section = if human_hint.is_empty() {
             String::new()
         } else {
-            format!("## Human doc excerpt (1.概述.md)\n{human_hint}\n\n")
+            format!(
+                "## Human doc excerpt ({overview})\n{human_hint}\n\n",
+                overview = lang.litho_overview_filename()
+            )
         },
     ))
 }
@@ -246,6 +285,8 @@ pub fn build_agent_context_update_prompt(
         .unwrap_or("(agent pack not generated)");
 
     // Structured meta is cheap and authoritative; refresh it so renamed modules are visible.
+    let lang = crate::language::current_language();
+    let sections = lang.agent_context_sections();
     let repo = Path::new(repo_path);
     let meta_bundle = collect_project_meta(repo)?;
     persist_meta_inputs(paths, project_slug, &meta_bundle)?;
@@ -255,14 +296,18 @@ pub fn build_agent_context_update_prompt(
     } else {
         format!(
             "## Developer meta (`terrain-meta.json`, current)\n\
-             Authoritative structured input for 模块地图 / 系统边界 / 代码映射索引.\n\n\
-             {meta_body}\n\n"
+             Authoritative structured input for {s2} / {s5} / {s6}.\n\n\
+             {meta_body}\n\n",
+            s2 = sections[2],
+            s5 = sections[5],
+            s6 = sections[6],
         )
     };
 
     Ok(format!(
         "Update the existing Agent-facing architecture context document for project \
          \"{project_slug}\".\n\n\
+         {lang_directive}\n\n\
          Output file (write with absolute path): {output_path}\n\
          Repository: {repo_path}\n\n\
          {rules}\
@@ -274,17 +319,25 @@ pub fn build_agent_context_update_prompt(
          ## Output contract\n\
          - Return the **complete updated markdown document** — Terrain persists your reply as the \
            whole file, so omitting an untouched section deletes it.\n\
-         - Keep the same seven `##` sections in the same order: 项目概览, 架构设计, 模块地图, \
-           核心流程, 技术选型, 系统边界, 代码映射索引.\n\
+         - Keep the same seven `##` sections in the same order: {s0}, {s1}, {s2}, \
+           {s3}, {s4}, {s5}, {s6}.\n\
          - Keep tables and bullets over prose; hard limit ≤14000 characters.\n\
          - Use grep_agent_pack only on the changed paths above; never paste code.\n\
          - Return ONLY the markdown document. No reasoning, no commentary, no diff markers.\n",
         project_slug = project_slug,
+        lang_directive = lang.asset_language_directive(),
         output_path = output_path,
         repo_path = repo_path,
         rules = plan.update_rules_block(crate::assets::IncrementalOutputMode::WholeDocumentReply),
         evidence = plan.evidence_block(),
         meta_section = meta_section,
+        s0 = sections[0],
+        s1 = sections[1],
+        s2 = sections[2],
+        s3 = sections[3],
+        s4 = sections[4],
+        s5 = sections[5],
+        s6 = sections[6],
         directory_structure = directory_structure,
         existing = existing,
     ))
@@ -337,6 +390,7 @@ pub fn write_agent_context(
         section_count: body.matches("\n## ").count(),
         char_count: body.len(),
         baseline_git_head: git_snapshot(repo_path).head,
+        language: Some(crate::language::current_language().code().to_string()),
     };
     crate::doc::write_json(paths.agent_context_meta(project_slug), &meta)?;
     Ok(meta)
@@ -364,11 +418,14 @@ pub fn refresh_agent_context_baseline(
         output_file: "context.md".into(),
         // Keep the original generation time — the document itself was not regenerated.
         generated_at: previous
-            .map(|m| m.generated_at)
+            .as_ref()
+            .map(|m| m.generated_at.clone())
             .unwrap_or_else(|| Utc::now().to_rfc3339()),
         section_count: body.matches("\n## ").count(),
         char_count: body.len(),
         baseline_git_head: git_snapshot(repo_path).head,
+        // Re-stamping does not change the document, so keep its language.
+        language: previous.and_then(|m| m.language),
     };
     crate::doc::write_json(paths.agent_context_meta(project_slug), &meta)?;
     Ok(meta)
@@ -446,6 +503,7 @@ mod tests {
             section_count: 4,
             char_count: body.len(),
             baseline_git_head: Some(head.to_string()),
+            language: None,
         };
         crate::doc::write_json(paths.agent_context_meta(slug), &meta).unwrap();
     }

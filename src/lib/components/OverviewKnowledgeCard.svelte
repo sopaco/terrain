@@ -1,5 +1,6 @@
 <script lang="ts">
   import { BookOpen, Compass, ListTree, RefreshCw } from "@lucide/svelte";
+  import { tr } from "../i18n";
 
   type IconKind = "compass" | "book" | "list";
 
@@ -73,7 +74,7 @@
           {#if featured}
             <span
               class="rounded-full bg-tr-accent px-1.5 py-0.5 text-[9px] font-semibold text-tr-on-accent"
-              >推荐</span
+              >{tr("overview.card.featured")}</span
             >
           {/if}
         </div>
@@ -82,7 +83,7 @@
             ready ? "bg-tr-good-soft text-tr-good" : "bg-tr-elevated text-tr-ink-3"
           }`}
         >
-          {ready ? "已就绪" : "待处理"}
+          {ready ? tr("overview.card.ready") : tr("overview.card.pending")}
         </span>
       </div>
       <p class="mt-0.5 text-[11.5px] leading-relaxed text-tr-ink-3">{subtitle}</p>
@@ -97,7 +98,7 @@
           type="button"
           class="tr-press inline-flex items-center gap-1 rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-xs text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink-2 disabled:opacity-50"
           disabled={secondaryDisabled}
-          title="重新生成会覆盖现有内容，操作不可撤销"
+          title={tr("overview.card.regenerateTitle")}
           onclick={onSecondary}
         >
           <RefreshCw size={12} strokeWidth={2} aria-hidden="true" />

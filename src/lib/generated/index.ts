@@ -31,6 +31,7 @@ export type { HumanDocEntry } from "./HumanDocEntry";
 export type { IpcSourceSlice } from "./IpcSourceSlice";
 export type { KnowledgeRefreshMode } from "./KnowledgeRefreshMode";
 export type { KnowledgeSettings } from "./KnowledgeSettings";
+export type { LanguageSetting } from "./LanguageSetting";
 export type { LithoGenerationJob } from "./LithoGenerationJob";
 export type { LithoGenerationResult } from "./LithoGenerationResult";
 export type { LithoPlan } from "./LithoPlan";

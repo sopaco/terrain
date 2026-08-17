@@ -137,6 +137,11 @@ pub enum SettingsCommands {
         /// Path to JSON file matching ModelSettings schema
         file: PathBuf,
     },
+    /// Show or set the language for CLI output, knowledge assets and agent replies
+    Language {
+        /// New language: system | zh-CN | en (omit to show the current one)
+        value: Option<String>,
+    },
     /// Check LLM connectivity
     CheckLlm,
     /// Check ACP agent availability

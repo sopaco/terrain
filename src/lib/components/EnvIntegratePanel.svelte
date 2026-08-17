@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { getEnvStatus, planEnvIntegration, runEnvIntegration } from "../api";
   import type { EnvIntegrationStatus, EnvPlan, EnvStatus } from "../types";
-  import { TERMS } from "../terminology";
+  import { tr } from "../i18n";
   import EnvPlanPanel from "./EnvPlanPanel.svelte";
   import HelpButton from "./icons/HelpButton.svelte";
 
@@ -18,7 +18,7 @@
   let status = $state<EnvStatus | null>(null);
   let plan = $state<EnvPlan | null>(null);
   let loading = $state(false);
-  let loadingHint = $state("正在读取集成清单…");
+  let loadingHint = $state(tr("env.loading.readingList"));
   let applying = $state(false);
   let progressMessage = $state<string | null>(null);
   let selected = $state<Set<string>>(new Set());
@@ -94,10 +94,10 @@
       return;
     }
     loading = true;
-    loadingHint = "正在检测 Skills 与工具链…";
+    loadingHint = tr("env.loading.detecting");
     try {
       status = await getEnvStatus(repoPath);
-      loadingHint = "正在生成本次集成计划…";
+      loadingHint = tr("env.loading.planning");
       selected = defaultSelectedIds(status.items);
       reinstallMarked = new Set();
       await refreshPlan(selected);
@@ -106,7 +106,7 @@
       onStatus?.(String(e), "error");
     } finally {
       loading = false;
-      loadingHint = "正在读取集成清单…";
+      loadingHint = tr("env.loading.readingList");
     }
   }
 
@@ -189,14 +189,14 @@
   async function apply() {
     if (!repoPath || applyCount === 0) return;
     applying = true;
-    progressMessage = "准备集成…";
-    onStatus?.("正在集成 Agent 友好的工程环境…", "progress");
+    progressMessage = tr("env.apply.preparing");
+    onStatus?.(tr("env.apply.progress"), "progress");
     try {
       const result = await runEnvIntegration(repoPath, [...selected], [...reinstallMarked]);
       if (result.errors.length > 0) {
-        onStatus?.(`部分失败：${result.errors.join("; ")}`, "error");
+        onStatus?.(tr("env.apply.partialFailed", { errors: result.errors.join("; ") }), "error");
       } else {
-        onStatus?.(`已集成 ${result.applied.length} 项`, "success");
+        onStatus?.(tr("env.apply.success", { count: result.applied.length }), "success");
       }
       await loadStatus();
       onIntegrated?.();
@@ -236,10 +236,10 @@
 
 <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
   <header>
-    <h2 class="text-lg font-semibold text-tr-ink">{TERMS.agentEnv}</h2>
+    <h2 class="text-lg font-semibold text-tr-ink">{tr("terms.agentEnv")}</h2>
     <p class="mt-1 text-sm text-tr-ink-3">
-      为 Coding Agent（Claude Code、Cursor 等）配置 Skills、工具链与 AGENTS.md。
-      知识资产使用仓库内 <code class="text-tr-ink-2">.terrain/</code>，由 Terrain 生成。
+      {tr("env.descLine1")}
+      {tr("env.descAssetsPre")}<code class="text-tr-ink-2">.terrain/</code>{tr("env.descAssetsPost")}
     </p>
     {#if status}
       <p class="mt-2 text-sm text-tr-accent">{status.summary}</p>
@@ -247,7 +247,7 @@
   </header>
 
   {#if !repoPath}
-    <p class="text-sm text-tr-ink-3">请先选择已索引的项目。</p>
+    <p class="text-sm text-tr-ink-3">{tr("env.noProject")}</p>
   {:else if loading}
     <div
       class="rounded-xl border border-tr-accent-soft bg-tr-accent-soft px-4 py-4"
@@ -260,10 +260,10 @@
           class="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-tr-accent-soft-strong border-t-tr-accent"
         ></div>
         <div class="min-w-0">
-          <p class="text-sm font-medium text-tr-ink-2">正在检测 {TERMS.agentEnv}</p>
+          <p class="text-sm font-medium text-tr-ink-2">{tr("env.detectingTitle", { env: tr("terms.agentEnv") })}</p>
           <p class="mt-1 text-xs text-tr-ink-3">{loadingHint}</p>
           <p class="mt-2 text-[11px] text-tr-ink-3">
-            首次打开会扫描 Skills、AGENTS.md 与 CodeGraph 索引，通常很快完成。
+            {tr("env.loading.scanHint")}
           </p>
         </div>
       </div>
@@ -291,8 +291,8 @@
 
     <div class="mt-4 space-y-6 opacity-80">
       {@render skeletonSection("Skills", 4)}
-      {@render skeletonSection("工具链", 3)}
-      {@render skeletonSection("配置", 3)}
+      {@render skeletonSection(tr("env.section.tools"), 3)}
+      {@render skeletonSection(tr("env.section.config"), 3)}
     </div>
   {:else if status}
     <div class="flex flex-wrap items-center gap-2">
@@ -301,14 +301,14 @@
         class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs transition-colors hover:bg-tr-elevated"
         onclick={selectAllPending}
       >
-        全选待集成
+        {tr("env.selectAllPending")}
       </button>
       <button
         type="button"
         class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs transition-colors hover:bg-tr-elevated"
         onclick={selectNone}
       >
-        清空可选
+        {tr("env.clearSelection")}
       </button>
       <div class="flex items-center gap-1.5">
         <button
@@ -317,13 +317,13 @@
           disabled={applying || applyCount === 0}
           onclick={apply}
         >
-          {applying ? "集成中…" : `集成所选 (${applyCount})`}
+          {applying ? tr("env.applying") : tr("env.applySelected", { count: applyCount })}
         </button>
         {#if canApply}
           <HelpButton
             onclick={() => (planHelpOpen = true)}
-            title="查看执行计划详情"
-            ariaLabel="执行计划说明"
+            title={tr("env.planHelpTitle")}
+            ariaLabel={tr("env.planHelpAria")}
           />
         {/if}
       </div>
@@ -368,19 +368,19 @@
             </span>
             {#if bundledLocked}
               <span class="rounded-full bg-tr-accent-soft px-2 py-0.5 text-[10px] text-tr-accent">
-                Terrain 内置
+                {tr("env.badge.bundled")}
               </span>
             {:else if lockedIntegrated}
               <span class="rounded-full bg-tr-elevated px-2 py-0.5 text-[10px] text-tr-ink-3">
-                已集成
+                {tr("env.badge.integrated")}
               </span>
             {:else if reinstallPending}
               <span class="rounded-full bg-tr-watch-soft px-2 py-0.5 text-[10px] text-tr-watch">
-                将重新安装
+                {tr("env.badge.reinstall")}
               </span>
             {/if}
             {#if item.optional}
-              <span class="text-[10px] text-tr-ink-3">可选</span>
+              <span class="text-[10px] text-tr-ink-3">{tr("common.optional")}</span>
             {/if}
           </div>
           <p class={`mt-0.5 text-xs ${disabled && (bundledLocked || lockedIntegrated || reinstallPending) ? "text-tr-ink-3" : "text-tr-ink-3"}`}>
@@ -396,7 +396,7 @@
             class="tr-press shrink-0 rounded-lg border border-tr-watch/30 px-2.5 py-1 text-[11px] text-tr-watch transition-colors hover:border-tr-watch/40 hover:bg-tr-watch-soft hover:text-tr-watch"
             onclick={() => cancelReinstall(item.id)}
           >
-            取消重新安装
+            {tr("env.cancelReinstall")}
           </button>
         {:else if canMarkReinstall(item)}
           <button
@@ -404,7 +404,7 @@
             class="tr-press shrink-0 rounded-lg border border-tr-border-strong px-2.5 py-1 text-[11px] text-tr-ink-2 transition-colors hover:border-tr-border-strong hover:bg-tr-elevated hover:text-tr-ink-2"
             onclick={() => markForReinstall(item.id)}
           >
-            {item.bundled ? "重新部署内置工具" : "标记为重新安装"}
+            {item.bundled ? tr("env.redeployBundled") : tr("env.markReinstall")}
           </button>
         {/if}
       </div>
@@ -420,7 +420,7 @@
     </section>
 
     <section>
-      <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-tr-ink-3">工具链</h3>
+      <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-tr-ink-3">{tr("env.section.tools")}</h3>
       <div class="grid gap-2">
         {#each toolItems as item}
           {@render itemRow(item)}
@@ -429,7 +429,7 @@
     </section>
 
     <section>
-      <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-tr-ink-3">配置</h3>
+      <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-tr-ink-3">{tr("env.section.config")}</h3>
       <div class="grid gap-2">
         {#each configItems as item}
           {@render itemRow(item)}

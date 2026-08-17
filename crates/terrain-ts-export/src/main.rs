@@ -66,6 +66,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     terrain_core::ProjectInitResult::export_all_to(&out)?;
     terrain_core::LithoGenerationJob::export_all_to(&out)?;
     terrain_core::ModelSettings::export_all_to(&out)?;
+    terrain_core::LanguageSetting::export_all_to(&out)?;
     terrain_core::AppBootstrap::export_all_to(&out)?;
     terrain_core::LlmStatus::export_all_to(&out)?;
     terrain_core::AgentContextGenerationResult::export_all_to(&out)?;

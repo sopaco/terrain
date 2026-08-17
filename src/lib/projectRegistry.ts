@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import type { ProjectRegistryEntry, ProjectRegistryStatus } from "./types";
 
 /** Last path segment of a repository directory (e.g. `money-never-sleep`). */
@@ -43,9 +44,9 @@ export function isRegistryReady(entry: ProjectRegistryEntry): boolean {
 export function statusBadgeLabel(status: ProjectRegistryStatus): string | null {
   switch (status) {
     case "stale":
-      return "需修复";
+      return t("misc.projects.statusStale");
     case "partial":
-      return "待完善";
+      return t("misc.projects.statusPartial");
     default:
       return null;
   }
@@ -53,13 +54,18 @@ export function statusBadgeLabel(status: ProjectRegistryStatus): string | null {
 
 export function registryRepairDetail(entry: ProjectRegistryEntry): string {
   if (entry.status === "stale") {
-    return `仓库 \`.terrain\` 已缺失或损坏（${entry.repo_path}），可一键重新扫描并生成知识资产。`;
+    return t("misc.projects.repairStale", { path: entry.repo_path });
   }
   const missing =
     entry.missing_assets.length > 0
-      ? `尚未就绪：${entry.missing_assets.join("、")}。`
-      : "部分知识资产尚未就绪。";
-  return `${missing}（${entry.repo_path}）`;
+      ? t("misc.projects.repairMissing", {
+          assets: entry.missing_assets.join(t("misc.projects.assetJoin")),
+        })
+      : t("misc.projects.repairPartial");
+  return t("misc.projects.repairSuffix", {
+    missing,
+    path: entry.repo_path,
+  });
 }
 
 /** Prefer ready → partial → stale when auto-selecting a project. */

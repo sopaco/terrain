@@ -49,7 +49,7 @@
     import { parseAskSlashCommand } from "./lib/askSlashCommands";
     import { loadAskProjectState, startNewAskSession, switchAskSession } from "./lib/askSession";
     import { scheduleIdle } from "./lib/scheduleIdle";
-    import { generateLabel, TERMS, UI_MESSAGES } from "./lib/terminology";
+    import { initLocale, tr, t } from "./lib/i18n";
     import {
         citationToSourceSlice,
         createPendingSourceSlice,
@@ -100,7 +100,7 @@
         selectedProjectDisplayName(
             project.selectedSlug,
             project.registryProjects,
-            UI_MESSAGES.selectProject,
+            tr("terms.msg.selectProject"),
         ),
     );
     const currentTaskDerived = $derived(currentTask());
@@ -208,9 +208,10 @@
     }
 
     async function refresh() {
-        setStatus("正在刷新项目列表…", "loading");
+        setStatus(t("app.status.refreshingProjects"), "loading");
         try {
             const boot = await bootstrapApp();
+            initLocale(boot.model_settings.language);
             project.agentExecution = normalizeAgentExecution(
                 boot.model_settings.acp?.agent_execution,
             );
@@ -260,9 +261,14 @@
             const counts = countRegistryByStatus(project.registryProjects);
             const issues = counts.partial + counts.stale;
             const statusDetail =
-                issues > 0 ? `（${issues} 个待处理）` : "";
+                issues > 0
+                    ? t("app.status.issuesDetail", { count: issues })
+                    : "";
             setStatus(
-                `已登记 ${project.registryProjects.length} 个项目${statusDetail}`,
+                t("app.status.registeredProjects", {
+                    count: project.registryProjects.length,
+                    detail: statusDetail,
+                }),
                 "success",
             );
         } catch (e) {
@@ -383,7 +389,7 @@
         try {
             picked = await open({ directory: true, multiple: false });
         } catch (e) {
-            setStatus(`选择文件夹失败：${e}`, "error");
+            setStatus(t("app.status.pickFolderFailed", { error: String(e) }), "error");
             return;
         }
         if (!picked || Array.isArray(picked)) return;
@@ -405,7 +411,9 @@
             }
             await refresh();
             setStatus(
-                `已从列表移除：${registryDisplayName(entry)}`,
+                t("app.status.removedFromList", {
+                    name: registryDisplayName(entry),
+                }),
                 "success",
             );
         } catch (e) {
@@ -430,7 +438,9 @@
             project.freshnessLoading = false;
             project.humanDocs = [];
             setStatus(
-                `项目需修复：${registryDisplayName(entry)}`,
+                t("app.status.projectNeedsRepair", {
+                    name: registryDisplayName(entry),
+                }),
                 "idle",
                 entry.slug,
                 STATUS_AUTO_DISMISS_MS,
@@ -440,7 +450,9 @@
         }
 
         setStatus(
-            `项目：${registryDisplayName(entry)}`,
+            t("app.status.projectSelected", {
+                name: registryDisplayName(entry),
+            }),
             "idle",
             entry.slug,
             STATUS_AUTO_DISMISS_MS,
@@ -455,7 +467,7 @@
         try {
             await openRepoFolder(path);
         } catch (e) {
-            setStatus(UI_MESSAGES.openFolderFailed(e), "error");
+            setStatus(t("terms.msg.openFolderFailed", { error: String(e) }), "error");
         }
     }
 
@@ -479,7 +491,8 @@
 
     const showStatusBar = $derived(
         !showTaskProgressBar &&
-            (status.kind !== "idle" || status.message !== "就绪"),
+            (status.kind !== "idle" ||
+                status.message !== tr("terms.statusChip.idle")),
     );
 
     function openArchitectureDoc() {
@@ -507,7 +520,7 @@
     ) {
         if (project.initBusy) return;
         project.initBusy = true;
-        project.initProgress = "正在扫描仓库…";
+        project.initProgress = t("app.status.scanningRepo");
         const targetSlug = slug ?? null;
         if (targetSlug) {
             project.selectedSlug = targetSlug;
@@ -527,10 +540,16 @@
                 : "";
             const lithoNote =
                 result.litho_ran && !result.human_docs_complete
-                    ? " · Litho 文档未完成"
+                    ? ` · ${t("app.status.lithoIncomplete")}`
                     : "";
             setStatus(
-                `初始化完成：索引 ${result.scan_files_written} 项，${TERMS.humanKnowledge} ${result.human_doc_count} 篇${lithoNote}${note}`,
+                t("app.status.initComplete", {
+                    scan: result.scan_files_written,
+                    term: t("terms.humanKnowledge"),
+                    count: result.human_doc_count,
+                    lithoNote,
+                    note,
+                }),
                 result.notes.length || lithoNote ? "idle" : "success",
                 result.project_slug,
             );
@@ -563,14 +582,14 @@
 
     async function triggerQuickRefresh() {
         if (!project.selectedRepoPath || !project.selectedSlug) {
-            setStatus(UI_MESSAGES.selectProjectWithRepo, "error");
+            setStatus(t("terms.msg.selectProjectWithRepo"), "error");
             return;
         }
         if (project.quickRefreshBusy) return;
         const slug = project.selectedSlug;
         project.quickRefreshBusy = true;
         setStatus(
-            "正在快速保鲜（扫描 + 索引 + Agent 知识资产）…",
+            t("app.status.quickRefreshing"),
             "progress",
             slug,
         );
@@ -583,7 +602,10 @@
                 ? ` · ${result.notes.join("；")}`
                 : "";
             setStatus(
-                `保鲜完成：新鲜度 ${result.freshness.overall_score}/100${note}`,
+                t("app.status.refreshDone", {
+                    score: result.freshness.overall_score,
+                    note,
+                }),
                 result.freshness.overall_stale ? "idle" : "success",
                 slug,
             );
@@ -607,25 +629,25 @@
 
     async function triggerAgentContextGeneration() {
         if (!project.selectedRepoPath || !project.selectedSlug) {
-            setStatus(UI_MESSAGES.selectProjectWithRepo, "error");
+            setStatus(t("terms.msg.selectProjectWithRepo"), "error");
             return;
         }
         if (project.agentContextBusy) return;
         if (!project.acpOk) {
-            setStatus("请先在设置中配置 ACP 代理。", "error");
+            setStatus(t("app.configureAcp"), "error");
             return;
         }
         if (hybridNativeLlm && !project.llmStatus?.ready) {
-            setStatus("请先在设置中配置 LLM。", "error");
+            setStatus(t("app.configureLlm"), "error");
             return;
         }
         const slug = project.selectedSlug;
         project.agentContextBusy = true;
-        setStatus(UI_MESSAGES.agentContextGenerating, "progress", slug);
+        setStatus(t("terms.msg.agentContextGenerating"), "progress", slug);
         try {
             // Overview 「生成」/「重新生成」 are explicit rebuild requests — never incremental.
             await runAgentContextGeneration(project.selectedRepoPath, slug, true);
-            setStatus(UI_MESSAGES.agentContextReady, "success");
+            setStatus(t("terms.msg.agentContextReady"), "success");
             await Promise.all([loadProjectOverview(slug), loadHumanDocs(slug)]);
         } catch (e) {
             setStatus(String(e), "error");
@@ -639,15 +661,19 @@
         const humanDir = project.projectOverview?.slug ?? project.selectedSlug;
         void (async () => {
             const docs = await listHumanDocs(humanDir);
+            // Overview doc is `1.概述.md` (zh) or `1.Overview.md` (en) depending
+            // on the generation language.
             const overview = docs.find((d) =>
-                d.relative_path.includes("1.概述"),
+                /^1\..*\.md$/i.test(d.relative_path),
             );
             if (overview) {
                 project.activeTab = "knowledge";
                 await openHumanDoc(overview);
             } else {
                 setStatus(
-                    `尚未生成 1.概述.md，请先生成 ${TERMS.humanKnowledge}`,
+                    t("app.status.noOverviewDoc", {
+                        term: t("terms.humanKnowledge"),
+                    }),
                     "error",
                 );
                 project.activeTab = "knowledge";
@@ -677,7 +703,9 @@
                     await openHumanDoc(target);
                 } else {
                     setStatus(
-                        "尚无结构化条目：在仓库根目录添加 terrain-meta.json，然后生成 Agent 友好的知识资产",
+                        t("app.status.noStructuredEntries", {
+                            term: t("terms.agentKnowledge"),
+                        }),
                         "error",
                     );
                 }
@@ -692,10 +720,10 @@
     async function openHumanDoc(doc: HumanDocEntry) {
         project.activeHumanPath = doc.path;
         project.docLoading = true;
-        setStatus(`Opening ${doc.title}…`, "loading");
+        setStatus(t("app.status.openingDoc", { title: doc.title }), "loading");
         try {
             project.activeDoc = await readDocument(doc.path);
-            setStatus(`Viewing ${doc.title}`, "idle");
+            setStatus(t("app.status.viewingDoc", { title: doc.title }), "idle");
         } catch (e) {
             setStatus(String(e), "error");
         } finally {
@@ -719,14 +747,17 @@
     async function packAgentForSelected() {
         if (!project.selectedRepoPath || !project.selectedSlug) return;
         setProjectTask(project.selectedSlug, { repackBusy: true });
-        setStatus("正在重建源码索引…", "progress", project.selectedSlug);
+        setStatus(t("app.status.rebuildingIndex"), "progress", project.selectedSlug);
         try {
             const pack = await packAgentAssets(
                 project.selectedRepoPath,
                 project.selectedSlug,
             );
             setStatus(
-                `索引已更新：${pack.total_files} 个文件，约 ${pack.total_tokens} tokens`,
+                t("app.status.indexUpdated", {
+                    files: pack.total_files,
+                    tokens: pack.total_tokens,
+                }),
                 "success",
             );
             if (project.selectedSlug)
@@ -741,14 +772,11 @@
 
     async function triggerHumanGeneration(forceRefresh?: boolean) {
         if (!project.selectedRepoPath || !project.selectedSlug) {
-            setStatus(UI_MESSAGES.selectProjectWithRepoPath, "error");
+            setStatus(t("terms.msg.selectProjectWithRepoPath"), "error");
             return;
         }
         if (!project.acpOk) {
-            setStatus(
-                "ACP 代理未找到。请在设置中配置 ACP binary/command 并确保其在 PATH 上。",
-                "error",
-            );
+            setStatus(t("app.status.acpNotFound"), "error");
             return;
         }
         const slug = project.selectedSlug;
@@ -760,8 +788,12 @@
         setProjectTask(slug, {
             lithoBusy: true,
             lithoProgress: force
-                ? `正在重新生成 ${TERMS.humanKnowledge}（Litho）…`
-                : `正在生成 ${TERMS.humanKnowledge}（Litho）…`,
+                ? t("app.status.regeneratingHuman", {
+                      term: t("terms.humanKnowledge"),
+                  })
+                : t("app.status.generatingHuman", {
+                      term: t("terms.humanKnowledge"),
+                  }),
         });
         try {
             await runLithoGeneration(project.selectedRepoPath, slug, force);
@@ -805,7 +837,7 @@
         if (!project.selectedSlug) return;
         try {
             await startNewAskSession(project.selectedSlug);
-            setStatus("已新建对话", "success");
+            setStatus(t("app.status.newChatCreated"), "success");
         } catch (e) {
             setStatus(String(e), "error");
         }
@@ -813,7 +845,7 @@
 
     function handleAskInput(q: string) {
         if (!project.selectedSlug) {
-            setStatus("请先选择项目", "error");
+            setStatus(t("app.selectProjectFirst"), "error");
             return;
         }
         if (parseAskSlashCommand(q)?.type === "new") {
@@ -825,7 +857,7 @@
 
     function openDeepWiki(question?: string) {
         if (!project.selectedSlug) {
-            setStatus("请先选择项目", "error");
+            setStatus(t("app.selectProjectFirst"), "error");
             return;
         }
         if (question && parseAskSlashCommand(question)?.type === "new") {
@@ -835,7 +867,7 @@
             return;
         }
         if (!project.acpOk) {
-            setStatus("请先在设置中配置 ACP 代理。", "error");
+            setStatus(t("app.configureAcp"), "error");
             return;
         }
         project.deepWikiInitialQuestion = question ?? null;
@@ -871,7 +903,7 @@
             return;
         }
         project.docLoading = true;
-        setStatus(`Searching for “${q}”…`, "loading");
+        setStatus(t("app.status.searchingFor", { query: q }), "loading");
         try {
             project.hits = await searchKnowledge(
                 q,
@@ -973,9 +1005,20 @@
                 const complete = result.human_docs_complete;
                 const msg = !complete
                     ? count === 0
-                        ? `Litho 已完成，但未写入 ${TERMS.humanKnowledge}（${project_slug}）`
-                        : `${TERMS.humanKnowledge} 未完成（${project_slug}，${count} 篇）`
-                    : `${TERMS.humanKnowledge} 已就绪（${project_slug}，${count} 篇）`;
+                        ? t("app.status.lithoDoneNoDocs", {
+                              term: t("terms.humanKnowledge"),
+                              slug: project_slug,
+                          })
+                        : t("app.status.lithoIncompleteWithCount", {
+                              term: t("terms.humanKnowledge"),
+                              slug: project_slug,
+                              count,
+                          })
+                    : t("app.status.lithoReady", {
+                          term: t("terms.humanKnowledge"),
+                          slug: project_slug,
+                          count,
+                      });
                 if (project.selectedSlug === project_slug) {
                     setStatus(
                         msg,
@@ -1039,16 +1082,16 @@
             <button
                 type="button"
                 class="tr-press inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated"
-                title="设置"
-                aria-label="Settings"
+                title={tr("app.settings")}
+                aria-label={tr("app.settings")}
                 onclick={() => (project.settingsOpen = true)}
             >
                 <Settings size={16} strokeWidth={2} aria-hidden="true" />
             </button>
             <HelpButton
                 onclick={() => (project.helpOpen = true)}
-                title="术语说明"
-                ariaLabel="术语说明"
+                title={tr("app.glossary")}
+                ariaLabel={tr("app.glossary")}
                 variant="toolbar"
                 class="!h-9 !w-9"
             />
@@ -1086,7 +1129,7 @@
         {#if showTaskProgressBar && project.selectedSlug}
             <TaskProgressBar
                 projectSlug={project.selectedSlug}
-                stage={project.initBusy ? "初始化" : lithoProgressParts.stage}
+                stage={project.initBusy ? tr("app.initializing") : lithoProgressParts.stage}
                 message={project.initBusy && project.initProgress
                     ? project.initProgress
                     : lithoProgressParts.message}
@@ -1187,7 +1230,7 @@
                 <input
                     id="search-input"
                     class="min-w-0 flex-1 rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-1.5 text-sm outline-none focus:border-tr-accent"
-                    placeholder={`搜索${TERMS.knowledgeTab}… (⌘K)`}
+                    placeholder={tr("app.searchPlaceholder", { term: tr("terms.knowledgeTab") })}
                     bind:value={project.query}
                 />
                 <button
@@ -1196,7 +1239,7 @@
                     disabled={project.docLoading}
                     onclick={runSearch}
                 >
-                    搜索
+                    {tr("common.search")}
                 </button>
                 {#if project.selectedSlug}
                     <div
@@ -1211,10 +1254,14 @@
                                 !project.acpOk}
                             onclick={() => void triggerHumanGeneration()}
                             title={!project.acpOk
-                                ? "请先在设置中配置 ACP 代理"
+                                ? tr("app.configureAcpTitle")
                                 : undefined}
                         >
-                            {generateLabel(TERMS.humanKnowledge, lithoBusy)}
+                            {lithoBusy
+                                ? tr("terms.generating")
+                                : tr("terms.generate", {
+                                      term: tr("terms.humanKnowledge"),
+                                  })}
                         </button>
                     </div>
                 {/if}
@@ -1229,8 +1276,8 @@
                             type="button"
                             class="tr-press inline-flex shrink-0 items-center justify-center rounded-md p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink"
                             onclick={toggleDocTree}
-                            aria-label="展开文档目录"
-                            title="展开文档目录"
+                            aria-label={tr("app.expandDocTree")}
+                            title={tr("app.expandDocTree")}
                         >
                             <PanelLeftOpen
                                 size={14}
@@ -1240,7 +1287,7 @@
                         </button>
                         <span
                             class="select-none text-[10px] tracking-wider text-tr-ink-3 [writing-mode:vertical-rl]"
-                            >文档目录</span
+                            >{tr("app.docTree")}</span
                         >
                     </aside>
                 {:else}
@@ -1330,7 +1377,7 @@
                             <span
                                 class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
                             ></span>
-                            <span>{UI_MESSAGES.loadingDocument}</span>
+                            <span>{tr("terms.msg.loadingDocument")}</span>
                         </div>
                     {:else if project.activeDoc && KnowledgeArticle}
                         <KnowledgeArticle
@@ -1377,11 +1424,11 @@
                                 >
                                     <p class="text-lg text-tr-ink-2">
                                         {project.selectedSlug
-                                            ? "从左侧目录选择文档"
-                                            : "添加或选择项目以浏览知识资产"}
+                                            ? tr("app.selectDocFromTree")
+                                            : tr("app.addOrSelectProject")}
                                     </p>
                                     <p class="text-sm">
-                                        阅读文档后，可在底部问答栏就当前项目提问。
+                                        {tr("app.askHint")}
                                     </p>
                                 </div>
                             {/if}
@@ -1391,13 +1438,18 @@
                     <AskBar
                         disabled={!project.selectedSlug || !project.acpOk}
                         disabledReason={!project.selectedSlug
-                            ? "请先选择项目"
+                            ? tr("app.selectProjectFirst")
                             : !project.acpOk
-                              ? "请先在设置中配置 ACP 代理"
+                              ? tr("app.configureAcpTitle")
                               : null}
                         placeholder={project.activeDoc
-                            ? `就「${project.activeHumanPath?.split("/").pop() ?? "当前文档"}」提问…`
-                            : "就当前项目提问…"}
+                            ? tr("app.askDocPlaceholder", {
+                                  doc:
+                                      project.activeHumanPath
+                                          ?.split("/")
+                                          .pop() ?? tr("app.currentDoc"),
+                              })
+                            : tr("app.askProjectPlaceholder")}
                         onclear={() => void startNewAskChat()}
                         onopen={() => openDeepWiki()}
                         onask={handleAskInput}
@@ -1455,7 +1507,7 @@
                 ? status.ready && project.acpOk
                 : project.acpOk;
             setStatus(
-                ok ? "设置已保存" : "请检查 ACP 与 LLM 配置",
+                ok ? tr("app.settingsSaved") : tr("app.checkAcpLlmConfig"),
                 ok ? "success" : "error",
             );
         }}

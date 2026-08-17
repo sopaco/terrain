@@ -36,6 +36,10 @@ pub fn model_settings_from_config(config: &ModelConfig) -> ModelSettings {
         profiles,
         acp: AcpSettings::default(),
         knowledge: KnowledgeSettings::default(),
+        // Preserve the persisted language preference when rewriting settings.
+        language: load_model_settings()
+            .map(|s| s.language)
+            .unwrap_or_default(),
     }
 }
 

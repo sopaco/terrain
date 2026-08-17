@@ -1,16 +1,20 @@
 import type { StatusKind } from "../components/StatusBanner.svelte";
+import { t } from "../i18n";
 
 export const STATUS_AUTO_DISMISS_MS = 3_000;
 
-const DEFAULT_MESSAGE = "就绪";
 const DEFAULT_KIND: StatusKind = "idle";
+
+function defaultMessage(): string {
+  return t("terms.statusChip.idle");
+}
 
 export const status = $state<{
   message: string;
   kind: StatusKind;
   detail: string | null;
 }>({
-  message: DEFAULT_MESSAGE,
+  message: defaultMessage(),
   kind: DEFAULT_KIND,
   detail: null,
 });
@@ -24,7 +28,7 @@ export function clearStatus() {
     clearTimeout(dismissTimer);
     dismissTimer = undefined;
   }
-  status.message = DEFAULT_MESSAGE;
+  status.message = defaultMessage();
   status.kind = DEFAULT_KIND;
   status.detail = null;
 }

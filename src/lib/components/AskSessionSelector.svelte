@@ -1,5 +1,6 @@
 <script lang="ts">
   import { History, Plus, Trash2 } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import type { AskSessionInfo } from "../types";
 
   interface Props {
@@ -38,7 +39,7 @@
 
   function confirmDelete(session: AskSessionInfo, e: MouseEvent) {
     e.stopPropagation();
-    if (!confirm(`删除对话「${session.title}」？\n\n将永久删除该 Ask 历史记录，不可恢复。`)) {
+    if (!confirm(tr("ask.session.confirmDelete", { title: session.title }))) {
       return;
     }
     ondelete(session.id);
@@ -67,8 +68,8 @@
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="listbox"
-    aria-label="Ask 历史记录"
-    title="Ask 历史记录"
+    aria-label={tr("ask.session.history")}
+    title={tr("ask.session.history")}
     disabled={creating}
   >
     <History size={16} strokeWidth={2} aria-hidden="true" />
@@ -81,12 +82,12 @@
       class="tr-pop fixed z-[201] overflow-hidden rounded-xl border border-tr-border-strong bg-tr-surface shadow-2xl"
       style="top: {menuTop}px; right: {menuRight}px; width: {menuWidth}px; --tr-pop-origin: top right;"
       role="listbox"
-      aria-label="Ask 历史记录"
+      aria-label={tr("ask.session.history")}
     >
       <div class="border-b border-tr-border-strong px-3.5 py-2.5">
-        <p class="text-sm font-medium text-tr-ink">Ask 历史</p>
+        <p class="text-sm font-medium text-tr-ink">{tr("ask.session.historyTitle")}</p>
         <p class="text-[11px] text-tr-ink-3">
-          最近 {sessions.length} 条 · 本地存储
+          {tr("ask.session.recentCount", { count: sessions.length })}
         </p>
       </div>
       <ul class="max-h-64 overflow-y-auto py-1.5">
@@ -115,15 +116,15 @@
             <button
               type="button"
               class="tr-press inline-flex shrink-0 items-center justify-center rounded-lg px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical"
-              title="删除此对话"
-              aria-label={`删除 ${session.title}`}
+              title={tr("ask.session.deleteThis")}
+              aria-label={tr("ask.session.deleteNamed", { title: session.title })}
               onclick={(e) => confirmDelete(session, e)}
             >
               <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
             </button>
           </li>
         {:else}
-          <li class="px-3.5 py-4 text-center text-xs text-tr-ink-3">暂无历史记录</li>
+          <li class="px-3.5 py-4 text-center text-xs text-tr-ink-3">{tr("ask.session.empty")}</li>
         {/each}
       </ul>
       <div class="border-t border-tr-border-strong p-2">
@@ -134,7 +135,7 @@
           onclick={oncreate}
         >
           <Plus size={12} strokeWidth={2} aria-hidden="true" />
-          {creating ? "创建中…" : "新对话"}
+          {creating ? tr("ask.session.creating") : tr("ask.session.newSession")}
         </button>
       </div>
     </div>

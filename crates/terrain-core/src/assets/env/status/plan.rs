@@ -32,14 +32,15 @@ pub fn get_env_status(repo: &Path) -> Result<EnvStatus> {
 /// The big `integrated_count/total_count` number already carries the ratio,
 /// so this must NOT repeat it — it only describes state in words.
 fn env_integration_summary(ready_count: usize, total: usize) -> String {
+    let lang = crate::language::current_language();
     if total == 0 {
-        "未检测".to_string()
+        lang.tr("未检测", "Not detected").to_string()
     } else if ready_count == total {
-        "全部已集成".to_string()
+        lang.tr("全部已集成", "Fully integrated").to_string()
     } else if ready_count == 0 {
-        "尚未集成".to_string()
+        lang.tr("尚未集成", "Not integrated yet").to_string()
     } else {
-        "部分已集成".to_string()
+        lang.tr("部分已集成", "Partially integrated").to_string()
     }
 }
 
@@ -66,6 +67,7 @@ fn compute_env_status(repo: &Path) -> Result<EnvStatus> {
 
 /// Fast env summary for project overview — uses the same readiness rules as `get_env_status`.
 pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEnvStatus {
+    let lang = crate::language::current_language();
     let catalog = match load_catalog() {
         Ok(c) => c,
         Err(_) => {
@@ -73,8 +75,10 @@ pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEn
                 ready: false,
                 integrated_count: 0,
                 total_count: 0,
-                summary: "未检测".into(),
-                detail: "打开工程环境页以配置".into(),
+                summary: lang.tr("未检测", "Not detected").into(),
+                detail: lang
+                    .tr("打开工程环境页以配置", "Open the project environment page to configure")
+                    .into(),
             };
         }
     };
@@ -96,7 +100,12 @@ pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEn
         integrated_count: ready_count,
         total_count: total,
         summary: env_integration_summary(ready_count, total),
-        detail: format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
+        detail: lang
+            .tr(
+                &format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
+                &format!("Skills · Toolchain · AGENTS.md · {knowledge_count} knowledge article(s)"),
+            )
+            .to_string(),
     }
 }
 
@@ -105,6 +114,7 @@ pub fn plan_env_integration(
     selected_ids: &[String],
     reinstall_ids: &[String],
 ) -> Result<EnvPlan> {
+    let lang = crate::language::current_language();
     let catalog = load_catalog()?;
     let status = get_env_status(repo)?;
     let status_map: HashMap<_, _> = status
@@ -123,7 +133,13 @@ pub fn plan_env_integration(
             continue;
         }
         if !dependencies_met(def, &selected, &status_map) {
-            skipped.push(format!("{}: 依赖未满足", def.id));
+            skipped.push(
+                lang.tr(
+                    &format!("{}: 依赖未满足", def.id),
+                    &format!("{}: dependencies not met", def.id),
+                )
+                .to_string(),
+            );
             continue;
         }
         if status_map.get(&def.id) == Some(&true) && def.kind != "agents_md" && !def.bundled {
@@ -131,7 +147,12 @@ pub fn plan_env_integration(
                 id: def.id.clone(),
                 label: def.label.clone(),
                 kind: def.kind.clone(),
-                action: format!("重新集成 {}", def.label),
+                action: lang
+                    .tr(
+                        &format!("重新集成 {}", def.label),
+                        &format!("Re-integrate {}", def.label),
+                    )
+                    .to_string(),
             });
             continue;
         }
@@ -140,10 +161,18 @@ pub fn plan_env_integration(
                 id: def.id.clone(),
                 label: def.label.clone(),
                 kind: def.kind.clone(),
-                action: format!(
-                    "复制 skill → .agents/skills/{0} 与 .claude/skills/{0}",
-                    skill_target_name(def)
-                ),
+                action: lang
+                    .tr(
+                        &format!(
+                            "复制 skill → .agents/skills/{0} 与 .claude/skills/{0}",
+                            skill_target_name(def)
+                        ),
+                        &format!(
+                            "Copy skill → .agents/skills/{0} and .claude/skills/{0}",
+                            skill_target_name(def)
+                        ),
+                    )
+                    .to_string(),
             }),
             "tool" => {
                 if def.bundled {
@@ -157,7 +186,13 @@ pub fn plan_env_integration(
                     continue;
                 }
                 if def.optional && tool_check_passes(repo, def) {
-                    skipped.push(format!("{}: 已安装", def.id));
+                    skipped.push(
+                        lang.tr(
+                            &format!("{}: 已安装", def.id),
+                            &format!("{}: installed", def.id),
+                        )
+                        .to_string(),
+                    );
                     continue;
                 }
                 for step in &def.install_steps {
@@ -174,7 +209,12 @@ pub fn plan_env_integration(
                         id: def.id.clone(),
                         label: def.label.clone(),
                         kind: def.kind.clone(),
-                        action: "检测 bun（未安装时需手动安装 https://bun.sh）".into(),
+                        action: lang
+                            .tr(
+                                "检测 bun（未安装时需手动安装 https://bun.sh）",
+                                "Detect bun (install manually from https://bun.sh if missing)",
+                            )
+                            .into(),
                     });
                 }
             }
@@ -182,19 +222,34 @@ pub fn plan_env_integration(
                 id: def.id.clone(),
                 label: def.label.clone(),
                 kind: def.kind.clone(),
-                action: "更新 AGENTS.md 托管片段".into(),
+                action: lang
+                    .tr(
+                        "更新 AGENTS.md 托管片段",
+                        "Update the AGENTS.md managed section",
+                    )
+                    .into(),
             }),
             "terrain_ignore" => steps.push(EnvPlanStep {
                 id: def.id.clone(),
                 label: def.label.clone(),
                 kind: def.kind.clone(),
-                action: "写入 .terrain/.gitignore 与 .terrain/.gitattributes".into(),
+                action: lang
+                    .tr(
+                        "写入 .terrain/.gitignore 与 .terrain/.gitattributes",
+                        "Write .terrain/.gitignore and .terrain/.gitattributes",
+                    )
+                    .into(),
             }),
             "gitignore" => steps.push(EnvPlanStep {
                 id: def.id.clone(),
                 label: def.label.clone(),
                 kind: def.kind.clone(),
-                action: format!("追加 .gitignore: {}", def.patterns.join(", ")),
+                action: lang
+                    .tr(
+                        &format!("追加 .gitignore: {}", def.patterns.join(", ")),
+                        &format!("Append to .gitignore: {}", def.patterns.join(", ")),
+                    )
+                    .to_string(),
             }),
             _ => {}
         }
@@ -233,8 +288,15 @@ fn plan_bundled_tool(
     skipped: &mut Vec<String>,
     reinstall: bool,
 ) {
+    let lang = crate::language::current_language();
     if !bundled_tool_runtime_ready(def) {
-        skipped.push(format!("{}: Terrain 内置工具不可用", def.id));
+        skipped.push(
+            lang.tr(
+                &format!("{}: Terrain 内置工具不可用", def.id),
+                &format!("{}: Terrain-bundled tool unavailable", def.id),
+            )
+            .to_string(),
+        );
         return;
     }
     if reinstall {
@@ -244,7 +306,12 @@ fn plan_bundled_tool(
                     id: def.id.clone(),
                     label: def.label.clone(),
                     kind: def.kind.clone(),
-                    action: "重新部署 ~/.terrain/bin/rtk".into(),
+                    action: lang
+                        .tr(
+                            "重新部署 ~/.terrain/bin/rtk",
+                            "Redeploy ~/.terrain/bin/rtk",
+                        )
+                        .into(),
                 });
             }
             "tool-codegraph" => {
@@ -252,38 +319,77 @@ fn plan_bundled_tool(
                     id: def.id.clone(),
                     label: def.label.clone(),
                     kind: def.kind.clone(),
-                    action: "重新部署 ~/.terrain/bin/codegraph".into(),
+                    action: lang
+                        .tr(
+                            "重新部署 ~/.terrain/bin/codegraph",
+                            "Redeploy ~/.terrain/bin/codegraph",
+                        )
+                        .into(),
                 });
                 if !tool_check_passes(repo, def) {
                     steps.push(EnvPlanStep {
                         id: def.id.clone(),
                         label: def.label.clone(),
                         kind: def.kind.clone(),
-                        action: "内置 CodeGraph：init -i（写入 .codegraph/）".into(),
+                        action: lang
+                            .tr(
+                                "内置 CodeGraph：init -i（写入 .codegraph/）",
+                                "Bundled CodeGraph: init -i (writes .codegraph/)",
+                            )
+                            .into(),
                     });
                 }
             }
-            _ => skipped.push(format!("{}: 未知内置工具", def.id)),
+            _ => skipped.push(
+                lang.tr(
+                    &format!("{}: 未知内置工具", def.id),
+                    &format!("{}: unknown bundled tool", def.id),
+                )
+                .to_string(),
+            ),
         }
         return;
     }
     match def.id.as_str() {
         "tool-rtk" => {
-            skipped.push(format!("{}: RTK 由 Terrain 内置提供", def.id));
+            skipped.push(
+                lang.tr(
+                    &format!("{}: RTK 由 Terrain 内置提供", def.id),
+                    &format!("{}: RTK is provided bundled with Terrain", def.id),
+                )
+                .to_string(),
+            );
         }
         "tool-codegraph" => {
             if tool_check_passes(repo, def) {
-                skipped.push(format!("{}: 仓库索引已就绪", def.id));
+                skipped.push(
+                    lang.tr(
+                        &format!("{}: 仓库索引已就绪", def.id),
+                        &format!("{}: repo index is ready", def.id),
+                    )
+                    .to_string(),
+                );
             } else {
                 steps.push(EnvPlanStep {
                     id: def.id.clone(),
                     label: def.label.clone(),
                     kind: def.kind.clone(),
-                    action: "内置 CodeGraph：init -i（写入 .codegraph/）".into(),
+                    action: lang
+                        .tr(
+                            "内置 CodeGraph：init -i（写入 .codegraph/）",
+                            "Bundled CodeGraph: init -i (writes .codegraph/)",
+                        )
+                        .into(),
                 });
             }
         }
-        _ => skipped.push(format!("{}: 未知内置工具", def.id)),
+        _ => skipped.push(
+            lang.tr(
+                &format!("{}: 未知内置工具", def.id),
+                &format!("{}: unknown bundled tool", def.id),
+            )
+            .to_string(),
+        ),
     }
 }
 

@@ -126,6 +126,9 @@ pub struct ModelSettings {
     pub acp: AcpSettings,
     #[serde(default)]
     pub knowledge: KnowledgeSettings,
+    /// UI / knowledge-asset / agent-reply language. `system` (default) follows the OS locale.
+    #[serde(default)]
+    pub language: crate::language::LanguageSetting,
 }
 
 pub fn settings_path() -> PathBuf {
@@ -150,6 +153,7 @@ pub fn save_model_settings(settings: &ModelSettings) -> Result<()> {
     sync_active_flat_fields(&mut to_save);
     let json = serde_json::to_string_pretty(&to_save)?;
     fs::write(&path, json)?;
+    crate::language::invalidate_language_cache();
     Ok(())
 }
 

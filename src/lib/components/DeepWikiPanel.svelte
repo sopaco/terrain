@@ -37,7 +37,7 @@
   import { renderAskShareImages, formatUnknownError } from "../askShareImage";
   import { copyPngBlobToClipboard, copyTextToClipboard } from "../clipboard";
   import { pickDirectory, savePngPages, shareFileBaseName } from "../shareExport";
-  import { CHAT_PHASE_LABELS, UI_MESSAGES } from "../terminology";
+  import { tr } from "../i18n";
   import ShareImageButton from "./ShareImageButton.svelte";
   import CopyMarkdownButton from "./CopyMarkdownButton.svelte";
   import MarkdownViewer from "./MarkdownViewer.svelte";
@@ -315,9 +315,9 @@
     try {
       await copyTextToClipboard(body);
       markCopied(key);
-      showCopyToast("已复制到剪贴板");
+      showCopyToast(tr("ask.toast.copiedToClipboard"));
     } catch (e) {
-      showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
+      showCopyToast(tr("ask.toast.copyFailed", { error: formatUnknownError(e) }), false);
     } finally {
       copyingMarkdownKey = null;
     }
@@ -337,11 +337,11 @@
       markImageCopied(key);
       showCopyToast(
         pages.length > 1
-          ? `回答较长，已复制第 1 张（共 ${pages.length} 张），可用「导出长图」保存全部`
-          : "图片已复制到剪贴板",
+          ? tr("ask.toast.imageCopiedMulti", { count: pages.length })
+          : tr("ask.toast.imageCopied"),
       );
     } catch (e) {
-      showCopyToast(`复制失败：${formatUnknownError(e)}`, false);
+      showCopyToast(tr("ask.toast.copyFailed", { error: formatUnknownError(e) }), false);
     } finally {
       copyingImageKey = null;
     }
@@ -353,7 +353,7 @@
     if (!q || !answer || exportingImageKey) return;
 
     // Ask for the destination before rendering: cancelling should cost nothing.
-    const dir = await pickDirectory("选择导出目录");
+    const dir = await pickDirectory(tr("ask.export.pickDir"));
     if (!dir) return;
 
     exportingImageKey = key;
@@ -365,17 +365,17 @@
       const files = await savePngPages(dir, shareFileBaseName(q), pages);
       markImageExported(key);
       showCopyToast(
-        `已导出 ${files.length} 张图片到 ${dir}` +
-          (omittedBlocks > 0 ? `（另有 ${omittedBlocks} 个段落过长未收录）` : ""),
+        tr("ask.toast.exported", { count: files.length, dir }) +
+          (omittedBlocks > 0 ? tr("ask.toast.exportedOmitted", { count: omittedBlocks }) : ""),
       );
     } catch (e) {
-      showCopyToast(`导出失败：${formatUnknownError(e)}`, false);
+      showCopyToast(tr("ask.toast.exportFailed", { error: formatUnknownError(e) }), false);
     } finally {
       exportingImageKey = null;
     }
   }
 
-  const phaseLabel = $derived(CHAT_PHASE_LABELS[streamPhase] ?? CHAT_PHASE_LABELS.thinking);
+  const phaseLabel = $derived(tr(`terms.chatPhase.${streamPhase}`));
 
   const streamingUsageLine = $derived(formatUsageLine(streamingUsage));
 
@@ -441,7 +441,7 @@
     const steps = finalizeAssistantSteps(streamSteps, payload.answer, payload.toolCalls);
     const finalContent =
       finalAnswerFromSteps(steps, payload.answer) ||
-      "已完成知识库检索，但未收到最终文本回复。请查看上方工具调用结果。"
+      tr("ask.noFinalAnswer")
 
     try {
       const nextMessages: ChatMessage[] = [
@@ -517,9 +517,9 @@
     try {
       await startNewAskSession(projectSlug);
       sessionMenuOpen = false;
-      showCopyToast("已新建对话");
+      showCopyToast(tr("ask.toast.sessionCreated"));
     } catch (e) {
-      showCopyToast(`新建对话失败：${e}`, false);
+      showCopyToast(tr("ask.toast.sessionCreateFailed", { error: String(e) }), false);
     } finally {
       sessionBusy = false;
     }
@@ -535,7 +535,7 @@
       await switchAskSession(projectSlug, sessionId, messages);
       sessionMenuOpen = false;
     } catch (e) {
-      showCopyToast(`切换对话失败：${e}`, false);
+      showCopyToast(tr("ask.toast.sessionSwitchFailed", { error: String(e) }), false);
     } finally {
       sessionBusy = false;
     }
@@ -559,7 +559,7 @@
       }
       sessionMenuOpen = false;
     } catch (e) {
-      showCopyToast(`删除对话失败：${e}`, false);
+      showCopyToast(tr("ask.toast.sessionDeleteFailed", { error: String(e) }), false);
     } finally {
       sessionBusy = false;
     }
@@ -622,7 +622,7 @@
         try {
           onmessageschange((prev) => [
             ...prev,
-            { role: "assistant", content: `错误：${e}`, timestamp: Date.now() },
+            { role: "assistant", content: tr("ask.errorPrefix", { error: String(e) }), timestamp: Date.now() },
           ]);
         } catch {
           // ignore persistence errors
@@ -658,7 +658,7 @@
     citationError = null;
 
     if (!projectSlug && !isKnowledgeMarkdownPath(c.path) && !isTerrainKnowledgeAssetPath(c.path)) {
-      citationError = UI_MESSAGES.noProjectSelected;
+      citationError = tr("terms.msg.noProjectSelected");
       return;
     }
 
@@ -740,7 +740,7 @@
       <div class="min-w-0 flex-1">
         <h2 class="text-sm font-semibold">DeepWiki</h2>
         <p class="truncate text-xs text-tr-ink-3">
-          {projectName ?? projectSlug ?? UI_MESSAGES.noProject} · 可继续追问
+          {projectName ?? projectSlug ?? tr("terms.msg.noProject")} · {tr("ask.canFollowUp")}
         </p>
       </div>
       {#if busy}
@@ -753,8 +753,8 @@
         class="tr-press inline-flex h-9 w-9 items-center justify-center rounded-lg border border-tr-border-strong text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-40"
         disabled={busy || sessionBusy || !projectSlug}
         onclick={() => void handleNewSession()}
-        aria-label="新建对话"
-        title="新建对话"
+        aria-label={tr("ask.session.new")}
+        title={tr("ask.session.new")}
       >
         <MessageSquarePlus size={16} strokeWidth={2} aria-hidden="true" />
       </button>
@@ -775,7 +775,7 @@
         class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-sm text-tr-ink-2 transition-colors hover:bg-tr-elevated"
         onclick={onclose}
       >
-        Close
+        {tr("common.close")}
       </button>
     </header>
 
@@ -857,7 +857,7 @@
               {/if}
               {#if msg.citations?.length}
                 <div class="mt-4 space-y-1.5 border-t border-tr-border pt-3">
-                  <p class="text-[10px] uppercase tracking-wide text-tr-ink-3">Sources</p>
+                  <p class="text-[10px] uppercase tracking-wide text-tr-ink-3">{tr("ask.sourcesLabel")}</p>
                   {#each msg.citations as c}
                     <button
                       type="button"
@@ -968,7 +968,7 @@
           <textarea
             class="mb-2 w-full resize-none rounded-xl border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
             rows="2"
-            placeholder={UI_MESSAGES.askFollowUpPlaceholder}
+            placeholder={tr("terms.msg.askFollowUpPlaceholder")}
             bind:value={input}
             onkeydown={onKeydown}
             oncompositionstart={() => (composing = true)}

@@ -32,49 +32,60 @@ pub fn plan_litho_generation(
 
 /// Prompt for ACP / OpenCode to run Litho document generation.
 pub fn build_litho_generation_prompt(plan: &LithoPlan) -> String {
+    let lang = crate::language::current_language();
     format!(
         "Generate human-facing project documentation using the Litho document skill.\n\n\
-         Skill directory (read SKILL.md first): {}\n\
-         Repository root: {}\n\
-         Output directory (write final docs here): {}\n\
-         Intermediate workspace: {}\n\n\
+         {lang_directive}\n\
+         target_language: {target_language}\n\n\
+         Skill directory (read SKILL.md first): {skill_dir}\n\
+         Repository root: {repo_path}\n\
+         Output directory (write final docs here): {human_out}\n\
+         Intermediate workspace: {workspace}\n\n\
          Follow the four-phase pipeline in the skill: preprocessing → C4 research → composition → output.\n\
          Persist research artifacts under the intermediate workspace (TERRAIN_LITHO_WORKSPACE).\n\
-         Write final Markdown files to the output directory (TERRAIN_HUMAN_OUTPUT_DIR): \
-         1.概述.md through 6.数据库概览.md plus 4.Deep-Exploration/*.md.\n\
+         Write final Markdown files to the output directory (TERRAIN_HUMAN_OUTPUT_DIR), \
+         using the file names for target_language={target_language}:\n\
+         {file_listing}\n\
          Include source file paths (and line numbers when possible) in the docs for DeepWiki citations.\n\n\
          IMPORTANT: Use the absolute paths from TERRAIN_LITHO_WORKSPACE and TERRAIN_HUMAN_OUTPUT_DIR. \
          Do not finish until the full Litho doc set exists under the output directory.",
-        plan.skill_dir, plan.repo_path, plan.human_output_dir, plan.litho_workspace_dir
+        lang_directive = lang.asset_language_directive(),
+        target_language = lang.litho_target_language(),
+        skill_dir = plan.skill_dir,
+        repo_path = plan.repo_path,
+        human_out = plan.human_output_dir,
+        workspace = plan.litho_workspace_dir,
+        file_listing = lang.litho_file_listing(),
     )
 }
 
 /// Follow-up prompt when research artifacts exist but final human docs were not written.
 pub fn build_litho_composition_prompt(plan: &LithoPlan) -> String {
+    let lang = crate::language::current_language();
     format!(
-        "Continue Litho document generation for project \"{}\".\n\n\
-         Research artifacts are already persisted under: {}\n\
-         Skill directory (read references/phase3-composition.md and phase4-output.md): {}\n\
-         Final output directory (write here): {}\n\
-         Repository root (for code citations): {}\n\n\
+        "Continue Litho document generation for project \"{project}\".\n\n\
+         {lang_directive}\n\
+         target_language: {target_language}\n\n\
+         Research artifacts are already persisted under: {workspace}\n\
+         Skill directory (read references/phase3-composition.md and phase4-output.md): {skill_dir}\n\
+         Final output directory (write here): {human_out}\n\
+         Repository root (for code citations): {repo_path}\n\n\
          Execute ONLY phase 3 (composition) and phase 4 (output validation):\n\
          1. Read all markdown files under the intermediate workspace (TERRAIN_LITHO_WORKSPACE).\n\
          2. Compose final human-facing docs per the skill templates.\n\
          3. Write missing files to the output directory (TERRAIN_HUMAN_OUTPUT_DIR) using absolute paths:\n\
-            - 1.概述.md\n\
-            - 2.架构.md\n\
-            - 3.工作流.md\n\
-            - 4.Deep-Exploration/{{module}}.md (one per module under workspace/modules/)\n\
-            - 5.边界接口.md\n\
-            - 6.数据库概览.md\n\
+         {file_listing}\n\
          If some files already exist in the output directory, keep them unless incomplete — fill gaps only.\n\
          Do not repeat preprocessing or C4 research. \
          Do not stop until the output directory contains the full Litho doc set.",
-        plan.project_slug,
-        plan.litho_workspace_dir,
-        plan.skill_dir,
-        plan.human_output_dir,
-        plan.repo_path
+        project = plan.project_slug,
+        lang_directive = lang.asset_language_directive(),
+        target_language = lang.litho_target_language(),
+        workspace = plan.litho_workspace_dir,
+        skill_dir = plan.skill_dir,
+        human_out = plan.human_output_dir,
+        repo_path = plan.repo_path,
+        file_listing = lang.litho_file_listing(),
     )
 }
 
@@ -98,8 +109,10 @@ pub fn build_litho_update_prompt(
             .join("\n")
     };
 
+    let lang = crate::language::current_language();
     format!(
         "Incrementally update the existing human-facing documentation for project \"{project}\".\n\n\
+         {lang_directive}\n\n\
          Skill directory (read references/phase3-composition.md for the doc templates): {skill}\n\
          Repository root: {repo}\n\
          Documentation directory (edit files in place here): {out}\n\n\
@@ -124,6 +137,7 @@ pub fn build_litho_update_prompt(
          - Edit at most 3 files unless the change list clearly justifies more.\n\
          - If nothing in the change list invalidates any document, change nothing and say so.\n",
         project = plan.project_slug,
+        lang_directive = lang.asset_language_directive(),
         skill = plan.skill_dir,
         repo = plan.repo_path,
         out = plan.human_output_dir,
@@ -179,6 +193,7 @@ pub fn write_human_docs_meta(
         doc_count: count_markdown_in_dir(paths.human_docs_dir(project_slug)),
         baseline_git_head: crate::freshness::git_snapshot(repo_path).head,
         last_run_mode: run_mode.to_string(),
+        language: Some(crate::language::current_language().code().to_string()),
     };
     crate::doc::write_json(paths.human_docs_meta_path(project_slug), &meta)?;
     Ok(meta)
@@ -234,6 +249,10 @@ pub fn litho_human_complete(human_dir: impl AsRef<Path>) -> bool {
 
 /// Like [`litho_human_complete`], but when a research workspace is given, requires
 /// `4.Deep-Exploration/` to cover every module report under `modules/`.
+///
+/// The core file names depend on the generation language (see
+/// [`crate::language::ResolvedLanguage::litho_required_files`]); a doc set that is
+/// complete in ANY supported language counts as complete.
 pub fn litho_human_complete_with_research(
     human_dir: impl AsRef<Path>,
     litho_workspace: Option<&Path>,
@@ -242,10 +261,18 @@ pub fn litho_human_complete_with_research(
     if !dir.is_dir() {
         return false;
     }
-    for name in LITHO_REQUIRED_HUMAN_FILES {
-        if !dir.join(name).is_file() {
-            return false;
-        }
+    let core_complete = [
+        crate::language::ResolvedLanguage::ZhCn,
+        crate::language::ResolvedLanguage::En,
+    ]
+    .iter()
+    .any(|lang| {
+        lang.litho_required_files()
+            .iter()
+            .all(|name| dir.join(name).is_file())
+    });
+    if !core_complete {
+        return false;
     }
     let deep_count = count_deep_exploration_modules(dir);
     if deep_count == 0 {

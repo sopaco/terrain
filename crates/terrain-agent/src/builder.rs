@@ -21,7 +21,14 @@ use crate::tools::{
     search_knowledge_tool,
 };
 
-const INSTRUCTION: &str = "\
+/// System instruction (DeepWiki mode). Section names and UI references follow the
+/// configured language so the agent quotes headings/buttons the user actually sees.
+fn instruction(lang: terrain_core::ResolvedLanguage) -> String {
+    let s = lang.agent_context_sections();
+    let repack_button = lang.tr("重建源码索引", "Rebuild Source Index");
+    let overview_doc = lang.litho_overview_filename();
+    format!(
+        "\
 You are Terrain, a DeepWiki-style engineering knowledge assistant.
 
 Knowledge assets per project:
@@ -39,28 +46,38 @@ Do NOT read the live repository filesystem.
 2. grep_agent_pack — locate symbols, types, routes, or file paths in repomix.md
 3. read_agent_pack_file — read the matching file section (**always pass start_line/end_line**, max ~150 lines per call)
 Never load the entire repomix.md into context. Use narrow grep hits and targeted file reads.
-If the pack may be stale, tell the user to use 重建源码索引 in the Terrain UI to repack.
+If the pack may be stale, tell the user to use {repack_button} in the Terrain UI to repack.
 
 For narrative / architecture questions:
 1. Prefer search_knowledge and read_doc on human/ and structured docs
-2. For read_doc with relative paths (e.g. human/1.概述.md), always pass the current project slug
+2. For read_doc with relative paths (e.g. human/{overview_doc}), always pass the current project slug
 3. Fall back to the agent pack workflow above for implementation details
+
+The seven `##` section headings of agent/context.md in the current language: \
+{s0}, {s1}, {s2}, {s3}, {s4}, {s5}, {s6}.
 
 When citing code, use the file path and line numbers from the pack (e.g. src/foo.rs:42). \
 Include clear paths so the UI can render citations.
 
-Delegate to opencode only when the user explicitly asks to generate human/ docs via Litho skill.";
+Delegate to opencode only when the user explicitly asks to generate human/ docs via Litho skill.",
+        s0 = s[0], s1 = s[1], s2 = s[2], s3 = s[3], s4 = s[4], s5 = s[5], s6 = s[6],
+    )
+}
 
-const ASK_INSTRUCTION: &str = "\
+/// System instruction for Ask mode.
+fn ask_instruction(lang: terrain_core::ResolvedLanguage) -> String {
+    let s = lang.agent_context_sections();
+    format!(
+        "\
 You are Terrain, a DeepWiki-style engineering knowledge assistant (Ask mode).
 
 Knowledge is tiered — use the right layer:
 
-**Macro** (preloaded in user message): 项目概览, 架构设计, 模块地图 + section index. \
+**Macro** (preloaded in user message): {s0}, {s1}, {s2} + section index. \
 Answer most architecture questions from this alone.
 
-**Meso** (`read_agent_context(section=\"…\")`): One section at a time — 核心流程, 技术选型, \
-系统边界, 代码映射索引. Only when macro preload is insufficient. Never reload overview.
+**Meso** (`read_agent_context(section=\"…\")`): One section at a time — {s3}, {s4}, \
+{s5}, {s6}. Only when macro preload is insufficient. Never reload overview.
 
 **Micro** (`grep_agent_pack` → `read_agent_pack_file`): Implementation, symbols, line-level code. \
 Use grep `file_line` (not `line_number`) for read_agent_pack_file ranges (≤150 lines). \
@@ -82,7 +99,10 @@ Never end with only tool calls — synthesize findings into a helpful reply with
 
 human/ Litho docs: do not read unless user explicitly asks.
 
-When citing code, use repomix paths with line numbers (e.g. src/foo.rs:42).";
+When citing code, use repomix paths with line numbers (e.g. src/foo.rs:42).",
+        s0 = s[0], s1 = s[1], s2 = s[2], s3 = s[3], s4 = s[4], s5 = s[5], s6 = s[6],
+    )
+}
 
 #[derive(Clone)]
 pub struct AgentConfig {
@@ -128,14 +148,16 @@ pub fn build_agent(model: Arc<dyn Llm>, config: AgentConfig) -> Result<Arc<dyn A
     let paths = config.knowledge_root.clone();
     let cooldown = call_cooldown_from_env();
 
-    let instruction = if config.ask_mode {
-        ASK_INSTRUCTION
+    let lang = terrain_core::current_language();
+    let base_instruction = if config.ask_mode {
+        ask_instruction(lang)
     } else {
-        INSTRUCTION
+        instruction(lang)
     };
+    let instruction = format!("{base_instruction}\n\n{}", lang.reply_language_directive());
 
     let mut builder = LlmAgentBuilder::new("terrain")
-        .instruction(instruction)
+        .instruction(instruction.as_str())
         .model(model)
         .max_iterations(50)
         .max_output_tokens(64000)

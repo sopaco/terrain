@@ -8,6 +8,7 @@ pub mod human;
 pub mod ingest;
 pub mod integrations;
 pub mod ipc;
+pub mod language;
 pub mod model_text;
 pub mod open_path;
 pub mod path_portable;
@@ -128,6 +129,10 @@ pub use registry::{
 };
 pub use open_path::open_path_in_file_manager;
 pub use repo::validate_repo_path;
+pub use language::{
+    current_language, detect_system_language, language_from_locale, resolve_language,
+    LanguageSetting, ResolvedLanguage,
+};
 pub use settings::{
     default_profile_for, load_model_settings, normalize_model_settings, profile_for_provider,
     save_model_settings, settings_path, AcpSettings, AgentExecution, AskExecution,

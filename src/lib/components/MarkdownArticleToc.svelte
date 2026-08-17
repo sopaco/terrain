@@ -1,5 +1,6 @@
 <script lang="ts">
   import { PanelRightClose, PanelRightOpen } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import type { TocHeading } from "../markdownToc";
   import { readerLayout, toggleArticleToc } from "../stores/readerLayout.svelte";
 
@@ -61,30 +62,30 @@
   }
 </script>
 
-<aside class={`article-toc ${collapsed ? "collapsed" : ""}`} aria-label="文章目录">
+<aside class={`article-toc ${collapsed ? "collapsed" : ""}`} aria-label={tr("knowledge.toc.ariaLabel")}>
   {#if collapsed}
     <button
       type="button"
       class="article-toc-rail"
       onclick={toggleArticleToc}
       aria-expanded="false"
-      title="展开本页目录"
+      title={tr("knowledge.toc.expand")}
     >
       <PanelRightOpen size={14} strokeWidth={2} aria-hidden="true" />
-      <span class="article-toc-rail-label">本页目录</span>
+      <span class="article-toc-rail-label">{tr("knowledge.toc.title")}</span>
     </button>
   {:else}
     <div class="article-toc-panel">
       <div class="article-toc-header">
-        <span class="article-toc-title">本页目录</span>
+        <span class="article-toc-title">{tr("knowledge.toc.title")}</span>
         <span class="article-toc-count">{headings.length}</span>
         <button
           type="button"
           class="article-toc-collapse"
           onclick={toggleArticleToc}
           aria-expanded="true"
-          aria-label="收起本页目录"
-          title="收起本页目录"
+          aria-label={tr("knowledge.toc.collapse")}
+          title={tr("knowledge.toc.collapse")}
         >
           <PanelRightClose size={14} strokeWidth={2} aria-hidden="true" />
         </button>

@@ -11,7 +11,7 @@
     import UsageDetailTable from "./UsageDetailTable.svelte";
     import CloseButton from "./icons/CloseButton.svelte";
     import SlideDrawer from "./SlideDrawer.svelte";
-    import { UI_MESSAGES } from "../terminology";
+    import { tr } from "../i18n";
 
     type ChartPeriod = "day" | "month" | "year";
 
@@ -133,34 +133,37 @@
     const detailConfig = $derived.by(() => {
         if (chartPeriod === "day") {
             return {
-                title: "会话明细",
-                labelColumn: "会话",
+                title: tr("usage.detail.sessionTitle"),
+                labelColumn: tr("usage.detail.sessionColumn"),
                 rows: sortByTokensDesc(snapshot?.sessions ?? []),
                 rowLabel: sessionRowLabel,
-                emptyLabel: "近 30 天暂无会话数据",
+                emptyLabel: tr("usage.detail.emptySessions"),
             };
         }
         if (chartPeriod === "month") {
             return {
-                title: "按日明细",
-                labelColumn: "日期",
+                title: tr("usage.detail.dailyTitle"),
+                labelColumn: tr("usage.detail.dateColumn"),
                 rows: sortByPeriodDesc(snapshot?.daily ?? []),
                 rowLabel: (row: UsagePeriodEntry) => row.period,
-                emptyLabel: "暂无按日用量记录",
+                emptyLabel: tr("usage.detail.emptyDaily"),
             };
         }
         return {
-            title: "按月明细",
-            labelColumn: "月份",
+            title: tr("usage.detail.monthlyTitle"),
+            labelColumn: tr("usage.detail.monthColumn"),
             rows: sortByPeriodDesc(snapshot?.monthly ?? []),
             rowLabel: (row: UsagePeriodEntry) => row.period,
-            emptyLabel: "暂无按月用量记录",
+            emptyLabel: tr("usage.detail.emptyMonthly"),
         };
     });
 
     function sessionRowLabel(row: UsagePeriodEntry): string {
-        if (row.period.length >= 8) return `会话 ${row.period.slice(0, 8)}`;
-        return row.period || "会话";
+        if (row.period.length >= 8)
+            return tr("usage.detail.sessionPrefix", {
+                id: row.period.slice(0, 8),
+            });
+        return row.period || tr("usage.detail.sessionColumn");
     }
 
     function sessionOpenPath(row: UsagePeriodEntry): string | null {
@@ -171,16 +174,16 @@
         try {
             await openLocalPath(path);
         } catch (e) {
-            error = UI_MESSAGES.openPathFailed(e);
+            error = tr("terms.msg.openPathFailed", { error: String(e) });
         }
     }
 
     const summaryCards = $derived(
         snapshot
             ? [
-                  { label: "今日", totals: snapshot.today },
-                  { label: "近 7 天", totals: snapshot.week },
-                  { label: "本月", totals: snapshot.month },
+                  { label: tr("usage.period.today"), totals: snapshot.today },
+                  { label: tr("usage.period.week"), totals: snapshot.week },
+                  { label: tr("usage.period.month"), totals: snapshot.month },
               ]
             : [],
     );
@@ -191,11 +194,11 @@
             (snapshot?.sessions.length ?? 0) === 0,
     );
 
-    const chartPeriodOptions: { id: ChartPeriod; label: string }[] = [
-        { id: "day", label: "按日" },
-        { id: "month", label: "按月" },
-        { id: "year", label: "按年" },
-    ];
+    const chartPeriodOptions: { id: ChartPeriod; label: string }[] = $derived([
+        { id: "day", label: tr("usage.period.byDay") },
+        { id: "month", label: tr("usage.period.byMonth") },
+        { id: "year", label: tr("usage.period.byYear") },
+    ]);
 </script>
 
 {#snippet panelBody()}
@@ -210,7 +213,7 @@
             </div>
             <div class="min-w-0">
                 <h2 class="text-base font-semibold text-white">
-                    开发者 Token 用量
+                    {tr("usage.title")}
                 </h2>
             </div>
         </div>
@@ -218,9 +221,11 @@
             <div
                 class="flex items-center gap-1.5 rounded-lg border border-tr-border-strong bg-tr-elevated px-2 py-1"
                 role="group"
-                aria-label="顶栏显示维度"
+                aria-label={tr("usage.badge.dimensionLabel")}
             >
-                <span class="text-[10px] text-tr-ink-3">顶栏</span>
+                <span class="text-[10px] text-tr-ink-3"
+                    >{tr("usage.badge.label")}</span
+                >
                 <button
                     type="button"
                     class="rounded-md px-2 py-0.5 text-xs transition-colors {badgePeriod ===
@@ -230,7 +235,7 @@
                     aria-pressed={badgePeriod === "day"}
                     onclick={() => selectBadgePeriod("day")}
                 >
-                    今日
+                    {tr("usage.period.today")}
                 </button>
                 <button
                     type="button"
@@ -241,7 +246,7 @@
                     aria-pressed={badgePeriod === "month"}
                     onclick={() => selectBadgePeriod("month")}
                 >
-                    本月
+                    {tr("usage.period.month")}
                 </button>
             </div>
             <button
@@ -250,7 +255,7 @@
                 disabled={loading}
                 onclick={() => void refresh(true)}
             >
-                {loading ? "刷新中" : "刷新"}
+                {loading ? tr("common.refreshing") : tr("common.refresh")}
             </button>
             {#if !standalone}
                 <CloseButton onclick={onclose} class="px-2.5 py-1.5 text-xs" />
@@ -264,7 +269,7 @@
                 <span
                     class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"
                 ></span>
-                正在读取本地用量日志…
+                {tr("usage.loadingLogs")}
             </div>
         {:else if snapshot}
             {#if error}
@@ -278,8 +283,10 @@
             <div class="mb-5 grid gap-3 sm:grid-cols-3">
                 {#each summaryCards as card}
                     {@const highlighted =
-                        (badgePeriod === "day" && card.label === "今日") ||
-                        (badgePeriod === "month" && card.label === "本月")}
+                        (badgePeriod === "day" &&
+                            card.label === tr("usage.period.today")) ||
+                        (badgePeriod === "month" &&
+                            card.label === tr("usage.period.month"))}
                     <div
                         class="rounded-xl border p-3 {highlighted
                             ? 'border-tr-accent-soft-strong bg-tr-accent-soft'
@@ -292,7 +299,7 @@
                             {#if highlighted}
                                 <span
                                     class="ml-1 normal-case text-tr-accent"
-                                    >· 顶栏</span
+                                    >{tr("usage.badge.marker")}</span
                                 >
                             {/if}
                         </p>
@@ -310,7 +317,7 @@
                 <h3
                     class="mb-2 text-xs font-medium uppercase tracking-wide text-tr-ink-3"
                 >
-                    数据来源
+                    {tr("usage.sources.title")}
                 </h3>
                 <ul class="space-y-2">
                     {#each snapshot.probe.sources as source}
@@ -332,15 +339,19 @@
                                     ? 'text-tr-good'
                                     : 'text-tr-ink-3'}"
                             >
-                                {source.detected ? "已安装" : "未检测到"}
+                                {source.detected
+                                    ? tr("usage.sources.installed")
+                                    : tr("usage.sources.notDetected")}
                             </span>
                         </li>
                     {/each}
                 </ul>
                 {#if snapshot.generated_at}
                     <p class="mt-2 text-[10px] text-tr-ink-3">
-                        {#if snapshot.cached}缓存数据 ·
-                        {/if}更新于 {formatTime(snapshot.generated_at)}
+                        {#if snapshot.cached}{tr("usage.sources.cached")}{/if}{tr(
+                            "usage.sources.updatedAt",
+                            { time: formatTime(snapshot.generated_at) },
+                        )}
                     </p>
                 {/if}
             </section>
@@ -389,7 +400,7 @@
                             aria-pressed={chartMetric === "cost"}
                             onclick={() => (chartMetric = "cost")}
                         >
-                            成本
+                            {tr("usage.metric.cost")}
                         </button>
                     </div>
                 </div>
@@ -407,14 +418,13 @@
                 rowLabel={detailConfig.rowLabel}
                 emptyLabel={detailConfig.emptyLabel}
                 loading={detailLoading}
-                loadingLabel="正在加载会话明细…"
+                loadingLabel={tr("usage.detail.loadingSessions")}
                 rowOpenPath={chartPeriod === "day" ? sessionOpenPath : undefined}
                 onRowOpen={chartPeriod === "day" ? openSessionPath : undefined}
             />
 
             <p class="mt-4 text-[10px] leading-relaxed text-tr-ink-3">
-                成本为估算值，可能与实际账单有偏差。Cursor IDE
-                用量暂不支持统计。
+                {tr("usage.footnote")}
             </p>
         {/if}
     </div>
@@ -423,7 +433,7 @@
 {#if standalone}
     <div
         class="flex h-screen flex-col bg-tr-page text-white"
-        aria-label="开发者 Token 用量"
+        aria-label={tr("usage.title")}
     >
         {@render panelBody()}
     </div>
@@ -431,7 +441,7 @@
     <SlideDrawer
         {open}
         {onclose}
-        ariaLabel="开发者 Token 用量"
+        ariaLabel={tr("usage.title")}
         widthClass="w-[min(92vw,44rem)]"
     >
         {@render panelBody()}

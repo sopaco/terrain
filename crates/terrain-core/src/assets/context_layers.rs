@@ -66,19 +66,7 @@ pub fn split_context_sections(body: &str) -> Vec<ContextSection> {
 }
 
 fn is_macro_section(title: &str) -> bool {
-    let t = title.to_lowercase();
-    [
-        "项目概览",
-        "架构设计",
-        "模块地图",
-        "overview",
-        "architecture",
-        "module map",
-        "modules",
-        "module",
-    ]
-    .iter()
-    .any(|k| t.contains(k))
+    crate::language::is_macro_context_section(title)
 }
 
 fn truncate_chars(text: &str, max: usize) -> (String, bool) {

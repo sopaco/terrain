@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { tr } from "../i18n";
 
   export type UsageBarPoint = {
     label: string;
@@ -20,8 +21,10 @@
     bars,
     granularity = "day",
     metric = "tokens",
-    emptyLabel = "暂无数据",
+    emptyLabel,
   }: Props = $props();
+
+  const emptyText = $derived(emptyLabel ?? tr("usage.chart.empty"));
 
   let hoveredIndex = $state<number | null>(null);
   let scrollEl = $state<HTMLDivElement | null>(null);
@@ -75,7 +78,7 @@
     if (granularity === "month" && /^\d{4}-\d{2}$/.test(label)) {
       const month = Number.parseInt(label.slice(5), 10);
       const years = new Set(allLabels.map((l) => l.slice(0, 4)));
-      if (years.size <= 1) return `${month}月`;
+      if (years.size <= 1) return tr("usage.chart.monthShort", { month });
       const yy = label.slice(2, 4);
       return `${yy}/${month}`;
     }
@@ -86,14 +89,18 @@
     if (/^\d{4}-\d{2}$/.test(label)) {
       const year = label.slice(0, 4);
       const month = Number.parseInt(label.slice(5), 10);
-      return `${year}年${month}月`;
+      return tr("usage.chart.yearMonth", { year, month });
     }
     if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
       const [year, month, day] = label.split("-");
-      return `${year}年${Number.parseInt(month, 10)}月${Number.parseInt(day, 10)}日`;
+      return tr("usage.chart.yearMonthDay", {
+        year,
+        month: Number.parseInt(month, 10),
+        day: Number.parseInt(day, 10),
+      });
     }
     if (/^\d{4}$/.test(label)) {
-      return `${label}年`;
+      return tr("usage.chart.year", { year: label });
     }
     return label;
   }
@@ -139,7 +146,7 @@
 
 {#if bars.length === 0}
   <div class="flex h-40 items-center justify-center rounded-xl border border-tr-border-strong bg-tr-elevated text-sm text-tr-ink-3">
-    {emptyLabel}
+    {emptyText}
   </div>
 {:else}
   <div class="rounded-xl border border-tr-border-strong bg-tr-elevated px-3 pb-3 pt-3">
@@ -153,7 +160,7 @@
         style:min-width="{chartMinWidth}px"
         style:min-height="{PLOT_HEIGHT + LABEL_AREA}px"
         role="list"
-        aria-label="用量柱状图"
+        aria-label={tr("usage.chart.ariaLabel")}
         onmouseleave={clearBar}
       >
         {#each bars as bar, i}
@@ -209,16 +216,16 @@
             {formatTokens(hoveredBar.tokens)}
           </span>
           <span>
-            <span class="text-tr-ink-3">成本</span>
+            <span class="text-tr-ink-3">{tr("usage.metric.cost")}</span>
             {formatCost(hoveredBar.cost)}
           </span>
           <span>
-            <span class="text-tr-ink-3">当前指标</span>
+            <span class="text-tr-ink-3">{tr("usage.chart.currentMetric")}</span>
             {metric === "cost" ? formatCost(hoveredBar.cost) : formatTokens(hoveredBar.tokens)}
           </span>
         </div>
       {:else}
-        <p class="text-tr-ink-3">将鼠标移到柱体上查看该时段用量与成本</p>
+        <p class="text-tr-ink-3">{tr("usage.chart.hoverHint")}</p>
       {/if}
     </div>
   </div>

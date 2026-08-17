@@ -62,13 +62,19 @@ pub fn read_agent_context_tool(
     paths: KnowledgePaths,
     generator: Arc<dyn AgentContextGenerator>,
 ) -> Arc<dyn Tool> {
+    let lang = terrain_core::current_language();
+    let s = lang.agent_context_sections();
+    let description = format!(
+        "Meso layer: read agent/context.md by section. Overview is preloaded in the user message — \
+         pass section (e.g. \"{}\", \"{}\") only when needed. \
+         For source code use grep_agent_pack → read_agent_pack_file (micro layer). \
+         Do not repeat identical project+section.",
+        s[3], s[5],
+    );
     Arc::new(
         FunctionTool::new(
             "read_agent_context",
-            "Meso layer: read agent/context.md by section. Overview is preloaded in the user message — \
-             pass section (e.g. \"核心流程\", \"系统边界\") only when needed. \
-             For source code use grep_agent_pack → read_agent_pack_file (micro layer). \
-             Do not repeat identical project+section.",
+            description,
             move |ctx, args| {
                 let paths = paths.clone();
                 let generator = generator.clone();
@@ -97,12 +103,13 @@ pub fn read_agent_context_tool(
                         .map(str::trim)
                         .filter(|s| !s.is_empty());
                     if section_query.is_none() && agent_context_ready(&paths, &params.project) {
-                        return Err(adk_core::AdkError::tool(
+                        return Err(adk_core::AdkError::tool(format!(
                             "Macro overview is already preloaded in the user message. \
                              Do not call read_agent_context without section. \
-                             For a specific heading use section=\"核心流程\" (etc.). \
+                             For a specific heading use section=\"{}\" (etc.). \
                              For code use grep_agent_pack → read_agent_pack_file.",
-                        ));
+                            s[3],
+                        )));
                     }
 
                     let was_pack_ready = agent_pack_ready(&paths, &params.project);
@@ -447,13 +454,16 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
 
 
 pub fn read_doc_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
+    let overview_doc = terrain_core::current_language().litho_overview_filename();
     Arc::new(
         FunctionTool::new(
             "read_doc",
-            "Read a Litho or structured knowledge Markdown document. \
-             Use absolute paths from search_knowledge hits, or project-relative paths like \
-             `human/1.概述.md` or `agent/context.md` (paths relative to `.terrain/`). \
-             Pass `project` when the path is ambiguous.",
+            format!(
+                "Read a Litho or structured knowledge Markdown document. \
+                 Use absolute paths from search_knowledge hits, or project-relative paths like \
+                 `human/{overview_doc}` or `agent/context.md` (paths relative to `.terrain/`). \
+                 Pass `project` when the path is ambiguous."
+            ),
             move |_ctx, args| {
                 let paths = paths.clone();
                 async move {

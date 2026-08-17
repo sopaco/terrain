@@ -1,7 +1,7 @@
 <script lang="ts">
   import { BookOpen, LayoutDashboard, SquareTerminal, Workflow } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import type { AppTab } from "../types";
-  import { TERMS } from "../terminology";
 
   interface Props {
     active: AppTab;
@@ -11,12 +11,12 @@
 
   let { active, disabled = false, onchange }: Props = $props();
 
-  const tabs: { id: AppTab; label: string; title: string }[] = [
-    { id: "overview", label: "概览", title: "项目概览" },
-    { id: "knowledge", label: "知识库", title: TERMS.knowledgeTab },
-    { id: "env", label: "工程环境", title: TERMS.agentEnv },
-    { id: "sdd", label: "SDD", title: "SDD 工作流：规格驱动开发" },
-  ];
+  const tabs: { id: AppTab; label: string; title: string }[] = $derived([
+    { id: "overview", label: tr("misc.nav.overview"), title: tr("misc.nav.overviewTitle") },
+    { id: "knowledge", label: tr("misc.nav.knowledge"), title: tr("terms.knowledgeTab") },
+    { id: "env", label: tr("misc.nav.env"), title: tr("terms.agentEnv") },
+    { id: "sdd", label: "SDD", title: tr("misc.nav.sddTitle") },
+  ]);
 </script>
 
 {#snippet navButton(tab: (typeof tabs)[number])}

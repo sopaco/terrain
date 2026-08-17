@@ -41,6 +41,11 @@ impl Runtime {
         self.set_model_config(resolve_model_config());
     }
 
+    /// Drop the cached chat engine (e.g. after language or ACP settings change).
+    pub fn invalidate_chat_engine(&self) {
+        *self.chat.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+
     pub fn acp_settings(&self) -> AcpSettings {
         load_model_settings()
             .map(|s| s.acp)

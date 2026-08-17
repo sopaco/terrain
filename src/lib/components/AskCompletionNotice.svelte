@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ChevronDown, ChevronUp, X } from "@lucide/svelte";
+  import { tr } from "../i18n";
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import {
     askCompletion,
@@ -42,14 +43,14 @@
         onclick={handleHeaderClick}
       >
         <p id="ask-notice-title" class="text-sm font-semibold text-tr-ink">
-          Ask 回复完成
+          {tr("ask.notice.title")}
         </p>
         <p class="truncate text-xs text-tr-ink-3">{notice.title}</p>
       </button>
       <button
         type="button"
         class="tr-press shrink-0 rounded-lg p-1 text-tr-ink-3 transition-colors hover:bg-tr-elevated"
-        aria-label="关闭通知"
+        aria-label={tr("ask.notice.close")}
         onclick={() => dismissAskCompletionNotice()}
       >
         <X size={16} strokeWidth={2} />
@@ -75,10 +76,10 @@
       >
         {#if notice.expanded}
           <ChevronDown size={14} strokeWidth={2} />
-          收起
+          {tr("common.collapse")}
         {:else}
           <ChevronUp size={14} strokeWidth={2} />
-          展开回复
+          {tr("ask.notice.expand")}
         {/if}
       </button>
       <button
@@ -86,7 +87,7 @@
         class="tr-press ml-auto rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-tr-accent-hover"
         onclick={handleOpen}
       >
-        打开 Ask
+        {tr("ask.notice.open")}
       </button>
     </div>
   </div>

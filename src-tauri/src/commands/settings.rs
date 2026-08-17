@@ -110,12 +110,18 @@ pub fn save_png_files(
 ) -> Result<Vec<String>, String> {
     use base64::Engine;
 
+    let lang = terrain_core::current_language();
     let dir = std::path::PathBuf::from(dir);
     if !dir.is_dir() {
-        return Err(format!("目录不存在：{}", dir.display()));
+        return Err(lang
+            .tr(
+                &format!("目录不存在：{}", dir.display()),
+                &format!("Directory does not exist: {}", dir.display()),
+            )
+            .to_string());
     }
     if pngs_base64.is_empty() {
-        return Err("没有可导出的图片".to_string());
+        return Err(lang.tr("没有可导出的图片", "No images to export").to_string());
     }
 
     let stem = sanitize_file_stem(&base_name);

@@ -478,20 +478,30 @@ pub fn meta_inputs_status(paths: &KnowledgePaths, project_slug: &str) -> (bool, 
         .agent_pack_dir(project_slug)
         .join("meta-inputs-manifest.json");
     if let Ok(m) = crate::doc::read_json::<MetaInputsManifest>(&manifest_path) {
+        let lang = crate::language::current_language();
         let summary = if m.meta_files.is_empty() {
-            "无 terrain-meta.json".into()
+            lang.tr("无 terrain-meta.json", "No terrain-meta.json").into()
         } else if m.input_count == 0 {
-            format!("{} meta 文件 · 0 inputs", m.meta_files.len())
-        } else {
-            format!(
-                "{} inputs · {} meta 文件",
-                m.input_count,
-                m.meta_files.len()
+            lang.tr(
+                &format!("{} meta 文件 · 0 inputs", m.meta_files.len()),
+                &format!("{} meta files · 0 inputs", m.meta_files.len()),
             )
+            .to_string()
+        } else {
+            lang.tr(
+                &format!("{} inputs · {} meta 文件", m.input_count, m.meta_files.len()),
+                &format!("{} inputs · {} meta files", m.input_count, m.meta_files.len()),
+            )
+            .to_string()
         };
         return (meta_inputs_ready(paths, project_slug), summary);
     }
-    (false, "未收集（生成 Agent 上下文时写入）".into())
+    (
+        false,
+        crate::language::current_language()
+            .tr("未收集（生成 Agent 上下文时写入）", "Not collected (written when the Agent context is generated)")
+            .into(),
+    )
 }
 
 #[cfg(test)]

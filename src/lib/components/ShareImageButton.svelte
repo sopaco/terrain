@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Check, Download, Image } from "@lucide/svelte";
+  import { tr } from "../i18n";
 
   interface Props {
     /** `copy` puts one page on the clipboard; `export` writes every page to disk. */
@@ -16,19 +17,19 @@
   const label = $derived(
     copied
       ? isExport
-        ? "已导出"
-        : "已复制"
+        ? tr("ask.shareImage.exported")
+        : tr("common.copied")
       : copying
         ? isExport
-          ? "导出中…"
-          : "生成中…"
+          ? tr("ask.shareImage.exporting")
+          : tr("common.generating")
         : isExport
-          ? "导出长图"
-          : "复制图片",
+          ? tr("ask.shareImage.exportLong")
+          : tr("ask.shareImage.copyImage"),
   );
 
   const title = $derived(
-    isExport ? "导出为 PNG 文件（长回答自动分页）" : "复制为图片（长回答复制第 1 页）",
+    isExport ? tr("ask.shareImage.exportTitle") : tr("ask.shareImage.copyTitle"),
   );
 
   const buttonClass = $derived(

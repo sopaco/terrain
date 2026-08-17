@@ -113,13 +113,22 @@ pub fn fallback_search_reply(
 
     let citations = merge_citations(citations, extract_source_citations(query, repo_path));
 
+    let lang = terrain_core::current_language();
     let answer = if citations.is_empty() {
-        format!("LLM 不可用（{llm_error}）。未找到匹配文档。")
-    } else {
-        format!(
-            "LLM 不可用（{llm_error}）。通过搜索找到 {} 条文档引用。",
-            citations.len()
+        lang.tr(
+            &format!("LLM 不可用（{llm_error}）。未找到匹配文档。"),
+            &format!("LLM unavailable ({llm_error}). No matching documents found."),
         )
+        .to_string()
+    } else {
+        lang.tr(
+            &format!("LLM 不可用（{llm_error}）。通过搜索找到 {} 条文档引用。", citations.len()),
+            &format!(
+                "LLM unavailable ({llm_error}). Found {} document references via search.",
+                citations.len()
+            ),
+        )
+        .to_string()
     };
 
     ChatReply {

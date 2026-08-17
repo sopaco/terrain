@@ -143,11 +143,16 @@ fn prune_old_sessions(paths: &KnowledgePaths, project_slug: &str) -> crate::erro
     Ok(())
 }
 
+fn is_default_session_title(t: &str) -> bool {
+    t == "新对话" || t == crate::language::current_language().tr("新对话", "New Chat")
+}
+
 pub fn create_ask_session(
     paths: &KnowledgePaths,
     project_slug: &str,
     question: &str,
 ) -> crate::error::Result<AskSessionInfo> {
+    let lang = crate::language::current_language();
     let title = title_from_question(question, TITLE_CHAR_LIMIT);
     let id = new_ask_session_id(&title);
     let sessions_dir = paths.ask_sessions_dir(project_slug);
@@ -158,7 +163,7 @@ pub fn create_ask_session(
     let meta = SessionMetaFile {
         id: id.clone(),
         title: if title.is_empty() {
-            "新对话".to_string()
+            lang.tr("新对话", "New Chat").to_string()
         } else {
             title
         },
@@ -278,7 +283,7 @@ pub fn save_ask_messages(
 
     if let Some(q) = first_question {
         let title = title_from_question(q, TITLE_CHAR_LIMIT);
-        if !title.is_empty() && (meta.title.is_empty() || meta.title == "新对话") {
+        if !title.is_empty() && (meta.title.is_empty() || is_default_session_title(&meta.title)) {
             meta.title = title;
         }
     }

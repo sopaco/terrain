@@ -1,5 +1,6 @@
 <script lang="ts">
   import { CircleQuestionMark } from "@lucide/svelte";
+  import { tr } from "../../i18n";
 
   type Variant = "icon" | "toolbar";
 
@@ -16,12 +17,14 @@
   let {
     onclick,
     title,
-    ariaLabel = "帮助说明",
+    ariaLabel,
     class: className = "",
     size,
     strokeWidth,
     variant = "icon",
   }: Props = $props();
+
+  const helpLabel = $derived(ariaLabel ?? tr("misc.help.button"));
 
   const variantClass: Record<Variant, string> = {
     icon: "tr-press inline-flex items-center justify-center text-tr-ink-3 transition-colors hover:text-tr-accent-hover",
@@ -37,7 +40,7 @@
   type="button"
   class="{variantClass[variant]} {className}"
   {title}
-  aria-label={ariaLabel}
+  aria-label={helpLabel}
   {onclick}
 >
   <CircleQuestionMark size={iconSize} strokeWidth={iconStroke} aria-hidden="true" />

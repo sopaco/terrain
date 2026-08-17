@@ -43,8 +43,12 @@ pub(crate) fn build_ask_prompt(
     project: Option<&str>,
     paths: &KnowledgePaths,
 ) -> Result<String> {
+    let lang = terrain_core::current_language();
     let Some(slug) = project else {
-        return Ok(query.to_string());
+        return Ok(format!(
+            "{}\n\n## User question\n{query}",
+            lang.reply_language_directive()
+        ));
     };
 
     let repo_path = resolve_project_repo_path(paths, slug, None).unwrap_or_default();
@@ -72,11 +76,13 @@ pub(crate) fn build_ask_prompt(
     let mut sections = vec![format!(
         "Current project slug: {slug}\n\
 Repository path (citations / UI only): {repo_path}\n\n\
+{reply_directive}\n\n\
 TOOL RULES — three layers:\n\
 {macro_rule}\n\
 • Meso: read_agent_context(section=\"…\") for a specific heading when needed\n\
 • Micro: grep_agent_pack → read_agent_pack_file for source code\n\
-Do NOT call read_agent_pack_meta when pack metadata is preloaded."
+Do NOT call read_agent_pack_meta when pack metadata is preloaded.",
+        reply_directive = lang.reply_language_directive(),
     )];
 
     if let Some(ref fresh) = freshness {
@@ -146,10 +152,11 @@ Total stored: {} chars in {} sections{}. Do NOT re-fetch overview.\n\n\
             overview.macro_markdown,
         ));
     } else if ctx.ready {
+        let quick_refresh_button = lang.tr("快速保鲜", "Quick Refresh");
         sections.push(format!(
             "## Architecture context: STALE (score < {MACRO_PRELOAD_THRESHOLD})\n\
 Macro overview withheld due to low freshness. Use read_agent_context(section=\"…\") \
-only after grep_agent_pack verification, or tell the user to run 快速保鲜 in Terrain.\n"
+only after grep_agent_pack verification, or tell the user to run {quick_refresh_button} in Terrain.\n"
         ));
     } else {
         sections.push(

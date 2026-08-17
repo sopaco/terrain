@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Check } from "@lucide/svelte";
+  import { tr } from "../i18n";
 
   interface Props {
     copied?: boolean;
@@ -27,14 +28,14 @@
 >
   {#if copied}
     <Check size={12} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
-    已复制
+    {tr("common.copied")}
   {:else if copying}
     <span
       class="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-tr-border-strong border-t-white/80"
       aria-hidden="true"
     ></span>
-    复制中…
+    {tr("ask.copyMarkdown.copying")}
   {:else}
-    复制 Markdown
+    {tr("ask.copyMarkdown.label")}
   {/if}
 </button>
