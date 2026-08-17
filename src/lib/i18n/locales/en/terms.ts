@@ -6,7 +6,7 @@ export default {
   agentEnv: "Agent-ready Engineering Environment",
   short: {
     agentKnowledge: "Agent Knowledge Assets",
-    humanKnowledge: "Human Knowledge Base",
+    humanKnowledge: "Human Knowledge",
   },
   generate: "Generate {term}",
   generating: "Generating…",

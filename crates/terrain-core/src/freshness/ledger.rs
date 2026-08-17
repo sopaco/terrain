@@ -2,6 +2,9 @@
 
 use std::path::Path;
 
+use chrono::{DateTime, Utc};
+
+use crate::assets::agent_context_ready;
 use crate::doc::read_json;
 use crate::error::Result;
 use crate::paths::KnowledgePaths;
@@ -70,6 +73,29 @@ pub(crate) fn freshness_ledger_still_valid(
         && ctx_meta.generated_at.as_str() > ledger_at.as_str() {
             return false;
         }
+
+    let ctx_path = paths.agent_context_main(project_slug);
+    if ctx_path.is_file()
+        && let Ok(meta) = std::fs::metadata(&ctx_path)
+        && let Ok(modified) = meta.modified()
+    {
+        let modified_at = DateTime::<Utc>::from(modified).to_rfc3339();
+        if modified_at.as_str() > ledger_at.as_str() {
+            return false;
+        }
+    }
+
+    // `context-meta.json` can lag behind a restored or hand-edited `context.md`.
+    let ctx_ready_now = agent_context_ready(paths, project_slug);
+    let ctx_cached_not_ready = ledger
+        .assets
+        .agent_context
+        .stale_reason
+        .as_deref()
+        == Some("asset_not_ready");
+    if ctx_ready_now != !ctx_cached_not_ready {
+        return false;
+    }
 
     true
 }

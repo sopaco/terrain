@@ -14,7 +14,12 @@ Produce `agent/context.md` — a **dense, architecture-oriented** document for C
 
 ## Output contract
 
-Write to `TERRAIN_AGENT_CONTEXT_OUTPUT` or the path given in the prompt.
+When Terrain runs context generation, return the **complete** markdown document as your reply;
+Terrain persists it as `agent/context.md`. Do **not** write the output file yourself in that
+mode — a reply that is only a completion summary will overwrite a good on-disk document.
+
+When a prompt explicitly delegates file writing to you (no “Terrain will persist your reply”
+clause), write to `TERRAIN_AGENT_CONTEXT_OUTPUT` or the path given in the prompt.
 
 Required sections (Markdown `##` headings), in the language specified by the
 prompt's `LANGUAGE` directive (Chinese names below; English equivalents in

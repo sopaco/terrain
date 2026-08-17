@@ -15,8 +15,8 @@ mod repomix;
 pub use agent_context::{
     agent_context_baseline_head, agent_context_fresh, agent_context_ready,
     agent_context_synced_with_head, build_agent_context_prompt,
-    build_agent_context_update_prompt, read_agent_context_body, read_agent_context_status,
-    refresh_agent_context_baseline, write_agent_context,
+    build_agent_context_update_prompt, context_body_ready, read_agent_context_body,
+    read_agent_context_status, refresh_agent_context_baseline, write_agent_context,
 };
 pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{

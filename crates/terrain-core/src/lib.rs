@@ -40,7 +40,7 @@ pub use assets::{
     agent_context_synced_with_head, build_agent_context_prompt,
     build_agent_context_update_prompt, build_context_overview, build_litho_update_prompt,
     build_generation_plan, collect_knowledge_dir_inputs, collect_project_meta,
-    count_knowledge_markdown_files, count_markdown_in_dir, default_agent_arch_skill_dir,
+    context_body_ready, count_knowledge_markdown_files, count_markdown_in_dir, default_agent_arch_skill_dir,
     default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
     extract_context_section, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
     human_docs_baseline_head, list_human_doc_names,

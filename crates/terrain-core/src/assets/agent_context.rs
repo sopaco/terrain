@@ -14,6 +14,12 @@ use crate::paths::KnowledgePaths;
 use crate::preset_skills::default_agent_arch_skill_dir;
 use crate::schema::{AgentContextMeta, AgentContextStatus, DocFrontmatter, DocType};
 
+/// Minimum shape for a usable `agent/context.md` body (without frontmatter).
+pub fn context_body_ready(body: &str) -> bool {
+    let body = body.trim();
+    body.len() >= 500 && body.matches("\n## ").count() >= 4
+}
+
 pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
     let path = paths.agent_context_main(project_slug);
     if !path.is_file() {
@@ -21,10 +27,7 @@ pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
     }
     read_doc(&path)
         .ok()
-        .map(|doc| {
-            let body = doc.body.trim();
-            body.len() >= 500 && body.matches("\n## ").count() >= 4
-        })
+        .map(|doc| context_body_ready(&doc.body))
         .unwrap_or(false)
 }
 
@@ -117,8 +120,10 @@ pub fn read_agent_context_status(paths: &KnowledgePaths, project_slug: &str) -> 
         .and_then(|m| m.modified().ok())
         .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339());
 
+    let ready = context_body_ready(&doc.body);
+
     AgentContextStatus {
-        ready: true,
+        ready,
         path: path.display().to_string(),
         excerpt,
         generated_at,
@@ -506,6 +511,20 @@ mod tests {
             language: None,
         };
         crate::doc::write_json(paths.agent_context_meta(slug), &meta).unwrap();
+    }
+
+    #[test]
+    fn context_body_ready_requires_length_and_sections() {
+        assert!(!context_body_ready("too short"));
+        assert!(!context_body_ready(&"x".repeat(600)));
+        let minimal = format!(
+            "intro\n\n{}\n\n{}\n\n{}\n\n{}",
+            "## A\n\n".to_string() + &"x".repeat(130),
+            "## B\n\n".to_string() + &"x".repeat(130),
+            "## C\n\n".to_string() + &"x".repeat(130),
+            "## D\n\n".to_string() + &"x".repeat(130),
+        );
+        assert!(context_body_ready(&minimal));
     }
 
     #[test]
