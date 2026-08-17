@@ -203,7 +203,8 @@ pub fn search_knowledge_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
         FunctionTool::new(
             "search_knowledge",
             "Full-text search for structured docs (interfaces/, routes/, modules/) only. \
-             Architecture is preloaded — do not search for overview/architecture topics.",
+             Architecture is preloaded — do not search for overview/architecture topics. \
+             Each hit includes `rel_path` for read_doc.",
             move |_ctx, args| {
                 let paths = paths.clone();
                 async move {
@@ -455,16 +456,15 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
 
 pub fn read_doc_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
     let overview_doc = terrain_core::current_language().litho_overview_filename();
-    let zh_overview = terrain_core::ResolvedLanguage::ZhCn.litho_overview_filename();
-    let en_overview = terrain_core::ResolvedLanguage::En.litho_overview_filename();
     Arc::new(
         FunctionTool::new(
             "read_doc",
             format!(
                 "Read a Litho or structured knowledge Markdown document. \
-                 Use absolute paths from search_knowledge hits, or project-relative paths like \
-                 `human/{overview_doc}`, `human/{zh_overview}`, or `human/{en_overview}`, \
-                 or `agent/context.md` (paths relative to `.terrain/`). \
+                 `path` accepts: absolute paths; knowledge-root-relative paths like \
+                 `human/{overview_doc}` or `modules/core.md`; bare filenames like \
+                 `{overview_doc}` or `core` (resolved under human/, modules/, etc.); \
+                 or `.terrain/`-prefixed paths. Use `rel_path` from search_knowledge hits. \
                  Pass `project` when the path is ambiguous."
             ),
             move |_ctx, args| {
@@ -504,6 +504,8 @@ pub fn read_doc_ask_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
             "read_doc",
             "Read a knowledge Markdown document. Prefer read_agent_context for architecture. \
              Use for agent/context.md, structured docs (modules/, interfaces/, routes/). \
+             `path` accepts absolute paths, knowledge-root-relative paths, or bare filenames \
+             (e.g. `core` → modules/core.md). Prefer `rel_path` from search_knowledge hits. \
              Do NOT read human/ Litho docs when agent/context.md exists — use read_agent_context instead.",
             move |_ctx, args| {
                 let paths = paths.clone();
@@ -573,9 +575,10 @@ struct SearchArgs {
 
 #[derive(Debug, Deserialize, serde::Serialize, JsonSchema)]
 struct ReadDocArgs {
-    /// Document path (absolute, or relative to a project / knowledge root)
+    /// Document path: absolute, knowledge-root-relative (`human/1.概述.md`, `modules/core.md`),
+    /// or bare filename (`1.概述.md`, `core`) resolved under known subdirectories.
     path: String,
-    /// Project slug when `path` is relative (e.g. `human/1.概述.md`)
+    /// Project slug when `path` is relative or ambiguous (e.g. bare filename)
     project: Option<String>,
 }
 
