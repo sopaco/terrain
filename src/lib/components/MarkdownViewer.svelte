@@ -72,7 +72,7 @@
     renderer.code = ({ text, lang }) => {
       if (lang === "mermaid") {
         if (!allowMermaid) {
-          return `<div class="mermaid-pending"><span class="mermaid-pending-label">Diagram (loading)</span><pre><code>${escapeHtml(text)}</code></pre></div>`;
+          return `<div class="mermaid-pending"><span class="mermaid-pending-label">${escapeHtml(tr("knowledge.markdown.diagramLoading"))}</span><pre><code>${escapeHtml(text)}</code></pre></div>`;
         }
         return `<div class="mermaid-wrap" data-mermaid-source="${encodeURIComponent(text)}"></div>`;
       }
@@ -82,7 +82,7 @@
       return (
         `<div class="code-block tr-syntax"${langAttr}>` +
         `<div class="code-block-bar">` +
-        `<span class="code-block-lang">${escapeHtml(label || "text")}</span>` +
+        `<span class="code-block-lang">${escapeHtml(label || tr("knowledge.markdown.diagramLangFallback"))}</span>` +
         `<button type="button" class="code-copy" aria-label="${escapeHtml(tr("knowledge.markdown.copyCode"))}">${escapeHtml(tr("common.copy"))}</button>` +
         `</div>` +
         `<pre><code${langClass}>${escapeHtml(text)}</code></pre>` +

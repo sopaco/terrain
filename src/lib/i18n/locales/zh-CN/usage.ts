@@ -14,6 +14,7 @@ export default {
   },
   metric: {
     cost: "成本",
+    tokens: "Token",
   },
   badge: {
     label: "顶栏",
@@ -38,6 +39,7 @@ export default {
     ariaLabel: "用量柱状图",
     currentMetric: "当前指标",
     hoverHint: "将鼠标移到柱体上查看该时段用量与成本",
+    barSummary: "{label} · {tokens} · {cost}",
     monthShort: "{month}月",
     yearMonth: "{year}年{month}月",
     yearMonthDay: "{year}年{month}月{day}日",
@@ -61,6 +63,7 @@ export default {
     loading: "正在加载…",
     input: "输入",
     output: "输出",
+    cache: "缓存",
     viewInFileManager: "在文件管理器中查看本地记录",
     openInFileManager: "在文件管理器中打开 {label}",
   },

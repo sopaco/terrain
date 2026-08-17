@@ -251,8 +251,12 @@
   function formatUsageLine(usage?: TokenUsage | null): string | null {
     if (!usage) return null;
     if (usage.input_tokens === 0 && usage.output_tokens === 0) return null;
-    const suffix = usage.estimated ? " (estimated)" : "";
-    return `Tokens — input ${usage.input_tokens.toLocaleString()} · output ${usage.output_tokens.toLocaleString()}${suffix}`;
+    const suffix = usage.estimated ? tr("ask.usageLine.estimated") : "";
+    return tr("ask.usageLine.template", {
+      input: usage.input_tokens.toLocaleString(),
+      output: usage.output_tokens.toLocaleString(),
+      suffix,
+    });
   }
 
   function showCopyToast(text: string, ok = true) {

@@ -16,6 +16,7 @@ export default {
     add: "添加并初始化仓库",
     adding: "正在添加并初始化…",
     openFolder: "打开仓库目录",
+    openFolderFor: "打开 {name} 的文件夹",
     remove: "从列表移除",
     removeAria: "从列表移除 {label}",
     removeConfirm:
@@ -33,8 +34,9 @@ export default {
     overview: "概览",
     overviewTitle: "项目概览",
     knowledge: "知识库",
-    env: "工程环境",
+    env: "环境",
     sddTitle: "SDD 工作流：规格驱动开发",
+    ariaLabel: "主导航",
   },
   mermaid: {
     title: "Mermaid 图表",

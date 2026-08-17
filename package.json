@@ -1,7 +1,7 @@
 {
   "name": "terrain",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.9.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "build:app": "tauri build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check:i18n": "bun run scripts/check-i18n-parity.ts",
     "gen:types": "cargo run -p terrain-ts-export --bin export-ts-types",
     "tauri": "tauri"
   },

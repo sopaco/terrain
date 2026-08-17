@@ -32,5 +32,7 @@ export default {
   },
   markdown: {
     copyCode: "Copy code",
+    diagramLoading: "Diagram (loading)",
+    diagramLangFallback: "text",
   },
 } as const;

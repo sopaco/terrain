@@ -2,18 +2,19 @@
  * Lightweight i18n for the Terrain GUI.
  *
  * - The persisted preference is `language` in `~/.terrain/settings.json`
- *   (`LanguageSetting`: "system" | "zh-CN" | "en"), shared with the CLI and
+ *   (`LanguageSetting`: "system" | "zh-CN" | "en`), shared with the CLI and
  *   the Rust backend. "system" resolves via `navigator.language`.
  * - Dictionaries live in `./locales/<locale>/<module>.ts`; `zh-CN` is the
  *   schema source, `en` must mirror the same keys.
  * - Usage in components: `import { tr } from "$lib/i18n";` then
  *   `{tr("settings.title")}` or `{tr("freshness.behind", { count: 4 })}`.
- *   `tr` reads reactive `$state` locale, so templates and `$derived` update
- *   immediately when language changes.
+ *
+ * Rust UI strings use `language::ResolvedLanguage::tr(zh, en)`; keep wording
+ * aligned with matching frontend keys where possible (see `scripts/check-i18n-parity.ts`).
  */
 import type { LanguageSetting } from "../generated/LanguageSetting";
-import { zhCN } from "./locales/zh-CN";
-import { en } from "./locales/en";
+import { getModelSettings } from "../api";
+import { syncStatusLocale } from "../stores/status.svelte";
 import {
   detectSystemLocale,
   initLocale,
@@ -21,67 +22,43 @@ import {
   resolveLocale,
   type Locale,
 } from "./locale.svelte";
+import {
+  isIdleStatusMessage,
+  t,
+  tr,
+  translate,
+  type Messages,
+} from "./translate";
+import { collectMessageKeys } from "./keys";
 
-export type { Locale, LanguageSetting };
-export { detectSystemLocale, initLocale, locale, resolveLocale };
-
-export type Messages = typeof zhCN;
-
-const DICTS: Record<Locale, Messages> = {
-  "zh-CN": zhCN,
-  // Cast: `en` mirrors the zh-CN schema; any key missing during incremental
-  // roll-out falls back to zh-CN at runtime (see `translate`).
-  en: en as unknown as Messages,
+export type { Locale, LanguageSetting, Messages };
+export {
+  collectMessageKeys,
+  detectSystemLocale,
+  initLocale,
+  isIdleStatusMessage,
+  locale,
+  resolveLocale,
+  t,
+  tr,
+  translate,
 };
 
-function lookup(
-  dict: unknown,
-  path: string,
-): string | undefined {
-  let node = dict;
-  for (const part of path.split(".")) {
-    if (node == null || typeof node !== "object") return undefined;
-    node = (node as Record<string, unknown>)[part];
+/** Load persisted language before first paint (main + usage windows). */
+export async function bootstrapLocale(): Promise<void> {
+  try {
+    const settings = await getModelSettings();
+    applyLocale(settings.language);
+  } catch {
+    applyLocale("system");
   }
-  return typeof node === "string" ? node : undefined;
 }
 
-function interpolate(
-  template: string,
-  params?: Record<string, string | number>,
-): string {
-  if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
-    name in params ? String(params[name]) : match,
-  );
-}
-
-export function translate(
-  loc: Locale,
-  key: string,
-  params?: Record<string, string | number>,
-): string {
-  const value =
-    lookup(DICTS[loc], key) ?? lookup(DICTS["zh-CN"], key);
-  if (value === undefined) {
-    console.warn(`[i18n] missing key: ${key}`);
-    return key;
-  }
-  return interpolate(value, params);
-}
-
-/** Reactive translator for Svelte components and `$derived` blocks. */
-export function tr(
-  key: string,
-  params?: Record<string, string | number>,
-): string {
-  return translate(locale.current, key, params);
-}
-
-/** Non-reactive imperative access for .ts modules outside components. */
-export function t(
-  key: string,
-  params?: Record<string, string | number>,
-): string {
-  return translate(locale.current, key, params);
+/**
+ * Set locale from persisted settings and refresh dependent UI (status bar, etc.).
+ * Call at app bootstrap and whenever the user saves language settings.
+ */
+export function applyLocale(setting: LanguageSetting | null | undefined): void {
+  initLocale(setting);
+  syncStatusLocale();
 }

@@ -16,6 +16,38 @@ const MENU_QUIT: &str = "quit";
 pub fn init(app: &tauri::App) -> tauri::Result<()> {
     attach_main_window_close_handler(app)?;
 
+    let menu = build_tray_menu(app)?;
+
+    let icon = tauri::include_image!("icons/64x64.png");
+
+    let _tray = TrayIconBuilder::with_id("terrain-tray")
+        .icon(icon)
+        .menu(&menu)
+        .tooltip("Terrain")
+        .show_menu_on_left_click(true)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            MENU_SHOW_MAIN => show_main_window(app),
+            MENU_USAGE => open_usage_window(app),
+            MENU_ABOUT => show_about(app),
+            MENU_QUIT => app.exit(0),
+            _ => {}
+        })
+        .build(app)?;
+
+    Ok(())
+}
+
+/// Rebuild tray labels after the user changes the UI language.
+pub fn refresh_menu(app: &AppHandle) -> tauri::Result<()> {
+    let Some(tray) = app.tray_by_id("terrain-tray") else {
+        return Ok(());
+    };
+    let menu = build_tray_menu(app)?;
+    tray.set_menu(Some(menu))?;
+    Ok(())
+}
+
+fn build_tray_menu<R: tauri::Runtime>(app: &impl Manager<R>) -> tauri::Result<Menu<R>> {
     let lang = terrain_core::current_language();
     let show_main = MenuItem::with_id(
         app,
@@ -35,28 +67,7 @@ pub fn init(app: &tauri::App) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, MENU_QUIT, lang.tr("退出", "Quit"), true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(
-        app,
-        &[&show_main, &usage, &sep, &about, &sep, &quit],
-    )?;
-
-    let icon = tauri::include_image!("icons/64x64.png");
-
-    let _tray = TrayIconBuilder::with_id("terrain-tray")
-        .icon(icon)
-        .menu(&menu)
-        .tooltip("Terrain")
-        .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            MENU_SHOW_MAIN => show_main_window(app),
-            MENU_USAGE => open_usage_window(app),
-            MENU_ABOUT => show_about(app),
-            MENU_QUIT => app.exit(0),
-            _ => {}
-        })
-        .build(app)?;
-
-    Ok(())
+    Menu::with_items(app, &[&show_main, &usage, &sep, &about, &sep, &quit])
 }
 
 #[cfg(target_os = "macos")]

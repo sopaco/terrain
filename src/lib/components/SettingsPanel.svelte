@@ -10,7 +10,7 @@
     ModelSettings,
     ProviderProfile,
   } from "../types";
-  import { initLocale, tr, t } from "../i18n";
+  import { applyLocale, tr, t } from "../i18n";
   import { setStatus } from "../stores/status.svelte";
   import ModalShell from "./ModalShell.svelte";
   import {
@@ -233,7 +233,7 @@
       // Apply the language immediately; if it changed, knowledge assets keep
       // their previous language until the user regenerates them.
       const languageChanged = language !== savedLanguage;
-      initLocale(language);
+      applyLocale(language);
       savedLanguage = language;
       onsaved(status);
       if (languageChanged) {
@@ -310,7 +310,7 @@
             (agentExecution = (e.currentTarget as HTMLSelectElement).value as AgentExecution)}
         >
           <option value="acp">{tr("settings.executionMode.pureAcp")}</option>
-          <option value="acp_native">Native LLM（BYOK） + ACP</option>
+          <option value="acp_native">{tr("settings.executionMode.hybridOption")}</option>
         </select>
       </label>
 
@@ -394,7 +394,7 @@
 
       {#if !pureAcp}
         <div class="space-y-3 rounded-xl border border-tr-accent-soft-strong bg-tr-accent-soft p-4">
-          <h3 class="text-sm font-medium text-tr-ink-2">Native LLM</h3>
+          <h3 class="text-sm font-medium text-tr-ink-2">{tr("settings.llm.title")}</h3>
 
           <label class="block space-y-1.5">
             <span class="text-xs font-medium text-tr-ink-2">Provider</span>

@@ -455,13 +455,16 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
 
 pub fn read_doc_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
     let overview_doc = terrain_core::current_language().litho_overview_filename();
+    let zh_overview = terrain_core::ResolvedLanguage::ZhCn.litho_overview_filename();
+    let en_overview = terrain_core::ResolvedLanguage::En.litho_overview_filename();
     Arc::new(
         FunctionTool::new(
             "read_doc",
             format!(
                 "Read a Litho or structured knowledge Markdown document. \
                  Use absolute paths from search_knowledge hits, or project-relative paths like \
-                 `human/{overview_doc}` or `agent/context.md` (paths relative to `.terrain/`). \
+                 `human/{overview_doc}`, `human/{zh_overview}`, or `human/{en_overview}`, \
+                 or `agent/context.md` (paths relative to `.terrain/`). \
                  Pass `project` when the path is ambiguous."
             ),
             move |_ctx, args| {

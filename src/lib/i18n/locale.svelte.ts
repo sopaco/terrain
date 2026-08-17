@@ -23,7 +23,7 @@ export function resolveLocale(
   return detectSystemLocale();
 }
 
-/** Call once at app bootstrap and whenever the user saves language settings. */
+/** Set locale from persisted settings (does not sync dependent UI). */
 export function initLocale(setting: LanguageSetting | null | undefined): void {
   locale.current = resolveLocale(setting);
 }

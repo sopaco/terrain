@@ -32,5 +32,7 @@ export default {
   },
   markdown: {
     copyCode: "复制代码",
+    diagramLoading: "图表（加载中）",
+    diagramLangFallback: "text",
   },
 } as const;

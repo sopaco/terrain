@@ -16,6 +16,7 @@ export default {
     add: "Add & initialize repository",
     adding: "Adding and initializing…",
     openFolder: "Open repository folder",
+    openFolderFor: "Open folder for {name}",
     remove: "Remove from list",
     removeAria: "Remove {label} from list",
     removeConfirm:
@@ -32,9 +33,10 @@ export default {
   nav: {
     overview: "Overview",
     overviewTitle: "Project overview",
-    knowledge: "Knowledge",
-    env: "Environment",
+    knowledge: "Wiki",
+    env: "Env",
     sddTitle: "SDD workflow: spec-driven development",
+    ariaLabel: "Main navigation",
   },
   mermaid: {
     title: "Mermaid diagram",

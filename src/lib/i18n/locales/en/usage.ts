@@ -14,6 +14,7 @@ export default {
   },
   metric: {
     cost: "Cost",
+    tokens: "tokens",
   },
   badge: {
     label: "Top bar",
@@ -38,6 +39,7 @@ export default {
     ariaLabel: "Usage bar chart",
     currentMetric: "Current metric",
     hoverHint: "Hover over a bar to see usage and cost for that period",
+    barSummary: "{label} · {tokens} · {cost}",
     monthShort: "{month}",
     yearMonth: "{year}-{month}",
     yearMonthDay: "{year}-{month}-{day}",
@@ -61,6 +63,7 @@ export default {
     loading: "Loading…",
     input: "Input",
     output: "Output",
+    cache: "Cache",
     viewInFileManager: "View local record in file manager",
     openInFileManager: "Open {label} in file manager",
   },

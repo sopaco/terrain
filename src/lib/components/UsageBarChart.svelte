@@ -172,7 +172,11 @@
             class="group flex shrink-0 flex-col items-center border-0 bg-transparent p-0 text-left"
             style:width="{barLayout.width}px"
             style:margin-right="{i < bars.length - 1 ? `${barLayout.gap}px` : '0'}"
-            aria-label="{fullLabel(bar.label)} · {formatTokens(bar.tokens)} tokens · {formatCost(bar.cost)}"
+            aria-label={tr("usage.chart.barSummary", {
+              label: fullLabel(bar.label),
+              tokens: `${formatTokens(bar.tokens)} ${tr("usage.metric.tokens")}`,
+              cost: formatCost(bar.cost),
+            })}
             aria-pressed={active}
             onmouseenter={() => selectBar(i)}
             onfocus={() => selectBar(i)}
@@ -212,7 +216,7 @@
         <p class="font-medium text-tr-ink">{fullLabel(hoveredBar.label)}</p>
         <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-tr-ink-2">
           <span>
-            <span class="text-tr-ink-3">Tokens</span>
+            <span class="text-tr-ink-3">{tr("usage.metric.tokens")}</span>
             {formatTokens(hoveredBar.tokens)}
           </span>
           <span>

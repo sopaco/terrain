@@ -11,6 +11,7 @@ export default {
   executionMode: {
     label: "执行模式",
     pureAcp: "纯ACP模式",
+    hybridOption: "Native LLM（BYOK） + ACP",
   },
   modeNote: {
     pureAcpBefore:
@@ -34,6 +35,7 @@ export default {
     testFailed: "未检测到，请检查 binary 或 command",
   },
   llm: {
+    title: "Native LLM",
     test: "测试 LLM 连接",
     testOk: "连接正常",
     testFailed: "连接失败，请检查配置",

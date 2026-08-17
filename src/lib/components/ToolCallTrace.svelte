@@ -75,7 +75,9 @@
     >
       <ChevronIcon direction={panelOpen ? "down" : "right"} size={12} class="shrink-0 text-tr-ink-3" />
       <span class="font-medium text-tr-ink-2">
-        {toolCalls.length} tool {toolCalls.length === 1 ? "call" : "calls"}
+        {toolCalls.length === 1
+          ? tr("ask.toolTrace.headerOne")
+          : tr("ask.toolTrace.headerMany", { count: toolCalls.length })}
       </span>
       {#if toolCalls.some((c) => c.status === "running")}
         <span class="ml-auto inline-block h-3 w-3 animate-spin rounded-full border-2 border-tr-accent border-t-transparent"></span>

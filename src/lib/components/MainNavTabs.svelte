@@ -22,7 +22,7 @@
 {#snippet navButton(tab: (typeof tabs)[number])}
   <button
     type="button"
-    class={`tr-press flex w-14 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10.5px] leading-tight transition-colors disabled:opacity-40 ${
+    class={`tr-press flex w-full flex-col items-center gap-1 rounded-lg px-1.5 py-2 text-[10.5px] leading-snug transition-colors disabled:opacity-40 ${
       active === tab.id
         ? "bg-tr-accent-soft text-tr-accent"
         : "text-tr-ink-3 hover:bg-tr-elevated hover:text-tr-ink-2"
@@ -41,11 +41,11 @@
     {:else}
       <Workflow size={18} strokeWidth={1.8} aria-hidden="true" />
     {/if}
-    <span class={active === tab.id ? "font-medium text-tr-ink" : ""}>{tab.label}</span>
+    <span class={`text-center ${active === tab.id ? "font-medium text-tr-ink" : ""}`}>{tab.label}</span>
   </button>
 {/snippet}
 
-<nav class="flex flex-col items-stretch gap-1" aria-label="Main navigation">
+<nav class="flex flex-col items-stretch gap-1" aria-label={tr("misc.nav.ariaLabel")}>
   {#each tabs as tab (tab.id)}
     {@render navButton(tab)}
   {/each}

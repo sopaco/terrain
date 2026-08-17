@@ -50,6 +50,12 @@ export default {
     arguments: "Arguments",
     result: "Result",
     waiting: "Waiting for result…",
+    headerOne: "1 tool call",
+    headerMany: "{count} tool calls",
+  },
+  usageLine: {
+    template: "Tokens — input {input} · output {output}{suffix}",
+    estimated: " (estimated)",
   },
   shareImage: {
     copyImage: "Copy image",

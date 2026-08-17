@@ -69,7 +69,7 @@
             <th class="px-3 py-2 font-medium">Agent</th>
             <th class="px-3 py-2 font-medium text-right">{tr("usage.table.input")}</th>
             <th class="px-3 py-2 font-medium text-right">{tr("usage.table.output")}</th>
-            <th class="px-3 py-2 font-medium text-right">Cache</th>
+            <th class="px-3 py-2 font-medium text-right">{tr("usage.table.cache")}</th>
             <th class="px-3 py-2 font-medium text-right">{tr("usage.metric.cost")}</th>
           </tr>
         </thead>

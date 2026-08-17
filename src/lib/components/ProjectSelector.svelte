@@ -155,7 +155,7 @@
                 type="button"
                 class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-elevated hover:text-tr-ink-2"
                 title={tr("misc.projects.openFolder")}
-                aria-label={`Open folder for ${registryDisplayName(entry)}`}
+                aria-label={tr("misc.projects.openFolderFor", { name: registryDisplayName(entry) })}
                 onclick={(e) => {
                   e.stopPropagation();
                   onopenFolder(entry);

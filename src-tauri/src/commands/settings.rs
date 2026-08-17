@@ -68,12 +68,19 @@ pub fn get_model_settings(state: State<'_, AppState>) -> ModelSettings {
 
 #[tauri::command]
 pub fn save_model_settings_cmd(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     settings: ModelSettings,
 ) -> Result<terrain_agent::LlmStatus, String> {
+    let previous = terrain_core::current_language();
     save_model_settings(&settings).map_err(|e| e.to_string())?;
     let config = resolve_model_config();
     state.set_model_config(config);
+    state.runtime.invalidate_chat_engine();
+    let current = terrain_core::current_language();
+    if current != previous {
+        let _ = crate::tray::refresh_menu(&app);
+    }
     Ok(llm_status(&state.model_config()))
 }
 

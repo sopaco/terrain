@@ -239,7 +239,7 @@ pub fn invalidate_language_cache() {
 pub fn all_agent_context_section_titles() -> Vec<&'static str> {
     let mut out = Vec::with_capacity(14);
     for lang in [ResolvedLanguage::ZhCn, ResolvedLanguage::En] {
-        out.extend_from_slice(lang.agent_context_sections());
+        out.extend(lang.agent_context_sections());
     }
     out
 }
@@ -310,5 +310,20 @@ mod tests {
         assert_eq!(back, LanguageSetting::ZhCn);
         let legacy: LanguageSetting = serde_json::from_str("\"zh\"").unwrap();
         assert_eq!(legacy, LanguageSetting::ZhCn);
+    }
+
+    #[test]
+    fn all_agent_context_section_titles_cover_both_languages() {
+        let titles = all_agent_context_section_titles();
+        assert_eq!(titles.len(), 14);
+        assert!(titles.contains(&"项目概览"));
+        assert!(titles.contains(&"Project Overview"));
+    }
+
+    #[test]
+    fn language_cache_round_trip() {
+        invalidate_language_cache();
+        let _ = current_language();
+        invalidate_language_cache();
     }
 }

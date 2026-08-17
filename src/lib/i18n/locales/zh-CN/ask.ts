@@ -47,6 +47,12 @@ export default {
     arguments: "参数",
     result: "结果",
     waiting: "等待结果…",
+    headerOne: "1 次工具调用",
+    headerMany: "{count} 次工具调用",
+  },
+  usageLine: {
+    template: "Token — 输入 {input} · 输出 {output}{suffix}",
+    estimated: "（估算）",
   },
   shareImage: {
     copyImage: "复制图片",

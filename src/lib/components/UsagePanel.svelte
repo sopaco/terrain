@@ -307,7 +307,8 @@
                             {formatCost(card.totals.total_cost_usd)}
                         </p>
                         <p class="mt-0.5 text-xs text-tr-ink-3">
-                            {formatTokens(card.totals.total_tokens)} tokens
+                            {formatTokens(card.totals.total_tokens)}
+                            {tr("usage.metric.tokens")}
                         </p>
                     </div>
                 {/each}
@@ -389,7 +390,7 @@
                             aria-pressed={chartMetric === "tokens"}
                             onclick={() => (chartMetric = "tokens")}
                         >
-                            Tokens
+                            {tr("usage.metric.tokens")}
                         </button>
                         <button
                             type="button"

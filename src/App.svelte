@@ -49,7 +49,7 @@
     import { parseAskSlashCommand } from "./lib/askSlashCommands";
     import { loadAskProjectState, startNewAskSession, switchAskSession } from "./lib/askSession";
     import { scheduleIdle } from "./lib/scheduleIdle";
-    import { initLocale, tr, t } from "./lib/i18n";
+    import { applyLocale, isIdleStatusMessage, tr, t } from "./lib/i18n";
     import {
         citationToSourceSlice,
         createPendingSourceSlice,
@@ -211,7 +211,7 @@
         setStatus(t("app.status.refreshingProjects"), "loading");
         try {
             const boot = await bootstrapApp();
-            initLocale(boot.model_settings.language);
+            applyLocale(boot.model_settings.language);
             project.agentExecution = normalizeAgentExecution(
                 boot.model_settings.acp?.agent_execution,
             );
@@ -491,8 +491,7 @@
 
     const showStatusBar = $derived(
         !showTaskProgressBar &&
-            (status.kind !== "idle" ||
-                status.message !== tr("terms.statusChip.idle")),
+            (status.kind !== "idle" || !isIdleStatusMessage(status.message)),
     );
 
     function openArchitectureDoc() {
@@ -1041,10 +1040,10 @@
 
 <div class="flex h-screen">
     <aside
-        class="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-tr-border bg-tr-surface py-3"
+        class="flex w-16 shrink-0 flex-col items-stretch gap-2 border-r border-tr-border bg-tr-surface px-1.5 py-3"
     >
         <div
-            class="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-tr-accent to-tr-page text-tr-on-accent"
+            class="mb-1 flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-xl bg-gradient-to-br from-tr-accent to-tr-page text-tr-on-accent"
             title="Terrain"
             aria-hidden="true"
         >
@@ -1077,7 +1076,7 @@
         <div class="flex-1"></div>
 
         <div
-            class="flex flex-col items-center gap-1.5 border-t border-tr-border pt-2"
+            class="flex flex-col items-center gap-1.5 self-center border-t border-tr-border pt-2"
         >
             <button
                 type="button"
