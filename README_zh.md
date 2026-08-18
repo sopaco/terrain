@@ -53,7 +53,7 @@ Terrain 同时提供 **GUI** 和 **CLI** 两种模式。通过 CLI，可便捷�
 
 ### 知识工厂流程
 
-<img height="320" src="./assets/graph_knowledge_factory.webp">
+<img height="360" src="./assets/graph_knowledge_factory.webp">
 
 ---
 

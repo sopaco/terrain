@@ -54,7 +54,7 @@ For specific usage of the CLI, see [**Terrain CLI Guides**](.terrain/human/5.Bou
 
 ### Knowledge factory
 
-<img height="320" src="./assets/graph_knowledge_factory.webp">
+<img height="360" src="./assets/graph_knowledge_factory.webp">
 
 ---
 
