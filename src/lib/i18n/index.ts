@@ -13,7 +13,6 @@
  * aligned with matching frontend keys where possible (see `scripts/check-i18n-parity.ts`).
  */
 import type { LanguageSetting } from "../generated/LanguageSetting";
-import { getModelSettings } from "../api";
 import { syncStatusLocale } from "../stores/status.svelte";
 import {
   detectSystemLocale,
@@ -43,16 +42,6 @@ export {
   tr,
   translate,
 };
-
-/** Load persisted language before first paint (main + usage windows). */
-export async function bootstrapLocale(): Promise<void> {
-  try {
-    const settings = await getModelSettings();
-    applyLocale(settings.language);
-  } catch {
-    applyLocale("system");
-  }
-}
 
 /**
  * Set locale from persisted settings and refresh dependent UI (status bar, etc.).

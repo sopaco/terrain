@@ -22,7 +22,6 @@
     import TaskProgressBar from "./lib/components/TaskProgressBar.svelte";
     import type { StatusKind } from "./lib/components/StatusBanner.svelte";
     import {
-        bootstrapApp,
         checkAcp,
         computeFreshness,
         getKnowledgeRoot,
@@ -41,6 +40,8 @@
         saveProjectRemark,
         searchKnowledge,
     } from "./lib/api";
+    import { loadAppBootstrap } from "./lib/appBootstrap";
+    import { findHumanOverviewDoc } from "./lib/humanDocPath";
     import { mergeFreshnessIntoOverview } from "./lib/mergeFreshness";
     import {
         usesNativeLlm,
@@ -207,10 +208,10 @@
         }
     }
 
-    async function refresh() {
+    async function refresh(options?: { force?: boolean }) {
         setStatus(t("app.status.refreshingProjects"), "loading");
         try {
-            const boot = await bootstrapApp();
+            const boot = await loadAppBootstrap(options);
             applyLocale(boot.model_settings.language);
             project.agentExecution = normalizeAgentExecution(
                 boot.model_settings.acp?.agent_execution,
@@ -409,7 +410,7 @@
                 project.humanDocs = [];
                 project.hits = [];
             }
-            await refresh();
+            await refresh({ force: true });
             setStatus(
                 t("app.status.removedFromList", {
                     name: registryDisplayName(entry),
@@ -552,7 +553,7 @@
                 result.notes.length || lithoNote ? "idle" : "success",
                 result.project_slug,
             );
-            await refresh();
+            await refresh({ force: true });
             await Promise.all([
                 loadHumanDocs(result.project_slug),
                 loadProjectOverview(result.project_slug),
@@ -660,11 +661,7 @@
         const humanDir = project.projectOverview?.slug ?? project.selectedSlug;
         void (async () => {
             const docs = await listHumanDocs(humanDir);
-            // Overview doc is `1.概述.md` (zh) or `1.Overview.md` (en) depending
-            // on the generation language.
-            const overview = docs.find((d) =>
-                /^1\..*\.md$/i.test(d.relative_path),
-            );
+            const overview = findHumanOverviewDoc(docs);
             if (overview) {
                 project.activeTab = "knowledge";
                 await openHumanDoc(overview);

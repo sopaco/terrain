@@ -1,6 +1,7 @@
 <script lang="ts">
   import { FileText, PanelLeftClose, Search, X } from "@lucide/svelte";
   import { tr } from "../i18n";
+  import { humanDocTreePath } from "../humanDocPath";
   import type { HumanDocEntry } from "../types";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
 
@@ -51,17 +52,7 @@
   let filter = $state("");
 
   function treePath(doc: HumanDocEntry): string {
-    const rel = doc.relative_path.replace(/\\/g, "/");
-    const section = doc.section ?? "human";
-    if (section === "agent") {
-      const idx = rel.indexOf("/agent/");
-      return idx >= 0 ? rel.slice(idx + "/agent/".length) : rel.replace(/^agent\//, "");
-    }
-    if (section === "structured") {
-      return rel;
-    }
-    const idx = rel.indexOf("/human/");
-    return idx >= 0 ? rel.slice(idx + "/human/".length) : rel;
+    return humanDocTreePath(doc);
   }
 
   function prettyFileLabel(path: string): string {
