@@ -1,171 +1,124 @@
-# Agent Tools Ecosystem — Skills, CodeGraph, RTK
+# agent-tools Domain
 
-## What this module does
-
-The Agent Tools Ecosystem is Terrain's standardized deployment layer for AI coding agent toolchains. It solves a deceptively hard problem: when an external coding agent (Claude, Codex, Cursor, etc.) opens a project, how does it know what the project is, where to look, and how to work efficiently? The answer is **Skills** (workflow playbooks), **CodeGraph** (symbol relationship analysis), and **RTK** (token-efficient shell output) — all deployed into the repository by `terrain env apply`.
-
-Think of this ecosystem as the **onboarding packet** you hand to a new team member on their first day: here are the rules, here are the tools, here's how to navigate the codebase. Except the "team member" is an AI agent with a context window, and the "onboarding packet" is machine-optimized.
+**Module path**: `preset_skills/`, `env-catalog/`, `packages/`, `npm/`
+**Generated**: 2026-08-22
 
 ---
 
-## The three tools
+## What This Module Does
 
-```mermaid
-graph LR
-    env[terrain env apply] --> Skills[Skills<br/>Workflow Playbooks]
-    env --> CG[CodeGraph<br/>Symbol Analysis]
-    env --> RTK[RTK<br/>Shell Output]
-    env --> AGENTS[AGENTS.md<br/>Agent Instructions]
+The agent-tools domain is Terrain's "gear locker" — everything the platform deploys into a developer's environment to make AI coding agents more effective. This includes preset Skills (structured LLM workflow instructions for Litho, SDD, Ask, and architecture tasks), AGENTS.md snippets that teach agents the knowledge-first workflow, and bundled CLI tools (CodeGraph for symbol queries, RTK for shell output compression, terrain CLI for knowledge access).
 
-    Skills --> |".agents/skills/<br/>.claude/skills/"| Agent[AI Coding Agent]
-    CG --> |"codegraph query"| Agent
-    RTK --> |"<rtk> grep/read"| Agent
-    AGENTS --> |"system prompt injection"| Agent
-```
-
-### Skills — Workflow Playbooks
-
-Skills are Markdown files that teach an AI agent how to perform specific tasks within Terrain's knowledge architecture. They live in `.agents/skills/` and `.claude/skill/` (conventional paths for different agent frameworks).
-
-| Skill | Purpose |
-|-------|---------|
-| `terrain-knowledge-skill` | Guides the agent through `.terrain/`'s layered knowledge: context → private knowledge → human docs → repomix → codegraph |
-| `repomix-context-skill` | Teaches the agent how to grep and read the repomix source pack |
-| `codegraph-skill` | Explains symbol relationship queries: callers, callees, impact analysis |
-| `rtk-skill` | Shows the agent how to prefix shell commands with `rtk` for 60–90% token reduction |
-
-Skills are loaded by the agent's skill tool (if available) or injected into the system prompt via `AGENTS.md`. They encode **conventions**, not code — the agent reads them to understand how to navigate the project.
-
-### CodeGraph — Symbol Analysis
-
-CodeGraph provides call-graph and dependency analysis for a repository. It indexes source code into a symbol database and exposes queries:
-
-- **`query`** — find all callers of a function, all implementations of a trait, all references to a type
-- **`sync`** — re-index the repository after code changes
-- **`status`** — check index freshness
-
-The tool lives at `~/.terrain/bin/codegraph` (or falls back to `bunx codegraph` / `npx codegraph`).
-
-**Trust caveat:** `codegraph status` can report "up to date" even when the index is stale. Terrain includes an independent drift detection mechanism (`freshness/codegraph.rs`) that cross-validates against Git history. Always run `terrain tools codegraph-drift --project <slug>` before trusting CodeGraph results.
-
-### RTK — Token-Efficient Shell
-
-RTK (Reduce To Korrectness) wraps shell commands to strip banners, colors, timestamps, and other noise that inflates token counts without adding information. A typical `git status` produces ~800 tokens; `<rtk> git status` produces ~150.
-
-Usage: prefix any shell command with `~/.terrain/bin/rtk` (or `<rtk>` in natural language prompts).
+Think of it this way: Terrain generates the map (knowledge assets), but agent-tools builds the roads (navigation conventions) and equips the travelers (agent toolchains). Without this domain, agents would have the knowledge files but no standardized way to find and use them.
 
 ---
 
-## Deployment — `terrain env apply`
+## Core Capabilities
 
-The `env` command group orchestrates toolchain deployment:
+1. **Preset Skills** — Structured workflow instructions in `preset_skills/` that agents load for specific tasks (Litho doc generation, SDD phases, Ask Q&A, architecture context).
+
+2. **Environment catalog** — `env-catalog/` defines installable components with dependency ordering and status probing.
+
+3. **Bundled CLI tools** — `packages/` ships CodeGraph, RTK, and terrain CLI binaries for macOS and Windows.
+
+4. **AGENTS.md injection** — Managed snippets in `env-catalog/agents-md/` that get patched into the repository root, pointing agents to knowledge layers.
+
+5. **Deployment orchestration** — `apply_env_integration` installs components in dependency order: terrain-knowledge → repomix → codegraph → rtk.
+
+6. **npm distribution** — `npm/packages/` provides cross-platform binary shims (`@terrain-ai/cli`, `@terrain-ai/rtk`) for npm-based installs.
+
+---
+
+## Key Components
+
+| Component / Type | File Path | Responsibility |
+|----------------|-----------|----------------|
+| Litho skill | `preset_skills/litho-documents-skill/SKILL.md` | Four-phase C4 doc generation workflow |
+| SDD skill | `preset_skills/sdd-workflow-skill/SKILL.md` | Four-phase SDD development workflow |
+| Ask skill | `preset_skills/terrain-ask-skill/SKILL.md` | Knowledge-grounded Q&A playbook |
+| Architecture skill | `preset_skills/agent-architecture-skill/SKILL.md` | Agent context generation workflow |
+| Context skill | `preset_skills/agent-context-skill/SKILL.md` | Context.md generation instructions |
+| Env catalog | `env-catalog/skills/` | Skill install manifests |
+| AGENTS.md fragments | `env-catalog/agents-md/` | Managed agent instruction snippets |
+| `apply_env_integration` | `crates/terrain-core/src/assets/env/apply.rs` | Deploy skills, tools, AGENTS.md |
+| `plan_env_integration` | `crates/terrain-core/src/assets/env/status/plan.rs` | Diff current vs desired state |
+| `deploy_agent_toolchain` | `crates/terrain-core/src/agent_tools_deploy.rs` | Binary deployment to `~/.terrain/bin/` |
+| `bundled_tools.rs` | `crates/terrain-core/src/bundled_tools.rs` | Resolve sidecar binaries next to app exe |
+| CodeGraph package | `packages/codegraph/` | Symbol graph CLI wrapper |
+| RTK package | `packages/rtk/` | Shell output token compressor |
+| terrain CLI npm | `npm/packages/cli/` | Cross-platform terrain binary shim |
+
+---
+
+## Internal Data Flow
 
 ```mermaid
 flowchart TD
-    Status[terrain env status] --> |shows current state| User
-    User --> Plan[terrain env plan]
-    Plan --> |preview changes| User
-    User --> Apply[terrain env apply]
-    Apply --> Skills1[Deploy Skills to<br/>.agents/skills/]
-    Apply --> CG1[Deploy CodeGraph<br/>to ~/.terrain/bin/]
-    Apply --> RTK1[Deploy RTK<br/>to ~/.terrain/bin/]
-    Apply --> AGENTS1[Write/Update<br/>AGENTS.md]
+    A["terrain env status"] --> B["get_env_status<br/>env/status/probe.rs"]
+    B --> C["EnvStatus<br/>per component"]
+    A2["terrain env plan"] --> D["plan_env_integration<br/>env/status/plan.rs"]
+    D --> E["EnvPlan<br/>ordered steps"]
+    A3["terrain env apply"] --> F["apply_env_integration<br/>env/apply.rs"]
+    F --> G["Deploy Skills<br/>~/.cursor/skills/ or ~/.claude/skills/"]
+    F --> H["Deploy binaries<br/>~/.terrain/bin/"]
+    F --> I["Patch AGENTS.md<br/>repo root"]
+    G --> J["Agent loads skill<br/>on next session"]
+    H --> K["Agent calls tool<br/>via shell"]
+    I --> L["Agent reads<br/>knowledge-first rules"]
 ```
 
-### Status → Plan → Apply
-
-1. **`terrain env status`** probes the current state: are Skills deployed? Is CodeGraph installed? Is `AGENTS.md` current?
-2. **`terrain env plan`** shows what would change — which steps would execute and which would be skipped.
-3. **`terrain env apply`** executes the plan, deploying only what's missing or outdated.
-
-The catalog of deployable steps is defined in `assets/env/catalog.rs` and managed by `assets/env/apply.rs`. Each step has an ID, a description, and an executor.
-
-### What gets deployed
-
-| Artifact | Location | Purpose |
-|----------|----------|---------|
-| Skills | `.agents/skills/`, `.claude/skills/` | Agent workflow playbooks |
-| CodeGraph binary | `~/.terrain/bin/codegraph` | Symbol analysis tool |
-| RTK binary | `~/.terrain/bin/rtk` | Token-efficient shell wrapper |
-| Terrain CLI | `~/.terrain/bin/terrain` | CLI for JSON-output agent tools |
-| `AGENTS.md` | Project root | System instructions injected into agent context |
-
-### Bundled tools and preset skills
-
-The desktop app and CLI ship with pre-packaged binaries and Skill files:
-
-- **`bundled_tools.rs`** — extracts platform-specific binaries from embedded resources at startup
-- **`preset_skills.rs`** — deploys Skill playbooks from the repository's `.agents/skills/` and `.claude/skills/` directories
-
-Both use the `integrations/` module (`integrations/mod.rs:12-21`) for initialization, discovery, and resolution.
+**Key steps:**
+1. `get_env_status` probes each catalog component (installed? version? path?)
+2. `plan_env_integration` computes the diff between current and desired state
+3. `apply_env_integration` executes plan steps in dependency order with progress callbacks
+4. Skills are copied to the agent's skill directory (Cursor, Claude, etc.)
+5. Binaries are deployed to `~/.terrain/bin/` and added to PATH
+6. AGENTS.md fragments are merged into the repo root file
 
 ---
 
-## Integration paths — `~/.terrain/bin/`
+## Key Interfaces and Extension Points
 
-All agent tools follow a conventional path structure:
-
-| Tool | Convention | Fallback |
-|------|-----------|----------|
-| RTK | `~/.terrain/bin/rtk` | `bunx @terrain-ai/rtk` or `npx @terrain-ai/rtk` |
-| CodeGraph | `~/.terrain/bin/codegraph` | `bunx codegraph` or `npx codegraph` |
-| Terrain CLI | `~/.terrain/bin/terrain` | `bunx @terrain-ai/cli` or `npx @terrain-ai/cli` |
-
-The local manifest at `.terrain/env/agent-tools.json` (generated, not committed) records what's deployed on this machine. The `agent_tools_deploy.rs` module manages the deployment lifecycle.
-
-On Windows, tools live at `%USERPROFILE%\.terrain\bin\` with `.exe` suffixes, but the `~/.terrain/bin/` convention works in Git Bash and PowerShell 7+.
+- **Env catalog JSON** — New installable components are defined in `env-catalog/` manifests
+- **`resolve_preset_skill_dir`** — Searches app bundle → home directory → repo for skill locations
+- **`resolve_sidecar_next_to_exe`** — Finds bundled binaries adjacent to the Tauri app executable
+- **npm platform shims** — `npm/packages/cli-darwin-arm64/` etc. provide pre-built binaries per platform
+- **Skill SKILL.md format** — Standard Cursor/Claude skill structure with frontmatter and references/
 
 ---
 
-## Trust model
+## Interactions with Other Modules
 
-When multiple knowledge sources exist, Terrain enforces a strict priority:
-
-```
-repomix source code > codegraph > agent/context.md > human docs
-```
-
-This means:
-1. **Source code** (in the repomix pack) is always authoritative for code questions
-2. **CodeGraph** provides call-graph context but may be stale
-3. **Agent context** (`agent/context.md`) provides architectural overview but is generated, not verified
-4. **Human docs** (`human/`) are narrative and may be aspirational rather than factual
-
-The freshness scoring system (`freshness/`) quantifies this trust. When `freshness_score < 70`, the agent should cross-check with repomix. When `freshness_score < 50`, agent context is considered unreliable and only repomix source slices should be used.
+| Module | Direction | Interface | Description |
+|--------|-----------|-----------|-------------|
+| terrain-core | Integrated via | `assets/env/`, `agent_tools_deploy.rs` | Core executes deployment |
+| terrain-agent | Uses skills | Litho, SDD, Ask, context skills | Agent loads skills for workflows |
+| External agents | Consumes | Skills + AGENTS.md + tools | Claude Code, Codex, OpenCode |
+| Desktop app | Initializes | `preset_skills.rs`, `bundled_tools.rs` | App setup deploys bundled resources |
 
 ---
 
-## AGENTS.md — Managed agent instructions
+## Role in Core Business Flows
 
-`AGENTS.md` at the project root is Terrain's mechanism for communicating with AI coding agents that read it as part of their system prompt. It contains:
+**In Litho generation**: The Litho document skill (`preset_skills/litho-documents-skill/`) is the instruction set the ACP agent follows during the four-phase pipeline. `resolve_litho_skill_dir` in terrain-core finds the skill directory, and `build_litho_generation_prompt` embeds its path in the ACP prompt.
 
-- IPC type conventions (Rust → TypeScript type generation via ts-rs)
-- Knowledge asset locations and Git collaboration rules
-- Tool usage instructions (RTK prefix, CodeGraph queries)
-- Skill loading recommendations
-- Freshness thresholds and trust priorities
+**In SDD workflow**: The SDD skill defines phase-specific instructions. `resolve_sdd_skill_dir` provides the path, and `build_sdd_phase_prompt` constructs the per-phase prompt.
 
-`AGENTS.md` is **generated and managed** by `terrain env apply` (`assets/env/agents_md.rs`). It should not be hand-edited — any custom instructions should be placed in a separate file that Terrain doesn't manage.
+**In agent onboarding**: `terrain env apply` is the one-command setup that makes a repository agent-ready. It installs the knowledge-first AGENTS.md snippet, deploys search tools, and places Skills where the agent's IDE expects them.
 
 ---
 
-## Key source files
+## Performance Considerations
 
-| File | Lines | Role |
-|------|-------|------|
-| `terrain-core/src/integrations/mod.rs` | 25 | Re-exports all integration functionality |
-| `terrain-core/src/agent_tools_deploy.rs` | — | Tool deployment lifecycle |
-| `terrain-core/src/bundled_tools.rs` | — | Binary extraction and discovery |
-| `terrain-core/src/preset_skills.rs` | — | Skill playbook management |
-| `terrain-core/src/assets/env/catalog.rs` | — | Integration step catalog |
-| `terrain-core/src/assets/env/apply.rs` | — | Step execution |
-| `terrain-core/src/assets/env/agents_md.rs` | — | AGENTS.md generation |
+- Env status probing is cached (`invalidate_env_status_cache` on apply)
+- Bundled tools initialized once on app startup (`init_app_bundled_tools`)
+- Skill directories resolved at plan time, not on every workflow invocation
+- npm shims are thin wrappers — no runtime overhead beyond binary spawn
 
 ---
 
-## Design principles
+## Implementation Highlights
 
-1. **Convention over configuration.** `~/.terrain/bin/` is the universal tool location. No per-project config needed.
-2. **Graceful degradation.** If a tool isn't installed, the skill documents how to fall back to `bunx`/`npx`.
-3. **Idempotent deployment.** `terrain env apply` is safe to run repeatedly — it only deploys what's missing or changed.
-4. **Transparent trust.** The freshness system explicitly quantifies how much to trust each knowledge layer, rather than treating all knowledge as equally reliable.
+The dependency ordering in env integration (terrain-knowledge → repomix → codegraph → rtk) reflects a deliberate bootstrapping sequence: agents first learn *where* knowledge lives (terrain-knowledge skill), then *how* to search source (repomix skill), then *how* to query symbols (codegraph), and finally *how* to save tokens on shell output (rtk). Each skill builds on the conventions established by the previous one, creating a coherent agent workflow rather than a bag of unrelated tools.
+
+The ACP tokio patch (`crates/agent-client-protocol-tokio-patched/`) hides the console window on Windows when spawning ACP agents, preventing a black terminal flash on every Litho or SDD delegation — a small UX detail that matters when agents spawn subprocesses frequently.

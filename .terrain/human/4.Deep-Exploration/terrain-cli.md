@@ -1,167 +1,114 @@
-# terrain-cli — The Command-Line Interface
+# terrain-cli Domain
 
-## What this module does
-
-`terrain-cli` is the terminal entry point for everything Terrain can do. It wraps `terrain-core` and `terrain-agent` behind a `clap`-powered CLI that exposes project scanning, knowledge search, Ask Q&A, SDD workflow execution, settings management, and environment integration — all from the command line. If the desktop app is Terrain's graphical cockpit, the CLI is its **text-mode dashboard**: leaner, scriptable, and CI-friendly.
-
-The binary is intentionally thin. It delegates almost all logic to the core and agent crates, limiting itself to argument parsing, output formatting, and initialization.
+**Module path**: `crates/terrain-cli/src/`
+**Generated**: 2026-08-22
 
 ---
 
-## Entry point — main.rs
+## What This Module Does
 
-`main.rs` is 16 lines of pure bootstrapping (`main.rs:1-16`):
-
-```rust
-#[tokio::main]
-async fn main() -> Result<()> {
-    terrain_agent::load_dotenv();
-    terrain_core::ensure_bundled_tools_initialized();
-    terrain_core::ensure_preset_skills_initialized();
-    commands::run(Cli::parse()).await
-}
-```
-
-Three initialization steps happen before any command:
-
-1. **`load_dotenv()`** — loads `.env` files for API keys and config overrides
-2. **`ensure_bundled_tools_initialized()`** — extracts platform-specific tool binaries (CodeGraph, RTK) to `~/.terrain/bin/`
-3. **`ensure_preset_skills_initialized()`** — deploys Skill playbooks to the conventional location
-
-Then `Cli::parse()` hands off to the command dispatcher.
+terrain-cli is Terrain's command-line interface — the tool developers and CI/CD pipelines use to scan repos, generate knowledge, ask questions, and manage agent environments. Built with clap, it exposes a hierarchical command tree where every capability available in the desktop app is also accessible from the terminal. The `terrain tools` subcommand is particularly important: it outputs JSON for ACP agents to consume the knowledge layer programmatically, making Terrain's knowledge accessible to any agent that can run shell commands.
 
 ---
 
-## Command tree — cli.rs
+## Core Capabilities
 
-All command definitions live in `cli.rs` (376 lines) using clap's derive API. The top-level `Cli` struct (`cli.rs:16`) accepts a global `--repo-path` flag that overrides the auto-detected workspace.
+1. **Project lifecycle commands** — `scan`, `init`, and `refresh` wrap terrain-agent workflows for terminal and CI use.
+
+2. **Knowledge access** — `search` and `read` provide direct document access without launching the desktop app.
+
+3. **Ask CLI** — `ask query` with optional `--stream` for NDJSON event output, enabling scripted Q&A.
+
+4. **ACP tools surface** — `tools` subcommand (`cli.rs:238-293`) exposes grep-pack, read-context, freshness, and other knowledge operations as JSON stdout.
+
+5. **Asset management** — `assets` subcommand handles pack-agent, plan-litho, run-litho, and agent-context generation.
+
+6. **Environment integration** — `env status/plan/apply` for deploying Skills, tools, and AGENTS.md.
+
+---
+
+## Key Components
+
+| Component / Type | File Path | Responsibility |
+|----------------|-----------|----------------|
+| `Cli` | `crates/terrain-cli/src/cli.rs:16` | Root clap Parser with global `--repo-path` |
+| `Commands` | `crates/terrain-cli/src/cli.rs:26` | Top-level subcommand enum |
+| `ToolsCommands` | `crates/terrain-cli/src/cli.rs:238` | ACP knowledge tools subcommands |
+| `AssetCommands` | `crates/terrain-cli/src/cli.rs:296` | Knowledge asset generation commands |
+| `EnvCommands` | `crates/terrain-cli/src/cli.rs:357` | Environment integration commands |
+| `commands/tools.rs` | `crates/terrain-cli/src/commands/tools.rs` | JSON stdout handlers for ACP tools |
+| `commands/init.rs` | `crates/terrain-cli/src/commands/init.rs` | Init command wrapping agent workflow |
+| `commands/ask.rs` | `crates/terrain-cli/src/commands/ask.rs` | Ask query with streaming support |
+| `main.rs` | `crates/terrain-cli/src/main.rs` | Entry point and command dispatch |
+
+---
+
+## Internal Data Flow
 
 ```mermaid
-graph TD
-    terrain[terrain CLI]
-    terrain --> list[project list]
-    terrain --> scan[scan]
-    terrain --> init[init]
-    terrain --> refresh[refresh]
-    terrain --> search[search]
-    terrain --> read[read]
-    terrain --> project[project<br/>overview / remark / remove]
-    terrain --> settings[settings<br/>get / set / language / check-llm / check-acp]
-    terrain --> ask[ask<br/>query / sessions-list]
-    terrain --> sdd[sdd<br/>status / run]
-    terrain --> usage[usage<br/>probe / snapshot]
-    terrain --> source[source read]
-    terrain --> tools[tools<br/>JSON-output agent tools]
-    terrain --> assets[assets<br/>pack / plan / litho / human / context]
-    terrain --> env[env<br/>status / plan / apply]
+flowchart TD
+    A["terrain argv"] --> B["Cli parser<br/>cli.rs:16"]
+    B --> C{"subcommand"}
+    C -->|init/refresh| D["commands/init.rs<br/>or quick_refresh"]
+    C -->|ask| E["commands/ask.rs"]
+    C -->|tools| F["commands/tools.rs"]
+    C -->|assets| G["commands/assets.rs"]
+    C -->|env| H["commands/env.rs"]
+    C -->|sdd| I["commands/sdd.rs"]
+    D --> J["terrain-agent workflows"]
+    E --> J
+    F --> K["terrain-core directly<br/>JSON stdout"]
+    G --> J
+    H --> L["terrain-core env/"]
+    I --> J
 ```
 
----
-
-## Command groups
-
-### Project management
-
-| Command | Description |
-|---------|-------------|
-| `terrain list` | List all indexed projects |
-| `terrain scan [repo]` | Scan a Git repo into Markdown knowledge docs |
-| `terrain init [repo]` | Full initialization: scan + Litho generation + agent context |
-| `terrain refresh [repo]` | Quick refresh: scan + repack, skips Litho |
-| `terrain project overview --project <slug>` | Show freshness, doc counts, and paths |
-| `terrain project remark --project <slug> <text>` | Attach a human-readable note to a project |
-| `terrain project remove --project <slug>` | Unregister a project (doesn't delete `.terrain/`) |
-
-### Knowledge query
-
-| Command | Description |
-|---------|-------------|
-| `terrain search <query>` | Full-text search across all knowledge docs |
-| `terrain read <path>` | Read a document by its path |
-| `terrain ask query <question>` | Ask a question against project knowledge (with `--stream` for NDJSON) |
-| `terrain ask sessions-list --project <slug>` | List Ask conversation sessions |
-
-### SDD (Standardized Development Workflow)
-
-| Command | Description |
-|---------|-------------|
-| `terrain sdd status --project <slug>` | Show SDD session status |
-| `terrain sdd run --project <slug> --phase <phase>` | Execute an SDD phase |
-
-Phases are: `requirements`, `tech-design`, `code-gen`, `code-review` (`cli.rs:192-197`).
-
-### Settings
-
-| Command | Description |
-|---------|-------------|
-| `terrain settings get` | Show effective model settings |
-| `terrain settings set <file>` | Load settings from a JSON file |
-| `terrain settings language [value]` | Get or set the output language |
-| `terrain settings check-llm` | Test LLM connectivity |
-| `terrain settings check-acp` | Verify ACP agent availability |
-
-### Agent tools (JSON output)
-
-The `tools` subcommand (`cli.rs:88-91`) exposes every agent tool as a standalone CLI command that emits JSON. This enables scripting and piping:
-
-```
-terrain tools grep-pack --project my-app --pattern "fn handle_request"
-terrain tools read-context --project my-app
-terrain tools freshness --project my-app
-```
-
-### Asset generation
-
-| Command | Description |
-|---------|-------------|
-| `terrain assets pack-agent` | Run repomix to produce the agent source pack |
-| `terrain assets plan-litho` | Preview what Litho would generate |
-| `terrain assets run-litho` | Execute Litho generation |
-| `terrain assets agent-context` | Generate or refresh `agent/context.md` |
-| `terrain assets list-human --project <slug>` | List Litho-generated human docs |
-| `terrain assets register` | Register a project without scanning |
-
-### Environment integration
-
-| Command | Description |
-|---------|-------------|
-| `terrain env status` | Show current env integration status |
-| `terrain env plan` | Preview what env apply would deploy |
-| `terrain env apply` | Deploy Skills, CodeGraph, RTK, and AGENTS.md |
+**Key steps:**
+1. `main.rs` parses `Cli` and dispatches to the appropriate `commands/` handler
+2. Workflow commands (init, ask, sdd) delegate to terrain-agent's async functions
+3. Tools commands call terrain-core directly and serialize results as JSON to stdout
+4. Global `--repo-path` resolves via `KnowledgePaths::resolve_workspace_repo()`
 
 ---
 
-## Utilities — util.rs
+## Key Interfaces and Extension Points
 
-`util.rs` contains shared helpers for output formatting and error presentation across commands. It keeps the command implementations clean by abstracting repetitive output patterns.
-
----
-
-## How commands dispatch
-
-`commands::run(Cli::parse())` (`main.rs:15`) pattern-matches on the parsed `Commands` enum and delegates to the corresponding handler in `commands/`. Each handler function is a thin adapter that:
-
-1. Constructs a `KnowledgePaths` from the `--repo-path` argument or workspace detection
-2. Calls into `terrain-core` or `terrain-agent`
-3. Formats the result for terminal output (tables, JSON, or streaming NDJSON)
-
-This adapter pattern means adding a new CLI command is usually just a new `Commands` variant in `cli.rs` and a 20–40 line handler in `commands/`.
+- **Global `--repo-path`** — All subcommands inherit this flag; defaults to `TERRAIN_REPO_PATH` env var or cwd Git root
+- **`SddPhaseArg`** — clap `ValueEnum` mapping CLI strings to core `SddPhase` enum (`cli.rs:191-207`)
+- **npm shims** — `npm/packages/` provides platform-specific binary wrappers (`@terrain-ai/cli`) for cross-platform install
+- **NDJSON streaming** — `ask query --stream` emits `AskStreamEvent` variants as newline-delimited JSON
 
 ---
 
-## Scriptability
+## Interactions with Other Modules
 
-The CLI is designed for automation:
-
-- **`--stream` on Ask** emits newline-delimited JSON (NDJSON) with `chunk`, `tool_calls`, `phase`, `usage`, and `done` events — perfect for piping to `jq` or custom dashboards.
-- **`tools` subcommands** always emit JSON, making them safe to parse programmatically.
-- **`env apply --ids <list>`** accepts a comma-separated list of integration IDs for selective deployment.
-- **Exit codes** follow standard conventions: 0 for success, non-zero for errors.
+| Module | Direction | Interface | Description |
+|--------|-----------|-----------|-------------|
+| terrain-agent | Depends on | Workflow functions | Init, Ask, SDD, Litho execution |
+| terrain-core | Depends on | Search, paths, env, freshness | Direct access for tools commands |
+| ACP agents | Used by | `terrain tools` JSON output | External agents consume knowledge layer |
+| CI/CD | Used by | `terrain init`, `terrain refresh` | Automated knowledge regeneration |
 
 ---
 
-## Design principles
+## Role in Core Business Flows
 
-1. **Thin wrapper.** The CLI contains zero business logic. All logic lives in `terrain-core` and `terrain-agent`.
-2. **Convention over configuration.** The `--repo-path` global flag defaults to the current Git workspace or `TERRAIN_REPO_PATH`, so most commands work with zero arguments from a project root.
-3. **Progressive disclosure.** Simple commands (`search`, `read`) need no flags; advanced commands (`sdd run`, `env apply`) expose fine-grained options.
+**In CI/CD integration**: `terrain init --repo-path .` is the primary entry point for automated knowledge generation after merge. `terrain refresh` provides a lighter alternative when only source changed.
+
+**In ACP agent workflows**: External coding agents call `terrain tools read-context`, `terrain tools grep-pack`, and `terrain tools read-pack-file` as their first steps when entering a Terrain-enabled repository. The JSON output is designed for machine consumption.
+
+**In developer workflows**: `terrain search` and `terrain read` provide quick knowledge access from the terminal without launching the desktop app.
+
+---
+
+## Performance Considerations
+
+- Tools commands avoid agent initialization overhead by calling core directly
+- `terrain tools freshness` reads cached ledger without recomputing
+- Binary distributed via `cargo build --release` with LTO and strip enabled (`Cargo.toml:60-63`)
+
+---
+
+## Implementation Highlights
+
+The `terrain tools` subcommand design follows the principle that agents should never need to parse human-readable output. Every tools command writes structured JSON to stdout with consistent error handling, making it trivial for ACP agents to integrate Terrain's knowledge layer as a tool in their own workflow. The trust hierarchy (repomix > CodeGraph > context.md > human docs) is documented in the tools command help text.

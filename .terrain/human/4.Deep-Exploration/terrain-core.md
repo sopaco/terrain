@@ -1,166 +1,117 @@
-# terrain-core — The Foundation
+# terrain-core Domain
 
-## What this module does
-
-`terrain-core` is the **library of record** for every non-LLM operation in Terrain. It owns the knowledge lifecycle end-to-end: scanning source repositories, ingesting code into Markdown documents, building agent packs, computing freshness scores, running full-text search, and managing every file path under `.terrain/`. Think of it as the **filing cabinet and measuring tape** of the system — it never answers questions itself, but every other module opens its drawers.
-
-The crate is deliberately LLM-free. By keeping model calls out of this layer, `terrain-core` stays testable, fast, and free of async runtime debt. It exposes pure data transformations and filesystem operations that higher layers (`terrain-agent`, the desktop app, the CLI) orchestrate with an LLM.
+**Module path**: `crates/terrain-core/src/`
+**Generated**: 2026-08-22
 
 ---
 
-## Module map
+## What This Module Does
+
+terrain-core is Terrain's domain brain — the layer that knows *how* to turn a Git repository into structured knowledge without ever picking up a phone to call an LLM. Every other crate in the workspace depends on it. If you picture Terrain as a restaurant, terrain-core is the kitchen: it holds the recipes (Litho prompts), manages inventory (path resolution), and defines quality standards (freshness scoring), but the waitstaff (`terrain-agent`) are the ones who actually cook with external ingredients (LLM APIs, ACP agents).
+
+Understanding `KnowledgePaths` and the `assets/` submodule is the master key to the entire system.
+
+---
+
+## Core Capabilities
+
+1. **Knowledge path resolution** — `KnowledgePaths` (`paths.rs:10`) is the single resolver for every `.terrain/` subdirectory. No code anywhere hardcodes `.terrain/human/` — it always goes through `paths.human_docs_dir(slug)`.
+
+2. **Project scanning** — `ProjectScanner::scan_repo` (`ingest/mod.rs:52`) orchestrates Git metadata collection via `GitScanner`, optional OpenAPI spec import, and repomix packing into a single `ScanReport`.
+
+3. **Litho planning** — `plan_litho_generation` (`assets/litho.rs:17`) builds the `LithoPlan` struct with skill directory, output paths, and workspace locations. Completeness is verified by `litho_human_complete_with_research` (`assets/litho.rs:256`).
+
+4. **Three-layer knowledge search** — `KnowledgeSearch` (`search.rs:32`) indexes human docs, knowledge glossary, and agent context with scored `SearchHit` results including `rel_path` for direct doc reads.
+
+5. **Freshness scoring** — The `freshness/` module computes a 0–100 drift score from Git commits, working-tree dirtiness, and CodeGraph symbol changes. Thresholds at 50 (no macro preload), 70 (verify band), and 80 (fresh green state) are defined in `freshness/mod.rs:19-26`.
+
+6. **Environment integration** — `assets/env/` plans and applies skill/tool/AGENTS.md deployment with progress reporting.
+
+---
+
+## Key Components
+
+These components form the backbone of terrain-core. Each owns a distinct slice of the knowledge lifecycle.
+
+| Component / Type | File Path | Responsibility |
+|----------------|-----------|----------------|
+| `KnowledgePaths` | `crates/terrain-core/src/paths.rs` | Resolves all `.terrain/` paths per project slug |
+| `ProjectScanner` | `crates/terrain-core/src/ingest/mod.rs` | Orchestrates repo scan (Git + OpenAPI + repomix) |
+| `KnowledgeSearch` | `crates/terrain-core/src/search.rs` | Full-text search across knowledge layers |
+| `SearchHit` | `crates/terrain-core/src/search.rs:14` | Search result with path, score, and snippet |
+| `plan_litho_generation` | `crates/terrain-core/src/assets/litho.rs` | Builds Litho generation job plan |
+| `litho_human_complete_with_research` | `crates/terrain-core/src/assets/litho.rs:256` | Verifies full Litho doc set completeness |
+| `compute_freshness` | `crates/terrain-core/src/freshness/compute.rs` | Aggregates drift factors into score |
+| `IncrementalPlan` | `crates/terrain-core/src/assets/incremental.rs` | Routes Litho updates to affected docs |
+| `apply_env_integration` | `crates/terrain-core/src/assets/env/apply.rs` | Deploys skills, tools, AGENTS.md |
+
+---
+
+## Internal Data Flow
 
 ```mermaid
-graph TD
-    subgraph terrain-core
-        paths[paths.rs<br/>KnowledgePaths]
-        settings[settings.rs]
-        search[search.rs]
-        ingest[ingest/]
-        assets[assets/]
-        freshness[freshness/]
-        schema[schema/]
-        sessions[sessions/]
-        integrations[integrations/]
-        prompts[prompts/]
-    end
-
-    paths --> ingest
-    paths --> assets
-    paths --> search
-    settings --> assets
-    ingest --> schema
-    assets --> freshness
-    assets --> sessions
-    integrations --> assets
-    prompts --> assets
+flowchart TD
+    A["Repository path"] --> B["KnowledgePaths<br/>paths.rs:16"]
+    B --> C["ProjectScanner::scan_repo<br/>ingest/mod.rs:52"]
+    C --> D["GitScanner<br/>ingest/git.rs"]
+    C --> E["OpenApiImporter<br/>ingest/openapi.rs"]
+    C --> F["pack_agent_assets<br/>assets/repomix.rs"]
+    D --> G[".terrain/index.md"]
+    F --> H[".terrain/agent/repomix.md"]
+    G --> I["compute_freshness<br/>freshness/compute.rs"]
+    H --> I
+    I --> J[".meta/freshness.json"]
+    B --> K["plan_litho_generation<br/>assets/litho.rs:17"]
+    K --> L["LithoPlan → ACP prompt"]
 ```
 
----
-
-## Path resolution — KnowledgePaths
-
-Everything in Terrain starts with a path. `KnowledgePaths` (`paths.rs:10`) is the central resolver that maps a Git repository to its `.terrain/` knowledge root and every subdirectory within it — `agent/`, `human/`, `.meta/`, `interfaces/`, `routes/`, and the per-project registry.
-
-It resolves the workspace repo from the `TERRAIN_REPO_PATH` environment variable, or by walking up from `cwd` to the nearest Git root (`paths.rs:43`). All other modules receive a `KnowledgePaths` instance rather than constructing paths ad-hoc.
-
-Key method: `KnowledgePaths::for_repo(repo_path)` (`paths.rs:27`) — the constructor used by both CLI and desktop app.
+**Key steps:**
+1. `KnowledgePaths::for_repo` (`paths.rs:27`) scopes all operations to a repository's `.terrain/` directory
+2. `ProjectScanner::scan_repo` registers the project and runs collectors sequentially
+3. `compute_freshness` reads git snapshot and compares against stored baselines in the freshness ledger
+4. `plan_litho_generation` resolves the Litho skill directory and builds output path configuration
 
 ---
 
-## Ingestion — `ingest/`
+## Key Interfaces and Extension Points
 
-Ingestion is how raw source code becomes structured Markdown knowledge.
-
-| Collector | File | Role |
-|-----------|------|------|
-| `GitScanner` | `ingest/git.rs` | Walks the Git tree, emits structured Markdown per file type |
-| `OpenApiImporter` | `ingest/openapi.rs` | Parses OpenAPI specs into interface/route documents |
-| `ProjectScanner` | `ingest/mod.rs:39` | Orchestrates collectors, writes `ScanReport` |
-
-`ProjectScanner::scan_repo` (`ingest/mod.rs:52`) is the entry point. It registers the project, invokes each collector, and produces a `ScanReport` (`ingest/mod.rs:20`) that enumerates files written, which collectors ran, and an optional `AgentPackSummary`.
+- **`DocType` enum** (`schema/mod.rs`) — Categorizes knowledge documents (human, knowledge, agent) for search filtering
+- **`IncrementalPlan`** — Maps Git change sets to specific Litho doc files for in-place editing
+- **Feature flags** — `repomix` enables packing; `ts-export` enables TypeScript type generation
+- **`AgentContextGenerator` trait** — Consumed by terrain-agent but prompt templates live in `assets/agent_context.rs`
 
 ---
 
-## Asset generation — `assets/`
+## Interactions with Other Modules
 
-The `assets/` subtree is the largest submodule. It handles everything from initial generation to incremental updates:
-
-- **Agent context** (`assets/agent_context.rs`) — generates `agent/context.md`, the architecture-level document that gives agents their bearings. Tracks baseline HEAD so stale context is detected.
-- **Repomix packing** (`assets/repomix.rs`) — runs `repomix-core` to produce `agent/repomix.md`, a compressed source-code snapshot the agent can grep and read.
-- **Litho prompts** (`assets/litho.rs`) — plans the 4-phase Litho generation pipeline and produces update prompts for incremental human-readable docs.
-- **Incremental updates** (`assets/incremental.rs`) — decides whether a fresh generation, incremental patch, or full rebuild is needed based on file drift.
-- **Context layers** (`assets/context_layers.rs`) — splits agent context into sections (overview, tool section) with configurable size limits (`AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS`, `AGENT_CONTEXT_SAVE_MAX_CHARS`).
-- **SDD** (`assets/sdd.rs`) — phase output paths and artifact management for the Standardized Development Workflow.
-- **Environment integration** (`assets/env/`) — deploys Skills, CodeGraph, RTK, and `AGENTS.md` into a repository.
+| Module | Direction | Interface | Description |
+|--------|-----------|-----------|-------------|
+| terrain-agent | Depended on by | All public exports from `lib.rs` | Agent calls core for planning, search, freshness |
+| terrain-cli | Depended on by | `KnowledgePaths`, `KnowledgeSearch` | CLI wraps core functions directly |
+| src-tauri | Depended on by | IPC types from `ipc/` and `schema/` | Desktop app invokes core via agent or directly |
+| repomix-core | Depends on | `pack_agent_assets` | External crate for source packing |
 
 ---
 
-## Freshness — `freshness/`
+## Role in Core Business Flows
 
-Freshness is Terrain's way of answering: "How stale are my knowledge assets?"
+**In project initialization**: terrain-core handles scan (`ProjectScanner`), pack (`repomix`), Litho planning (`plan_litho_generation`), and freshness baseline (`write_freshness_ledger`). terrain-agent orchestrates the sequence but core does the work.
 
-```mermaid
-flowchart LR
-    Git[Git History] --> Compute[compute.rs]
-    Assets[Asset Timestamps] --> Compute
-    Compute --> Scoring[scoring.rs]
-    Scoring --> Ledger[ledger.rs]
-    Ledger --> Summary[FreshnessSummary]
-    CG[CodeGraph] --> Drift[drift_factors.rs]
-    Drift --> Scoring
-```
+**In Ask Q&A**: `KnowledgeSearch` powers the meso-layer search. `grep_repomix_pack` and `read_agent_pack_file` in `assets/query.rs` serve the micro layer. `build_context_overview` in `assets/context_layers.rs` prepares the macro layer.
 
-| Submodule | File | Responsibility |
-|-----------|------|----------------|
-| `compute` | `freshness/compute.rs` | Orchestrates the full freshness calculation |
-| `git` | `freshness/git.rs` | Git snapshot, change-set detection, knowledge-only commit filtering |
-| `scoring` | `freshness/scoring.rs` | Maps raw drift to a 0–100 score with three bands |
-| `ledger` | `freshness/ledger.rs` | Persists freshness state across runs |
-| `drift_factors` | `freshness/drift_factors.rs` | Breaks drift into named factors (commits, files, time) |
-| `codegraph` | `freshness/codegraph.rs` | Cross-validates CodeGraph index staleness against Git |
-
-Three score thresholds control behavior (`freshness/mod.rs:20-26`):
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `FRESH_THRESHOLD` | 80 | Green UI state — trust the assets |
-| `VERIFY_THRESHOLD` | 70 | Warn — cross-check with repomix |
-| `MACRO_PRELOAD_THRESHOLD` | 50 | Danger — don't preload architecture context in Ask mode |
+**In freshness monitoring**: `compute_freshness` runs on every project overview load. Knowledge-only Git commits are excluded from drift (`freshness/mod.rs:35-48`) so regenerating docs doesn't penalize the score.
 
 ---
 
-## Search — search.rs
+## Performance Considerations
 
-`KnowledgeSearch` (`search.rs:30`) walks all indexed project roots and performs case-insensitive full-text matching against Markdown documents. Each hit carries a `SearchHit` (`search.rs:14`) with path, project slug, document type, title, snippet, and relevance score.
-
-The search is intentionally simple — no inverted index, no fuzzy matching. It trades raw speed for zero-dependency reliability. For deeper queries, the LLM-backed Ask mode handles semantic search.
-
----
-
-## Settings — settings.rs
-
-`ModelSettings` (`settings.rs:19+`) is the serializable configuration root, persisted to `~/.terrain/settings.json`. It bundles:
-
-- **`ProviderProfile`** — per-provider model name, base URL, API key
-- **`AcpSettings`** — binary path, args, auto-approve, execution mode (`Acp` or `AcpNative`)
-- **`KnowledgeSettings`** — language, incremental update thresholds
-
-Constants for Ollama, OpenAI-compatible, and LM Studio defaults are defined at `settings.rs:9-17`.
+- `read_pack_text_cached` avoids re-reading multi-megabyte repomix files within a session
+- Freshness ledger cached in `.meta/freshness.json` — UI reads cached values via `read_freshness_ledger` without recomputing
+- `is_knowledge_output_path` filter prevents `.terrain/` changes from triggering false dirty-state alerts
+- Search walks the filesystem directly (no index) — acceptable because knowledge bases are small (dozens of files, not millions)
 
 ---
 
-## Sessions — `sessions/`
+## Implementation Highlights
 
-`sessions/mod.rs` re-exports session management from `assets/`. This thin module owns two persistence domains:
-
-- **Ask sessions** — conversation history, active session pointer, create/list/delete/discard
-- **SDD sessions** — phase output storage, session lifecycle, status queries
-
-Sessions are file-backed (JSON), enabling resume across app restarts.
-
----
-
-## Other notable modules
-
-| Module | File | Purpose |
-|--------|------|---------|
-| `schema/` | `schema/mod.rs` | All typed structs: `DocFrontmatter`, `FreshnessSummary`, `SddPhase`, `ProjectOverview`, etc. |
-| `registry.rs` | `registry.rs` | Project slug ↔ path registration in `~/.terrain/registry.json` |
-| `human.rs` | `human.rs` | List and read Litho-generated human-facing docs from `human/` |
-| `doc.rs` | `doc.rs` | `KnowledgeDoc` parse/render — Markdown ↔ structured document |
-| `language.rs` | `language.rs` | i18n: system locale detection, `ResolvedLanguage` for CLI output and agent replies |
-| `source.rs` | `source.rs` | Read live source code slices with line ranges |
-| `prompts/` | `prompts/mod.rs` | LLM prompt templates for Litho generation, composition, and SDD phases |
-| `integrations/` | `integrations/mod.rs` | Env status, bundled tool discovery, usage monitoring |
-| `bundled_tools.rs` | `bundled_tools.rs` | Extracts and manages platform-specific tool binaries |
-| `preset_skills.rs` | `preset_skills.rs` | Manages the preset Skill playbooks shipped with Terrain |
-
----
-
-## Design principles
-
-1. **No LLM calls.** Every public function is either synchronous or uses `tokio` only for I/O — never for model inference.
-2. **Path-first.** `KnowledgePaths` is threaded through every subsystem; no module constructs its own `.terrain/` paths.
-3. **Feature-gated complexity.** The `repomix` feature gates packing logic (`assets/mod.rs:12-13`), allowing lightweight builds without the repomix dependency.
-4. **Schema as contract.** `schema/` types carry `#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]` annotations so the desktop app gets type-safe bindings generated by `terrain-ts-export`.
+The knowledge-only commit exclusion in freshness scoring (`freshness/mod.rs:35-48`) is a subtle but important design: when Terrain regenerates its own docs, that Git commit advances HEAD but must not register as source drift. The `count_source_commits_in_log` function filters out paths matching `is_knowledge_output_path`, keeping the freshness score stable across knowledge regeneration cycles.

@@ -1,176 +1,116 @@
-# terrain-agent — The Brain
+# terrain-agent Domain
 
-## What this module does
-
-`terrain-agent` is where the LLM lives. It wraps model providers (Ollama, OpenAI-compatible, LM Studio) behind a unified `ModelConfig`, constructs an agentic loop with tools that can read the knowledge base, and orchestrates the high-level workflows — Ask Q&A, Litho generation, SDD phases, and project initialization. If `terrain-core` is the filing cabinet, `terrain-agent` is the **librarian who reads the files and talks to you**.
-
-The module also manages a `Runtime` singleton that caches the `ChatEngine` and model settings, enabling the desktop app and CLI to share a single LLM connection across requests.
+**Module path**: `crates/terrain-agent/src/`
+**Generated**: 2026-08-22
 
 ---
 
-## Module map
+## What This Module Does
+
+terrain-agent is where Terrain actually *does things* — it talks to LLMs, spawns ACP subprocesses, drives Litho document generation, runs SDD phases, and registers the tool schemas that power DeepWiki Ask. If terrain-core is the kitchen with recipes and ingredients, terrain-agent is the service staff that cooks, serves, and handles customer requests.
+
+The module's central abstraction is `ChatEngine` — a dual-backend engine that can route Ask queries through either a native ADK Runner (direct LLM API calls) or an ACP subprocess (external coding agent), selected at runtime by the `AgentExecution` setting.
+
+---
+
+## Core Capabilities
+
+1. **Dual-backend ChatEngine** — `ChatEngine` (`chat/mod.rs:54`) supports Native ADK (`chat/native.rs`) and ACP (`chat/acp.rs`) backends. `new_native` forces native LLM for hybrid workloads like context generation and SDD doc phases.
+
+2. **Litho generation driver** — `run_litho_generation` (`litho.rs`) manages the full Litho lifecycle: plan → ACP prompt → poll with heartbeat → composition retry → completeness verification. Supports `LithoRunMode::Auto` and `FullRebuild` (`litho.rs:17-24`).
+
+3. **Workflow orchestration** — The `workflows/` module chains core operations into user-facing flows: `init.rs` (full initialization), `ask.rs` (DeepWiki Q&A), `sdd.rs` (SDD phases), `quick_refresh.rs` (lightweight update).
+
+4. **ADK tool registry** — `tools.rs` exposes knowledge-layer tools (`read_agent_context`, `grep_agent_pack`, `search_knowledge`, `read_agent_pack_file`) as ADK `FunctionTool` instances for the ChatEngine to call during Ask.
+
+5. **Runtime engine cache** — `Runtime` (`runtime.rs`) caches `ChatEngine` and `ModelConfig` across IPC calls, avoiding re-initialization on every Ask question.
+
+---
+
+## Key Components
+
+| Component / Type | File Path | Responsibility |
+|----------------|-----------|----------------|
+| `ChatEngine` | `crates/terrain-agent/src/chat/mod.rs:54` | Ask Q&A engine with dual backend |
+| `NativeBackend` | `crates/terrain-agent/src/chat/native.rs` | ADK Runner for direct LLM calls |
+| `Runtime` | `crates/terrain-agent/src/runtime.rs` | Engine cache and config holder |
+| `run_litho_generation` | `crates/terrain-agent/src/litho.rs` | Litho ACP orchestration with polling |
+| `LithoRunMode` | `crates/terrain-agent/src/litho.rs:17` | Auto vs FullRebuild generation strategy |
+| `ask_knowledge` | `crates/terrain-agent/src/workflows/ask.rs:11` | Ask workflow entry with streaming |
+| `run_project_initialization` | `crates/terrain-agent/src/workflows/init.rs` | Full init pipeline orchestration |
+| `list_projects_tool` | `crates/terrain-agent/src/tools.rs:42` | ADK tool: list indexed projects |
+| `read_agent_context_tool` | `crates/terrain-agent/src/tools.rs:61` | ADK tool: read context by section |
+| `build_acp_config` | `crates/terrain-agent/src/acp.rs` | ACP spawn configuration builder |
+| `AgentContextGenerator` | `crates/terrain-agent/src/context_generator.rs` | Pluggable context generation |
+
+---
+
+## Internal Data Flow
 
 ```mermaid
-graph TD
-    subgraph terrain-agent
-        runtime[runtime.rs<br/>Runtime]
-        builder[builder.rs<br/>Agent Builder]
-        model[model.rs<br/>LlmProvider + ModelConfig]
-        tools[tools.rs<br/>Agent Tools]
-        chat[chat/<br/>ChatEngine]
-        litho[litho.rs<br/>Litho Orchestrator]
-        workflows[workflows/<br/>ask / init / sdd / quick_refresh]
-        acp[acp.rs<br/>ACP Integration]
-    end
-
-    runtime --> builder
-    runtime --> model
-    builder --> tools
-    builder --> chat
-    chat --> native[native.rs]
-    chat --> acp_backend[acp.rs]
-    workflows --> chat
-    litho --> acp
-    litho --> tools
+flowchart TD
+    A["Ask query"] --> B["ask_knowledge<br/>workflows/ask.rs:11"]
+    B --> C{"ChatEngine available?"}
+    C -->|No| D["fallback_search_reply<br/>workflows/ask.rs:79"]
+    C -->|Yes| E["ChatEngine::ask<br/>chat/mod.rs"]
+    E --> F{"AgentExecution mode"}
+    F -->|Native| G["NativeBackend<br/>chat/native.rs"]
+    F -->|ACP| H["AcpBackend<br/>chat/acp.rs"]
+    G --> I["ADK Runner + FunctionTools<br/>tools.rs"]
+    H --> J["ACP subprocess<br/>acp.rs"]
+    I --> K["ChatReply + citations"]
+    J --> K
+    D --> K
 ```
 
----
-
-## Model configuration — model.rs
-
-`LlmProvider` (`model.rs:14`) enumerates the three supported backends: `Ollama`, `Openai`, `LmStudio`. `ModelConfig` (`model.rs:21`) bundles provider, model name, host, and optional API key into a single serializable struct.
-
-Resolution follows a priority chain (`model.rs:54`):
-
-1. `~/.terrain/settings.json` (UI-saved preferences)
-2. Environment variables (`OPENAI_API_KEY`, `TERRAIN_API_KEY`, `OLLAMA_HOST`)
-3. Built-in defaults per provider
-
-The `build_llm` function (`model.rs:41`) constructs the concrete `adk_core::Llm` trait object from a `ModelConfig`, choosing the appropriate client.
+**Key steps:**
+1. `ask_knowledge` obtains a cached `ChatEngine` from `Runtime` or falls back to keyword search
+2. `ChatEngine::ask` preloads macro context, then iterates tool calls for meso/micro layers
+3. `finalize_usage` (`chat/mod.rs:35`) estimates token counts when the provider doesn't report them
+4. `sanitize_answer_text` applies `prepare_chat_markdown` for consistent rendering
 
 ---
 
-## Agent construction — builder.rs
+## Key Interfaces and Extension Points
 
-`build_agent` (`builder.rs:15+`) is the factory that assembles a complete LLM agent with its tool belt. It:
-
-1. Selects the system instruction based on the resolved language (`builder.rs:26`)
-2. Registers all agent tools (search, grep, read, list)
-3. Optionally wraps tools with cooldown throttling
-4. Attaches the LLM via `adk_agent::LlmAgentBuilder`
-
-The system instruction (`builder.rs:31-49`) is a dense document that teaches the agent how to use the repomix pack, when to grep versus read, and how to cite sources. It adapts to the configured language so button names and section headings match the user's UI.
+- **`AgentContextGenerator` trait** — Allows swapping context generation strategy (native LLM vs ACP)
+- **`LithoRunMode`** — Controls whether Litho skips, incrementally updates, or fully rebuilds
+- **`tool_session_cache`** — Deduplicates identical tool calls within a session via fingerprint hashing
+- **`AgentExecution` enum** — `AcpNative`, `AcpOnly`, `Hybrid` — gates backend selection in `acp.rs`
 
 ---
 
-## Agent tools — tools.rs
+## Interactions with Other Modules
 
-Tools are the agent's hands — the functions the LLM can invoke during a conversation. All are defined in `tools.rs` (618 lines) and built atop `adk_tool::FunctionTool`:
-
-| Tool | Purpose |
-|------|---------|
-| `list_projects` | Enumerate indexed projects |
-| `search_knowledge` | Full-text search across knowledge docs |
-| `read_doc` | Read a specific knowledge document |
-| `read_doc_ask` | Read a doc with Ask-specific context |
-| `grep_agent_pack` | Grep the repomix source pack for symbols/patterns |
-| `read_agent_pack_file` | Read a file section from the repomix pack (with line ranges) |
-| `read_agent_pack_meta` | Check pack existence, sync status, and tree |
-| `read_agent_context` | Read the agent context document |
-| `list_human_docs` | List Litho-generated human docs |
-| `read_freshness` | Read the cached freshness summary |
-
-Each tool uses a session cache (`tool_session_cache.rs`) to deduplicate identical calls within a conversation, preventing the agent from re-greping the same pattern.
-
-Truncation guards (`tools.rs:23-35`) ensure large JSON responses stay under `MAX_TOOL_JSON_CHARS` (24,000 chars) to avoid overwhelming the model's context window.
+| Module | Direction | Interface | Description |
+|--------|-----------|-----------|-------------|
+| terrain-core | Depends on | All planning, search, freshness functions | Agent executes what core plans |
+| src-tauri | Used by | `Runtime`, workflow functions | Desktop IPC delegates to agent |
+| terrain-cli | Used by | Same workflow functions | CLI is a thin wrapper |
+| ADK ecosystem | Depends on | adk-core, adk-agent, adk-model, adk-tool | Native LLM execution |
+| ACP protocol | Depends on | agent-client-protocol | External agent subprocess |
 
 ---
 
-## Chat engine — `chat/`
+## Role in Core Business Flows
 
-`ChatEngine` (`chat/mod.rs:54`) is the conversation runtime. It manages:
+**In Litho generation**: terrain-agent builds the ACP prompt via `prepare_litho_generation` (`litho.rs:43`), spawns the agent, polls for completion with progress heartbeats, and retries composition up to 3 times. Incremental updates use `build_litho_update_prompt` from core but execution stays in agent.
 
-- **Backend selection** — native LLM (direct model call) or ACP (delegated to an external agent process like `opencode acp`)
-- **Prompt assembly** (`chat/prompt.rs`) — injects freshness context, agent context, and tool results into the prompt
-- **Usage tracking** (`chat/tracker.rs`) — records token counts per turn
-- **Streaming** (`chat/types.rs`) — `AskStreamEvent` for real-time token delivery
+**In Ask Q&A**: The three-layer retrieval loop runs entirely in `ChatEngine::ask`. Tools in `tools.rs` bridge to core's `KnowledgeSearch`, `grep_repomix_pack`, and `read_agent_pack_file`. Citations are extracted via `extract_source_citations` from core.
 
-The `ACP backend` (`chat/acp.rs`) spawns an external agent process and communicates via JSON-over-stdin/stdout, enabling integration with coding agents that have their own tool ecosystems.
-
-```mermaid
-flowchart LR
-    User[User Query] --> Engine[ChatEngine]
-    Engine --> Native[Native Backend<br/>direct LLM]
-    Engine --> ACP[ACP Backend<br/>opencode acp]
-    Native --> Tools[Agent Tools]
-    ACP --> External[External Agent]
-    Tools --> Core[terrain-core]
-```
+**In SDD**: `run_sdd_phase` (`workflows/sdd.rs`) dispatches lightweight phases to native LLM and CodeGen to ACP, using the SDD skill directory resolved by core's `resolve_sdd_skill_dir`.
 
 ---
 
-## Litho generation — litho.rs
+## Performance Considerations
 
-At 714 lines, `litho.rs` is the largest file in the crate. It orchestrates the 4-phase Litho pipeline that produces human-readable documentation:
-
-1. **Research** — the agent reads source code and produces research artifacts
-2. **Deep Exploration** — module-level deep dives with Mermaid diagrams
-3. **Composition** — merges research into coherent narrative documents
-4. **Validation** — checks completeness against the required file list
-
-Key constants control the pipeline (`litho.rs:37-41`):
-
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| `POLL_INTERVAL_SECS` | 3 | How often to check ACP agent progress |
-| `STABLE_TICKS` | 10 | Consecutive stable polls before declaring done |
-| `MAX_COMPOSITION_ATTEMPTS` | 3 | Retries for the composition phase |
-| `DEFAULT_WALL_TIMEOUT_SECS` | 2700 (45 min) | Maximum wall-clock time for a full run |
-
-`LithoRunMode` (`litho.rs:18`) distinguishes `Auto` (skip if complete, incrementally update if drifted) from `FullRebuild` (wipe and regenerate everything).
+- `ASK_TIMEOUT` = 1200 seconds (`chat/mod.rs:33`) accommodates long multi-tool Ask sessions
+- Tool call caching in `tool_session_cache.rs` prevents redundant repomix reads within a session
+- Litho polling uses adaptive intervals: 3s active, 6s stable (`litho.rs:37-38`), with 45-minute wall timeout
+- `Runtime` caches ChatEngine across IPC calls — model initialization happens once per app session
 
 ---
 
-## Workflows — `workflows/`
+## Implementation Highlights
 
-| Workflow | File | Purpose |
-|----------|------|---------|
-| `ask_knowledge` | `workflows/ask.rs` | End-to-end Ask Q&A: refresh context if stale, invoke LLM, stream response |
-| `run_project_initialization` | `workflows/init.rs` | Scan → Litho → agent context in one shot |
-| `run_quick_refresh` | `workflows/quick_refresh.rs` | Scan + repack without Litho |
-| `run_sdd_phase` | `workflows/sdd.rs` | Execute a single SDD phase (Requirements, Tech Design, Code Gen, Code Review) |
-
----
-
-## Runtime — runtime.rs
-
-`Runtime` (`runtime.rs:11`) is the shared state singleton used by both the desktop app and CLI. It holds:
-
-- `paths: KnowledgePaths` — the workspace resolver
-- `model_config: RwLock<ModelConfig>` — hot-swappable model settings
-- `chat: Mutex<Option<Arc<ChatEngine>>>` — lazily constructed, cached engine
-
-`Runtime::chat_engine` (`runtime.rs:55`) checks whether the cached engine's config still matches current settings before returning it, invalidating automatically when the user changes providers in the UI.
-
----
-
-## ACP integration — acp.rs
-
-ACP (Agent Communication Protocol) enables Terrain to delegate to external coding agents. `acp.rs` resolves the ACP binary (default: `opencode`), builds spawn commands, and detects whether the external agent is available.
-
-The execution model is controlled by `AgentExecution` (`terrain-core`): `Acp` (full delegation) or `AcpNative` (use native LLM for generation but ACP for tool calls).
-
----
-
-## Throttling and caching
-
-- **`throttle.rs`** — configurable cooldown between LLM calls and tool invocations, preventing rate-limit violations
-- **`tool_session_cache.rs`** — fingerprints tool calls by arguments and caches responses within a session, deduplicating repeated queries
-
----
-
-## Design principles
-
-1. **Two-tier architecture.** `terrain-core` handles data; `terrain-agent` handles intelligence. The boundary is clean: no LLM code in core, no filesystem mutations in agent tools.
-2. **Backend agnostic.** The `ChatEngine` abstracts over native LLM and ACP, allowing the same workflows to run with Ollama locally, a cloud API, or a delegated coding agent.
-3. **Tool-centric design.** The agent's capabilities are defined entirely by its tool belt — adding a new tool (e.g., a new knowledge source) is a matter of registering a new `FunctionTool` in `builder.rs`.
+The Litho heartbeat polling design (`litho.rs:109-113`) deliberately avoids early-completion heuristics for incremental updates. Because incremental Litho edits files in place, doc counts never grow — a naive "all files present" check would abort the ACP session mid-edit after about a minute. The heartbeat-only approach lets the agent finish its work regardless of file count stability.
