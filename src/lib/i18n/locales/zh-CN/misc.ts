@@ -11,6 +11,10 @@ export default {
   progress: {
     generating: "正在生成知识资产",
   },
+  errorNotice: {
+    showDetails: "查看详情",
+    copyLog: "复制完整日志",
+  },
   projects: {
     empty: "尚无项目，请添加仓库。",
     add: "添加并初始化仓库",

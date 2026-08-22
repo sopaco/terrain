@@ -8,10 +8,13 @@
     LanguageSetting,
     LlmStatus,
     ModelSettings,
+    OpenAiApiMode,
     ProviderProfile,
   } from "../types";
   import { applyLocale, tr, t } from "../i18n";
+  import { formatErrorDisplay } from "../errorFormat";
   import { setStatus } from "../stores/status.svelte";
+  import ErrorNotice from "./ErrorNotice.svelte";
   import ModalShell from "./ModalShell.svelte";
   import {
     DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
@@ -30,6 +33,7 @@
     api_key: string;
     base_url: string;
     ollama_host: string;
+    api_mode: OpenAiApiMode;
   };
 
   interface Props {
@@ -45,7 +49,7 @@
   let provider = $state<ProviderId>("openai");
   let drafts = $state<Record<ProviderId, ProviderDraft>>(emptyDrafts());
   let saving = $state(false);
-  let error = $state<string | null>(null);
+  let error = $state<{ summary: string; detail: string | null } | null>(null);
   let acpBinary = $state("opencode");
   let acpArgs = $state("acp");
   let acpCommand = $state("");
@@ -84,6 +88,7 @@
         api_key: "lm-studio",
         base_url: DEFAULT_LMSTUDIO_BASE_URL,
         ollama_host: DEFAULT_OLLAMA_HOST,
+        api_mode: "chat_completions",
       };
     }
     if (id === "ollama") {
@@ -92,6 +97,7 @@
         api_key: "",
         base_url: "",
         ollama_host: DEFAULT_OLLAMA_HOST,
+        api_mode: "chat_completions",
       };
     }
     return {
@@ -99,6 +105,7 @@
       api_key: "",
       base_url: DEFAULT_OPENAI_BASE_URL,
       ollama_host: DEFAULT_OLLAMA_HOST,
+      api_mode: "chat_completions",
     };
   }
 
@@ -110,6 +117,7 @@
       api_key: profile.api_key ?? base.api_key,
       base_url: profile.base_url ?? base.base_url,
       ollama_host: profile.ollama_host ?? base.ollama_host,
+      api_mode: profile.api_mode ?? base.api_mode,
     };
   }
 
@@ -119,7 +127,16 @@
       api_key: draft.api_key.trim() || null,
       base_url: draft.base_url.trim() || null,
       ollama_host: draft.ollama_host.trim() || null,
+      api_mode: draft.api_mode,
     };
+  }
+
+  function setPanelError(value: unknown) {
+    error = formatErrorDisplay(value);
+  }
+
+  function clearPanelError() {
+    error = null;
   }
 
   function patchCurrent(patch: Partial<ProviderDraft>) {
@@ -142,6 +159,7 @@
           api_key: s.api_key,
           base_url: s.base_url,
           ollama_host: s.ollama_host,
+          api_mode: "chat_completions",
         },
         active,
       );
@@ -218,7 +236,7 @@
     try {
       acpTestOk = await checkAcp();
     } catch (e) {
-      error = String(e);
+      setPanelError(e);
       acpTestOk = false;
     } finally {
       saving = false;
@@ -244,7 +262,7 @@
         return;
       }
     } catch (e) {
-      error = String(e);
+      setPanelError(e);
     } finally {
       saving = false;
     }
@@ -261,7 +279,7 @@
       llmTestDetail = status.ready ? null : status.message;
       onsaved(status);
     } catch (e) {
-      error = String(e);
+      setPanelError(e);
       llmTestOk = false;
       llmTestDetail = null;
     } finally {
@@ -421,6 +439,22 @@
 
           {#if provider !== "ollama"}
             <label class="block space-y-1.5">
+              <span class="text-xs font-medium text-tr-ink-2">{tr("settings.llm.apiMode")}</span>
+              <select
+                class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
+                value={current.api_mode}
+                onchange={(e) =>
+                  patchCurrent({
+                    api_mode: (e.currentTarget as HTMLSelectElement).value as OpenAiApiMode,
+                  })}
+              >
+                <option value="chat_completions">{tr("settings.llm.apiModeChatCompletions")}</option>
+                <option value="responses">{tr("settings.llm.apiModeResponses")}</option>
+              </select>
+              <p class="text-[11px] leading-relaxed text-tr-ink-3">{tr("settings.llm.apiModeHint")}</p>
+            </label>
+
+            <label class="block space-y-1.5">
               <span class="text-xs font-medium text-tr-ink-2">API Key</span>
               <input
                 type="password"
@@ -541,7 +575,7 @@
       </p>
 
       {#if error}
-        <p class="rounded-lg border border-tr-critical/30 bg-tr-critical-soft px-3 py-2 text-xs text-tr-critical">{error}</p>
+        <ErrorNotice summary={error.summary} detail={error.detail} compact />
       {/if}
     </div>
 

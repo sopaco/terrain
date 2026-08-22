@@ -1,4 +1,5 @@
 import type { StatusKind } from "../components/StatusBanner.svelte";
+import { formatErrorDisplay } from "../errorFormat";
 import { isIdleStatusMessage, tr } from "../i18n/translate";
 
 export const STATUS_AUTO_DISMISS_MS = 3_000;
@@ -68,4 +69,20 @@ export function setStatus(
       }
     }, dismissMs);
   }
+}
+
+/** Format a thrown value and surface a short summary with optional full log in `detail`. */
+export function setErrorStatus(error: unknown, autoDismissMs?: number) {
+  const { summary, detail } = formatErrorDisplay(error);
+  setStatus(summary, "error", detail, autoDismissMs);
+}
+
+/** Like `setErrorStatus`, but wraps the short summary in a localized template. */
+export function setLocalizedErrorStatus(
+  formatMessage: (summary: string) => string,
+  error: unknown,
+  autoDismissMs?: number,
+) {
+  const { summary, detail } = formatErrorDisplay(error);
+  setStatus(formatMessage(summary), "error", detail, autoDismissMs);
 }

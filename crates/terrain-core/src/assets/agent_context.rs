@@ -31,7 +31,24 @@ pub fn agent_context_ready(paths: &KnowledgePaths, project_slug: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Baseline commit recorded in `context-meta.json` only (no repomix fallback).
+///
+/// Use this for refresh/skip decisions. Falling back to the pack baseline after a repomix
+/// repack would make a stale `context.md` look synced with HEAD even though it was never
+/// regenerated.
+pub fn agent_context_recorded_baseline_head(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+) -> Option<String> {
+    crate::doc::read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug))
+        .ok()
+        .and_then(|m| m.baseline_git_head.clone())
+}
+
 /// Recorded baseline commit for `agent/context.md` (falls back to the repomix pack baseline).
+///
+/// Prefer [`agent_context_recorded_baseline_head`] for regeneration decisions; keep this
+/// fallback for freshness scoring when older projects lack a context baseline field.
 pub fn agent_context_baseline_head(
     paths: &KnowledgePaths,
     project_slug: &str,
@@ -62,7 +79,10 @@ fn context_baseline_head(
         .or_else(|| pack_meta.and_then(|m| m.baseline_git_head.clone()))
 }
 
-/// True when context exists and its baseline matches current HEAD (ignores dirty working tree).
+/// True when context exists and its **recorded** baseline matches current HEAD.
+///
+/// Ignores dirty working tree. Does not consult the repomix pack baseline — a repack that
+/// advanced the pack meta must not mask a stale `context.md`.
 pub fn agent_context_synced_with_head(
     paths: &KnowledgePaths,
     project_slug: &str,
@@ -71,7 +91,10 @@ pub fn agent_context_synced_with_head(
     if !agent_context_ready(paths, project_slug) {
         return false;
     }
-    baseline_matches_head(repo_path, context_baseline_head(paths, project_slug).as_deref())
+    let Some(recorded) = agent_context_recorded_baseline_head(paths, project_slug) else {
+        return false;
+    };
+    baseline_matches_head(repo_path, Some(recorded.as_str()))
 }
 
 /// True when context matches current HEAD and the working tree is clean (excluding `.terrain/`).
@@ -551,5 +574,115 @@ mod tests {
             slug,
             &repo.display().to_string()
         ));
+    }
+
+    #[test]
+    fn context_not_synced_when_only_pack_baseline_matches_head() {
+        let _lock = crate::registry::registry_test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let baseline = init_git_repo(repo);
+        let slug = "pack-mask";
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        write_ready_context(&paths, slug, &repo.display().to_string(), &baseline);
+
+        fs::write(repo.join("feature.rs"), "pub fn f() {}\n").unwrap();
+        Command::new("git")
+            .args(["add", "feature.rs"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "add feature"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        let head = String::from_utf8(
+            Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(repo)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string();
+
+        // Simulate quick refresh repacking first: pack meta advances to HEAD while context
+        // still carries the old recorded baseline.
+        let pack_meta = crate::schema::AgentPackMeta {
+            project: slug.to_string(),
+            repo_path: stored_repo_path(repo),
+            generator: crate::schema::AssetGenerator::RepomixCore,
+            pack_strategy: "architecture-context".into(),
+            output_file: "repomix.md".into(),
+            total_files: 1,
+            total_tokens: 1,
+            total_characters: 1,
+            top_files_by_tokens: vec![],
+            directory_structure: String::new(),
+            synced_at: Utc::now().to_rfc3339(),
+            baseline_git_head: Some(head.clone()),
+        };
+        crate::doc::write_json(paths.agent_pack_meta(slug), &pack_meta).unwrap();
+
+        let repo_s = repo.display().to_string();
+        assert!(!agent_context_synced_with_head(&paths, slug, &repo_s));
+        assert_eq!(
+            agent_context_recorded_baseline_head(&paths, slug).as_deref(),
+            Some(baseline.as_str())
+        );
+        // Freshness scoring may still fall back to pack when recorded is missing; when
+        // recorded exists it wins over a newer pack baseline.
+        assert_eq!(
+            agent_context_baseline_head(&paths, slug).as_deref(),
+            Some(baseline.as_str())
+        );
+    }
+
+    #[test]
+    fn context_without_recorded_baseline_is_never_synced() {
+        let _lock = crate::registry::registry_test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let _head = init_git_repo(repo);
+        let slug = "legacy-ctx";
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+
+        let sections = (1..=4)
+            .map(|i| format!("## Section {i}\n\n{}", "x".repeat(130)))
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        let body = format!("Overview paragraph.\n\n{sections}");
+        let fm = DocFrontmatter {
+            doc_type: DocType::AgentContext,
+            project: slug.to_string(),
+            module: None,
+            title: Some("Agent Architecture Context".into()),
+            source: Some(stored_repo_path(repo)),
+            refs: vec![],
+            deps: vec![],
+            extra: serde_json::Map::new(),
+        };
+        write_doc(&paths.agent_context_main(slug), &fm, &body).unwrap();
+        let meta = AgentContextMeta {
+            project: slug.to_string(),
+            repo_path: stored_repo_path(repo),
+            output_file: "context.md".into(),
+            generated_at: Utc::now().to_rfc3339(),
+            section_count: 4,
+            char_count: body.len(),
+            baseline_git_head: None,
+            language: None,
+        };
+        crate::doc::write_json(paths.agent_context_meta(slug), &meta).unwrap();
+
+        let repo_s = repo.display().to_string();
+        assert!(!agent_context_synced_with_head(&paths, slug, &repo_s));
     }
 }

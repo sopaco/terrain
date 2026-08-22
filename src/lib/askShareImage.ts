@@ -3,6 +3,7 @@ import AskShareCard from "./components/AskShareCard.svelte";
 import { t } from "./i18n";
 import { hasCompleteMermaidBlocks, prepareSvgForExport } from "./mermaid-utils";
 import { formatShareStamp } from "./timeFormat";
+import { formatErrorSummary } from "./errorFormat";
 
 /** PNG width in CSS px, echoing the Ask panel so shared images feel like the app. */
 const FRAME_WIDTH = 800;
@@ -44,10 +45,9 @@ export interface AskShareImages {
 }
 
 export function formatUnknownError(error: unknown): string {
-  if (error instanceof Error) return error.message;
   if (error instanceof Event) return t("ask.shareImage.renderRetry");
-  if (typeof error === "string") return error;
-  return t("ask.shareImage.unknownError");
+  const summary = formatErrorSummary(error);
+  return summary || t("ask.shareImage.unknownError");
 }
 
 interface Block {

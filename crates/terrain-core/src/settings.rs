@@ -16,6 +16,19 @@ pub const DEFAULT_LMSTUDIO_BASE_URL: &str = "http://localhost:1234/v1";
 pub const DEFAULT_LMSTUDIO_MODEL: &str = "qwen/qwen3.5-9b";
 pub const DEFAULT_LMSTUDIO_API_KEY: &str = "lm-studio";
 
+/// OpenAI-compatible HTTP API surface for chat / completion requests.
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export, rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAiApiMode {
+    /// `POST /v1/chat/completions` (default).
+    #[default]
+    ChatCompletions,
+    /// `POST /v1/responses` (OpenAI Responses API; required by some newer models and Copilot proxies).
+    Responses,
+}
+
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts-export", ts(export, rename_all = "snake_case"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -109,6 +122,9 @@ pub struct ProviderProfile {
     pub base_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ollama_host: Option<String>,
+    /// API route for OpenAI-compatible providers (`chat_completions` vs `responses`).
+    #[serde(default)]
+    pub api_mode: OpenAiApiMode,
 }
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
@@ -164,18 +180,21 @@ pub fn default_profile_for(provider: &str) -> ProviderProfile {
             api_key: Some(DEFAULT_LMSTUDIO_API_KEY.into()),
             base_url: Some(DEFAULT_LMSTUDIO_BASE_URL.into()),
             ollama_host: Some(DEFAULT_OLLAMA_HOST.into()),
+            ..Default::default()
         },
         "ollama" => ProviderProfile {
             model: Some(DEFAULT_OLLAMA_MODEL.into()),
             api_key: None,
             base_url: None,
             ollama_host: Some(DEFAULT_OLLAMA_HOST.into()),
+            ..Default::default()
         },
         _ => ProviderProfile {
             model: Some(DEFAULT_OPENAI_MODEL.into()),
             api_key: None,
             base_url: Some(DEFAULT_OPENAI_BASE_URL.into()),
             ollama_host: Some(DEFAULT_OLLAMA_HOST.into()),
+            ..Default::default()
         },
     }
 }
@@ -213,6 +232,7 @@ fn normalize_settings(settings: &mut ModelSettings) {
             api_key: settings.api_key.clone(),
             base_url: settings.base_url.clone(),
             ollama_host: settings.ollama_host.clone(),
+            ..Default::default()
         };
         merge_profile(
             settings.profiles.entry(active.clone()).or_default(),
@@ -273,5 +293,19 @@ mod tests {
         let json = r#"{"agent_execution":"native"}"#;
         let settings: AcpSettings = serde_json::from_str(json).unwrap();
         assert_eq!(settings.agent_execution, AgentExecution::AcpNative);
+    }
+
+    #[test]
+    fn openai_api_mode_defaults_to_chat_completions() {
+        let json = r#"{"model":"gpt-4o"}"#;
+        let profile: ProviderProfile = serde_json::from_str(json).unwrap();
+        assert_eq!(profile.api_mode, OpenAiApiMode::ChatCompletions);
+    }
+
+    #[test]
+    fn openai_api_mode_deserializes_responses() {
+        let json = r#"{"api_mode":"responses"}"#;
+        let profile: ProviderProfile = serde_json::from_str(json).unwrap();
+        assert_eq!(profile.api_mode, OpenAiApiMode::Responses);
     }
 }

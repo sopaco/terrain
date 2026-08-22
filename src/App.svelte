@@ -56,6 +56,8 @@
         createPendingSourceSlice,
     } from "./lib/resolveSource";
     import {
+        setErrorStatus,
+        setLocalizedErrorStatus,
         setStatus,
         STATUS_AUTO_DISMISS_MS,
         status,
@@ -273,7 +275,7 @@
                 "success",
             );
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         }
     }
 
@@ -390,7 +392,10 @@
         try {
             picked = await open({ directory: true, multiple: false });
         } catch (e) {
-            setStatus(t("app.status.pickFolderFailed", { error: String(e) }), "error");
+            setLocalizedErrorStatus(
+                (summary) => t("app.status.pickFolderFailed", { error: summary }),
+                e,
+            );
             return;
         }
         if (!picked || Array.isArray(picked)) return;
@@ -418,7 +423,7 @@
                 "success",
             );
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         }
     }
 
@@ -468,7 +473,10 @@
         try {
             await openRepoFolder(path);
         } catch (e) {
-            setStatus(t("terms.msg.openFolderFailed", { error: String(e) }), "error");
+            setLocalizedErrorStatus(
+                (summary) => t("terms.msg.openFolderFailed", { error: summary }),
+                e,
+            );
         }
     }
 
@@ -507,7 +515,7 @@
                 project.activeDoc = await readDocument(docPath);
                 project.activeHumanPath = docPath;
             } catch (e) {
-                setStatus(String(e), "error");
+                setErrorStatus(e);
             } finally {
                 project.docLoading = false;
             }
@@ -560,7 +568,7 @@
                 refreshKnowledgeRoot(result.project_slug),
             ]);
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.initBusy = false;
             project.initProgress = null;
@@ -618,7 +626,7 @@
             }
             project.freshnessLoading = false;
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.quickRefreshBusy = false;
             // Quick refresh may emit litho-progress (incremental human-doc update) without a
@@ -650,7 +658,7 @@
             setStatus(t("terms.msg.agentContextReady"), "success");
             await Promise.all([loadProjectOverview(slug), loadHumanDocs(slug)]);
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.agentContextBusy = false;
         }
@@ -706,7 +714,7 @@
                     );
                 }
             } catch (e) {
-                setStatus(String(e), "error");
+                setErrorStatus(e);
             } finally {
                 project.docLoading = false;
             }
@@ -721,7 +729,7 @@
             project.activeDoc = await readDocument(doc.path);
             setStatus(t("app.status.viewingDoc", { title: doc.title }), "idle");
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.docLoading = false;
         }
@@ -734,7 +742,7 @@
             project.activeHumanPath = path;
             project.deepWikiOpen = false;
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.docLoading = false;
         }
@@ -759,7 +767,7 @@
             if (project.selectedSlug)
                 await loadProjectOverview(project.selectedSlug);
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             if (project.selectedSlug)
                 setProjectTask(project.selectedSlug, { repackBusy: false });
@@ -794,7 +802,7 @@
         try {
             await runLithoGeneration(project.selectedRepoPath, slug, force);
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
             setProjectTask(slug, { lithoBusy: false, lithoProgress: "" });
         }
     }
@@ -820,7 +828,7 @@
             setKnowledgeSource(slug, slice);
         } catch (e) {
             if (loadId !== knowledgeSourceLoadId) return;
-            setStatus(String(e), "error");
+            setErrorStatus(e);
             setKnowledgeSource(slug, {
                 ...createPendingSourceSlice(c, project.selectedRepoPath),
                 status: "error",
@@ -835,7 +843,7 @@
             await startNewAskSession(project.selectedSlug);
             setStatus(t("app.status.newChatCreated"), "success");
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         }
     }
 
@@ -887,7 +895,7 @@
                     currentMessages,
                 );
             } catch (e) {
-                setStatus(String(e), "error");
+                setErrorStatus(e);
             }
         }
     }
@@ -911,7 +919,7 @@
                 project.hits.length ? "success" : "idle",
             );
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.docLoading = false;
         }
@@ -923,7 +931,7 @@
             project.activeDoc = await readDocument(hit.path);
             project.hits = [];
         } catch (e) {
-            setStatus(String(e), "error");
+            setErrorStatus(e);
         } finally {
             project.docLoading = false;
         }

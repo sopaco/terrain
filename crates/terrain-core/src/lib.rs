@@ -37,7 +37,7 @@ mod ts_ipc;
 
 pub use assets::{
     agent_context_baseline_head, agent_context_fresh, agent_context_ready,
-    agent_context_synced_with_head, build_agent_context_prompt,
+    agent_context_recorded_baseline_head, agent_context_synced_with_head, build_agent_context_prompt,
     build_agent_context_update_prompt, build_context_overview, build_litho_update_prompt,
     build_generation_plan, collect_knowledge_dir_inputs, collect_project_meta,
     context_body_ready, count_knowledge_markdown_files, count_markdown_in_dir, default_agent_arch_skill_dir,

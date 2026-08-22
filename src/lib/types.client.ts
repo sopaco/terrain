@@ -55,6 +55,8 @@ export interface ChatMessage {
   toolCalls?: ToolCallRecord[];
   steps?: AssistantStep[];
   timestamp?: number;
+  errorDetail?: string | null;
+  isError?: boolean;
   usage?: TokenUsage;
 }
 

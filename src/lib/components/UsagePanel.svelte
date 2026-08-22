@@ -12,6 +12,8 @@
     import CloseButton from "./icons/CloseButton.svelte";
     import SlideDrawer from "./SlideDrawer.svelte";
     import { tr } from "../i18n";
+    import { formatErrorDisplay } from "../errorFormat";
+    import ErrorNotice from "./ErrorNotice.svelte";
 
     type ChartPeriod = "day" | "month" | "year";
 
@@ -32,7 +34,7 @@
 
     let snapshot = $state<UsageSnapshot | null>(null);
     let loading = $state(false);
-    let error = $state<string | null>(null);
+    let error = $state<{ summary: string; detail: string | null } | null>(null);
     let chartPeriod = $state<ChartPeriod>("day");
     let chartMetric = $state<"tokens" | "cost">("tokens");
 
@@ -49,10 +51,10 @@
         try {
             snapshot = await getUsageSnapshot("full", force);
             if (snapshot.error) {
-                error = snapshot.error;
+                error = formatErrorDisplay(snapshot.error);
             }
         } catch (e) {
-            error = e instanceof Error ? e.message : String(e);
+            error = formatErrorDisplay(e);
         } finally {
             loading = false;
         }
@@ -174,7 +176,11 @@
         try {
             await openLocalPath(path);
         } catch (e) {
-            error = tr("terms.msg.openPathFailed", { error: String(e) });
+            const formatted = formatErrorDisplay(e);
+            error = {
+                summary: tr("terms.msg.openPathFailed", { error: formatted.summary }),
+                detail: formatted.detail,
+            };
         }
     }
 
@@ -273,10 +279,8 @@
             </div>
         {:else if snapshot}
             {#if error}
-                <div
-                    class="mb-4 rounded-lg border border-tr-watch/30 bg-tr-watch-soft px-3 py-2 text-sm text-tr-watch"
-                >
-                    {error}
+                <div class="mb-4">
+                    <ErrorNotice summary={error.summary} detail={error.detail} />
                 </div>
             {/if}
 

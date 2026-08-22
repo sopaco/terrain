@@ -34,6 +34,7 @@
   } from "../types";
   import { formatTime } from "../timeFormat";
   import { assistantMessageMarkdown, assistantStepsMarkdown } from "../assistantMarkdown";
+  import { formatErrorDisplay } from "../errorFormat";
   import { renderAskShareImages, formatUnknownError } from "../askShareImage";
   import { copyPngBlobToClipboard, copyTextToClipboard } from "../clipboard";
   import { pickDirectory, savePngPages, shareFileBaseName } from "../shareExport";
@@ -43,6 +44,7 @@
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import SourcePanel from "./SourcePanel.svelte";
   import ToolCallTrace from "./ToolCallTrace.svelte";
+  import ErrorNotice from "./ErrorNotice.svelte";
   import ThinkingTrace from "./ThinkingTrace.svelte";
   import AskSessionSelector from "./AskSessionSelector.svelte";
   import {
@@ -98,7 +100,7 @@
   let messagesContentEl = $state<HTMLDivElement | null>(null);
   let stickToBottom = $state(true);
   let consumedInitial = $state(false);
-  let citationError = $state<string | null>(null);
+  let citationError = $state<{ summary: string; detail: string | null } | null>(null);
   let composing = $state(false);
   let streamPhase = $state<ChatPhase>("thinking");
   let copyingMarkdownKey = $state<string | null>(null);
@@ -624,9 +626,16 @@
     } catch (e) {
       if (!turnCompleted) {
         try {
+          const formatted = formatErrorDisplay(e);
           onmessageschange((prev) => [
             ...prev,
-            { role: "assistant", content: tr("ask.errorPrefix", { error: String(e) }), timestamp: Date.now() },
+            {
+              role: "assistant",
+              content: formatted.summary,
+              isError: true,
+              errorDetail: formatted.detail,
+              timestamp: Date.now(),
+            },
           ]);
         } catch {
           // ignore persistence errors
@@ -662,7 +671,7 @@
     citationError = null;
 
     if (!projectSlug && !isKnowledgeMarkdownPath(c.path) && !isTerrainKnowledgeAssetPath(c.path)) {
-      citationError = tr("terms.msg.noProjectSelected");
+      citationError = { summary: tr("terms.msg.noProjectSelected"), detail: null };
       return;
     }
 
@@ -680,12 +689,13 @@
       onsourcechange(slice);
     } catch (e) {
       if (loadId !== sourceLoadId) return;
-      citationError = String(e);
+      const formatted = formatErrorDisplay(e);
+      citationError = formatted;
       onsourcechange({
         ...createPendingSourceSlice(c, repoPath),
         status: "error",
         format: "markdown",
-        content: String(e),
+        content: formatted.summary,
       });
     }
   }
@@ -818,6 +828,12 @@
                       <MarkdownViewer body={step.content} repoPath={repoPath} compact onSourceClick={openCitation} />
                     {/if}
                   {/each}
+                {:else if msg.isError}
+                  <ErrorNotice
+                    summary={tr("ask.errorPrefix", { error: msg.content })}
+                    detail={msg.errorDetail}
+                    compact
+                  />
                 {:else}
                   {#if msg.toolCalls?.length}
                     <div class="mb-3">
@@ -827,14 +843,14 @@
                   <MarkdownViewer body={msg.content} repoPath={repoPath} compact onSourceClick={openCitation} />
                 {/if}
               {/if}
-              {#if formatUsageLine(msg.usage) || (msg.role === "assistant" && assistantMessageMarkdown(msg))}
+              {#if formatUsageLine(msg.usage) || (msg.role === "assistant" && !msg.isError && assistantMessageMarkdown(msg))}
                 <div class="mt-3 flex items-center justify-between gap-2 border-t border-tr-border pt-2">
                   {#if formatUsageLine(msg.usage)}
                     <p class="text-[10px] text-tr-ink-3">{formatUsageLine(msg.usage)}</p>
                   {:else}
                     <span></span>
                   {/if}
-                  {#if msg.role === "assistant" && assistantMessageMarkdown(msg)}
+                  {#if msg.role === "assistant" && !msg.isError && assistantMessageMarkdown(msg)}
                     {@const copyKey = `done-${msg.timestamp ?? i}`}
                     <div class="flex shrink-0 items-center gap-1.5">
                       <ShareImageButton
@@ -961,9 +977,11 @@
             </p>
           {/if}
           {#if citationError}
-            <p class="rounded-lg border border-tr-critical/30 bg-tr-critical-soft px-3 py-2 text-xs text-tr-critical">
-              {citationError}
-            </p>
+            <ErrorNotice
+              summary={citationError.summary}
+              detail={citationError.detail}
+              compact
+            />
           {/if}
           </div>
         </div>

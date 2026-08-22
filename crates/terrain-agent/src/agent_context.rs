@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_baseline_head, agent_context_ready, agent_pack_ready,
+    agent_context_ready, agent_context_recorded_baseline_head, agent_pack_ready,
     build_agent_context_prompt, build_agent_context_update_prompt, context_body_ready,
     pack_agent_assets, plan_incremental_update, prepare_model_markdown, read_agent_context_body,
     refresh_agent_context_baseline, reject_incremental_document, write_agent_context,
@@ -39,7 +39,7 @@ pub async fn run_agent_context_generation(
     } else {
         plan_incremental_update(
             repo_path,
-            agent_context_baseline_head(paths, project_slug).as_deref(),
+            agent_context_recorded_baseline_head(paths, project_slug).as_deref(),
             agent_context_ready(paths, project_slug),
             IncrementalOptions::from(knowledge),
         )
