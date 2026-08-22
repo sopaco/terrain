@@ -11,6 +11,10 @@ export default {
   progress: {
     generating: "Generating knowledge assets",
   },
+  errorNotice: {
+    showDetails: "View details",
+    copyLog: "Copy full log",
+  },
   projects: {
     empty: "No projects yet — add a repository.",
     add: "Add & initialize repository",

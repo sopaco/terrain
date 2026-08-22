@@ -38,6 +38,11 @@ export default {
   },
   llm: {
     title: "Native LLM",
+    apiMode: "API mode",
+    apiModeChatCompletions: "Chat Completions (/v1/chat/completions)",
+    apiModeResponses: "Responses API (/v1/responses)",
+    apiModeHint:
+      "Some newer models and GitHub Copilot proxies only expose the OpenAI Responses API. Use Chat Completions for classic OpenAI-compatible endpoints.",
     test: "Test LLM connection",
     testOk: "Connected",
     testFailed: "Connection failed — check the configuration",

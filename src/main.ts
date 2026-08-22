@@ -3,12 +3,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { mount } from "svelte";
 import App from "./App.svelte";
 import UsageWindow from "./UsageWindow.svelte";
-import { bootstrapLocale } from "./lib/i18n";
+import { loadAppBootstrap } from "./lib/appBootstrap";
+import { applyLocale } from "./lib/i18n";
 
 const target = document.getElementById("app")!;
 
 async function bootstrap() {
-  await bootstrapLocale();
+  try {
+    const boot = await loadAppBootstrap();
+    applyLocale(boot.model_settings.language);
+  } catch {
+    applyLocale("system");
+  }
 
   const label = getCurrentWindow().label;
   if (label === "usage") {

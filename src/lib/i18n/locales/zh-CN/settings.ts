@@ -36,6 +36,11 @@ export default {
   },
   llm: {
     title: "Native LLM",
+    apiMode: "API 模式",
+    apiModeChatCompletions: "Chat Completions（/v1/chat/completions）",
+    apiModeResponses: "Responses API（/v1/responses）",
+    apiModeHint:
+      "部分新模型与 GitHub Copilot 代理仅提供 OpenAI Responses API；经典 OpenAI 兼容端点请选 Chat Completions。",
     test: "测试 LLM 连接",
     testOk: "连接正常",
     testFailed: "连接失败，请检查配置",

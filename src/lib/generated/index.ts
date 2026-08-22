@@ -38,6 +38,7 @@ export type { LithoPlan } from "./LithoPlan";
 export type { LithoStatus } from "./LithoStatus";
 export type { LlmStatus } from "./LlmStatus";
 export type { ModelSettings } from "./ModelSettings";
+export type { OpenAiApiMode } from "./OpenAiApiMode";
 export type { ProjectInitResult } from "./ProjectInitResult";
 export type { ProjectOverview } from "./ProjectOverview";
 export type { ProjectRegistryEntry } from "./ProjectRegistryEntry";

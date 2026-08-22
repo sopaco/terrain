@@ -88,12 +88,14 @@ Terrain 是面向 AI 编码助手时代的**工程环境管理平台**（Sopaco 
 - **Rust**：workspace（terrain-core/terrain-agent/terrain-cli/terrain-ts-export/src-tauri），edition 2024，rust-version 1.94。
 - **桌面壳**：Tauri 2（capabilities ACL、plugin-dialog/shell、托盘 + Usage 窗口）。
 - **前端**：Svelte 5（runes）+ Vite 8 + Tailwind 4 + marked/mermaid/highlight.js、@lucide/svelte。
+- **前端启动优化**：`appBootstrap.ts` 缓存单例去重 `bootstrapApp` IPC 调用（两个窗口共享一次）；Vite `modulePreload` 过滤 mermaid chunk 以减少首屏预加载体积。
 - **Ask 分享图片**：离屏挂载真实 `AskShareCard`（复用 MarkdownViewer/markdown.css/mermaid）→ 长文分页 → 原生 canvas 栅格化 PNG；剪贴板经 `copy_image_to_clipboard`、落盘经 `save_png_files`。
 - **IPC 类型**：ts-rs 10 + schemars；`bun run gen:types` 生成 `src/lib/generated/`。
 - **Agent 运行时**：ADK Rust 1.0 家族（adk-core/agent/runner/session/tool/model `{openai,ollama}`/acp）+ agent-client-protocol 0.11.1（ACP 子进程），本地 `[patch]` tokio 层。
 - **源码索引**：repomix-core 2.0（repomix-rs Rust 锈化）打包 `agent/repomix.md`；CodeGraph（SQLite 符号图）做 drift 交叉验证；RTK 压缩 shell 输出。
 - **存储**：`.terrain/`（版本化知识）、`~/.terrain/registry.json`（项目指针）、`.codegraph/`（本地索引）。
 - **分发**：npm 包（`cli`/`rtk` + darwin-arm64/win32-x64 shims）、`scripts/cross-windows-terrain.sh` 交叉编译、Tauri 打包。
+- **Release 构建**：workspace 级 `lto = "thin"` + `strip = true` + `codegen-units = 1`，优化产物体积与链接时间。
 - **基础库**：tokio、serde/serde_json、anyhow/thiserror、tracing、chrono、walkdir/ignore、futures、slug、dotenvy。
 
 ## 系统边界
@@ -123,13 +125,16 @@ Terrain 是面向 AI 编码助手时代的**工程环境管理平台**（Sopaco 
 | SDD 工作流 | `crates/terrain-agent/src/workflows/sdd.rs`、`crates/terrain-agent/src/sdd.rs` | 阶段分发 LLM/ACP |
 | Ask 检索 | `crates/terrain-core/src/assets/ask.rs`、`crates/terrain-agent/src/workflows/ask.rs` | 三层检索 + fallback |
 | ChatEngine 双后端 | `crates/terrain-agent/src/chat/mod.rs`、`native.rs`、`acp.rs` | ADK Runner / ACP |
-| 工具 schema/注册 | `crates/terrain-agent/src/tools.rs`、`tool_schema.rs`、`compat_tool.rs`、`tool_session_cache.rs` | AgentToolPaths |
+| 知识检索与文档读取 | `crates/terrain-core/src/search.rs` | `KnowledgeSearch` 三层搜索；`read_doc_at`/`read_doc_at_in_project` 支持绝对路径、knowledge-root 相对路径、**裸文件名**（如 `core` → 自动解析 `modules/core.md`）；`SearchHit` 含 `rel_path` 供 `read_doc` 消费 |
+| 工具 schema/注册 | `crates/terrain-agent/src/tools.rs`、`tool_schema.rs`、`compat_tool.rs`、`tool_session_cache.rs` | `read_doc` 工具描述更新为裸文件名解析语义；`search_knowledge` 返回值含 `rel_path` |
 | 运行时/引擎缓存 | `crates/terrain-agent/src/runtime.rs`、`builder.rs` | ModelConfig + AcpSettings |
 | 新鲜度 | `crates/terrain-core/src/freshness/` | compute/scoring/git/codegraph/drift_factors/ledger |
 | 摄取/注册 | `crates/terrain-core/src/ingest/`（git/openapi）、`registry.rs`、`project.rs` | ProjectScanner/ScanReport |
 | 环境集成 | `crates/terrain-core/src/integrations/`、`assets/env/`、`agent_tools_deploy.rs`、`bundled_tools.rs` | EnvPlan/Status、usage 探测 |
 | IPC 类型 | `crates/terrain-core/src/schema/`、`ipc/`、`crates/terrain-agent/src/chat/types.rs` | ts-export 注解 |
 | Tauri 命令层 | `src-tauri/src/commands/` | project/sessions/workflows/knowledge/env/usage/assets |
+| 前端启动引导 | `src/lib/appBootstrap.ts`、`src/main.ts` | `loadAppBootstrap()` 缓存单例，去重 `bootstrapApp` IPC；两个窗口（main + usage）共享首次调用；`applyLocale` 由 `i18n/index.ts` 导出 |
+| 前端文档路径工具 | `src/lib/humanDocPath.ts` | `humanDocTreePath()` 提取 human-knowledge 树展示路径；`findHumanOverviewDoc()` 定位 Litho 总览文档（`1.概述.md`/`1.Overview.md`） |
 | 前端 IPC 封装 | `src/lib/api.ts`、`types.ts`、`types.client.ts` | invoke + 生成类型入口 |
 | Ask 分享/长图导出 | `src/lib/askShareImage.ts`、`components/AskShareCard.svelte`、`ShareImageButton.svelte`、`shareExport.ts`、`clipboard.ts`、`src-tauri/src/commands/settings.rs` | 离屏渲染真实 MarkdownViewer、分页栅格化 PNG；复制/导出经 `copy_image_to_clipboard`/`save_png_files` |
 | CLI + Ask tools | `crates/terrain-cli/src/cli.rs`、`commands/tools.rs` | `terrain tools` 知识层 |

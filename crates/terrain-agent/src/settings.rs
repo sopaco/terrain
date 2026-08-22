@@ -19,6 +19,7 @@ pub fn model_settings_from_config(config: &ModelConfig) -> ModelSettings {
         api_key: config.openai_api_key.clone(),
         base_url: config.openai_base_url.clone(),
         ollama_host: Some(config.ollama_host.clone()),
+        api_mode: config.openai_api_mode,
     };
 
     let mut profiles = std::collections::HashMap::new();
@@ -82,6 +83,7 @@ pub fn model_config_from_settings(settings: &ModelSettings) -> ModelConfig {
         ollama_host,
         openai_api_key,
         openai_base_url,
+        openai_api_mode: profile.api_mode,
     }
 }
 

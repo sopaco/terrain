@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use adk_core::Llm;
 use adk_model::ollama::{OllamaConfig, OllamaModel};
-use adk_model::openai::{OpenAIClient, OpenAIConfig};
+use adk_model::openai::{OpenAIClient, OpenAIConfig, OpenAIResponsesClient, OpenAIResponsesConfig};
 use anyhow::{Context, Result, bail};
 pub use terrain_core::LlmStatus;
 pub use terrain_core::settings::{
     DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL,
-    DEFAULT_OLLAMA_HOST, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL,
+    DEFAULT_OLLAMA_HOST, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL, OpenAiApiMode,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,10 +24,18 @@ pub struct ModelConfig {
     pub ollama_host: String,
     pub openai_api_key: Option<String>,
     pub openai_base_url: Option<String>,
+    pub openai_api_mode: OpenAiApiMode,
 }
 
 use crate::settings::model_config_from_settings;
 use terrain_core::settings::load_model_settings;
+
+pub fn parse_api_mode(raw: &str) -> OpenAiApiMode {
+    match raw.to_lowercase().replace('-', "_").as_str() {
+        "responses" | "response" | "openai_responses" => OpenAiApiMode::Responses,
+        _ => OpenAiApiMode::ChatCompletions,
+    }
+}
 
 pub fn parse_provider(raw: &str) -> LlmProvider {
     match raw.to_lowercase().as_str() {
@@ -64,6 +72,7 @@ pub fn resolve_model_config() -> ModelConfig {
         ollama_host: DEFAULT_OLLAMA_HOST.into(),
         openai_api_key: None,
         openai_base_url: None,
+        openai_api_mode: OpenAiApiMode::ChatCompletions,
     };
     apply_env_overrides(&mut config);
     finalize_config(config)
@@ -81,6 +90,9 @@ fn apply_env_overrides(config: &mut ModelConfig) {
     }
     if let Ok(url) = std::env::var("OPENAI_BASE_URL") {
         config.openai_base_url = Some(url);
+    }
+    if let Ok(mode) = std::env::var("TERRAIN_OPENAI_API_MODE") {
+        config.openai_api_mode = parse_api_mode(&mode);
     }
     if let Some(key) = read_api_key() {
         config.openai_api_key = Some(key);
@@ -127,31 +139,77 @@ pub fn build_llm(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
             let model = OllamaModel::new(ollama_cfg).context("failed to create Ollama model")?;
             Arc::new(model) as Arc<dyn Llm>
         }
-        LlmProvider::Openai | LlmProvider::LmStudio => build_openai_compatible(config)?,
+        LlmProvider::Openai | LlmProvider::LmStudio => build_openai_llm(config)?,
     };
     Ok(crate::throttle::wrap_llm(inner, crate::throttle::call_cooldown_from_env()))
 }
 
-fn build_openai_compatible(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
-    let api_key = config
-        .openai_api_key
-        .clone()
-        .filter(|k| !k.is_empty())
-        .context("OPENAI_API_KEY or TERRAIN_API_KEY is required")?;
-    let base_url = config
+fn build_openai_llm(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
+    match config.openai_api_mode {
+        OpenAiApiMode::ChatCompletions => build_openai_chat_completions(config),
+        OpenAiApiMode::Responses => build_openai_responses(config),
+    }
+}
+
+fn openai_base_url(config: &ModelConfig) -> String {
+    config
         .openai_base_url
         .clone()
         .filter(|u| !u.is_empty())
         .unwrap_or_else(|| match config.provider {
             LlmProvider::LmStudio => DEFAULT_LMSTUDIO_BASE_URL.into(),
             _ => DEFAULT_OPENAI_BASE_URL.into(),
-        });
+        })
+}
+
+fn openai_api_key(config: &ModelConfig) -> Result<String> {
+    config
+        .openai_api_key
+        .clone()
+        .filter(|k| !k.is_empty())
+        .context("OPENAI_API_KEY or TERRAIN_API_KEY is required")
+}
+
+fn uses_third_party_openai_base(base_url: &str) -> bool {
+    !base_url.contains("api.openai.com")
+}
+
+fn build_openai_chat_completions(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
+    let api_key = openai_api_key(config)?;
+    let base_url = openai_base_url(config);
     let openai_cfg = OpenAIConfig::compatible(api_key, base_url, &config.model);
     let model = OpenAIClient::new(openai_cfg).map_err(|e| anyhow::anyhow!("openai model: {e}"))?;
     Ok(Arc::new(model))
 }
 
+fn build_openai_responses(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
+    let base_url = openai_base_url(config);
+    let open_responses_mode = uses_third_party_openai_base(&base_url);
+    let api_key = if open_responses_mode {
+        config
+            .openai_api_key
+            .clone()
+            .filter(|k| !k.is_empty())
+            .unwrap_or_else(|| "open-responses-no-key".into())
+    } else {
+        openai_api_key(config)?
+    };
+
+    let responses_cfg = OpenAIResponsesConfig::new(api_key, &config.model)
+        .with_base_url(base_url)
+        .with_open_responses_mode(open_responses_mode);
+
+    let model = OpenAIResponsesClient::new(responses_cfg)
+        .map_err(|e| anyhow::anyhow!("openai responses model: {e}"))?;
+    Ok(Arc::new(model))
+}
+
 pub fn llm_status(config: &ModelConfig) -> LlmStatus {
+    let api_route = match config.openai_api_mode {
+        OpenAiApiMode::ChatCompletions => "chat/completions",
+        OpenAiApiMode::Responses => "responses",
+    };
+
     let provider = match config.provider {
         LlmProvider::Ollama => "ollama",
         LlmProvider::Openai => "openai-compatible",
@@ -164,31 +222,28 @@ pub fn llm_status(config: &ModelConfig) -> LlmStatus {
             format!("Ollama @ {} (model: {})", config.ollama_host, config.model),
         ),
         LlmProvider::Openai => {
-            let ok = config
+            let base = openai_base_url(config);
+            let third_party = uses_third_party_openai_base(&base);
+            let has_key = config
                 .openai_api_key
                 .as_ref()
                 .is_some_and(|k| !k.is_empty());
-            let base = config
-                .openai_base_url
-                .clone()
-                .unwrap_or_else(|| DEFAULT_OPENAI_BASE_URL.into());
+            let ok = has_key
+                || (config.openai_api_mode == OpenAiApiMode::Responses && third_party);
             (
                 ok,
                 if ok {
-                    format!("{base} (model: {})", config.model)
+                    format!("{base} ({api_route}, model: {})", config.model)
                 } else {
                     "Set OPENAI_API_KEY or TERRAIN_API_KEY".into()
                 },
             )
         }
         LlmProvider::LmStudio => {
-            let base = config
-                .openai_base_url
-                .clone()
-                .unwrap_or_else(|| DEFAULT_LMSTUDIO_BASE_URL.into());
+            let base = openai_base_url(config);
             (
                 true,
-                format!("LM Studio @ {base} (model: {})", config.model),
+                format!("LM Studio @ {base} ({api_route}, model: {})", config.model),
             )
         }
     };
@@ -247,6 +302,7 @@ mod tests {
                 api_key: Some("lm-studio".into()),
                 base_url: Some("http://localhost:1234/v1".into()),
                 ollama_host: None,
+                ..Default::default()
             },
         );
         save_model_settings(&ModelSettings {
@@ -258,6 +314,7 @@ mod tests {
             profiles,
             acp: Default::default(),
             knowledge: Default::default(),
+            language: Default::default(),
         })
         .unwrap();
 

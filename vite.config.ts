@@ -4,9 +4,18 @@ import tailwindcss from "@tailwindcss/vite";
 
 const host = process.env.TAURI_DEV_HOST;
 
+function isMermaidPreload(dep: string): boolean {
+  return /(^|\/)mermaid[-.]/.test(dep) || dep.includes("/mermaid.");
+}
+
 export default defineConfig({
   plugins: [svelte(), tailwindcss()],
   build: {
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        return deps.filter((dep) => !isMermaidPreload(dep));
+      },
+    },
     rolldownOptions: {
       output: {
         codeSplitting: {
