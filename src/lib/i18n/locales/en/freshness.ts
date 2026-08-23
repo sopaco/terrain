@@ -9,6 +9,8 @@ export default {
   behind: "{count} commits behind",
   changedFiles: "{count} files changed",
   dirtyTree: "Uncommitted changes in working tree",
+  humanDragsOverall:
+    "Overall score is limited by human docs; Agent layers are {agentScore}/100",
   gitBased: "Based on Git commit comparison · HEAD {head}",
   noGit: "Git not detected; score estimated from asset sync time",
   quickRefreshNow: "Quick Refresh Now",
@@ -64,7 +66,11 @@ export default {
     tipCommitAfter: "changes to avoid ongoing penalties for uncommitted changes (",
     tipCommitSuffix: "output is not counted)",
     tipQuickRefresh:
-      "When the code has moved on, use Quick Refresh to update the source index and agent knowledge assets (no need to rerun Litho)",
+      "When the code has moved on, use Quick Refresh to update the source index and agent knowledge assets (Litho human docs are skipped)",
+    tipRefreshHumanDocs:
+      "Human-friendly Litho docs are behind — regenerate from the Human Knowledge card; Quick Refresh does not update them unless incremental human docs is enabled in Settings",
+    tipLowScoreAgent:
+      "Below 80 on Agent layers, trust source index grep results over context.md for architecture questions",
     tipLowScore:
       "Below 80, trust source index grep results over context.md for architecture questions",
     tipKeepUp: "Keep the current pace; refresh again after major refactors",

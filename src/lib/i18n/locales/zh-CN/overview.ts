@@ -41,7 +41,24 @@ export default {
   actions: {
     staleTitle: "知识可能已过期",
     staleDetail: "{drift}。过期架构知识可能误导 Agent 问答。",
-    staleHint: "建议运行「快速保鲜」更新源码索引与 Agent 知识资产（跳过 Litho）。",
+    staleAgentTitle: "Agent 知识可能已过期",
+    staleAgentDetail: "{drift}。过期架构知识可能误导 Agent 问答。",
+    staleAgentDetailMixed:
+      "{drift}。Agent 层需「快速保鲜」；人类友好文档也已落后。",
+    staleHumanTitle: "人类友好知识可能已过期",
+    staleHumanDetail:
+      "{drift}。源码索引与 Agent 架构上下文仍较新（{agentScore}/100）。「快速保鲜」不会更新 Litho 人类文档。",
+    staleHumanDetailShort:
+      "{drift}。人类友好文档已落后，且不会被「快速保鲜」更新。",
+    staleHumanHint:
+      "请在下方「人类友好知识」卡片点击「重新生成」，或在设置中开启「增量更新人类文档」以便快速保鲜一并更新 Litho。",
+    staleHumanHintShort:
+      "「快速保鲜」设计上跳过 Litho，请在下方卡片重新生成人类文档。",
+    staleHint:
+      "建议运行「快速保鲜」更新源码索引与 Agent 知识资产（跳过 Litho 人类文档）。",
+    staleHintMixed:
+      "「快速保鲜」可更新源码索引与 Agent 资产；人类文档需单独更新（或在设置中开启增量人类文档）。",
+    refreshHumanDocs: "更新人类文档",
     quickRefresh: "快速保鲜",
     quickRefreshing: "保鲜中…",
     initTitle: "部分知识资产尚未就绪",

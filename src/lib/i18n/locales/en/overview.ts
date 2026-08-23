@@ -41,7 +41,25 @@ export default {
   actions: {
     staleTitle: "Knowledge may be stale",
     staleDetail: "{drift}. Stale architecture knowledge may mislead Agent answers.",
-    staleHint: "Run Quick Refresh to update the source index and agent knowledge assets (Litho is skipped).",
+    staleAgentTitle: "Agent knowledge may be stale",
+    staleAgentDetail:
+      "{drift}. Stale architecture knowledge may mislead Agent answers.",
+    staleAgentDetailMixed:
+      "{drift}. Agent layers need Quick Refresh; human-friendly docs are also behind.",
+    staleHumanTitle: "Human-friendly docs may be stale",
+    staleHumanDetail:
+      "{drift}. Agent source index and architecture context are still relatively fresh ({agentScore}/100). Quick Refresh does not update Litho human docs.",
+    staleHumanDetailShort:
+      "{drift}. Human-friendly docs are behind and are not updated by Quick Refresh.",
+    staleHumanHint:
+      "Regenerate human docs from the Human Knowledge card below, or enable incremental human docs in Settings so Quick Refresh includes Litho updates.",
+    staleHumanHintShort:
+      "Quick Refresh skips Litho by design — regenerate human docs from the card below.",
+    staleHint:
+      "Run Quick Refresh to update the source index and agent knowledge assets (Litho human docs are skipped).",
+    staleHintMixed:
+      "Quick Refresh updates the source index and Agent assets. Human docs must be updated separately (or enable incremental human docs in Settings).",
+    refreshHumanDocs: "Update human docs",
     quickRefresh: "Quick Refresh",
     quickRefreshing: "Refreshing…",
     initTitle: "Some knowledge assets are not ready",
