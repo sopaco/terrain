@@ -1,45 +1,43 @@
 # terrain-cli Domain
 
-**Module path**: `crates/terrain-cli/src/`
-**Generated**: 2026-08-22
+**Module path:** `crates/terrain-cli/`  
+**Generated:** 2026-08-24
 
 ---
 
 ## What This Module Does
 
-terrain-cli is Terrain's command-line interface — the tool developers and CI/CD pipelines use to scan repos, generate knowledge, ask questions, and manage agent environments. Built with clap, it exposes a hierarchical command tree where every capability available in the desktop app is also accessible from the terminal. The `terrain tools` subcommand is particularly important: it outputs JSON for ACP agents to consume the knowledge layer programmatically, making Terrain's knowledge accessible to any agent that can run shell commands.
+terrain-cli is Terrain's command-line front door — a structured interface built with clap that exposes every Terrain capability as a subcommand. Whether you're a developer running `terrain init`, a CI pipeline calling `terrain assets run-litho`, or an ACP agent invoking `terrain tools read-context`, the CLI provides a uniform, scriptable entry point.
+
+The CLI itself is intentionally thin: it parses arguments, resolves the workspace repository, and delegates to terrain-agent workflows or terrain-core functions. All business logic lives downstream.
 
 ---
 
 ## Core Capabilities
 
-1. **Project lifecycle commands** — `scan`, `init`, and `refresh` wrap terrain-agent workflows for terminal and CI use.
-
-2. **Knowledge access** — `search` and `read` provide direct document access without launching the desktop app.
-
-3. **Ask CLI** — `ask query` with optional `--stream` for NDJSON event output, enabling scripted Q&A.
-
-4. **ACP tools surface** — `tools` subcommand (`cli.rs:238-293`) exposes grep-pack, read-context, freshness, and other knowledge operations as JSON stdout.
-
-5. **Asset management** — `assets` subcommand handles pack-agent, plan-litho, run-litho, and agent-context generation.
-
-6. **Environment integration** — `env status/plan/apply` for deploying Skills, tools, and AGENTS.md.
+1. **Project lifecycle commands** — `init`, `scan`, `refresh` wire to agent workflows (`commands/init.rs`, `commands/knowledge.rs`)
+2. **Knowledge access** — `search`, `read`, `ask query` for browsing and Q&A
+3. **Asset management** — `assets` subcommands for Litho, repomix packing, agent context generation
+4. **ACP tools surface** — `tools` subcommands emit JSON for external coding agents
+5. **Environment setup** — `env status/plan/apply` for Skills and bundled tool installation
+6. **SDD workflow** — `sdd run --phase` executes individual SDD phases
+7. **Settings management** — `settings get/set/check-llm/check-acp` for configuration
 
 ---
 
 ## Key Components
 
-| Component / Type | File Path | Responsibility |
-|----------------|-----------|----------------|
-| `Cli` | `crates/terrain-cli/src/cli.rs:16` | Root clap Parser with global `--repo-path` |
-| `Commands` | `crates/terrain-cli/src/cli.rs:26` | Top-level subcommand enum |
-| `ToolsCommands` | `crates/terrain-cli/src/cli.rs:238` | ACP knowledge tools subcommands |
-| `AssetCommands` | `crates/terrain-cli/src/cli.rs:296` | Knowledge asset generation commands |
-| `EnvCommands` | `crates/terrain-cli/src/cli.rs:357` | Environment integration commands |
-| `commands/tools.rs` | `crates/terrain-cli/src/commands/tools.rs` | JSON stdout handlers for ACP tools |
-| `commands/init.rs` | `crates/terrain-cli/src/commands/init.rs` | Init command wrapping agent workflow |
-| `commands/ask.rs` | `crates/terrain-cli/src/commands/ask.rs` | Ask query with streaming support |
-| `main.rs` | `crates/terrain-cli/src/main.rs` | Entry point and command dispatch |
+| Component / Type | File path | Core responsibility |
+|-----------------|-----------|---------------------|
+| `Cli` | `crates/terrain-cli/src/cli.rs:16` | Root clap parser with global `--repo-path` |
+| `Commands` | `crates/terrain-cli/src/cli.rs:25` | Top-level subcommand enum |
+| `ToolsCommands` | `crates/terrain-cli/src/cli.rs:238` | ACP JSON tool subcommands |
+| `AssetCommands` | `crates/terrain-cli/src/cli.rs:296` | Asset generation subcommands |
+| `main` | `crates/terrain-cli/src/main.rs` | Entry point, tokio runtime, dispatch |
+| `commands/tools.rs` | `crates/terrain-cli/src/commands/tools.rs` | JSON stdout for ACP agents |
+| `commands/assets.rs` | `crates/terrain-cli/src/commands/assets.rs` | Litho, pack, context handlers |
+| `commands/env.rs` | `crates/terrain-cli/src/commands/env.rs` | Environment integration |
+| `util.rs` | `crates/terrain-cli/src/util.rs` | Shared path resolution helpers |
 
 ---
 
@@ -47,36 +45,30 @@ terrain-cli is Terrain's command-line interface — the tool developers and CI/C
 
 ```mermaid
 flowchart TD
-    A["terrain argv"] --> B["Cli parser<br/>cli.rs:16"]
-    B --> C{"subcommand"}
-    C -->|init/refresh| D["commands/init.rs<br/>or quick_refresh"]
-    C -->|ask| E["commands/ask.rs"]
-    C -->|tools| F["commands/tools.rs"]
-    C -->|assets| G["commands/assets.rs"]
-    C -->|env| H["commands/env.rs"]
-    C -->|sdd| I["commands/sdd.rs"]
-    D --> J["terrain-agent workflows"]
-    E --> J
-    F --> K["terrain-core directly<br/>JSON stdout"]
-    G --> J
-    H --> L["terrain-core env/"]
-    I --> J
+    A["terrain binary<br/>main.rs"] --> B["Cli::parse<br/>cli.rs"]
+    B --> C["commands/mod.rs<br/>dispatch"]
+    C --> D{"Command type?"}
+    D -->|Workflow| E["terrain-agent<br/>run_* functions"]
+    D -->|Direct| F["terrain-core<br/>search, read, freshness"]
+  E --> G[".terrain/ output"]
+    F --> G
+    D -->|tools| H["JSON stdout<br/>commands/tools.rs"]
 ```
 
 **Key steps:**
-1. `main.rs` parses `Cli` and dispatches to the appropriate `commands/` handler
-2. Workflow commands (init, ask, sdd) delegate to terrain-agent's async functions
-3. Tools commands call terrain-core directly and serialize results as JSON to stdout
-4. Global `--repo-path` resolves via `KnowledgePaths::resolve_workspace_repo()`
+1. `main.rs` initializes tokio runtime and resolves `KnowledgePaths::from_workspace()`
+2. Command handler in `commands/*.rs` parses subcommand-specific args
+3. Workflow commands create `Runtime` and call agent functions with progress callbacks
+4. `tools` commands serialize results as JSON for ACP agent consumption
 
 ---
 
 ## Key Interfaces and Extension Points
 
-- **Global `--repo-path`** — All subcommands inherit this flag; defaults to `TERRAIN_REPO_PATH` env var or cwd Git root
-- **`SddPhaseArg`** — clap `ValueEnum` mapping CLI strings to core `SddPhase` enum (`cli.rs:191-207`)
-- **npm shims** — `npm/packages/` provides platform-specific binary wrappers (`@terrain-ai/cli`) for cross-platform install
-- **NDJSON streaming** — `ask query --stream` emits `AskStreamEvent` variants as newline-delimited JSON
+- **Global `--repo-path`**: Scopes all commands to a specific repository (`cli.rs:17-19`)
+- **Subcommand pattern**: Add new commands via `Commands` enum variant + handler in `commands/`
+- **`SddPhaseArg`**: clap value enum mapping to `SddPhase` (`cli.rs:191-208`)
+- **NDJSON streaming**: `ask query --stream` emits `AskStreamEvent` lines (`cli.rs:158-160`)
 
 ---
 
@@ -84,31 +76,32 @@ flowchart TD
 
 | Module | Direction | Interface | Description |
 |--------|-----------|-----------|-------------|
-| terrain-agent | Depends on | Workflow functions | Init, Ask, SDD, Litho execution |
-| terrain-core | Depends on | Search, paths, env, freshness | Direct access for tools commands |
-| ACP agents | Used by | `terrain tools` JSON output | External agents consume knowledge layer |
-| CI/CD | Used by | `terrain init`, `terrain refresh` | Automated knowledge regeneration |
+| terrain-agent | Depends on | `Runtime`, workflow functions | All AI orchestration delegated |
+| terrain-core | Depends on | `KnowledgePaths`, search, freshness | Direct calls for offline ops |
+| ACP agents | External consumer | `terrain tools` JSON API | Agents invoke CLI as tool |
 
 ---
 
 ## Role in Core Business Flows
 
-**In CI/CD integration**: `terrain init --repo-path .` is the primary entry point for automated knowledge generation after merge. `terrain refresh` provides a lighter alternative when only source changed.
+**In CI/CD**: `terrain refresh` and `terrain assets run-litho` are the primary automation entry points.
 
-**In ACP agent workflows**: External coding agents call `terrain tools read-context`, `terrain tools grep-pack`, and `terrain tools read-pack-file` as their first steps when entering a Terrain-enabled repository. The JSON output is designed for machine consumption.
+**In ACP integration**: `terrain tools read-context`, `grep-pack`, `search` form the three-layer knowledge access API for external agents.
 
-**In developer workflows**: `terrain search` and `terrain read` provide quick knowledge access from the terminal without launching the desktop app.
+**In developer workflow**: `terrain init` is the onboarding command; `terrain ask query` provides terminal-based DeepWiki.
 
 ---
 
 ## Performance Considerations
 
-- Tools commands avoid agent initialization overhead by calling core directly
-- `terrain tools freshness` reads cached ledger without recomputing
-- Binary distributed via `cargo build --release` with LTO and strip enabled (`Cargo.toml:60-63`)
+- CLI is a thin sync wrapper; async agent calls run on tokio runtime spawned in `main.rs`
+- `tools` commands optimize for machine consumption: compact JSON, no decorative output
+- Workspace repo resolution cached per invocation via `KnowledgePaths::from_workspace()`
 
 ---
 
 ## Implementation Highlights
 
-The `terrain tools` subcommand design follows the principle that agents should never need to parse human-readable output. Every tools command writes structured JSON to stdout with consistent error handling, making it trivial for ACP agents to integrate Terrain's knowledge layer as a tool in their own workflow. The trust hierarchy (repomix > CodeGraph > context.md > human docs) is documented in the tools command help text.
+- **Long version string**: Includes usage hint in `--version` output (`cli.rs:11-14`)
+- **Language setting**: `settings language` subcommand delegates to `terrain_core::language` module
+- **Source read**: `source read` provides live repo file slices with line ranges for citation verification

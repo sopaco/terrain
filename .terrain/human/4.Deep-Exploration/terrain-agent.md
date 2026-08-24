@@ -1,47 +1,47 @@
 # terrain-agent Domain
 
-**Module path**: `crates/terrain-agent/src/`
-**Generated**: 2026-08-22
+**Module path:** `crates/terrain-agent/`  
+**Generated:** 2026-08-24
 
 ---
 
 ## What This Module Does
 
-terrain-agent is where Terrain actually *does things* — it talks to LLMs, spawns ACP subprocesses, drives Litho document generation, runs SDD phases, and registers the tool schemas that power DeepWiki Ask. If terrain-core is the kitchen with recipes and ingredients, terrain-agent is the service staff that cooks, serves, and handles customer requests.
+terrain-agent is Terrain's nervous system — the layer that connects offline machinery to the world of LLMs and external coding agents. When you ask a question in DeepWiki, initialize a project, generate Litho docs, or run an SDD phase, terrain-agent makes the critical decision: should this task use a quick native LLM call, or does it need a full ACP subprocess with tool access?
 
-The module's central abstraction is `ChatEngine` — a dual-backend engine that can route Ask queries through either a native ADK Runner (direct LLM API calls) or an ACP subprocess (external coding agent), selected at runtime by the `AgentExecution` setting.
+Think of terrain-agent as the foreman on the factory floor. terrain-core builds the machines; terrain-agent decides which machine to run and when to call in a specialist (the ACP agent).
 
 ---
 
 ## Core Capabilities
 
-1. **Dual-backend ChatEngine** — `ChatEngine` (`chat/mod.rs:54`) supports Native ADK (`chat/native.rs`) and ACP (`chat/acp.rs`) backends. `new_native` forces native LLM for hybrid workloads like context generation and SDD doc phases.
+1. **Litho orchestration** — `run_litho_generation` (`litho.rs`) spawns ACP agents with Litho skill prompts, polls for completion with adaptive intervals, handles `LithoRunMode::Auto` vs `FullRebuild`, and retries composition when research artifacts exist but human docs are missing.
 
-2. **Litho generation driver** — `run_litho_generation` (`litho.rs`) manages the full Litho lifecycle: plan → ACP prompt → poll with heartbeat → composition retry → completeness verification. Supports `LithoRunMode::Auto` and `FullRebuild` (`litho.rs:17-24`).
+2. **DeepWiki Ask** — `ask_knowledge` (`workflows/ask.rs:11`) drives `ChatEngine` with streaming chunk, tool-call, phase, and usage events. Falls back to plain search when LLM is unavailable.
 
-3. **Workflow orchestration** — The `workflows/` module chains core operations into user-facing flows: `init.rs` (full initialization), `ask.rs` (DeepWiki Q&A), `sdd.rs` (SDD phases), `quick_refresh.rs` (lightweight update).
+3. **Agent context generation** — `run_agent_context_generation` (`agent_context.rs:26`) produces `agent/context.md` from Litho docs and project meta, supporting incremental git-diff updates or full rebuilds.
 
-4. **ADK tool registry** — `tools.rs` exposes knowledge-layer tools (`read_agent_context`, `grep_agent_pack`, `search_knowledge`, `read_agent_pack_file`) as ADK `FunctionTool` instances for the ChatEngine to call during Ask.
+4. **SDD workflow execution** — `run_sdd_phase` (`workflows/sdd.rs`) routes requirements/review to native LLM and codegen to ACP subprocess.
 
-5. **Runtime engine cache** — `Runtime` (`runtime.rs`) caches `ChatEngine` and `ModelConfig` across IPC calls, avoiding re-initialization on every Ask question.
+5. **ADK tool implementations** — `tools.rs` provides `list_projects`, `read_agent_context`, `grep_agent_pack`, `read_agent_pack_file`, `search_knowledge` as `FunctionTool` instances for Ask agents.
+
+6. **Shared runtime** — `Runtime` (`runtime.rs`) holds `KnowledgePaths` and `ModelConfig` for CLI and desktop consumption.
 
 ---
 
 ## Key Components
 
-| Component / Type | File Path | Responsibility |
-|----------------|-----------|----------------|
-| `ChatEngine` | `crates/terrain-agent/src/chat/mod.rs:54` | Ask Q&A engine with dual backend |
-| `NativeBackend` | `crates/terrain-agent/src/chat/native.rs` | ADK Runner for direct LLM calls |
-| `Runtime` | `crates/terrain-agent/src/runtime.rs` | Engine cache and config holder |
-| `run_litho_generation` | `crates/terrain-agent/src/litho.rs` | Litho ACP orchestration with polling |
-| `LithoRunMode` | `crates/terrain-agent/src/litho.rs:17` | Auto vs FullRebuild generation strategy |
-| `ask_knowledge` | `crates/terrain-agent/src/workflows/ask.rs:11` | Ask workflow entry with streaming |
-| `run_project_initialization` | `crates/terrain-agent/src/workflows/init.rs` | Full init pipeline orchestration |
-| `list_projects_tool` | `crates/terrain-agent/src/tools.rs:42` | ADK tool: list indexed projects |
-| `read_agent_context_tool` | `crates/terrain-agent/src/tools.rs:61` | ADK tool: read context by section |
-| `build_acp_config` | `crates/terrain-agent/src/acp.rs` | ACP spawn configuration builder |
-| `AgentContextGenerator` | `crates/terrain-agent/src/context_generator.rs` | Pluggable context generation |
+| Component / Type | File path | Core responsibility |
+|-----------------|-----------|---------------------|
+| `Runtime` | `crates/terrain-agent/src/runtime.rs` | Shared agent state for CLI/desktop |
+| `ChatEngine` | `crates/terrain-agent/src/chat/mod.rs` | Native LLM and ACP chat backends |
+| `run_litho_generation` | `crates/terrain-agent/src/litho.rs` | ACP-driven Litho pipeline with polling |
+| `LithoRunMode` | `crates/terrain-agent/src/litho.rs:18` | Auto vs FullRebuild mode selection |
+| `run_project_initialization` | `crates/terrain-agent/src/workflows/init.rs:105` | Full init: scan → litho → context |
+| `ask_knowledge` | `crates/terrain-agent/src/workflows/ask.rs:11` | DeepWiki Q&A entry point |
+| `build_agent` | `crates/terrain-agent/src/builder.rs` | Construct ADK agent with Terrain tools |
+| `acp_spawn_command` | `crates/terrain-agent/src/acp.rs` | Build ACP subprocess spawn config |
+| `tool_session_cache` | `crates/terrain-agent/src/tool_session_cache.rs` | Dedup identical tool calls per session |
 
 ---
 
@@ -49,34 +49,33 @@ The module's central abstraction is `ChatEngine` — a dual-backend engine that 
 
 ```mermaid
 flowchart TD
-    A["Ask query"] --> B["ask_knowledge<br/>workflows/ask.rs:11"]
-    B --> C{"ChatEngine available?"}
-    C -->|No| D["fallback_search_reply<br/>workflows/ask.rs:79"]
-    C -->|Yes| E["ChatEngine::ask<br/>chat/mod.rs"]
-    E --> F{"AgentExecution mode"}
-    F -->|Native| G["NativeBackend<br/>chat/native.rs"]
-    F -->|ACP| H["AcpBackend<br/>chat/acp.rs"]
-    G --> I["ADK Runner + FunctionTools<br/>tools.rs"]
-    H --> J["ACP subprocess<br/>acp.rs"]
-    I --> K["ChatReply + citations"]
-    J --> K
-    D --> K
+    A["CLI / Desktop IPC"] --> B["Runtime<br/>runtime.rs"]
+    B --> C{"Execution mode?<br/>settings.rs"}
+    C -->|Native LLM| D["ChatEngine::new_native<br/>chat/native.rs"]
+    C -->|ACP| E["ChatEngine ACP<br/>chat/acp.rs"]
+    C -->|Litho/SDD codegen| F["prompt_agent<br/>litho.rs / sdd.rs"]
+    D --> G["adk-model<br/>LLM API"]
+    E --> H["ACP subprocess"]
+    F --> H
+    D --> I["ADK Tools<br/>tools.rs"]
+    I --> J["terrain-core"]
 ```
 
 **Key steps:**
-1. `ask_knowledge` obtains a cached `ChatEngine` from `Runtime` or falls back to keyword search
-2. `ChatEngine::ask` preloads macro context, then iterates tool calls for meso/micro layers
-3. `finalize_usage` (`chat/mod.rs:35`) estimates token counts when the provider doesn't report them
-4. `sanitize_answer_text` applies `prepare_chat_markdown` for consistent rendering
+1. `resolve_acp_settings` (`acp.rs`) loads ACP binary and args from settings
+2. `execution_uses_native_llm` / `execution_pure_acp` determine routing per task type
+3. `ChatEngine::ask` runs the tool loop with streaming callbacks
+4. `prompt_agent_with_heartbeat` (`litho.rs:115`) polls ACP without early-abort heuristics
 
 ---
 
 ## Key Interfaces and Extension Points
 
-- **`AgentContextGenerator` trait** — Allows swapping context generation strategy (native LLM vs ACP)
-- **`LithoRunMode`** — Controls whether Litho skips, incrementally updates, or fully rebuilds
-- **`tool_session_cache`** — Deduplicates identical tool calls within a session via fingerprint hashing
-- **`AgentExecution` enum** — `AcpNative`, `AcpOnly`, `Hybrid` — gates backend selection in `acp.rs`
+- **Execution modes**: `AgentExecution` and `AskExecution` enums in settings control native/ACP/hybrid routing
+- **Custom ACP binary**: `AcpSettings` (`settings.rs`) allows any ACP-compatible agent
+- **Agent builder**: `build_agent` (`builder.rs`) assembles ADK agent with configurable tool set
+- **Throttle**: `throttle.rs` rate-limits LLM API calls to prevent quota exhaustion
+- **Compat tool**: `compat_tool.rs` provides backward-compatible tool interfaces
 
 ---
 
@@ -84,33 +83,39 @@ flowchart TD
 
 | Module | Direction | Interface | Description |
 |--------|-----------|-----------|-------------|
-| terrain-core | Depends on | All planning, search, freshness functions | Agent executes what core plans |
-| src-tauri | Used by | `Runtime`, workflow functions | Desktop IPC delegates to agent |
-| terrain-cli | Used by | Same workflow functions | CLI is a thin wrapper |
-| ADK ecosystem | Depends on | adk-core, adk-agent, adk-model, adk-tool | Native LLM execution |
-| ACP protocol | Depends on | agent-client-protocol | External agent subprocess |
+| terrain-core | Depends on | All knowledge/path/freshness APIs | Every file operation delegated to core |
+| terrain-cli | Depended on by | Workflow functions | CLI handlers call agent workflows |
+| src-tauri | Depended on by | `Runtime` via `AppState` | Desktop IPC wraps agent runtime |
+| adk-acp | Depends on | `prompt_agent`, `AcpAgentConfig` | ACP subprocess management |
+| adk-model | Depends on | `build_llm`, `ModelConfig` | Native LLM calls |
 
 ---
 
 ## Role in Core Business Flows
 
-**In Litho generation**: terrain-agent builds the ACP prompt via `prepare_litho_generation` (`litho.rs:43`), spawns the agent, polls for completion with progress heartbeats, and retries composition up to 3 times. Incremental updates use `build_litho_update_prompt` from core but execution stays in agent.
+**In project initialization**: `run_project_initialization` (`workflows/init.rs:105`) chains scan (core) → litho (agent ACP) → context (agent LLM) with progress events at each stage.
 
-**In Ask Q&A**: The three-layer retrieval loop runs entirely in `ChatEngine::ask`. Tools in `tools.rs` bridge to core's `KnowledgeSearch`, `grep_repomix_pack`, and `read_agent_pack_file`. Citations are extracted via `extract_source_citations` from core.
+**In Litho generation**: Agent builds prompt via `build_litho_generation_prompt` (core), spawns ACP, polls until `litho_human_complete_with_research` returns true or timeout.
 
-**In SDD**: `run_sdd_phase` (`workflows/sdd.rs`) dispatches lightweight phases to native LLM and CodeGen to ACP, using the SDD skill directory resolved by core's `resolve_sdd_skill_dir`.
+**In DeepWiki Ask**: `ChatEngine` preloads macro context overview, then loops through tools for meso/micro layers. Citations extracted via `extract_source_citations` (core).
+
+**In SDD**: Phases 1/2/4 use native LLM; phase 3 (codegen) spawns ACP with repo write access.
 
 ---
 
 ## Performance Considerations
 
-- `ASK_TIMEOUT` = 1200 seconds (`chat/mod.rs:33`) accommodates long multi-tool Ask sessions
-- Tool call caching in `tool_session_cache.rs` prevents redundant repomix reads within a session
-- Litho polling uses adaptive intervals: 3s active, 6s stable (`litho.rs:37-38`), with 45-minute wall timeout
-- `Runtime` caches ChatEngine across IPC calls — model initialization happens once per app session
+- ACP polling: 3s active / 6s stable intervals with 10 stable ticks before slowing (`litho.rs:37-39`)
+- Wall timeout: 45 minutes default, configurable via `TERRAIN_LITHO_TIMEOUT_SECS` (`litho.rs:68-74`)
+- Tool session cache prevents redundant `read_agent_context` and `read_pack_file` calls
+- `truncate_tool_json` caps tool output at 24,000 chars (`tools.rs:35`)
+- Ask stream uses `Mutex` for thread-safe callback (`ask.rs:19`)
 
 ---
 
 ## Implementation Highlights
 
-The Litho heartbeat polling design (`litho.rs:109-113`) deliberately avoids early-completion heuristics for incremental updates. Because incremental Litho edits files in place, doc counts never grow — a naive "all files present" check would abort the ACP session mid-edit after about a minute. The heartbeat-only approach lets the agent finish its work regardless of file count stability.
+- **Composition retry**: If research artifacts exist in `.litho-agent/` but human docs missing, `build_litho_composition_prompt` retries only phases 3-4 (`assets/litho.rs:63`)
+- **Incremental Litho**: `build_litho_update_prompt` routes git-changed paths to specific deep-exploration docs (`assets/litho.rs:97`)
+- **Context incremental guard**: `reject_incremental_document` prevents updates that shrink the context body (`agent_context.rs`)
+- **OpenCode feature gate**: `#[cfg(feature = "opencode")]` wraps ACP-specific Litho polling (`litho.rs:114`)

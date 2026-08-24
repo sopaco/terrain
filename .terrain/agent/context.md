@@ -7,40 +7,40 @@ source: .
 
 ## Project Overview
 
-Terrain is an **agent-first engineering environment platform** (Sopaco open source; includes repomix-rs). Tagline: *"Terrain prepares the ground so agents don't have to guess where to stand."* Register a Git repo and it scans code, packs sources (repomix), generates Agent context, C4 architecture docs (Litho), dual-track knowledge (`human/` + `agent/`), freshness tracking, and exposes Ask Q&A plus a four-phase SDD workflow to external Coding Agents. Knowledge lives in-repo under `.terrain/` and flows with Git branches. Consumers: desktop app (Tauri+Svelte), CLI (`terrain` / `terrain tools`), external agents (ACP subprocess). Constraints: Rust is IPC source of truth (ts-rs → TS); context hard cap 16 KiB; generated assets are non-deterministic (no hand-merge); agents grep the pack, not live filesystem.
+Terrain is an **agent-first engineering environment platform** (Sopaco open source; repomix-rs powers source packing). Tagline: *"Terrain prepares the ground so agents don't have to guess where to stand."* Point it at a Git repository and it scans code, packs sources (repomix), generates agent context, C4 architecture docs (Litho), dual-track knowledge (`human/` + `agent/`), freshness tracking, and exposes Ask Q&A plus a four-phase SDD workflow to external Coding Agents. Knowledge lives in-repo under `.terrain/` and travels with Git branches. Consumers: Tauri desktop app (Svelte UI), CLI (`terrain` / `terrain tools`), and external agents via ACP subprocess. Constraints: Rust is IPC source of truth (ts-rs → TypeScript); `context.md` hard cap 16 KiB; generated assets are non-deterministic (regenerate, don't hand-merge); agents query the repomix pack, not the live filesystem.
 
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Frontend Svelte 5 (src/)              Tauri 2 shell (src-tauri/) │
-│  Ask/DeepWiki · SDD · Litho · Env · Projects · Usage · Tray   │
+│ Svelte 5 frontend (src/)          Tauri 2 shell (src-tauri/) │
+│  Ask/DeepWiki · SDD · Litho · Env · Projects · Usage · Tray│
 └───────────────┬──────────────────────────────────────────────┘
-                │ invoke + streaming events (ts-rs types, Rust source of truth)
+                │ invoke + streaming events (ts-rs; Rust = truth)
 ┌───────────────▼──────────────────────────────────────────────┐
-│ terrain-core  domain core (pure logic, no LLM execution)        │
-│  assets/ generation · query/search 3-layer retrieval · freshness/ │
-│  ingest/scan · registry · sessions · ipc+schema types           │
+│ terrain-core — domain core (no LLM execution)                │
+│  assets/ · search/query · freshness · ingest · registry      │
+│  sessions · ipc+schema types · env integration               │
 └───────────────┬──────────────────────────────────────────────┘
 ┌───────────────▼──────────────────────────────────────────────┐
-│ terrain-agent execution layer                                   │
-│  ChatEngine(Native ADK / ACP dual backend) · tools · context gen │
-│  workflows: Ask / Init / SDD / QuickRefresh                      │
+│ terrain-agent — execution layer                              │
+│  ChatEngine (Native ADK / ACP) · tools · context generation  │
+│  workflows: Ask · Init · SDD · QuickRefresh                  │
 └───────────────┬──────────────────────────────────────────────┘
-                │ adk-model(openai chat/responses, ollama) · agent-client-protocol(ACP)
+                │ adk-model (OpenAI/Ollama) · agent-client-protocol
 ┌───────────────▼───────────────┬───────────────┬──────────────┐
-│ repomix-core pack · codegraph   │ LLM Providers │ External Agent │
-│ (SQLite) · rtk                  │ (OpenAI/Ollama)│ opencode       │
+│ repomix-core · CodeGraph (SQLite)│ LLM Providers │ ACP Agent   │
+│ RTK · bundled CLI shims         │ OpenAI/Ollama │ (opencode)  │
 └───────────────────────────────┴───────────────┴──────────────┘
 ```
 
-| Layer | Role | Key deps |
-|-------|------|----------|
-| UI | Svelte 5 panels, stores, i18n | `src/`, `src/lib/api.ts` |
+| Layer | Role | Key paths |
+|-------|------|-----------|
+| UI | Panels, stores, i18n (en/zh-CN) | `src/`, `src/lib/api.ts` |
 | IPC shell | Tauri commands, tray, bundled tools | `src-tauri/src/commands/` |
-| Domain core | Assets, search, freshness, ingest; zero LLM imports | `terrain-core` |
-| Execution | ChatEngine, workflows, Litho/SDD driver, tool registry | `terrain-agent` → `terrain-core` |
-| Entry points | Desktop, `terrain-cli`, npm shims (`cli`/`rtk`) | All share core+agent |
+| Domain core | Asset generation, 3-layer retrieval, freshness, ingest | `crates/terrain-core/` |
+| Execution | ChatEngine, workflows, Litho/SDD driver, tool registry | `crates/terrain-agent/` |
+| Entry points | Desktop app, `terrain-cli`, npm shims (`cli`/`rtk`) | All share core + agent |
 
 - **Dependency direction**: terrain-agent → terrain-core; src-tauri & terrain-cli → both; `[patch.crates-io]` replaces `agent-client-protocol-tokio` locally.
 - **Type flow**: ts-rs (`ts-export` feature) → `terrain-ts-export` → `src/lib/generated/` via `bun run gen:types`.
@@ -52,16 +52,16 @@ Terrain is an **agent-first engineering environment platform** (Sopaco open sour
 |--------|----------------|---------------|
 | terrain-core | Domain core: asset generation, 3-layer retrieval, freshness, ingest, registry, IPC types | `crates/terrain-core/src/` |
 | assets/ | repomix pack, agent context, Litho/SDD/Ask assets, incremental refresh, env integration | `crates/terrain-core/src/assets/` |
-| freshness · ingest · schema | Git+CodeGraph drift scoring, ProjectScanner/OpenAPI, ts-rs structs | `crates/terrain-core/src/{freshness,ingest,schema}/` |
-| terrain-agent | LLM/ACP execution, ChatEngine, workflows, tool registry | `crates/terrain-agent/src/` |
-| chat/ | Dual backend: Native ADK Runner vs ACP subprocess | `crates/terrain-agent/src/chat/` |
+| freshness | Git + CodeGraph drift scoring, baseline ledger | `crates/terrain-core/src/freshness/` |
+| ingest | Project scan, Git metadata, OpenAPI import | `crates/terrain-core/src/ingest/` |
+| terrain-agent | ChatEngine, workflows, Litho/SDD driver, ACP/native backends, tool registry | `crates/terrain-agent/src/` |
+| chat/ | Dual backend: Native ADK Runner + ACP subprocess | `crates/terrain-agent/src/chat/` |
 | workflows/ | Ask, Init, SDD, QuickRefresh orchestration | `crates/terrain-agent/src/workflows/` |
-| terrain-cli | CLI commands + `terrain tools` JSON API (ACP knowledge layer) | `crates/terrain-cli/src/` |
-| desktop-app | Tauri IPC shell, tray, bootstrap, env catalog | `src-tauri/src/` |
-| frontend | Svelte 5 UI: Ask, SDD, Litho, Projects, Settings, Usage | `src/`, `src/lib/components/` |
-| preset_skills | Litho, SDD, Ask, agent-architecture/context skills | `preset_skills/` |
-| env-catalog | Skills, AGENTS.md fragments, agent-tools template | `env-catalog/` |
-| distribution | npm binary shims, platform packages (CodeGraph, RTK, terrain) | `npm/`, `packages/` |
+| terrain-cli | Headless entry: scan, init, ask, tools, env, usage | `crates/terrain-cli/src/commands/` |
+| src-tauri | Desktop shell: IPC commands, tray, preset skills, env catalog | `src-tauri/src/` |
+| Frontend | Svelte 5 UI, IPC wrappers, stores, i18n | `src/lib/` |
+| preset_skills | Bundled agent skills (Litho, SDD, Ask, arch, context) | `preset_skills/` |
+| env-catalog | Agent toolchain catalog, AGENTS.md fragments, skill templates | `env-catalog/` |
 
 ## Core Flows
 
@@ -87,20 +87,20 @@ Terrain is an **agent-first engineering environment platform** (Sopaco open sour
 
 **4. Environment integration (Env)**
 1. Probe Skills / CLI tools / AGENTS.md status (`EnvStatus`).
-2. Plan diff → `EnvPlan`/`EnvPlanStep`.
+2. Plan diff → `EnvPlan` / `EnvPlanStep`.
 3. Apply: deploy terrain-knowledge/repomix/codegraph/rtk skills, bundled tools, `AGENTS.md` fragments.
 
 ## Tech Stack
 
-- **Rust**: workspace (terrain-core/terrain-agent/terrain-cli/terrain-ts-export/src-tauri), edition 2024, rust-version 1.94.
-- **Desktop shell**: Tauri 2 (capabilities ACL, plugin-dialog/shell, tray + Usage window).
-- **Frontend**: Svelte 5 (runes) + Vite 8 + Tailwind 4 + marked/mermaid/highlight.js.
-- **IPC types**: ts-rs 10 + schemars; `bun run gen:types` → `src/lib/generated/`.
-- **Agent runtime**: ADK Rust 1.0 (adk-core/agent/runner/session/tool/model) + agent-client-protocol 0.11.1 (ACP); local `[patch]` tokio layer; `OpenAiApiMode` routes chat vs responses API.
-- **Source index**: repomix-core 2.0 (repomix-rs) → `agent/repomix.md`; CodeGraph (SQLite symbol graph); RTK compresses shell output.
-- **Storage**: `.terrain/` (versioned knowledge), `~/.terrain/registry.json` (project pointers), `.codegraph/` (local index).
-- **Distribution**: npm packages (`cli`/`rtk` + darwin-arm64/win32-x64 shims), Tauri bundle; release profile `lto=thin`, `strip=true`.
-- **Base libs**: tokio, serde/serde_json, anyhow/thiserror, tracing, chrono, walkdir/ignore, futures.
+- **Rust**: workspace (terrain-core, terrain-agent, terrain-cli, terrain-ts-export, src-tauri), edition 2024, rust-version 1.94
+- **Desktop shell**: Tauri 2 (capabilities ACL, plugin-dialog/shell, tray + Usage window)
+- **Frontend**: Svelte 5 (runes) + Vite 8 + Tailwind 4 + marked/mermaid/highlight.js
+- **IPC types**: ts-rs 10 + schemars; `bun run gen:types` → `src/lib/generated/`
+- **Agent runtime**: ADK Rust 1.0 (adk-core/agent/runner/session/tool/model) + agent-client-protocol 0.11.1 (ACP); local `[patch]` tokio layer; `OpenAiApiMode` routes chat vs responses API
+- **Source index**: repomix-core 2.0 (repomix-rs) → `agent/repomix.md`; CodeGraph (SQLite symbol graph); RTK compresses shell output
+- **Storage**: `.terrain/` (versioned knowledge), `~/.terrain/registry.json` (project pointers), `.codegraph/` (local index)
+- **Distribution**: npm packages (`cli`/`rtk` + darwin-arm64/win32-x64 shims), Tauri bundle; release profile `lto=thin`, `strip=true`
+- **Base libs**: tokio, serde/serde_json, anyhow/thiserror, tracing, chrono, walkdir/ignore, futures
 
 ## System Boundaries
 
@@ -110,7 +110,7 @@ Terrain is an **agent-first engineering environment platform** (Sopaco open sour
 | LLM Providers | OpenAI-compatible (`chat/completions` or `responses` per `OpenAiApiMode`) / Ollama; Native for lightweight phases | Out |
 | ACP subprocess | External Coding Agent (opencode) via agent-client-protocol; `acp_config_json` injects config; can spawn arbitrary command → trust boundary, gated by `AcpSettings` | Out |
 | Local registry | `~/.terrain/registry.json` stores project paths only, no knowledge body | Local |
-| Knowledge filesystem | `.terrain/agent/` (generated), `human/` (generated), `knowledge/` (manual), `.litho-agent/` (research), `repomix.md` (index) | Local |
+| Knowledge filesystem | `.terrain/agent/` (generated), `human/` (generated), `knowledge/` (manual), `.litho-agent/` (research), `repomix.md` (local index) | Local |
 | External code | Read-only scan/pack (git, OpenAPI, repomix); does not write target repo (except SDD Codegen) | Out |
 | Tool binaries | CodeGraph / RTK / terrain CLI (`packages/`, `~/.terrain/bin/`, npm shims) | Out |
 | Git | Ingest, freshness baseline, `.gitattributes` marks generated assets `-merge` | Out |
@@ -123,13 +123,14 @@ Trust: frontend null-checks IPC `Option<T>` → `T | null`; ACP subprocess is ex
 |---------|----------|-------|
 | Asset generation pipeline | `crates/terrain-core/src/assets/mod.rs` | repomix/context/litho/sdd/ask/env aggregation |
 | repomix pack | `crates/terrain-core/src/assets/repomix.rs` | `pack_agent_assets`, pack freshness |
-| Context layers / generation | `crates/terrain-core/src/assets/context_layers.rs`, `agent_context.rs` | macro/meso slices; baseline-head refresh decisions |
+| Context layers / generation | `crates/terrain-core/src/assets/context_layers.rs`, `agent_context.rs` | macro/meso slices; baseline-head refresh |
+| Context generator (agent) | `crates/terrain-agent/src/context_generator.rs`, `agent_context.rs` | LLM-driven context synthesis |
 | Incremental refresh | `crates/terrain-core/src/assets/incremental.rs`, `crates/terrain-agent/src/workflows/quick_refresh.rs` | delta updates |
 | Litho generation | `crates/terrain-core/src/assets/litho.rs`, `crates/terrain-agent/src/litho.rs` | four phases, `.litho-agent/` resume |
 | SDD workflow | `crates/terrain-agent/src/workflows/sdd.rs`, `crates/terrain-agent/src/sdd.rs` | phase dispatch LLM/ACP |
 | Ask retrieval | `crates/terrain-core/src/assets/ask.rs`, `crates/terrain-agent/src/workflows/ask.rs` | 3-layer retrieval + fallback |
 | ChatEngine dual backend | `crates/terrain-agent/src/chat/mod.rs`, `native.rs`, `acp.rs` | ADK Runner / ACP |
-| Knowledge search & doc read | `crates/terrain-core/src/search.rs` | `KnowledgeSearch`; `read_doc_at` resolves bare filenames |
+| Knowledge search & doc read | `crates/terrain-core/src/search.rs` | `KnowledgeSearch`; `read_doc_at` |
 | Freshness | `crates/terrain-core/src/freshness/` | compute/scoring/git/codegraph/ledger |
 | Env integration | `crates/terrain-core/src/assets/env/`, `agent_tools_deploy.rs` | EnvPlan/Status, toolchain deploy |
 | IPC types | `crates/terrain-core/src/schema/`, `ipc/` | ts-export annotations |
