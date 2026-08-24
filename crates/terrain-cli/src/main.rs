@@ -11,6 +11,7 @@ use cli::Cli;
 async fn main() -> Result<()> {
     terrain_agent::load_dotenv();
     terrain_core::ensure_bundled_tools_initialized();
+    terrain_core::ensure_env_catalog_initialized();
     terrain_core::ensure_preset_skills_initialized();
     commands::run(Cli::parse()).await
 }

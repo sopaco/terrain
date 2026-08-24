@@ -29,6 +29,7 @@
     "externalBin": ["binaries/rtk", "binaries/terrain-cli"],
     "resources": {
       "bundled-resources/codegraph": "tools/codegraph",
+      "../env-catalog": "env-catalog",
       "../preset_skills": "preset_skills"
     },
     "icon": [
