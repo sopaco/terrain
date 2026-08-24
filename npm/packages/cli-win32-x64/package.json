@@ -1,6 +1,6 @@
 {
   "name": "@terrain-ai/cli-win32-x64",
-  "version": "0.1.0",
+  "version": "0.9.3",
   "description": "Prebuilt Terrain CLI for Windows x64",
   "license": "MIT",
   "repository": {
@@ -18,7 +18,8 @@
     "terrain": "bin/terrain.exe"
   },
   "files": [
-    "bin/terrain.exe"
+    "bin/terrain.exe",
+    "env-catalog"
   ],
   "publishConfig": {
     "access": "public"
