@@ -10,6 +10,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../packages/terrain/{platform}");
     println!("cargo:rerun-if-changed=../packages/codegraph/{platform}");
     println!("cargo:rerun-if-changed=../preset_skills");
+    println!("cargo:rerun-if-changed=../env-catalog");
 
     stage_sidecar(&target, "rtk", &format!("../packages/rtk/{platform}/rtk"));
     stage_sidecar(

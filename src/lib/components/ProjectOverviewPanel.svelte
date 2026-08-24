@@ -8,6 +8,11 @@
     } from "../projectRegistry";
     import { tr } from "../i18n";
     import FreshnessHelpPanel from "./FreshnessHelpPanel.svelte";
+    import {
+        agentLayersScore,
+        formatFreshnessDriftParts,
+        getFreshnessLayerStale,
+    } from "../mergeFreshness";
     import OverviewActionBanner, {
         type OverviewActionItem,
     } from "./OverviewActionBanner.svelte";
@@ -147,6 +152,10 @@
 
     const freshness = $derived(overview?.freshness ?? null);
 
+    const freshnessLayers = $derived(
+        freshness ? getFreshnessLayerStale(freshness) : null,
+    );
+
     const freshnessScore = $derived(freshness?.overall_score ?? null);
 
     function freshnessTone(score: number): "good" | "watch" | "critical" {
@@ -164,42 +173,74 @@
 
         const items: OverviewActionItem[] = [];
 
-        if (freshness?.overall_stale && overview.repo_path && onQuickRefresh) {
-            const driftParts: string[] = [
-                tr("freshness.score", { score: freshness.overall_score }),
-            ];
-            if (freshness.commits_since_baseline > 0) {
-                driftParts.push(
-                    tr("freshness.behind", {
-                        count: freshness.commits_since_baseline,
+        if (freshness?.overall_stale && overview.repo_path) {
+            const layers = getFreshnessLayerStale(freshness);
+            const driftSummary = formatFreshnessDriftParts(freshness, tr).join(
+                " · ",
+            );
+
+            if (layers.agentStale && onQuickRefresh) {
+                items.push({
+                    id: "stale-agent",
+                    priority: 1,
+                    accent: "rose",
+                    title: tr("overview.actions.staleAgentTitle"),
+                    detail: layers.humanStale
+                        ? tr("overview.actions.staleAgentDetailMixed", {
+                              drift: driftSummary,
+                          })
+                        : tr("overview.actions.staleAgentDetail", {
+                              drift: driftSummary,
+                          }),
+                    hint: layers.humanStale
+                        ? tr("overview.actions.staleHintMixed")
+                        : tr("overview.actions.staleHint"),
+                    actionLabel: tr("overview.actions.quickRefresh"),
+                    busyLabel: tr("overview.actions.quickRefreshing"),
+                    onAction: onQuickRefresh,
+                    disabled: initBusy,
+                    busy: quickRefreshBusy,
+                });
+            }
+
+            if (layers.humanStale && !layers.agentStale && onGenerateHuman) {
+                items.push({
+                    id: "stale-human",
+                    priority: 1,
+                    accent: "rose",
+                    title: tr("overview.actions.staleHumanTitle"),
+                    detail: tr("overview.actions.staleHumanDetail", {
+                        drift: driftSummary,
+                        agentScore: agentLayersScore(freshness),
                     }),
-                );
-            }
-            if (freshness.changed_files_count > 0) {
-                driftParts.push(
-                    tr("freshness.changedFiles", {
-                        count: freshness.changed_files_count,
+                    hint: tr("overview.actions.staleHumanHint"),
+                    actionLabel: tr("overview.actions.refreshHumanDocs"),
+                    busyLabel: tr("common.generating"),
+                    onAction: onGenerateHuman,
+                    disabled: initBusy || lithoBusy || !acpOk,
+                    busy: lithoBusy,
+                });
+            } else if (
+                layers.humanStale &&
+                layers.agentStale &&
+                onGenerateHuman
+            ) {
+                items.push({
+                    id: "stale-human",
+                    priority: 1.5,
+                    accent: "amber",
+                    title: tr("overview.actions.staleHumanTitle"),
+                    detail: tr("overview.actions.staleHumanDetailShort", {
+                        drift: driftSummary,
                     }),
-                );
+                    hint: tr("overview.actions.staleHumanHintShort"),
+                    actionLabel: tr("overview.actions.refreshHumanDocs"),
+                    busyLabel: tr("common.generating"),
+                    onAction: onGenerateHuman,
+                    disabled: initBusy || lithoBusy || !acpOk,
+                    busy: lithoBusy,
+                });
             }
-            if (freshness.working_tree_dirty) {
-                driftParts.push(tr("freshness.dirtyTree"));
-            }
-            items.push({
-                id: "stale",
-                priority: 1,
-                accent: "rose",
-                title: tr("overview.actions.staleTitle"),
-                detail: tr("overview.actions.staleDetail", {
-                    drift: driftParts.join(" · "),
-                }),
-                hint: tr("overview.actions.staleHint"),
-                actionLabel: tr("overview.actions.quickRefresh"),
-                busyLabel: tr("overview.actions.quickRefreshing"),
-                onAction: onQuickRefresh,
-                disabled: initBusy,
-                busy: quickRefreshBusy,
-            });
         }
 
         if (needsAssetInit && overview.repo_path && onInitializeProject) {
@@ -820,6 +861,10 @@
                         <p class="mt-2 text-[11px] text-tr-ink-3">
                             {#if freshnessLoading}
                                 {tr("freshness.updating")}
+                            {:else if freshnessLayers?.humanStale && !freshnessLayers.agentStale && freshness}
+                                {tr("freshness.humanDragsOverall", {
+                                    agentScore: agentLayersScore(freshness),
+                                })}
                             {:else if freshness?.is_git_repo && freshness.current_git_head}
                                 {tr("freshness.gitBased", {
                                     head: freshness.current_git_head,
@@ -1044,7 +1089,9 @@
     open={freshnessHelpOpen}
     {freshness}
     {quickRefreshBusy}
+    humanDocsBusy={lithoBusy}
     {onQuickRefresh}
+    onRefreshHumanDocs={onGenerateHuman}
     onclose={() => (freshnessHelpOpen = false)}
 />
 

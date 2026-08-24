@@ -5,9 +5,11 @@ pub use crate::agent_tools_deploy::{
     write_repo_agent_tools_manifest, AgentToolPaths, DeployOptions,
 };
 pub use crate::assets::{
-    apply_env_integration, get_env_status, invalidate_env_status_cache,
-    invalidate_env_status_cache_for_repo, plan_env_integration, summarize_agent_env_light,
-    EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
+    apply_env_integration, deploy_env_catalog_to_home, discover_env_catalog_runtime,
+    ensure_env_catalog_initialized, get_env_status, init_env_catalog_root,
+    invalidate_env_status_cache, invalidate_env_status_cache_for_repo, plan_env_integration,
+    summarize_agent_env_light, user_env_catalog_dir, EnvApplyResult, EnvIntegrationStatus,
+    EnvPlan, EnvPlanStep, EnvStatus,
 };
 pub use crate::bundled_tools::{
     bundled_terrain_cli, bundled_tools, discover_bundled_tools_from_packages,

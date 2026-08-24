@@ -1,6 +1,11 @@
 <script lang="ts">
     import type { FreshnessSummary } from "../types";
     import { tr } from "../i18n";
+    import {
+        agentLayersScore,
+        FRESH_THRESHOLD,
+        getFreshnessLayerStale,
+    } from "../mergeFreshness";
     import CloseButton from "./icons/CloseButton.svelte";
     import ModalShell from "./ModalShell.svelte";
 
@@ -9,7 +14,9 @@
         freshness: FreshnessSummary | null;
         onclose: () => void;
         onQuickRefresh?: () => void;
+        onRefreshHumanDocs?: () => void;
         quickRefreshBusy?: boolean;
+        humanDocsBusy?: boolean;
     }
 
     let {
@@ -17,12 +24,17 @@
         freshness,
         onclose,
         onQuickRefresh,
+        onRefreshHumanDocs,
         quickRefreshBusy = false,
+        humanDocsBusy = false,
     }: Props = $props();
 
-    const FRESH_THRESHOLD = 80;
     const VERIFY_THRESHOLD = 70;
     const MACRO_THRESHOLD = 50;
+
+    const freshnessLayers = $derived(
+        freshness ? getFreshnessLayerStale(freshness) : null,
+    );
 
     const scoreBands = $derived([
         {
@@ -368,12 +380,21 @@
                             {tr("freshness.help.tipCommitSuffix")}
                         </li>
                     {/if}
-                    {#if freshness.commits_since_baseline > 0 || freshness.changed_files_count > 0}
+                    {#if freshnessLayers?.agentStale && (freshness.commits_since_baseline > 0 || freshness.changed_files_count > 0)}
                         <li>
                             {tr("freshness.help.tipQuickRefresh")}
                         </li>
                     {/if}
-                    {#if freshness.overall_stale}
+                    {#if freshnessLayers?.humanStale}
+                        <li>
+                            {tr("freshness.help.tipRefreshHumanDocs")}
+                        </li>
+                    {/if}
+                    {#if freshnessLayers?.agentStale && freshness.overall_stale}
+                        <li>
+                            {tr("freshness.help.tipLowScoreAgent")}
+                        </li>
+                    {:else if freshness.overall_stale}
                         <li>
                             {tr("freshness.help.tipLowScore")}
                         </li>
@@ -381,21 +402,38 @@
                         <li>{tr("freshness.help.tipKeepUp")}</li>
                     {/if}
                 </ul>
-                {#if onQuickRefresh}
-                    <button
-                        type="button"
-                        class="tr-press mt-3 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
-                        disabled={quickRefreshBusy}
-                        onclick={() => {
-                            onQuickRefresh();
-                            onclose();
-                        }}
-                    >
-                        {quickRefreshBusy
-                            ? tr("freshness.refreshing")
-                            : tr("freshness.quickRefreshNow")}
-                    </button>
-                {/if}
+                <div class="mt-3 flex flex-wrap gap-2">
+                    {#if freshnessLayers?.agentStale && onQuickRefresh}
+                        <button
+                            type="button"
+                            class="tr-press rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
+                            disabled={quickRefreshBusy}
+                            onclick={() => {
+                                onQuickRefresh();
+                                onclose();
+                            }}
+                        >
+                            {quickRefreshBusy
+                                ? tr("freshness.refreshing")
+                                : tr("freshness.quickRefreshNow")}
+                        </button>
+                    {/if}
+                    {#if freshnessLayers?.humanStale && onRefreshHumanDocs}
+                        <button
+                            type="button"
+                            class="tr-press rounded-lg border border-tr-border-strong bg-tr-surface px-3 py-1.5 text-xs font-medium text-tr-ink transition-colors hover:bg-tr-elevated disabled:opacity-50"
+                            disabled={humanDocsBusy}
+                            onclick={() => {
+                                onRefreshHumanDocs();
+                                onclose();
+                            }}
+                        >
+                            {humanDocsBusy
+                                ? tr("common.generating")
+                                : tr("overview.actions.refreshHumanDocs")}
+                        </button>
+                    {/if}
+                </div>
             </section>
         {/if}
     </div>

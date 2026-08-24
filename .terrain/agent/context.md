@@ -5,137 +5,136 @@ title: Agent Architecture Context
 source: .
 ---
 
-## 项目概览
+## Project Overview
 
-Terrain 是面向 AI 编码助手时代的**工程环境管理平台**（Sopaco 开源，含 repomix-rs）。核心理念："Terrain prepares the ground so agents don't have to guess where to stand"——注册一个 Git 仓库后自动完成代码扫描、源码打包（repomix）、Agent 上下文生成、C4 架构文档（Litho）、双轨知识资产（人类 `human/` + Agent `agent/`），并对外部 Coding Agent 提供 Ask 知识问答与 SDD 四阶段工作流。知识存放于仓库内 `.terrain/`，随 Git 分支流转（"知识跟着代码走"）。消费者：桌面应用（Tauri+Svelte）、CLI（`terrain`/`terrain tools`）、外部 Coding Agent（ACP 子进程）。核心约束：Rust 为 IPC 唯一真源（ts-rs 生成 TS）、上下文硬上限 16 KiB、非确定性生成资产禁自动合并、按包 grep 而非全量读码。
+Terrain is an **agent-first engineering environment platform** (Sopaco open source; repomix-rs powers source packing). Tagline: *"Terrain prepares the ground so agents don't have to guess where to stand."* Point it at a Git repository and it scans code, packs sources (repomix), generates agent context, C4 architecture docs (Litho), dual-track knowledge (`human/` + `agent/`), freshness tracking, and exposes Ask Q&A plus a four-phase SDD workflow to external Coding Agents. Knowledge lives in-repo under `.terrain/` and travels with Git branches. Consumers: Tauri desktop app (Svelte UI), CLI (`terrain` / `terrain tools`), and external agents via ACP subprocess. Constraints: Rust is IPC source of truth (ts-rs → TypeScript); `context.md` hard cap 16 KiB; generated assets are non-deterministic (regenerate, don't hand-merge); agents query the repomix pack, not the live filesystem.
 
-## 架构设计
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ 前端 Svelte 5 (src/)                  Tauri 2 壳 (src-tauri/) │
-│  Ask/DeepWiki · SDD · Litho · 环境 · 项目 · 用量 · 托盘        │
+│ Svelte 5 frontend (src/)          Tauri 2 shell (src-tauri/) │
+│  Ask/DeepWiki · SDD · Litho · Env · Projects · Usage · Tray│
 └───────────────┬──────────────────────────────────────────────┘
-                │ invoke + 流式事件（ts-rs 生成类型，Rust 真源）
+                │ invoke + streaming events (ts-rs; Rust = truth)
 ┌───────────────▼──────────────────────────────────────────────┐
-│ terrain-core  领域核心（纯逻辑，无 LLM 执行）                    │
-│  assets/资产生成 · query/search 三层检索 · freshness/           │
-│  ingest/扫描 · registry/注册 · sessions · ipc+schema 类型       │
+│ terrain-core — domain core (no LLM execution)                │
+│  assets/ · search/query · freshness · ingest · registry      │
+│  sessions · ipc+schema types · env integration               │
 └───────────────┬──────────────────────────────────────────────┘
 ┌───────────────▼──────────────────────────────────────────────┐
-│ terrain-agent 执行层                                           │
-│  ChatEngine(Native ADK / ACP 双后端) · tools · 上下文生成       │
-│  workflows: Ask / Init / SDD / QuickRefresh                    │
+│ terrain-agent — execution layer                              │
+│  ChatEngine (Native ADK / ACP) · tools · context generation  │
+│  workflows: Ask · Init · SDD · QuickRefresh                  │
 └───────────────┬──────────────────────────────────────────────┘
-                │ adk-model(openai/ollama) · agent-client-protocol(ACP)
+                │ adk-model (OpenAI/Ollama) · agent-client-protocol
 ┌───────────────▼───────────────┬───────────────┬──────────────┐
-│ repomix-core 打包 · codegraph │ LLM Providers │ 外部 Agent    │
-│ (SQLite) · rtk                │ (OpenAI/Ollama)│ opencode      │
+│ repomix-core · CodeGraph (SQLite)│ LLM Providers │ ACP Agent   │
+│ RTK · bundled CLI shims         │ OpenAI/Ollama │ (opencode)  │
 └───────────────────────────────┴───────────────┴──────────────┘
 ```
 
-- **分层**：UI（Svelte）→ IPC 壳（src-tauri commands）→ 核心（terrain-core，领域逻辑/资产，无执行）→ 执行（terrain-agent，LLM/ACP/工具/工作流）。
-- **依赖方向**：terrain-agent → terrain-core；src-tauri、terrain-cli → 两者；`[patch.crates-io]` 本地替换 `agent-client-protocol-tokio`。
-- **同一核心三入口**：桌面 app、CLI（`terrain-cli` 直连，`tools` 子命令即 Ask 的 ACP 知识层）、npm 包（`cli`/`rtk` 二进制 shim）。
-- **构建期类型流**：ts-rs 注解（`ts-export` feature）→ `terrain-ts-export` 二进制 → `src/lib/generated/`（`bun run gen:types`）。
+| Layer | Role | Key paths |
+|-------|------|-----------|
+| UI | Panels, stores, i18n (en/zh-CN) | `src/`, `src/lib/api.ts` |
+| IPC shell | Tauri commands, tray, bundled tools | `src-tauri/src/commands/` |
+| Domain core | Asset generation, 3-layer retrieval, freshness, ingest | `crates/terrain-core/` |
+| Execution | ChatEngine, workflows, Litho/SDD driver, tool registry | `crates/terrain-agent/` |
+| Entry points | Desktop app, `terrain-cli`, npm shims (`cli`/`rtk`) | All share core + agent |
 
-## 模块地图
+- **Dependency direction**: terrain-agent → terrain-core; src-tauri & terrain-cli → both; `[patch.crates-io]` replaces `agent-client-protocol-tokio` locally.
+- **Type flow**: ts-rs (`ts-export` feature) → `terrain-ts-export` → `src/lib/generated/` via `bun run gen:types`.
+- **Design principle**: separate knowledge logic (core) from LLM/ACP execution (agent).
 
-| 模块 | 职责 | 主要路径 |
-|------|------|----------|
-| terrain-core | 领域核心：资产生成、三层检索、freshness、摄取、注册表、IPC 类型 | `crates/terrain-core/src/` |
-| ├ assets/ | repomix 打包、agent context、litho/sdd/ask 资产、增量刷新、上下文分层、env 集成 | `crates/terrain-core/src/assets/` |
-| ├ freshness · ingest · schema · sessions | git+codegraph 保鲜评分、ProjectScanner/OpenAPI、ts-rs 结构体、会话持久化 | `crates/terrain-core/src/{freshness,ingest,schema,sessions,ipc}/` |
-| terrain-agent | 执行层：ChatEngine、工具 schema/注册、上下文生成、ACP 设置、SDD/Litho 驱动 | `crates/terrain-agent/src/` |
-| ├ chat/ | ChatEngine 双后端（native.rs=ADK Runner / acp.rs）、prompt、tracker、types | `crates/terrain-agent/src/chat/` |
-| └ workflows/ · runtime | Ask/Init/SDD/QuickRefresh 编排；Runtime 缓存引擎与 ModelConfig | `crates/terrain-agent/src/workflows/`、`runtime.rs`、`acp.rs`、`tools.rs` |
-| terrain-cli | CLI 入口：list/scan/init/refresh/search/read + project/settings/ask/sdd/usage/source/tools/assets/env | `crates/terrain-cli/src/` |
-| src-tauri | 桌面壳：commands（project/sessions/workflows/knowledge/env/usage/assets/settings）、托盘、bundled tools、preset skills | `src-tauri/src/` |
-| src/ (Svelte 5) | UI：Ask/DeepWiki、SDD、Litho、环境面板、用量、项目概览、知识树 | `src/lib/`（components/、stores/、api.ts） |
-| terrain-ts-export | 构建期 ts-rs 导出二进制（根类型 → `src/lib/generated/`） | `crates/terrain-ts-export/src/main.rs` |
-| env-catalog + preset_skills | 环境注入素材：skills、agents-md 片段、工具 catalog；内置技能（ask/architecture/litho/sdd） | `env-catalog/`、`preset_skills/` |
-| npm/ + packages/ + ACP patch | 跨平台 CLI/RTK 二进制 shim 与发布；本地 ACP tokio 修补依赖 | `npm/packages/`、`packages/`、`crates/agent-client-protocol-tokio-patched/` |
+## Module Map
 
-## 核心流程
+| Module | Responsibility | Primary paths |
+|--------|----------------|---------------|
+| terrain-core | Domain core: asset generation, 3-layer retrieval, freshness, ingest, registry, IPC types | `crates/terrain-core/src/` |
+| assets/ | repomix pack, agent context, Litho/SDD/Ask assets, incremental refresh, env integration | `crates/terrain-core/src/assets/` |
+| freshness | Git + CodeGraph drift scoring, baseline ledger | `crates/terrain-core/src/freshness/` |
+| ingest | Project scan, Git metadata, OpenAPI import | `crates/terrain-core/src/ingest/` |
+| terrain-agent | ChatEngine, workflows, Litho/SDD driver, ACP/native backends, tool registry | `crates/terrain-agent/src/` |
+| chat/ | Dual backend: Native ADK Runner + ACP subprocess | `crates/terrain-agent/src/chat/` |
+| workflows/ | Ask, Init, SDD, QuickRefresh orchestration | `crates/terrain-agent/src/workflows/` |
+| terrain-cli | Headless entry: scan, init, ask, tools, env, usage | `crates/terrain-cli/src/commands/` |
+| src-tauri | Desktop shell: IPC commands, tray, preset skills, env catalog | `src-tauri/src/` |
+| Frontend | Svelte 5 UI, IPC wrappers, stores, i18n | `src/lib/` |
+| preset_skills | Bundled agent skills (Litho, SDD, Ask, arch, context) | `preset_skills/` |
+| env-catalog | Agent toolchain catalog, AGENTS.md fragments, skill templates | `env-catalog/` |
 
-**1. 项目注册 → 知识资产生成**
-1. `initialize_project` 将仓库登记到 `~/.terrain/registry.json`（仅路径）。
-2. `ProjectScanner` 采集 Git 元数据、按需导入 OpenAPI（`scan_project`）。
-3. repomix-core 打包源码 → `.terrain/agent/repomix.md`（`pack_agent_assets`）。
-4. LLM 生成 `agent/context.md`（本项目即产物）；可选 Litho 四阶段生成 `human/` C4 文档（预处理→研究→编排→输出，研究产物持久化 `.litho-agent/` 可断点恢复）。
-5. freshness 基线记账，后续 git/codegraph 交叉验证漂移。
+## Core Flows
 
-**2. Ask 知识问答（DeepWiki，三层检索 + 双后端）**
-1. Macro：预载 `agent/context.md` 概览/架构/模块地图。
-2. Meso：按需 `read_agent_context(section=…)` 或搜索 `human/`、`knowledge/` 文档。
-3. Micro：`grep_agent_pack` → `read_agent_pack_file` 查源码切片。
-4. `ChatEngine` 执行：Native 后端（ADK Runner，openai/ollama）或 ACP 子进程（opencode，`AcpSettings` 门控 `execution_uses_native_llm` / `execution_uses_acp` / `execution_pure_acp` / `AcpNative`）；LLM 不可用时降级 `fallback_search_reply`。
-5. 流式回传 thinking/tool_calls/phase/usage 事件（`AskStreamEvent`）+ 来源引用，会话持久化可选。
+**1. Project registration → knowledge asset generation**
+1. `initialize_project` registers repo in `~/.terrain/registry.json` (path pointer only).
+2. `ProjectScanner` collects Git metadata; optional OpenAPI import (`scan_project`).
+3. repomix-core packs sources → `.terrain/agent/repomix.md` (`pack_agent_assets`).
+4. LLM generates `agent/context.md`; optional Litho four-phase run produces `human/` C4 docs (artifacts persist in `.litho-agent/` for resume).
+5. Freshness baseline ledger written; subsequent git/codegraph cross-check for drift. Incremental context refresh uses `agent_context_recorded_baseline_head` (`context-meta.json`) — repomix repack alone does not mark `context.md` synced.
 
-**3. SDD 四阶段开发**
-1. 需求 Requirements → `1.requirements.md`。
-2. 技术设计 TechDesign → `2.tech-design.md`。
-3. 代码生成 Codegen → `3.implementation.md` + 仓库改动（委托 ACP Agent）。
-4. 代码审查 CodeReview。轻量文档阶段走 Native LLM，代码阶段走 ACP（`run_sdd_phase` 按阶段分发），每阶段产出可审查 Markdown。
+**2. Ask knowledge Q&A (DeepWiki, 3-layer retrieval + dual backend)**
+1. Macro: preload `agent/context.md` overview/architecture/module map.
+2. Meso: on demand `read_agent_context(section=…)` or search `human/`, `knowledge/` docs.
+3. Micro: `grep_agent_pack` → `read_agent_pack_file` for source slices.
+4. `ChatEngine` execution: Native (ADK Runner; OpenAI `chat/completions` or `responses` per `OpenAiApiMode`, or Ollama) or ACP subprocess (opencode); gated by `AcpSettings`; falls back to `fallback_search_reply` when LLM unavailable.
+5. Stream thinking/tool_calls/phase/usage events (`AskStreamEvent`) + source citations; optional session persistence.
 
-**4. 环境集成（Env）**
-1. 探测（probe）Skills / CLI 工具 / AGENTS.md 状态（`EnvStatus`）。
-2. 规划（plan）差异 → `EnvPlan`/`EnvPlanStep`。
-3. 应用（apply）：部署 terrain-knowledge/repomix/codegraph/rtk skills、bundled tools、`AGENTS.md` 片段（`plan_env_integration`/`apply_env_integration`、`deploy_agent_toolchain`）。
+**3. SDD four-phase development**
+1. Requirements → `1.requirements.md`.
+2. TechDesign → `2.tech-design.md`.
+3. Codegen → `3.implementation.md` + repo changes (delegated to ACP Agent).
+4. CodeReview. Doc phases use Native LLM; code phase uses ACP (`run_sdd_phase` dispatches per phase).
 
-## 技术选型
+**4. Environment integration (Env)**
+1. Probe Skills / CLI tools / AGENTS.md status (`EnvStatus`).
+2. Plan diff → `EnvPlan` / `EnvPlanStep`.
+3. Apply: deploy terrain-knowledge/repomix/codegraph/rtk skills, bundled tools, `AGENTS.md` fragments.
 
-- **Rust**：workspace（terrain-core/terrain-agent/terrain-cli/terrain-ts-export/src-tauri），edition 2024，rust-version 1.94。
-- **桌面壳**：Tauri 2（capabilities ACL、plugin-dialog/shell、托盘 + Usage 窗口）。
-- **前端**：Svelte 5（runes）+ Vite 8 + Tailwind 4 + marked/mermaid/highlight.js、@lucide/svelte。
-- **前端启动优化**：`appBootstrap.ts` 缓存单例去重 `bootstrapApp` IPC 调用（两个窗口共享一次）；Vite `modulePreload` 过滤 mermaid chunk 以减少首屏预加载体积。
-- **Ask 分享图片**：离屏挂载真实 `AskShareCard`（复用 MarkdownViewer/markdown.css/mermaid）→ 长文分页 → 原生 canvas 栅格化 PNG；剪贴板经 `copy_image_to_clipboard`、落盘经 `save_png_files`。
-- **IPC 类型**：ts-rs 10 + schemars；`bun run gen:types` 生成 `src/lib/generated/`。
-- **Agent 运行时**：ADK Rust 1.0 家族（adk-core/agent/runner/session/tool/model `{openai,ollama}`/acp）+ agent-client-protocol 0.11.1（ACP 子进程），本地 `[patch]` tokio 层。
-- **源码索引**：repomix-core 2.0（repomix-rs Rust 锈化）打包 `agent/repomix.md`；CodeGraph（SQLite 符号图）做 drift 交叉验证；RTK 压缩 shell 输出。
-- **存储**：`.terrain/`（版本化知识）、`~/.terrain/registry.json`（项目指针）、`.codegraph/`（本地索引）。
-- **分发**：npm 包（`cli`/`rtk` + darwin-arm64/win32-x64 shims）、`scripts/cross-windows-terrain.sh` 交叉编译、Tauri 打包。
-- **Release 构建**：workspace 级 `lto = "thin"` + `strip = true` + `codegen-units = 1`，优化产物体积与链接时间。
-- **基础库**：tokio、serde/serde_json、anyhow/thiserror、tracing、chrono、walkdir/ignore、futures、slug、dotenvy。
+## Tech Stack
 
-## 系统边界
+- **Rust**: workspace (terrain-core, terrain-agent, terrain-cli, terrain-ts-export, src-tauri), edition 2024, rust-version 1.94
+- **Desktop shell**: Tauri 2 (capabilities ACL, plugin-dialog/shell, tray + Usage window)
+- **Frontend**: Svelte 5 (runes) + Vite 8 + Tailwind 4 + marked/mermaid/highlight.js
+- **IPC types**: ts-rs 10 + schemars; `bun run gen:types` → `src/lib/generated/`
+- **Agent runtime**: ADK Rust 1.0 (adk-core/agent/runner/session/tool/model) + agent-client-protocol 0.11.1 (ACP); local `[patch]` tokio layer; `OpenAiApiMode` routes chat vs responses API
+- **Source index**: repomix-core 2.0 (repomix-rs) → `agent/repomix.md`; CodeGraph (SQLite symbol graph); RTK compresses shell output
+- **Storage**: `.terrain/` (versioned knowledge), `~/.terrain/registry.json` (project pointers), `.codegraph/` (local index)
+- **Distribution**: npm packages (`cli`/`rtk` + darwin-arm64/win32-x64 shims), Tauri bundle; release profile `lto=thin`, `strip=true`
+- **Base libs**: tokio, serde/serde_json, anyhow/thiserror, tracing, chrono, walkdir/ignore, futures
 
-| 边界 | 说明 | 方向 |
-|------|------|------|
-| Tauri IPC | Rust commands ↔ Svelte（`invoke` + 流式事件），Rust 类型唯一真源 | 内 |
-| LLM Providers | OpenAI 兼容 / Ollama（adk-model），Native 轻量阶段（Ask 摘要、SDD 文档） | 出 |
-| ACP 子进程 | 外部 Coding Agent（opencode）经 agent-client-protocol 调用（SDD 代码生成/Litho/Ask）；`acp_config_json` 注入配置与 env；可 spawn 任意命令 → 信任边界，经 `AcpSettings` 授权门控 | 出 |
-| 本地注册表 | `~/.terrain/registry.json` 仅存项目路径，无知识正文 | 本地 |
-| 知识文件系统 | `.terrain/agent/`（生成）、`human/`（生成）、`knowledge/`（人工）、`.litho-agent/`（研究中产物）、`repomix.md`（本机索引） | 本地 |
-| 外部代码 | 只读扫描/打包（git 元数据、OpenAPI 导入、repomix）；不写目标仓库（SDD Codegen 除外） | 出 |
-| 工具二进制 | CodeGraph / RTK / terrain CLI 随项目分发（`packages/`、`~/.terrain/bin/`、npm shims） | 出 |
-| Git | 摄取、freshness 基线比对（baseline HEAD、ledger）、`.gitattributes` 声明生成资产 `-merge` | 出 |
+## System Boundaries
 
-信任边界：前端不信任 Rust 返回值（Rust 校验）；ACP 子进程视为外部实体（spawn 任意命令，须经授权配置）；生成资产非确定性 → 冲突禁手工合并，保留任一版本后重跑 scan 重生成。IPC `Option<T>` → `T | null`，前端判空按此契约；`read-pack-file`/`grep-pack` 是 Agent 唯一源码入口。
+| Boundary | Description | Direction |
+|----------|-------------|-----------|
+| Tauri IPC | Rust commands ↔ Svelte (`invoke` + streaming events); Rust types are source of truth | Internal |
+| LLM Providers | OpenAI-compatible (`chat/completions` or `responses` per `OpenAiApiMode`) / Ollama; Native for lightweight phases | Out |
+| ACP subprocess | External Coding Agent (opencode) via agent-client-protocol; `acp_config_json` injects config; can spawn arbitrary command → trust boundary, gated by `AcpSettings` | Out |
+| Local registry | `~/.terrain/registry.json` stores project paths only, no knowledge body | Local |
+| Knowledge filesystem | `.terrain/agent/` (generated), `human/` (generated), `knowledge/` (manual), `.litho-agent/` (research), `repomix.md` (local index) | Local |
+| External code | Read-only scan/pack (git, OpenAPI, repomix); does not write target repo (except SDD Codegen) | Out |
+| Tool binaries | CodeGraph / RTK / terrain CLI (`packages/`, `~/.terrain/bin/`, npm shims) | Out |
+| Git | Ingest, freshness baseline, `.gitattributes` marks generated assets `-merge` | Out |
 
-## 代码映射索引
+Trust: frontend null-checks IPC `Option<T>` → `T | null`; ACP subprocess is external; generated assets are non-deterministic — regenerate rather than hand-merge; `grep-pack`/`read-pack-file` are Agent's only source-code entry points (not live filesystem).
 
-| 概念 | 位置 | 备注 |
-|------|------|------|
-| 资产生成管线 | `crates/terrain-core/src/assets/mod.rs` | repomix/context/litho/sdd/ask/env 聚合 |
-| repomix 打包 | `crates/terrain-core/src/assets/repomix.rs` | `pack_agent_assets`、pack 新鲜度 |
-| 上下文分层/生成 | `crates/terrain-core/src/assets/context_layers.rs`、`agent_context.rs` | macro/meso/on-demand 切片 |
-| 增量刷新 | `crates/terrain-core/src/assets/incremental.rs`、`crates/terrain-agent/src/workflows/quick_refresh.rs` | |
-| Litho 生成 | `crates/terrain-core/src/assets/litho.rs` + `crates/terrain-agent/src/litho.rs` | 四阶段、`.litho-agent/` 恢复 |
-| SDD 工作流 | `crates/terrain-agent/src/workflows/sdd.rs`、`crates/terrain-agent/src/sdd.rs` | 阶段分发 LLM/ACP |
-| Ask 检索 | `crates/terrain-core/src/assets/ask.rs`、`crates/terrain-agent/src/workflows/ask.rs` | 三层检索 + fallback |
-| ChatEngine 双后端 | `crates/terrain-agent/src/chat/mod.rs`、`native.rs`、`acp.rs` | ADK Runner / ACP |
-| 知识检索与文档读取 | `crates/terrain-core/src/search.rs` | `KnowledgeSearch` 三层搜索；`read_doc_at`/`read_doc_at_in_project` 支持绝对路径、knowledge-root 相对路径、**裸文件名**（如 `core` → 自动解析 `modules/core.md`）；`SearchHit` 含 `rel_path` 供 `read_doc` 消费 |
-| 工具 schema/注册 | `crates/terrain-agent/src/tools.rs`、`tool_schema.rs`、`compat_tool.rs`、`tool_session_cache.rs` | `read_doc` 工具描述更新为裸文件名解析语义；`search_knowledge` 返回值含 `rel_path` |
-| 运行时/引擎缓存 | `crates/terrain-agent/src/runtime.rs`、`builder.rs` | ModelConfig + AcpSettings |
-| 新鲜度 | `crates/terrain-core/src/freshness/` | compute/scoring/git/codegraph/drift_factors/ledger |
-| 摄取/注册 | `crates/terrain-core/src/ingest/`（git/openapi）、`registry.rs`、`project.rs` | ProjectScanner/ScanReport |
-| 环境集成 | `crates/terrain-core/src/integrations/`、`assets/env/`、`agent_tools_deploy.rs`、`bundled_tools.rs` | EnvPlan/Status、usage 探测 |
-| IPC 类型 | `crates/terrain-core/src/schema/`、`ipc/`、`crates/terrain-agent/src/chat/types.rs` | ts-export 注解 |
-| Tauri 命令层 | `src-tauri/src/commands/` | project/sessions/workflows/knowledge/env/usage/assets |
-| 前端启动引导 | `src/lib/appBootstrap.ts`、`src/main.ts` | `loadAppBootstrap()` 缓存单例，去重 `bootstrapApp` IPC；两个窗口（main + usage）共享首次调用；`applyLocale` 由 `i18n/index.ts` 导出 |
-| 前端文档路径工具 | `src/lib/humanDocPath.ts` | `humanDocTreePath()` 提取 human-knowledge 树展示路径；`findHumanOverviewDoc()` 定位 Litho 总览文档（`1.概述.md`/`1.Overview.md`） |
-| 前端 IPC 封装 | `src/lib/api.ts`、`types.ts`、`types.client.ts` | invoke + 生成类型入口 |
-| Ask 分享/长图导出 | `src/lib/askShareImage.ts`、`components/AskShareCard.svelte`、`ShareImageButton.svelte`、`shareExport.ts`、`clipboard.ts`、`src-tauri/src/commands/settings.rs` | 离屏渲染真实 MarkdownViewer、分页栅格化 PNG；复制/导出经 `copy_image_to_clipboard`/`save_png_files` |
-| CLI + Ask tools | `crates/terrain-cli/src/cli.rs`、`commands/tools.rs` | `terrain tools` 知识层 |
-| ACP 协议 patch | `crates/agent-client-protocol-tokio-patched/src/acp_agent.rs` | Cargo patch |
+## Code Map Index
+
+| Concept | Location | Notes |
+|---------|----------|-------|
+| Asset generation pipeline | `crates/terrain-core/src/assets/mod.rs` | repomix/context/litho/sdd/ask/env aggregation |
+| repomix pack | `crates/terrain-core/src/assets/repomix.rs` | `pack_agent_assets`, pack freshness |
+| Context layers / generation | `crates/terrain-core/src/assets/context_layers.rs`, `agent_context.rs` | macro/meso slices; baseline-head refresh |
+| Context generator (agent) | `crates/terrain-agent/src/context_generator.rs`, `agent_context.rs` | LLM-driven context synthesis |
+| Incremental refresh | `crates/terrain-core/src/assets/incremental.rs`, `crates/terrain-agent/src/workflows/quick_refresh.rs` | delta updates |
+| Litho generation | `crates/terrain-core/src/assets/litho.rs`, `crates/terrain-agent/src/litho.rs` | four phases, `.litho-agent/` resume |
+| SDD workflow | `crates/terrain-agent/src/workflows/sdd.rs`, `crates/terrain-agent/src/sdd.rs` | phase dispatch LLM/ACP |
+| Ask retrieval | `crates/terrain-core/src/assets/ask.rs`, `crates/terrain-agent/src/workflows/ask.rs` | 3-layer retrieval + fallback |
+| ChatEngine dual backend | `crates/terrain-agent/src/chat/mod.rs`, `native.rs`, `acp.rs` | ADK Runner / ACP |
+| Knowledge search & doc read | `crates/terrain-core/src/search.rs` | `KnowledgeSearch`; `read_doc_at` |
+| Freshness | `crates/terrain-core/src/freshness/` | compute/scoring/git/codegraph/ledger |
+| Env integration | `crates/terrain-core/src/assets/env/`, `agent_tools_deploy.rs` | EnvPlan/Status, toolchain deploy |
+| IPC types | `crates/terrain-core/src/schema/`, `ipc/` | ts-export annotations |
+| Tauri command layer | `src-tauri/src/commands/` | project/sessions/workflows/knowledge/env/usage |
+| Frontend IPC wrapper | `src/lib/api.ts`, `types.ts`, `appBootstrap.ts` | invoke + bootstrap singleton dedup |
+| CLI + Ask tools | `crates/terrain-cli/src/commands/tools.rs` | `terrain tools` knowledge layer |
+| ACP protocol patch | `crates/agent-client-protocol-tokio-patched/src/acp_agent.rs` | Cargo `[patch]` |

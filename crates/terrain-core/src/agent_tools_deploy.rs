@@ -141,6 +141,8 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
         ));
     }
 
+    let _ = crate::assets::deploy_env_catalog_to_home();
+
     write_global_manifest(&paths)?;
     Ok(paths)
 }

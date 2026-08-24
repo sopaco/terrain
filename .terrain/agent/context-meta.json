@@ -2,9 +2,9 @@
   "project": "terrain",
   "repo_path": ".",
   "output_file": "context.md",
-  "generated_at": "2026-08-19T02:40:45.936246+00:00",
+  "generated_at": "2026-08-24T13:00:33.984443+00:00",
   "section_count": 6,
-  "char_count": 14787,
-  "baseline_git_head": "d0c36665b0c87a42c1ec4987a0420e32a9f817c3",
+  "char_count": 12009,
+  "baseline_git_head": "16857922928f39991f09ce0b5a7746f70449d95b",
   "language": "en"
 }

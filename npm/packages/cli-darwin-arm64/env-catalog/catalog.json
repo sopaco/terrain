@@ -1,0 +1,99 @@
+{
+  "version": 2,
+  "integrations": [
+    {
+      "id": "skill-terrain-knowledge",
+      "kind": "skill",
+      "label": "Terrain 知识 Skill",
+      "description": "教 Coding Agent 如何使用 .terrain/ 知识资产",
+      "skill_dir": "terrain-knowledge-skill",
+      "required": true,
+      "depends_on": []
+    },
+    {
+      "id": "skill-repomix",
+      "kind": "skill",
+      "label": "Repomix 查询 Skill",
+      "description": "按需 grep 本地 repomix 索引（不入库）",
+      "skill_dir": "repomix-context-skill",
+      "depends_on": ["skill-terrain-knowledge"]
+    },
+    {
+      "id": "skill-codegraph",
+      "kind": "skill",
+      "label": "CodeGraph Skill",
+      "description": "通过 CLI 查询符号关系与影响面",
+      "skill_dir": "codegraph-skill",
+      "depends_on": ["tool-codegraph", "skill-terrain-knowledge"]
+    },
+    {
+      "id": "skill-rtk",
+      "kind": "skill",
+      "label": "RTK Token 优化 Skill",
+      "description": "压缩 shell 命令输出，降低 token 消耗",
+      "skill_dir": "rtk-skill",
+      "depends_on": ["tool-rtk"]
+    },
+    {
+      "id": "tool-bun",
+      "kind": "tool",
+      "label": "Bun 运行时",
+      "description": "其它 npm 工具的统一运行时（可选，若已安装则跳过）",
+      "optional": true,
+      "check": ["bun", "--version"],
+      "depends_on": []
+    },
+    {
+      "id": "tool-codegraph",
+      "kind": "tool",
+      "label": "CodeGraph CLI",
+      "description": "Terrain 内置 — 在目标仓库初始化 .codegraph/ 索引",
+      "bundled": true,
+      "depends_on": []
+    },
+    {
+      "id": "tool-rtk",
+      "kind": "tool",
+      "label": "RTK CLI",
+      "description": "Terrain 内置 — Shell 输出 Token 压缩（无需写入目标仓库）",
+      "bundled": true,
+      "depends_on": []
+    },
+    {
+      "id": "agents-md",
+      "kind": "agents_md",
+      "label": "AGENTS.md 工作指南",
+      "description": "注入 Terrain 托管片段，指引 Agent 使用知识 Skill 与工具链",
+      "depends_on": ["skill-terrain-knowledge"]
+    },
+    {
+      "id": "terrain-git-policy",
+      "kind": "terrain_ignore",
+      "label": ".terrain/ Git 跟随策略",
+      "description": "写入 .terrain/.gitignore 与 .terrain/.gitattributes：本机衍生物不入库，生成文档禁用自动合并（冲突时重生成）",
+      "depends_on": []
+    }
+  ],
+  "agents_md_blocks": [
+    {
+      "id": "env-overview",
+      "version": 4,
+      "fragment": "agents-md/env-overview.fragment"
+    },
+    {
+      "id": "knowledge-guide",
+      "version": 5,
+      "fragment": "agents-md/knowledge-guide.fragment"
+    },
+    {
+      "id": "skills",
+      "version": 2,
+      "fragment": "agents-md/skills.fragment"
+    },
+    {
+      "id": "tools",
+      "version": 3,
+      "fragment": "agents-md/tools.fragment"
+    }
+  ]
+}

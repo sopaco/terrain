@@ -1,5 +1,6 @@
 mod bundled_tools;
 mod commands;
+mod env_catalog;
 mod preset_skills;
 mod tray;
 
@@ -45,6 +46,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            env_catalog::init_app_env_catalog(app.handle());
             preset_skills::init_app_preset_skills(app.handle());
             bundled_tools::init_app_bundled_tools(app.handle());
             tray::init(app)?;

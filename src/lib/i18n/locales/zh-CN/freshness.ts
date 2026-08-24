@@ -9,6 +9,8 @@ export default {
   behind: "落后 {count} 个提交",
   changedFiles: "{count} 个文件已变更",
   dirtyTree: "工作区有未提交修改",
+  humanDragsOverall:
+    "综合分受人类文档拖累；Agent 层为 {agentScore}/100",
   gitBased: "基于 Git 提交对比 · HEAD {head}",
   noGit: "未检测到 Git，分数按知识资产同步时间估算",
   quickRefreshNow: "立即快速保鲜",
@@ -64,7 +66,11 @@ export default {
     tipCommitAfter: "改动，避免「未提交修改」持续扣分（",
     tipCommitSuffix: "产出不计入）",
     tipQuickRefresh:
-      "代码已前进时，使用「快速保鲜」更新源码索引与 Agent 知识资产（无需重跑 Litho）",
+      "代码已前进时，使用「快速保鲜」更新源码索引与 Agent 知识资产（跳过 Litho 人类文档）",
+    tipRefreshHumanDocs:
+      "人类友好 Litho 文档已落后 — 请在「人类友好知识」卡片重新生成；除非在设置中开启增量人类文档，快速保鲜不会更新它们",
+    tipLowScoreAgent:
+      "Agent 层低于 80 时，架构类问题请以源码索引 grep 为准，不要只信 context.md",
     tipLowScore:
       "分数低于 80 时，架构类问题请以源码索引 grep 结果为准，不要只信 context.md",
     tipKeepUp: "保持当前节奏即可；大重构后记得再次保鲜",

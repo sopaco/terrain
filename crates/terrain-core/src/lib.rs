@@ -74,11 +74,13 @@ pub use ipc::{
 };
 pub use integrations::{
     apply_env_integration, bundled_terrain_cli, bundled_tools, deploy_agent_toolchain,
-    deploy_agent_toolchain_with_options, deploy_preset_skills_to_home, discover_bundled_tools_from_packages,
-    discover_preset_skills_runtime, ensure_bundled_tools_initialized, ensure_preset_skills_initialized,
-    find_codegraph_wrapper_under, get_env_status, init_bundled_tools, init_preset_skills_root, invalidate_env_status_cache,
-    invalidate_env_status_cache_for_repo, load_usage_snapshot, packages_root, plan_env_integration,
-    probe_usage_sources, resolve_sidecar_next_to_exe, summarize_agent_env_light, AgentToolPaths,
+    deploy_agent_toolchain_with_options, deploy_env_catalog_to_home, deploy_preset_skills_to_home,
+    discover_bundled_tools_from_packages, discover_env_catalog_runtime, discover_preset_skills_runtime,
+    ensure_bundled_tools_initialized, ensure_env_catalog_initialized, ensure_preset_skills_initialized,
+    find_codegraph_wrapper_under, get_env_status, init_bundled_tools, init_env_catalog_root,
+    init_preset_skills_root, invalidate_env_status_cache, invalidate_env_status_cache_for_repo,
+    load_usage_snapshot, packages_root, plan_env_integration, probe_usage_sources,
+    resolve_sidecar_next_to_exe, summarize_agent_env_light, user_env_catalog_dir, AgentToolPaths,
     BundledTools, DeployOptions, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep,
     EnvStatus, UsageDetailLevel, UsageModelBreakdown, UsagePeriodEntry, UsageProbeResult,
     UsageSnapshot, UsageSourceStatus, UsageTotals,

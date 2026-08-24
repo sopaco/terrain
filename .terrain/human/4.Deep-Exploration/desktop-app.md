@@ -1,186 +1,111 @@
-# Desktop App — Tauri + Svelte
+# desktop-app Domain
 
-## What this module does
-
-The desktop app is Terrain's graphical face — a Tauri v2 shell with a Svelte 5 frontend that provides a full GUI for project management, knowledge browsing, Ask Q&A, SDD workflows, settings, and environment integration. It's the experience most users encounter first: a native window with a sidebar, tabbed navigation, streaming chat, and a polished Markdown reader. If `terrain-core` is the engine and `terrain-agent` is the brain, the desktop app is the **cockpit with all the gauges and controls**.
-
-The Rust backend (`src-tauri/`) exposes 55+ IPC commands that the Svelte frontend invokes through auto-generated TypeScript bindings. The frontend never touches the filesystem directly — every operation flows through Tauri's IPC bridge.
+**Module path:** `src-tauri/`  
+**Generated:** 2026-08-24
 
 ---
 
-## Architecture overview
+## What This Module Does
+
+The desktop app is Terrain's visual control panel — a Tauri 2 shell that wraps the same `terrain-agent` runtime powering the CLI in a native GUI. It provides the project list with freshness scores, the Litho Book document reader, DeepWiki Ask chat, SDD workflow panels, settings management, and one-click environment integration.
+
+If terrain-cli is the loading dock for scripts and automation, the desktop app is the mission control room for human developers who prefer clicking over typing.
+
+---
+
+## Core Capabilities
+
+1. **Tauri IPC bridge** — 50+ `#[tauri::command]` handlers in `src-tauri/src/commands/` expose agent/core operations to the TypeScript frontend
+2. **App bootstrap** — `bootstrap_app` returns project list, settings, and LLM/ACP status on startup
+3. **Project management** — Initialize, scan, remove projects; save remarks; view freshness overviews
+4. **Knowledge UI backend** — Search, read docs, trigger Litho generation, list human docs
+5. **Ask session management** — Create, list, load, save, delete Ask chat sessions with streaming
+6. **SDD session management** — Create, run, delete SDD workflow sessions per project
+7. **System tray** — Background access and application lifecycle (`tray.rs`)
+8. **Bundled resources** — Preset skills, env catalog, and bundled tools initialized at app startup
+
+---
+
+## Key Components
+
+| Component / Type | File path | Core responsibility |
+|-----------------|-----------|---------------------|
+| `AppState` | `src-tauri/src/lib.rs:10` | Holds `Runtime` with paths and model config |
+| `run` | `src-tauri/src/lib.rs:35` | Tauri builder, plugin init, command registration |
+| `commands/` | `src-tauri/src/commands/` | IPC command implementations (13 files) |
+| `tray.rs` | `src-tauri/src/tray.rs` | System tray menu and run event handling |
+| `preset_skills.rs` | `src-tauri/src/preset_skills.rs` | Bundle preset skills into app resources |
+| `env_catalog.rs` | `src-tauri/src/env_catalog.rs` | Bundle env catalog for `env apply` |
+| `bundled_tools.rs` | `src-tauri/src/bundled_tools.rs` | Bundle CLI sidecars (terrain, RTK) |
+| `terrain-ts-export` | `crates/terrain-ts-export/` | TypeScript type generation for IPC payloads |
+
+---
+
+## Internal Data Flow
 
 ```mermaid
-graph TB
-    subgraph Frontend[Svelte 5 Frontend]
-        App[App.svelte]
-        Components[components/]
-        Stores[stores/]
-        API[api.ts]
-    end
-
-    subgraph Backend[Rust Backend]
-        Lib[lib.rs<br/>Tauri Builder + 55 Commands]
-        Commands[commands/]
-        Tray[tray.rs]
-        BT[bundled_tools.rs]
-        PS[preset_skills.rs]
-    end
-
-    subgraph Core
-        TC[terrain-core]
-        TA[terrain-agent]
-    end
-
-    App --> API
-    API -->|invoke| Lib
-    Lib --> Commands
-    Commands --> TC
-    Commands --> TA
-    Lib --> Tray
-    Lib --> BT
-    Lib --> PS
+flowchart TD
+    A["TypeScript Frontend<br/>Svelte/React UI"] --> B["Tauri invoke<br/>IPC"]
+    B --> C["commands/*.rs<br/>#[tauri::command]"]
+    C --> D["AppState.runtime<br/>terrain-agent"]
+    D --> E["terrain-core"]
+    E --> F[".terrain/ + Git"]
+    D --> G["LLM / ACP"]
+    H["System Tray<br/>tray.rs"] --> C
 ```
 
----
-
-## Rust backend — src-tauri/
-
-### Bootstrap — lib.rs
-
-`lib.rs` (116 lines) defines `AppState`, initializes the Tauri builder, and registers all 55+ IPC command handlers (`lib.rs:54-110`). Key setup steps:
-
-1. **Load dotenv** (`terrain_agent::load_dotenv()`) — API keys and env overrides
-2. **Initialize tracing** — `tracing_subscriber` with `info,terrain=debug`
-3. **Build paths** — `commands::init_paths()` resolves the workspace
-4. **Create `AppState`** — wraps `Runtime` for shared access
-5. **Plugin registration** — `tauri_plugin_dialog`, `tauri_plugin_shell`
-6. **Preset skills + bundled tools** — extracted at setup time from embedded resources
-7. **System tray** — `tray::init(app)` creates the menu bar icon
-
-`AppState` (`lib.rs:9`) is the bridge between Tauri's managed state and Terrain's `Runtime`. It provides `paths()`, `model_config()`, and `set_model_config()` — the three things the IPC handlers need.
-
-### IPC commands — commands/
-
-The `commands/` directory mirrors the CLI's command groups:
-
-| Module | Handles |
-|--------|---------|
-| `commands/project.rs` | Project list, scan, init, remove, overview, remark |
-| `commands/knowledge.rs` | Search, read document, list/read human docs |
-| `commands/workflows.rs` | Ask Q&A, quick refresh, Litho generation, agent context |
-| `commands/sessions.rs` | Ask session CRUD, SDD session management |
-| `commands/settings.rs` | Model settings, ACP check, LLM check |
-| `commands/env.rs` | Env status, plan, apply |
-| `commands/assets.rs` | Pack agent assets, plan Litho, grep pack |
-| `commands/usage.rs` | Usage probe and snapshot |
-| `commands/payloads.rs` | IPC payload types |
-| `commands/util.rs` | Shared utilities |
-
-### System tray — tray.rs
-
-`tray.rs` manages the macOS menu bar icon and context menu, providing quick access to project switching and app visibility.
-
-### Resource packaging
-
-- **`bundled_tools.rs`** — embeds platform-specific tool binaries (CodeGraph, RTK) as Tauri resources, extracted to `~/.terrain/bin/` at first launch
-- **`preset_skills.rs`** — embeds Skill playbooks from `.agents/skills/` and `.claude/skills/`, deployed on setup
+**Key steps:**
+1. `commands::init_paths()` resolves `KnowledgePaths` at startup (`lib.rs:42`)
+2. Frontend calls `bootstrap_app` to get initial state
+3. Long operations (Litho, init) emit `ProgressEvent` via IPC callbacks
+4. Ask chat streams `AskStreamEvent` chunks to the UI
 
 ---
 
-## Svelte frontend — src/
+## Key Interfaces and Extension Points
 
-### App.svelte
-
-`App.svelte` (1,530 lines) is the root component. It orchestrates:
-
-- **Project selection** — sidebar with `ProjectSelector`
-- **Tabbed navigation** — `MainNavTabs` switching between Overview, Knowledge, Ask, SDD, Settings, Usage
-- **Streaming Ask** — real-time token display via Tauri event listeners
-- **Status banners** — freshness warnings, task progress
-- **Source code viewer** — `SourceDrawer` for inline code inspection
-
-The component tree:
-
-```mermaid
-graph TD
-    App[App.svelte]
-    App --> Nav[MainNavTabs]
-    App --> Selector[ProjectSelector]
-    App --> Overview[ProjectOverviewPanel]
-    App --> Knowledge[HumanDocTree + KnowledgeArticle]
-    App --> Ask[AskBar + Chat Messages]
-    App --> SDD[SddWorkflowPanel]
-    App --> Settings[SettingsPanel]
-    App --> Usage[UsageMonitor]
-    App --> Source[SourceDrawer]
-    App --> Status[StatusBanner + TaskProgressBar]
-```
-
-### State management — stores/
-
-Svelte 5 runes power the state layer in `stores/`:
-
-| Store | Purpose |
-|-------|---------|
-| `project.svelte` | Current project, registry, task state |
-| `chat.svelte` | Ask messages, streaming state, sources |
-| `status.svelte` | Status banner text and auto-dismiss |
-| `readerLayout.svelte` | Doc tree visibility, reader layout |
-
-### API bindings — api.ts
-
-`api.ts` wraps every Tauri `invoke()` call with typed TypeScript functions. The frontend calls `searchKnowledge(...)`, `computeFreshness(...)`, etc. — each maps 1:1 to a Rust IPC command.
-
-### Type safety — types + generated
-
-TypeScript types follow a strict contract defined in `AGENTS.md`:
-
-| File | Role |
-|------|------|
-| `src/lib/generated/` | **Auto-generated** by `terrain-ts-export` from Rust `#[ts-rs]` annotations |
-| `src/lib/types.client.ts` | Pure frontend extensions (e.g., `SourceSlice` with `format?` and `focus_line?`) |
-| `src/lib/types.ts` | Re-exports `generated/` + `types.client.ts` as the single import point |
-
-Rust `Option<T>` maps to `T | null` — not `undefined` — and all frontend null checks follow this convention.
-
-### Internationalization — i18n/
-
-`i18n/` provides locale-aware translations. The app detects the system language (via `terrain_core::language`) and the frontend applies it through `applyLocale()`. All user-facing strings go through the `tr()` or `t()` helpers.
+- **Command registration**: New features add handler in `commands/` and register in `lib.rs:56-112`
+- **Tauri plugins**: Dialog and shell plugins initialized at setup (`lib.rs:46-47`)
+- **TypeScript types**: `terrain-ts-export` crate generates IPC payload types with `ts-rs`
+- **Mobile entry point**: `#[cfg_attr(mobile, tauri::mobile_entry_point)]` on `run()` (`lib.rs:34`)
 
 ---
 
-## Frontend stack
+## Interactions with Other Modules
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Framework | Svelte | 5 (runes) |
-| Build | Vite | 8 |
-| Styling | TailwindCSS | 4 |
-| Language | TypeScript | 5.9 |
-| Desktop shell | Tauri | v2 |
-| Icons | Lucide | @lucide/svelte |
-| Markdown | Custom renderer | with Mermaid lightbox |
+| Module | Direction | Interface | Description |
+|--------|-----------|-----------|-------------|
+| terrain-agent | Depends on | `Runtime`, all workflow functions | All AI operations via shared runtime |
+| terrain-core | Depends on | Paths, freshness, search | Direct core calls for some IPC commands |
+| TypeScript UI | Frontend | Tauri invoke API | React/Svelte frontend in app bundle |
+| Tauri plugins | Depends on | dialog, shell | File picker, open in explorer |
 
 ---
 
-## IPC flow example
+## Role in Core Business Flows
 
-A typical Ask query flows like this:
+**In project initialization**: `initialize_project_cmd` calls `run_project_initialization` with progress streaming to the UI.
 
-1. User types in `AskBar` and presses Enter
-2. `App.svelte` calls `askKnowledge(project, query)` from `api.ts`
-3. Tauri invokes the Rust `ask_knowledge_cmd` handler
-4. The handler calls `terrain_agent::ask_knowledge()` with the `Runtime`'s `ChatEngine`
-5. The agent streams `AskStreamEvent` tokens back through Tauri events
-6. `App.svelte` listens via `listen('ask-stream', ...)` and updates the chat UI in real time
-7. Tool calls (grep, read) execute against `terrain-core` and their results are fed back to the LLM
+**In Litho generation**: `generate_human_docs_cmd` and `run_litho_generation_cmd` trigger ACP Litho with `force_refresh` support for the "regenerate" button.
+
+**In DeepWiki Ask**: `ask_knowledge_cmd` streams chunks, tool calls, and citations to the chat panel.
+
+**In env integration**: `run_env_integration_cmd` executes `apply_env_integration` with progress events.
 
 ---
 
-## Design principles
+## Performance Considerations
 
-1. **IPC as API boundary.** The frontend is a pure consumer of Tauri commands — no direct filesystem access, no knowledge of `.terrain/` paths.
-2. **Generated types.** TypeScript types are never hand-written for IPC payloads; they flow from Rust via `ts-rs`, preventing drift.
-3. **Component isolation.** Each Svelte component owns its small piece of UI and delegates data fetching to `api.ts`.
-4. **Event-driven streaming.** Long-running operations (Ask, Litho) stream progress through Tauri events rather than blocking the IPC call.
+- IPC calls are async; long Litho operations stream progress rather than blocking the UI
+- Clipboard plugins (`copy_image_to_clipboard`, `copy_text_to_clipboard`) for doc export
+- `save_png_files` for diagram/screenshot export from the UI
+- Tracing initialized at `info,terrain=debug,terrain_core=debug` level (`lib.rs:38-40`)
+
+---
+
+## Implementation Highlights
+
+- **Shared runtime with CLI**: `AppState` wraps the same `Runtime` struct used by terrain-cli, ensuring consistent behavior
+- **Resource bundling**: Preset skills, env catalog, and tools are copied from app bundle at startup, not fetched from network
+- **Freshness display**: `compute_freshness_cmd` and `read_project_freshness_cached_cmd` power the project list freshness badges
+- **Open in explorer**: `open_repo_folder_cmd` and `open_local_path_cmd` use `open_path_in_file_manager` (core)

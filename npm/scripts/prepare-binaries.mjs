@@ -33,6 +33,19 @@ function copyBinary({ label, src, dest }) {
   console.log(`[prepare-binaries] ${label} → ${path.relative(repoRoot, dest)}`);
 }
 
+function copyDirRecursive(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const from = path.join(src, entry.name);
+    const to = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirRecursive(from, to);
+    } else {
+      fs.copyFileSync(from, to);
+    }
+  }
+}
+
 if (buildCli) {
   console.log("[prepare-binaries] cargo build --release -p terrain-cli …");
   execFileSync("cargo", ["build", "--release", "-p", "terrain-cli"], {
@@ -83,6 +96,18 @@ if (fs.existsSync(terrainRelease)) {
   }
   console.log(
     `[prepare-binaries] terrain-cli (sidecar) → ${path.relative(repoRoot, terrainSidecar)}`,
+  );
+
+  const catalogSrc = path.join(repoRoot, "env-catalog");
+  const catalogDest = path.join(
+    npmRoot,
+    "packages",
+    cliPkg.replace("@terrain-ai/", ""),
+    "env-catalog",
+  );
+  copyDirRecursive(catalogSrc, catalogDest);
+  console.log(
+    `[prepare-binaries] env-catalog → ${path.relative(repoRoot, catalogDest)}`,
   );
 } else {
   console.warn(

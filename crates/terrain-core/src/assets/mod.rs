@@ -20,7 +20,9 @@ pub use agent_context::{
 };
 pub use crate::preset_skills::default_agent_arch_skill_dir;
 pub use env::{
-    agents_md_ready, apply_env_integration, env_catalog_root, get_env_status, load_catalog,
+    agents_md_ready, apply_env_integration, deploy_env_catalog_to_home,
+    discover_env_catalog_runtime, ensure_env_catalog_initialized, env_catalog_root,
+    get_env_status, init_env_catalog_root, load_catalog, user_env_catalog_dir,
     invalidate_env_status_cache, invalidate_env_status_cache_for_repo, patch_agents_md,
     plan_env_integration, summarize_agent_env_light, EnvApplyProgress, EnvApplyResult,
     EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
