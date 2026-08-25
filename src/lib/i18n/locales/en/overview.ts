@@ -94,7 +94,7 @@ export default {
     pending: "Pending",
     regenerateTitle: "Regenerating overwrites existing content and cannot be undone",
     humanSubtitle: "Litho C4 docs — start reading from 1.Overview",
-    agentSubtitle: "Module map, architecture, and flows for Agents and Q&A",
+    agentSubtitle: "Module map, architecture, and flows for Agents",
     structuredTitle: "Structured Entries",
     structuredSubtitle: "Metadata derived from terrain-meta.json for tools",
   },
