@@ -1,6 +1,6 @@
 {
   "name": "@terrain-ai/rtk",
-  "version": "0.9.3",
+  "version": "0.9.5",
   "description": "RTK — shell output token compression for AI coding agents (Terrain distribution)",
   "license": "MIT",
   "repository": {
@@ -21,8 +21,8 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@terrain-ai/rtk-darwin-arm64": "0.9.3",
-    "@terrain-ai/rtk-win32-x64": "0.9.3"
+    "@terrain-ai/rtk-darwin-arm64": "0.9.5",
+    "@terrain-ai/rtk-win32-x64": "0.9.5"
   },
   "publishConfig": {
     "access": "public"

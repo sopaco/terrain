@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.9.3"
+version = "0.9.5"
 edition = "2024"
 license = "MIT"
 rust-version = "1.94"
@@ -53,4 +53,3 @@ time = ">=0.3.36, <0.3.48"
 lto = "thin"
 strip = true
 codegen-units = 1
-

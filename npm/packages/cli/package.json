@@ -1,6 +1,6 @@
 {
   "name": "@terrain-ai/cli",
-  "version": "0.9.3",
+  "version": "0.9.5",
   "description": "Terrain CLI — scan repos, manage .terrain/ knowledge assets, ACP tools",
   "license": "MIT",
   "repository": {
@@ -21,8 +21,8 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@terrain-ai/cli-darwin-arm64": "0.9.3",
-    "@terrain-ai/cli-win32-x64": "0.9.3"
+    "@terrain-ai/cli-darwin-arm64": "0.9.5",
+    "@terrain-ai/cli-win32-x64": "0.9.5"
   },
   "publishConfig": {
     "access": "public"
