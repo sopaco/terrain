@@ -86,6 +86,7 @@ impl ToolCallTracker {
                 Part::FunctionResponse {
                     function_response,
                     id,
+                    ..
                 } => {
                     let mut matched = false;
                     if let Some(call_id) = id
@@ -203,6 +204,7 @@ mod tests {
             parts: vec![Part::FunctionResponse {
                 function_response: adk_core::FunctionResponseData::new(name, response),
                 id: None,
+                annotations: None,
             }],
         });
         event
