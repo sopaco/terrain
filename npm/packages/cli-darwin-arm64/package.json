@@ -1,6 +1,6 @@
 {
   "name": "@terrain-ai/cli-darwin-arm64",
-  "version": "0.9.3",
+  "version": "0.9.5",
   "description": "Prebuilt Terrain CLI for macOS Apple Silicon",
   "license": "MIT",
   "repository": {

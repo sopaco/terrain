@@ -1,6 +1,6 @@
 {
   "name": "@terrain-ai/rtk-win32-x64",
-  "version": "0.9.3",
+  "version": "0.9.5",
   "description": "Prebuilt RTK for Windows x64",
   "license": "MIT",
   "repository": {
