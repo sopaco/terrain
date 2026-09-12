@@ -100,6 +100,20 @@ Download the package for your platform from [**GitHub Releases**](https://github
 | macOS (Apple Silicon) | `Terrain_<version>_macos_aarch64.dmg` |
 | Windows (x64) | `Terrain_<version>_windows_x64.exe` |
 
+> **Unsigned builds — first-launch notice.** The installers are not yet signed with an Apple Developer ID / Authenticode certificate, so both platforms raise a one-time warning. The download is intact; see below to continue.
+
+#### macOS — "Terrain is damaged / should be moved to the Trash"
+
+This is Gatekeeper, not a corrupt file. Downloads from the internet carry a `com.apple.quarantine` attribute, and macOS refuses to launch an unsigned app with that flag set. Remove the flag after copying `Terrain.app` to `/Applications`:
+
+```bash
+xattr -cr /Applications/Terrain.app
+```
+
+#### Windows — SmartScreen "Windows protected your PC"
+
+Click **More info → Run anyway**. The prompt appears once per build.
+
 ### Option 2 — Build from source
 
 Use this path for unsupported platforms, custom patches, or contributing to Terrain itself.

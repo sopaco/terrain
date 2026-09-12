@@ -100,6 +100,16 @@ Terrain 是一个**标准化、AI 友好的工程环境**。指向一个 Git 仓
 | macOS（Apple Silicon） | `Terrain_<version>_macos_aarch64.dmg` |
 | Windows（x64） | `Terrain_<version>_windows_x64.exe` |
 
+> **安装包未签名 —— 首次启动提示。** 当前安装包尚未使用 Apple Developer ID / Authenticode 证书签名，两个平台都会在首次启动时给出一次性安全提示。下载文件本身没问题，按下面方式放行即可。
+
+#### macOS —— 提示「文件已损坏 / 应该移到废纸篓」
+
+这是 Gatekeeper 的拦截，不是下载损坏。从互联网下载的文件会带上 `com.apple.quarantine` 属性，macOS 拒绝启动带该属性的未签名应用。把 `Terrain.app` 拷进 `/Applications` 后清除该属性即可：
+
+```bash
+xattr -cr /Applications/Terrain.app
+```
+
 ### 方式二 —— 从源码构建
 
 适用于未覆盖的平台、自定义改动，或参与 Terrain 开发。
