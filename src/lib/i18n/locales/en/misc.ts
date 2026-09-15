@@ -27,6 +27,8 @@ export default {
       'Remove "{label}" from the list?\n\nThis only removes the Terrain registration; the repository and its .terrain/ knowledge assets are not deleted.',
     statusStale: "Needs repair",
     statusPartial: "Incomplete",
+    statusPartialTitle: "Not ready: {assets}",
+    statusStaleTitle: "`.terrain` is missing or corrupted",
     repairStale:
       "The repository's `.terrain` is missing or corrupted ({path}); rescan to regenerate knowledge assets.",
     repairMissing: "Not ready: {assets}.",

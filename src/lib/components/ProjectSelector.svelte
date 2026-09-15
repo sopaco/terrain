@@ -5,6 +5,7 @@
     registryDisplayName,
     selectedProjectDisplayName,
     statusBadgeLabel,
+    statusBadgeTitle,
   } from "../projectRegistry";
   import { tr } from "../i18n";
   import ChevronIcon from "./icons/ChevronIcon.svelte";
@@ -47,6 +48,10 @@
 
   const selectedBadge = $derived(
     selectedEntry ? statusBadgeLabel(selectedEntry.status) : null,
+  );
+
+  const selectedBadgeTitle = $derived(
+    selectedEntry ? statusBadgeTitle(selectedEntry) : undefined,
   );
 
   let triggerEl = $state<HTMLButtonElement | null>(null);
@@ -97,7 +102,7 @@
     {#if selectedBadge}
       <span
         class="shrink-0 rounded-full bg-tr-watch-soft px-1.5 py-0.5 text-[10px] font-medium text-tr-watch"
-        >{selectedBadge}</span
+        title={selectedBadgeTitle}>{selectedBadge}</span
       >
     {/if}
     <ChevronIcon direction={open ? "up" : "down"} size={14} />
@@ -118,6 +123,7 @@
       <ul class="max-h-64 overflow-y-auto py-1">
         {#each registryProjects as entry (entry.slug)}
           {@const badge = statusBadgeLabel(entry.status)}
+          {@const badgeTitle = statusBadgeTitle(entry)}
           <li class="mx-1 flex items-stretch gap-1">
             <button
               type="button"
@@ -137,7 +143,7 @@
                 {#if badge}
                   <span
                     class="shrink-0 rounded-full bg-tr-watch-soft px-1.5 py-0.5 text-[10px] font-medium text-tr-watch"
-                    >{badge}</span
+                    title={badgeTitle}>{badge}</span
                   >
                 {/if}
               </span>

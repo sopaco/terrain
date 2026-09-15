@@ -27,6 +27,8 @@ export default {
       "从列表中移除「{label}」？\n\n仅移除 Terrain 登记，不会删除仓库或 .terrain/ 知识资产。",
     statusStale: "需修复",
     statusPartial: "待完善",
+    statusPartialTitle: "尚未就绪：{assets}",
+    statusStaleTitle: "`.terrain` 缺失或损坏",
     repairStale:
       "仓库 `.terrain` 已缺失或损坏（{path}），可一键重新扫描并生成知识资产。",
     repairMissing: "尚未就绪：{assets}。",
