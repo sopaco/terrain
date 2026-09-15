@@ -10,8 +10,8 @@
 [English](README.md) · **简体中文**
 
 <a href="https://github.com/sopaco/terrain/tree/dev/.terrain/human"><img alt="Litho Docs" src="https://img.shields.io/badge/Litho-Docs-green?logo=Gitbook&color=%23008a60"/></a>
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
+![Agent Ready](https://img.shields.io/badge/Agent-READY-green.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 </div>
 
 ---
