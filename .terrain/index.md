@@ -24,7 +24,6 @@ source: .
   - svelte.config.js
   - crates/
     - terrain-ts-export/
-    - agent-client-protocol-tokio-patched/
     - terrain-core/
     - terrain-agent/
     - terrain-cli/
@@ -100,4 +99,5 @@ source: .
     - App.svelte
     - vite-env.d.ts
     - lib/
+    - UsageWindow.svelte
   - …

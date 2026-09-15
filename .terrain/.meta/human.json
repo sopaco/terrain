@@ -1,9 +1,9 @@
 {
   "project": "terrain",
   "repo_path": ".",
-  "generated_at": "2026-08-24T13:13:56.230562+00:00",
-  "doc_count": 10,
-  "baseline_git_head": "16857922928f39991f09ce0b5a7746f70449d95b",
+  "generated_at": "2026-09-15T07:27:10.212348+00:00",
+  "doc_count": 15,
+  "baseline_git_head": "42ddce46a3fe2646eca702e53667e2171c326be9",
   "last_run_mode": "full",
-  "language": "en"
+  "language": "zh-CN"
 }
