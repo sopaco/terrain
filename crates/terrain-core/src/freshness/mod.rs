@@ -11,7 +11,7 @@ pub use codegraph::{codegraph_drift, CodegraphDriftReport};
 pub use compute::{compute_freshness, format_freshness_trust_block, resolve_freshness_summary};
 pub use git::{
     baseline_matches_head, git_change_set, git_commit_exists, git_drift_since, git_snapshot,
-    GitChangeSet, GitChangedFile, GitDrift, GitSnapshot,
+    DriftBasis, GitChangeSet, GitChangedFile, GitDrift, GitSnapshot,
 };
 pub use ledger::{freshness_meta_path, read_freshness_ledger, write_freshness_ledger};
 pub use scoring::score_asset;
@@ -123,5 +123,100 @@ mod tests {
         // Regression: git_output must not trim() porcelain — first line loses leading status space.
         let corrupted_first_line = "M .terrain/agent/context.md\n";
         assert!(!working_tree_dirty_excluding_knowledge(corrupted_first_line));
+    }
+
+    fn init_local_repo(repo: &std::path::Path) {
+        use std::fs;
+        use std::process::Command;
+
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git")
+        };
+        git(&["init"]);
+        git(&["config", "user.email", "t@test.com"]);
+        git(&["config", "user.name", "t"]);
+        fs::write(repo.join("main.rs"), "fn main() {}\n").unwrap();
+        git(&["add", "."]);
+        git(&["commit", "-m", "init"]);
+    }
+
+    /// A baseline that never existed must read as unmeasurable, not as "nothing changed".
+    #[test]
+    fn nonexistent_baseline_is_unmeasured_not_in_sync() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        init_local_repo(repo);
+
+        let repo_str = repo.display().to_string();
+        let drift = super::git_drift_since(&repo_str, Some(&"0".repeat(40)));
+        assert_eq!(drift.basis, super::git::DriftBasis::BaselineUnreachable);
+        assert!(!drift.is_measured());
+        assert_eq!(super::scoring::score_layer(&drift, Some(0), 24, false), 25);
+    }
+
+    /// A baseline whose commit was rewritten away used to score ~90 while staying `stale: false`
+    /// — the assets read as fresh at exactly the moment drift cannot be measured.
+    #[test]
+    fn rewritten_baseline_is_not_scored_as_fresh() {
+        use std::fs;
+        use std::process::Command;
+
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let git = |args: &[&str]| {
+            let out = Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git");
+            assert!(out.status.success(), "git {args:?}");
+            out
+        };
+        init_local_repo(repo);
+        let baseline = String::from_utf8(git(&["rev-parse", "HEAD"]).stdout)
+            .unwrap()
+            .trim()
+            .to_string();
+
+        // Rewrite the baseline itself away, then move the code on as a real change would.
+        git(&["commit", "--amend", "-m", "init (rewritten)"]);
+        fs::write(repo.join("main.rs"), "fn main() { /* changed */ }\n").unwrap();
+        git(&["commit", "-am", "touch source"]);
+        // A rewritten-away commit stays resolvable until the reflog is expired and it is pruned
+        // (a `--depth 1` clone drops it too), so without this the diff below would still succeed
+        // and the test would prove nothing.
+        git(&["reflog", "expire", "--expire=now", "--all"]);
+        git(&["gc", "--prune=now", "-q"]);
+
+        let repo_str = repo.display().to_string();
+        assert!(
+            !super::git_commit_exists(&repo_str, &baseline),
+            "precondition: the recorded baseline must be unreachable"
+        );
+
+        let drift = super::git_drift_since(&repo_str, Some(&baseline));
+        assert_eq!(drift.basis, super::git::DriftBasis::BaselineUnreachable);
+        assert!(!drift.is_measured());
+        // Counts are still zero — the point is that zero no longer means "in sync".
+        assert_eq!(drift.commits_since_baseline, 0);
+        assert!(drift.changed_files.is_empty());
+
+        // Rebuild the pipeline: pack layer, context discount, then the overall minimum.
+        let pack_score = super::scoring::score_layer(&drift, Some(0), 24, false);
+        let ctx_score = context_score_from_raw(pack_score, pack_score);
+        let overall = pack_score.min(ctx_score);
+        assert!(overall < super::FRESH_THRESHOLD, "{overall}");
+        assert!(overall < super::MACRO_PRELOAD_THRESHOLD, "{overall}");
+        assert_eq!(
+            super::scoring::stale_reason_for(pack_score, 0, false, true, drift.basis).as_deref(),
+            Some("baseline_unreachable")
+        );
+
+        // The incremental update path already agreed nothing could be diffed.
+        assert!(super::git_change_set(&repo_str, &baseline).is_none());
     }
 }

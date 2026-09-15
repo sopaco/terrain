@@ -52,6 +52,25 @@ export function statusBadgeLabel(status: ProjectRegistryStatus): string | null {
   }
 }
 
+/** Hover text explaining *why* a project is not ready yet. */
+export function statusBadgeTitle(
+  entry: ProjectRegistryEntry,
+): string | undefined {
+  if (entry.status === "stale") {
+    return t("misc.projects.statusStaleTitle");
+  }
+  if (entry.status === "partial") {
+    const missing = entry.missing_assets;
+    if (missing.length === 0) {
+      return t("misc.projects.repairPartial");
+    }
+    return t("misc.projects.statusPartialTitle", {
+      assets: missing.join(t("misc.projects.assetJoin")),
+    });
+  }
+  return undefined;
+}
+
 export function registryRepairDetail(entry: ProjectRegistryEntry): string {
   if (entry.status === "stale") {
     return t("misc.projects.repairStale", { path: entry.repo_path });

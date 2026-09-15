@@ -13,11 +13,64 @@ pub struct GitSnapshot {
     pub is_git_repo: bool,
 }
 
+/// Whether an asset layer's commit drift could be measured against its recorded baseline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DriftBasis {
+    /// Diffed against the recorded baseline. Also covers "no Git repo / no baseline at all",
+    /// which deliberately falls back to the sync-age estimate (see the `not_git` factor).
+    /// Only under this basis do zero counts mean "in sync".
+    #[default]
+    Measured,
+    /// A baseline was recorded but no longer resolves in this repo — a rebase, squash, amend,
+    /// force-push or shallow clone moved it out of reach. Drift is unmeasurable here.
+    BaselineUnreachable,
+    /// The layer is ready inside a Git repo yet records no baseline, so there is nothing to
+    /// compare against. Just as unverifiable as an unreachable one.
+    BaselineMissing,
+}
+
+impl DriftBasis {
+    /// True only when the counts came from an actual `baseline..HEAD` diff.
+    pub fn is_measured(self) -> bool {
+        matches!(self, DriftBasis::Measured)
+    }
+
+    /// `stale_reason` string surfaced to the UI ledger and the agent trust block.
+    pub(crate) fn stale_reason(self) -> Option<&'static str> {
+        match self {
+            DriftBasis::Measured => None,
+            DriftBasis::BaselineUnreachable => Some("baseline_unreachable"),
+            DriftBasis::BaselineMissing => Some("baseline_missing"),
+        }
+    }
+}
+
 /// Drift between a stored baseline commit and current HEAD.
 #[derive(Debug, Clone, Default)]
 pub struct GitDrift {
     pub commits_since_baseline: u32,
     pub changed_files: Vec<String>,
+    /// How the two counts above were obtained. Under any non-`Measured` basis the zeros are
+    /// *not* a claim of "nothing changed" — drift simply could not be measured, and callers
+    /// must treat the layer as stale instead of trusting it.
+    pub basis: DriftBasis,
+}
+
+impl GitDrift {
+    /// Drift that could not be measured, because there was no baseline to diff against or the
+    /// recorded one no longer resolves.
+    pub fn unmeasured(basis: DriftBasis) -> Self {
+        GitDrift {
+            commits_since_baseline: 0,
+            changed_files: Vec::new(),
+            basis,
+        }
+    }
+
+    /// True only when the counts came from an actual `baseline..HEAD` diff.
+    pub fn is_measured(&self) -> bool {
+        self.basis.is_measured()
+    }
 }
 
 /// One changed path between a baseline commit and the working tree.
@@ -81,7 +134,15 @@ pub fn git_snapshot(repo_path: &str) -> GitSnapshot {
     }
 }
 
-/// Drift from `baseline` commit to current HEAD (empty when not a git repo or baseline missing).
+/// Drift from `baseline` commit to current HEAD.
+///
+/// Zero counts come back as `Measured` when there is nothing to compare — no Git repo, or no
+/// baseline recorded — which keeps the sync-age fallback. A baseline that *was* recorded but
+/// cannot be resolved comes back unmeasured instead, never as zero drift.
+///
+/// The baseline is resolved first: when it no longer exists, `git log`/`git diff` fail with
+/// "Invalid revision range" and their empty output would read as "nothing changed", scoring a
+/// rewritten-away repo as fully fresh.
 pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
     let Some(baseline) = baseline.filter(|b| !b.is_empty()) else {
         return GitDrift::default();
@@ -90,10 +151,18 @@ pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
     if !repo.join(".git").exists() {
         return GitDrift::default();
     }
+    // Covers a rebased/squashed/force-pushed commit and one a shallow clone never fetched. This
+    // is also the fail-closed answer when `git` itself cannot resolve anything.
+    if !git_commit_exists(repo_path, baseline) {
+        return GitDrift::unmeasured(DriftBasis::BaselineUnreachable);
+    }
 
-    let count = source_commits_since(repo, baseline);
-
-    let changed_files = git_output(
+    // The baseline resolves from here, so the two calls below can tell a genuine `git` failure
+    // apart from a legitimately empty range.
+    let Some(count) = source_commits_since(repo, baseline) else {
+        return GitDrift::unmeasured(DriftBasis::BaselineUnreachable);
+    };
+    let Some(diff) = git_stdout(
         repo,
         &[
             "-c",
@@ -102,19 +171,21 @@ pub fn git_drift_since(repo_path: &str, baseline: Option<&str>) -> GitDrift {
             "--name-only",
             &format!("{baseline}..HEAD"),
         ],
-    )
-    .map(|s| {
-        s.lines()
-            .map(str::trim)
-            .filter(|l| !l.is_empty() && !is_knowledge_output_path(l))
-            .map(str::to_string)
-            .collect()
-    })
-    .unwrap_or_default();
+    ) else {
+        return GitDrift::unmeasured(DriftBasis::BaselineUnreachable);
+    };
+
+    let changed_files = diff
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !is_knowledge_output_path(l))
+        .map(str::to_string)
+        .collect();
 
     GitDrift {
         commits_since_baseline: count,
         changed_files,
+        basis: DriftBasis::Measured,
     }
 }
 
@@ -228,13 +299,16 @@ fn parse_name_status(out: &str) -> Vec<GitChangedFile> {
 
 /// Count commits in `baseline..HEAD` that touch at least one non-knowledge path.
 ///
+/// `None` means `git` itself failed — distinct from `Some(0)`, which means the range really is
+/// empty. Callers must not fold the two together.
+///
 /// A plain `rev-list --count` also counts commits that only rewrite `.terrain/` — so
 /// committing regenerated knowledge assets advances HEAD and immediately penalizes the
 /// very assets that commit refreshed (`changed_files` filters those paths out, leaving a
 /// deduction with no visible cause). Merge commits show no paths under `--name-only` and
 /// are skipped; the commits they bring in are counted individually when in range.
-fn source_commits_since(repo: &Path, baseline: &str) -> u32 {
-    let Some(log) = git_output(
+fn source_commits_since(repo: &Path, baseline: &str) -> Option<u32> {
+    let log = git_stdout(
         repo,
         &[
             "-c",
@@ -245,10 +319,8 @@ fn source_commits_since(repo: &Path, baseline: &str) -> u32 {
             "--name-only",
             &format!("{baseline}..HEAD"),
         ],
-    ) else {
-        return 0;
-    };
-    count_source_commits_in_log(&log)
+    )?;
+    Some(count_source_commits_in_log(&log))
 }
 
 /// Count commits in `git log --format=%x00%H --name-only` output that touch a non-knowledge path.
@@ -270,7 +342,11 @@ pub(crate) fn count_source_commits_in_log(log: &str) -> u32 {
     count
 }
 
-pub(crate) fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
+/// Run `git` and return stdout (trailing newline trimmed) when the command succeeded.
+///
+/// `Some("")` means the command succeeded with no output. Use this — not [`git_output`] — when
+/// "git failed" must not be confused with "git returned nothing".
+pub(crate) fn git_stdout(repo: &Path, args: &[&str]) -> Option<String> {
     let output = crate::process::command("git")
         .args(args)
         .current_dir(repo)
@@ -281,12 +357,12 @@ pub(crate) fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
     }
     let text = String::from_utf8_lossy(&output.stdout);
     // trim_end only — trim() would strip the first porcelain status column (leading space).
-    let text = text.trim_end().to_string();
-    if text.is_empty() {
-        None
-    } else {
-        Some(text)
-    }
+    Some(text.trim_end().to_string())
+}
+
+/// [`git_stdout`] with empty output folded into `None`.
+pub(crate) fn git_output(repo: &Path, args: &[&str]) -> Option<String> {
+    git_stdout(repo, args).filter(|text| !text.is_empty())
 }
 
 fn porcelain_entry_path(line: &str) -> &str {
