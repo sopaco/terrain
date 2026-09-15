@@ -15,16 +15,33 @@ use crate::schema::{
 };
 
 use super::drift_factors::{build_drift_factors, DriftExplainInput};
-use super::git::{git_drift_since, git_snapshot};
+use super::git::{git_drift_since, git_snapshot, DriftBasis, GitDrift, GitSnapshot};
 use super::ledger::{
     freshness_ledger_still_valid, read_freshness_ledger, write_freshness_ledger,
     LEDGER_VERSION_CONST,
 };
 use super::scoring::{
-    context_score_from_raw, days_since_rfc3339, overall_freshness_score, score_asset,
+    context_score_from_raw, days_since_rfc3339, overall_freshness_score, score_layer,
     short_git_ref, stale_reason_for,
 };
 use super::{FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD};
+
+/// Drift for one asset layer, resolving how — or whether — it can be measured.
+///
+/// A layer that is ready inside a Git repo but records no baseline is exactly as unverifiable
+/// as one whose baseline was rewritten away, so it takes the same fail-closed basis instead of
+/// silently reading as zero drift. Two cases deliberately keep the sync-age estimate: a non-Git
+/// repo (the `not_git` factor explains it) and a repo with no commits yet, where there is
+/// nothing to compare against.
+fn layer_drift(repo_path: &str, baseline: Option<&str>, git: &GitSnapshot) -> GitDrift {
+    match baseline {
+        Some(baseline) => git_drift_since(repo_path, Some(baseline)),
+        None if git.is_git_repo && git.head.is_some() => {
+            GitDrift::unmeasured(DriftBasis::BaselineMissing)
+        }
+        None => git_drift_since(repo_path, None),
+    }
+}
 
 /// Compute freshness for all knowledge assets and persist `freshness.json`.
 pub fn compute_freshness(
@@ -45,25 +62,14 @@ pub fn compute_freshness(
     let pack_baseline = pack_meta
         .as_ref()
         .and_then(|m| m.baseline_git_head.clone());
-    let pack_drift = git_drift_since(&repo_path, pack_baseline.as_deref());
+    let pack_drift = layer_drift(&repo_path, pack_baseline.as_deref(), &git);
     let pack_days = pack_meta
         .as_ref()
-        .map(|m| days_since_rfc3339(&m.synced_at))
-        .unwrap_or_else(|| {
-            sync_meta
-                .as_ref()
-                .map(|m| days_since_rfc3339(&m.synced_at))
-                .unwrap_or(0)
-        });
+        .and_then(|m| days_since_rfc3339(&m.synced_at))
+        .or_else(|| sync_meta.as_ref().and_then(|m| days_since_rfc3339(&m.synced_at)));
     let pack_total_files = pack_meta.as_ref().map(|m| m.total_files as u32).unwrap_or(0);
     let pack_score = if pack_ready {
-        score_asset(
-            pack_drift.commits_since_baseline,
-            pack_drift.changed_files.len() as u32,
-            pack_total_files.max(1),
-            pack_days,
-            git.dirty,
-        )
+        score_layer(&pack_drift, pack_days, pack_total_files.max(1), git.dirty)
     } else {
         0
     };
@@ -72,45 +78,34 @@ pub fn compute_freshness(
         .as_ref()
         .and_then(|m| m.baseline_git_head.clone())
         .or(pack_baseline.clone());
-    let ctx_drift = git_drift_since(&repo_path, ctx_baseline.as_deref());
+    let ctx_drift = layer_drift(&repo_path, ctx_baseline.as_deref(), &git);
     let ctx_days = ctx_meta
         .as_ref()
-        .map(|m| days_since_rfc3339(&m.generated_at))
-        .unwrap_or(pack_days);
+        .and_then(|m| days_since_rfc3339(&m.generated_at))
+        .or(pack_days);
     let ctx_score_raw = if ctx_ready {
-        score_asset(
-            ctx_drift.commits_since_baseline,
-            ctx_drift.changed_files.len() as u32,
-            pack_total_files.max(1),
-            ctx_days,
-            git.dirty,
-        )
+        score_layer(&ctx_drift, ctx_days, pack_total_files.max(1), git.dirty)
     } else {
         0
     };
     let ctx_score = context_score_from_raw(ctx_score_raw, pack_score);
 
     // Litho writes its own sidecar; before that existed the pack baseline was the only proxy.
+    // Falling back to `git.head` here would fabricate a *measured* "0 commits behind", so a layer
+    // with no baseline is left for `layer_drift` to mark unmeasurable instead.
     let human_meta =
         read_json::<crate::schema::HumanDocsMeta>(paths.human_docs_meta_path(project_slug)).ok();
     let human_baseline = human_meta
         .as_ref()
         .and_then(|m| m.baseline_git_head.clone())
-        .or_else(|| pack_baseline.clone())
-        .or_else(|| git.head.clone());
+        .or_else(|| pack_baseline.clone());
     let human_days = human_meta
         .as_ref()
-        .map(|m| days_since_rfc3339(&m.generated_at))
-        .or_else(|| sync_meta.as_ref().map(|m| days_since_rfc3339(&m.synced_at)))
-        .unwrap_or(pack_days);
-    let human_drift = git_drift_since(&repo_path, human_baseline.as_deref());
-    let human_score = score_asset(
-        human_drift.commits_since_baseline,
-        human_drift.changed_files.len() as u32,
-        pack_total_files.max(1),
-        human_days,
-        git.dirty,
-    );
+        .and_then(|m| days_since_rfc3339(&m.generated_at))
+        .or_else(|| sync_meta.as_ref().and_then(|m| days_since_rfc3339(&m.synced_at)))
+        .or(pack_days);
+    let human_drift = layer_drift(&repo_path, human_baseline.as_deref(), &git);
+    let human_score = score_layer(&human_drift, human_days, pack_total_files.max(1), git.dirty);
 
     let overall_score = overall_freshness_score(pack_score, ctx_score, human_score);
 
@@ -119,11 +114,17 @@ pub fn compute_freshness(
         .max(ctx_drift.commits_since_baseline);
     let changed_files_count = pack_drift.changed_files.len().max(ctx_drift.changed_files.len()) as u32;
 
+    // The first layer whose drift could not be measured explains the overall verdict.
+    let unmeasured_basis = [pack_drift.basis, ctx_drift.basis, human_drift.basis]
+        .into_iter()
+        .find(|basis| !basis.is_measured())
+        .unwrap_or(DriftBasis::Measured);
+
     let overall_stale = overall_score < FRESH_THRESHOLD;
     let stale_reason = if !pack_ready || !ctx_ready {
         Some("asset_not_ready".into())
     } else {
-        stale_reason_for(overall_score, commits_since, git.dirty, true)
+        stale_reason_for(overall_score, commits_since, git.dirty, true, unmeasured_basis)
     };
 
     let now = Utc::now().to_rfc3339();
@@ -198,6 +199,7 @@ pub fn compute_freshness(
                     pack_drift.commits_since_baseline,
                     git.dirty,
                     pack_ready,
+                    pack_drift.basis,
                 ),
                 freshness_score: pack_score,
             },
@@ -213,6 +215,7 @@ pub fn compute_freshness(
                     ctx_drift.commits_since_baseline,
                     git.dirty,
                     ctx_ready,
+                    ctx_drift.basis,
                 ),
                 freshness_score: ctx_score,
             },
@@ -231,6 +234,7 @@ pub fn compute_freshness(
                     human_drift.commits_since_baseline,
                     git.dirty,
                     true,
+                    human_drift.basis,
                 ),
                 freshness_score: human_score,
             },
