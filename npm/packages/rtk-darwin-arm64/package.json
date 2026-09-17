@@ -1,6 +1,6 @@
 {
   "name": "@terrain-ai/rtk-darwin-arm64",
-  "version": "0.9.5",
+  "version": "0.9.7",
   "description": "Prebuilt RTK binary for macOS Apple Silicon (Terrain distribution)",
   "license": "MIT",
   "repository": {
