@@ -64,6 +64,8 @@ pub fn run() {
             commands::check_opencode,
             commands::acp_spawn_command_cmd,
             commands::check_llm,
+            commands::test_llm_cmd,
+            commands::list_provider_models_cmd,
             commands::get_model_settings,
             commands::save_model_settings_cmd,
             commands::copy_image_to_clipboard,

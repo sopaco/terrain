@@ -80,6 +80,23 @@ export const runLithoGeneration = (
 
 export const checkLlm = () => invoke<LlmStatus>("check_llm");
 
+/** Real network probe: one minimal request against the configured endpoint. */
+export const testLlm = () => invoke<LlmStatus>("test_llm_cmd");
+
+/** Model ids served by the provider endpoint (sorted alphabetically). */
+export const listProviderModels = (
+  provider: string,
+  baseUrl: string | null,
+  apiKey: string | null,
+  ollamaHost: string | null,
+) =>
+  invoke<string[]>("list_provider_models_cmd", {
+    provider,
+    baseUrl,
+    apiKey,
+    ollamaHost,
+  });
+
 export const getModelSettings = () => invoke<ModelSettings>("get_model_settings");
 
 export const saveModelSettings = (settings: ModelSettings) =>

@@ -126,7 +126,9 @@
 
     const initHint = $derived.by(() => {
         const needsLlm = hybridNativeLlm && !llmReady;
-        const needsAcp = !acpOk;
+        // In hybrid mode a missing ACP binary only blocks Litho when the LLM is also
+        // not ready (Litho falls back to the native LLM).
+        const needsAcp = !acpOk && !(hybridNativeLlm && llmReady);
         if (!needsLlm && !needsAcp) return null;
         const parts: string[] = [];
         if (needsLlm)
@@ -165,7 +167,15 @@
     }
 
     const needsGenerationSetup = $derived(
-        (hybridNativeLlm && !llmReady) || !acpOk,
+        hybridNativeLlm
+            ? !llmReady
+            : !acpOk,
+    );
+
+    // Human docs (Litho) run through ACP when available, or through the native LLM in
+    // hybrid mode when the configured ACP command cannot run.
+    const lithoReady = $derived(
+        hybridNativeLlm ? acpOk || llmReady : acpOk,
     );
 
     const actionItems = $derived.by((): OverviewActionItem[] => {
@@ -217,7 +227,7 @@
                     actionLabel: tr("overview.actions.refreshHumanDocs"),
                     busyLabel: tr("common.generating"),
                     onAction: onGenerateHuman,
-                    disabled: initBusy || lithoBusy || !acpOk,
+                    disabled: initBusy || lithoBusy || !lithoReady,
                     busy: lithoBusy,
                 });
             } else if (
@@ -237,7 +247,7 @@
                     actionLabel: tr("overview.actions.refreshHumanDocs"),
                     busyLabel: tr("common.generating"),
                     onAction: onGenerateHuman,
-                    disabled: initBusy || lithoBusy || !acpOk,
+                    disabled: initBusy || lithoBusy || !lithoReady,
                     busy: lithoBusy,
                 });
             }
@@ -392,7 +402,7 @@
                               term: tr("terms.humanKnowledge"),
                           }),
                     onClick: onGenerateHuman,
-                    disabled: lithoBusy || !acpOk,
+                    disabled: lithoBusy || !lithoReady,
                 };
             }
         } else if (asset.track === "agent_context") {
@@ -913,7 +923,7 @@
                             : onGenerateHuman}
                         primaryDisabled={overview.litho.human_docs_complete
                             ? !onOpenHumanOverview
-                            : lithoBusy || !acpOk || !onGenerateHuman}
+                            : lithoBusy || !lithoReady || !onGenerateHuman}
                         secondaryLabel={overview.litho.human_docs_complete
                             ? lithoBusy
                                 ? tr("common.generating")
@@ -922,7 +932,7 @@
                         onSecondary={overview.litho.human_docs_complete
                             ? onGenerateHuman
                             : undefined}
-                        secondaryDisabled={lithoBusy || !acpOk}
+                        secondaryDisabled={lithoBusy || !lithoReady}
                     />
                     <OverviewKnowledgeCard
                         title={tr("terms.short.agentKnowledge")}

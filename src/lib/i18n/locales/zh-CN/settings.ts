@@ -18,12 +18,19 @@ export default {
       "问答、Litho、SDD、Agent 上下文等全部由外部 ACP 代理处理，只需配置下方 ACP 命令，无需填写 Native LLM。默认 ",
     pureAcpAfter: "。",
     hybrid:
-      "Native LLM（BYOK）处理问答、SDD 文档阶段与 Agent Context，支持流式输出与工具调用详情；ACP 处理 Litho 与 SDD 代码生成。请同时配置下方两项。",
+      "Native LLM（BYOK）处理问答、SDD 文档阶段与 Agent Context，支持流式输出与工具调用详情；ACP 处理 Litho 与 SDD 代码生成。当 ACP 命令不可用时，Litho 会自动回退到 Native LLM。请同时配置下方两项。",
+  },
+  model: {
+    selectPlaceholder: "选择模型",
+    custom: "自定义模型…",
+    refresh: "刷新模型列表",
+    loadFailed: "无法获取模型列表——请手动输入模型 ID。",
   },
   provider: {
     openai: "OpenAI 兼容 (NVIDIA Integrate 等)",
     lmstudio: "LM Studio (本地)",
     ollama: "Ollama (本地)",
+    "ollama-cloud": "Ollama 云端 (API Key)",
   },
   acp: {
     title: "ACP 代理",

@@ -61,6 +61,48 @@ pub fn check_llm(state: State<'_, AppState>) -> terrain_agent::LlmStatus {
     llm_status(&state.model_config())
 }
 
+/// Live validation: send one minimal (1-token) request to the configured endpoint.
+/// Returns the LLM status with `ready`/`message` reflecting the real network result,
+/// including the server's own error message on failure.
+#[tauri::command]
+pub async fn test_llm_cmd(state: State<'_, AppState>) -> Result<terrain_agent::LlmStatus, String> {
+    let config = state.model_config();
+    let mut status = llm_status(&config);
+    match terrain_agent::probe_llm(&config).await {
+        Ok(detail) => {
+            status.ready = true;
+            status.message = detail;
+        }
+        Err(e) => {
+            status.ready = false;
+            status.message = e.to_string();
+        }
+    }
+    Ok(status)
+}
+
+/// Fetch the model ids a provider endpoint currently serves (sorted alphabetically).
+///
+/// `provider` is the raw provider id ("openai" / "lmstudio" / "ollama" / "ollama-cloud");
+/// OpenAI-compatible providers query `GET {base_url}/models`, local Ollama queries
+/// `GET {ollama_host}/api/tags`.
+#[tauri::command]
+pub async fn list_provider_models_cmd(
+    provider: String,
+    base_url: Option<String>,
+    api_key: Option<String>,
+    ollama_host: Option<String>,
+) -> Result<Vec<String>, String> {
+    terrain_agent::list_provider_models(
+        &provider,
+        base_url.as_deref(),
+        api_key.as_deref(),
+        ollama_host.as_deref(),
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn get_model_settings(state: State<'_, AppState>) -> ModelSettings {
     load_model_settings().unwrap_or_else(|| model_settings_from_config(&state.model_config()))

@@ -6,6 +6,7 @@ mod context_generator;
 mod chat;
 mod compat_tool;
 mod litho;
+mod litho_native;
 mod model;
 mod runtime;
 mod sdd;
@@ -37,8 +38,8 @@ pub use workflows::{
     SddProgress,
 };
 pub use model::{
-    load_dotenv, llm_status, parse_provider, resolve_model_config, LlmProvider, ModelConfig,
-    build_llm,
+    list_provider_models, load_dotenv, llm_status, parse_provider, probe_llm,
+    resolve_model_config, LlmProvider, ModelConfig, build_llm,
 };
 pub use settings::{
     default_profile_for, load_model_settings, model_config_from_settings, model_settings_from_config,

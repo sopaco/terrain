@@ -19,12 +19,19 @@ export default {
       "Q&A, Litho, SDD, and agent context are all handled by the external ACP agent — just configure the ACP command below; no Native LLM needed. Default: ",
     pureAcpAfter: ".",
     hybrid:
-      "Native LLM (BYOK) handles Q&A, SDD document phases, and Agent Context, with streaming output and tool-call details; ACP handles Litho and SDD code generation. Configure both sections below.",
+      "Native LLM (BYOK) handles Q&A, SDD document phases, and Agent Context, with streaming output and tool-call details; ACP handles Litho and SDD code generation. When the ACP command cannot run, Litho automatically falls back to the native LLM. Configure both sections below.",
+  },
+  model: {
+    selectPlaceholder: "Select a model",
+    custom: "Custom model…",
+    refresh: "Refresh model list",
+    loadFailed: "Could not load the model list — enter the model id manually.",
   },
   provider: {
     openai: "OpenAI-compatible (NVIDIA Integrate, etc.)",
     lmstudio: "LM Studio (local)",
     ollama: "Ollama (local)",
+    "ollama-cloud": "Ollama Cloud (API key)",
   },
   acp: {
     title: "ACP Agent",
