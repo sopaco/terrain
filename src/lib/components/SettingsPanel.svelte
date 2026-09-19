@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { checkAcp, checkLlm, getModelSettings, saveModelSettings } from "../api";
+  import {
+    checkAcp,
+    getModelSettings,
+    listProviderModels,
+    saveModelSettings,
+    testLlm,
+  } from "../api";
   import { isPureAcp, normalizeAgentExecution } from "../agentExecution";
   import type {
     AgentExecution,
@@ -20,13 +26,15 @@
     DEFAULT_INCREMENTAL_MAX_CHANGED_FILES,
     DEFAULT_LMSTUDIO_BASE_URL,
     DEFAULT_LMSTUDIO_MODEL,
+    DEFAULT_OLLAMA_CLOUD_BASE_URL,
+    DEFAULT_OLLAMA_CLOUD_MODEL,
     DEFAULT_OLLAMA_HOST,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_OPENAI_BASE_URL,
     DEFAULT_OPENAI_MODEL,
   } from "../constants";
 
-  type ProviderId = "openai" | "lmstudio" | "ollama";
+  type ProviderId = "openai" | "lmstudio" | "ollama" | "ollama-cloud";
 
   type ProviderDraft = {
     model: string;
@@ -44,7 +52,7 @@
 
   let { open, onclose, onsaved }: Props = $props();
 
-  const providerIds: ProviderId[] = ["openai", "lmstudio", "ollama"];
+  const providerIds: ProviderId[] = ["openai", "lmstudio", "ollama", "ollama-cloud"];
 
   let provider = $state<ProviderId>("openai");
   let drafts = $state<Record<ProviderId, ProviderDraft>>(emptyDrafts());
@@ -62,6 +70,9 @@
   let acpTestOk = $state<boolean | null>(null);
   let llmTestOk = $state<boolean | null>(null);
   let llmTestDetail = $state<string | null>(null);
+  let modelOptions = $state<string[] | null>(null);
+  let modelListError = $state<string | null>(null);
+  let modelLoading = $state(false);
 
   const pureAcp = $derived(isPureAcp(agentExecution));
 
@@ -69,6 +80,7 @@
     { id: "openai" as const },
     { id: "lmstudio" as const },
     { id: "ollama" as const },
+    { id: "ollama-cloud" as const },
   ];
 
   const current = $derived(drafts[provider]);
@@ -78,6 +90,7 @@
       openai: defaultDraft("openai"),
       lmstudio: defaultDraft("lmstudio"),
       ollama: defaultDraft("ollama"),
+      "ollama-cloud": defaultDraft("ollama-cloud"),
     };
   }
 
@@ -87,6 +100,15 @@
         model: DEFAULT_LMSTUDIO_MODEL,
         api_key: "lm-studio",
         base_url: DEFAULT_LMSTUDIO_BASE_URL,
+        ollama_host: DEFAULT_OLLAMA_HOST,
+        api_mode: "chat_completions",
+      };
+    }
+    if (id === "ollama-cloud") {
+      return {
+        model: DEFAULT_OLLAMA_CLOUD_MODEL,
+        api_key: "",
+        base_url: DEFAULT_OLLAMA_CLOUD_BASE_URL,
         ollama_host: DEFAULT_OLLAMA_HOST,
         api_mode: "chat_completions",
       };
@@ -145,6 +167,47 @@
       [provider]: { ...drafts[provider], ...patch },
     };
   }
+
+  function pickModel(value: string) {
+    if (value === "__custom__") {
+      // Keep the current model string; reveal the free-text input.
+      modelOptions = null;
+      modelListError = null;
+      return;
+    }
+    patchCurrent({ model: value });
+  }
+
+  async function loadModelOptions() {
+    if (provider === "ollama" && !current.ollama_host.trim()) return;
+    if (provider !== "ollama" && !current.base_url.trim()) return;
+    modelLoading = true;
+    modelListError = null;
+    try {
+      const list = await listProviderModels(
+        provider,
+        current.base_url.trim() || null,
+        current.api_key.trim() || null,
+        current.ollama_host.trim() || null,
+      );
+      modelOptions = [...list].sort((a, b) => a.localeCompare(b));
+      modelListError = null;
+    } catch (e) {
+      modelOptions = null;
+      modelListError = String(e);
+    } finally {
+      modelLoading = false;
+    }
+  }
+
+  // Re-fetch the model list whenever the active provider changes.
+  $effect(() => {
+    if (!open) return;
+    void provider;
+    modelOptions = null;
+    modelListError = null;
+    void loadModelOptions();
+  });
 
   function loadFromSettings(s: ModelSettings) {
     const next = emptyDrafts();
@@ -274,7 +337,7 @@
     saving = true;
     error = null;
     try {
-      const status = await checkLlm();
+      const status = await testLlm();
       llmTestOk = status.ready;
       llmTestDetail = status.ready ? null : status.message;
       onsaved(status);
@@ -429,12 +492,59 @@
 
           <label class="block space-y-1.5">
             <span class="text-xs font-medium text-tr-ink-2">Model</span>
-            <input
-              class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
-              value={current.model}
-              oninput={(e) => patchCurrent({ model: (e.currentTarget as HTMLInputElement).value })}
-              placeholder="e.g. stepfun-ai/step-3.7-flash"
-            />
+            {#if modelOptions && modelOptions.length > 0}
+              <div class="flex gap-2">
+                <select
+                  class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
+                  value={current.model}
+                  onchange={(e) =>
+                    pickModel((e.currentTarget as HTMLSelectElement).value)}
+                >
+                  <option value="" disabled>
+                    {tr("settings.model.selectPlaceholder")}
+                  </option>
+                  {#each modelOptions as m (m)}
+                    <option value={m}>{m}</option>
+                  {/each}
+                  {#if current.model && !modelOptions.includes(current.model)}
+                    <option value={current.model}>{current.model}</option>
+                  {/if}
+                  <option value="__custom__">{tr("settings.model.custom")}</option>
+                </select>
+                <button
+                  type="button"
+                  class="tr-press shrink-0 rounded-lg border border-tr-border-strong px-3 py-2 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
+                  disabled={modelLoading || saving}
+                  onclick={() => void loadModelOptions()}
+                  title={tr("settings.model.refresh")}
+                >
+                  {modelLoading ? "…" : "↻"}
+                </button>
+              </div>
+            {:else}
+              <input
+                class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
+                value={current.model}
+                oninput={(e) =>
+                  patchCurrent({ model: (e.currentTarget as HTMLInputElement).value })}
+                placeholder="e.g. stepfun-ai/step-3.7-flash"
+              />
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="tr-press rounded-lg border border-tr-border-strong px-3 py-1.5 text-xs transition-colors hover:bg-tr-elevated disabled:opacity-50"
+                  disabled={modelLoading || saving}
+                  onclick={() => void loadModelOptions()}
+                >
+                  {tr("settings.model.refresh")}
+                </button>
+                {#if modelListError}
+                  <span class="text-[11px] leading-tight text-tr-watch">
+                    {tr("settings.model.loadFailed")}
+                  </span>
+                {/if}
+              </div>
+            {/if}
           </label>
 
           {#if provider !== "ollama"}
@@ -461,7 +571,13 @@
                 class="w-full rounded-lg border border-tr-border-strong bg-tr-elevated px-3 py-2 text-sm outline-none focus:border-tr-accent"
                 value={current.api_key}
                 oninput={(e) => patchCurrent({ api_key: (e.currentTarget as HTMLInputElement).value })}
-                placeholder={provider === "lmstudio" ? "lm-studio" : "nvapi-…"}
+                placeholder={
+                  provider === "lmstudio"
+                    ? "lm-studio"
+                    : provider === "ollama-cloud"
+                      ? "ollama API key"
+                      : "nvapi-…"
+                }
                 autocomplete="off"
               />
             </label>

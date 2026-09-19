@@ -173,12 +173,14 @@ pub async fn run_quick_refresh(
                 )
                 .into(),
             );
-        } else if acp_available(acp) {
+        } else if acp_available(acp) || !execution_pure_acp(acp) {
+            // Hybrid mode runs Litho through the native LLM when the ACP command cannot run.
             match crate::litho::run_litho_generation(
                 paths,
                 project_slug,
                 repo_path,
                 acp,
+                model_config,
                 knowledge,
                 LithoRunMode::Auto,
                 &on_litho_progress,

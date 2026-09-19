@@ -49,11 +49,14 @@ export default defineConfig({
       : undefined,
     watch: {
       // Knowledge assets and indexes are written by the Rust backend during scans/generation.
+      // `target/` is ignored: cargo build output floods the inotify watcher (ENOSPC) and
+      // its file churn is irrelevant to HMR.
       ignored: [
         "**/src-tauri/**",
         "**/.terrain/**",
         "**/.litho-agent/**",
         "**/.agents/**",
+        "**/target/**",
         "AGENTS.md",
       ],
     },

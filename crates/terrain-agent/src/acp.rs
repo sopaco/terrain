@@ -78,30 +78,27 @@ pub fn execution_uses_native_llm(settings: &AcpSettings) -> bool {
 }
 
 /// Whether the active execution mode has its backends configured.
+///
+/// Pure ACP requires the external agent on PATH. Hybrid mode requires only the native
+/// LLM — the ACP binary is optional there, because workloads that would route through
+/// ACP (Litho) fall back to the native LLM when the configured ACP command cannot run.
 pub fn agent_execution_ready(settings: &AcpSettings, config: &ModelConfig) -> Result<(), String> {
-    let acp_err = if acp_available(settings) {
-        None
-    } else {
-        Some(format!(
-            "ACP agent not found on PATH: {}",
-            acp_spawn_command(settings)
-        ))
-    };
-
     if execution_pure_acp(settings) {
-        return acp_err.map_or(Ok(()), Err);
+        return if acp_available(settings) {
+            Ok(())
+        } else {
+            Err(format!(
+                "ACP agent not found on PATH: {}",
+                acp_spawn_command(settings)
+            ))
+        };
     }
 
-    let llm_err = if llm_status(config).ready {
-        None
+    let status = llm_status(config);
+    if status.ready {
+        Ok(())
     } else {
-        Some(format!("LLM not ready: {}", llm_status(config).message))
-    };
-
-    match (acp_err, llm_err) {
-        (None, None) => Ok(()),
-        (Some(e), _) => Err(e),
-        (_, Some(e)) => Err(e),
+        Err(format!("LLM not ready: {}", status.message))
     }
 }
 
