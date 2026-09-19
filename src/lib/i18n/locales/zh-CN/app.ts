@@ -15,6 +15,7 @@ export default {
   configureAcp: "请先在设置中配置 ACP 代理。",
   configureAcpTitle: "请先在设置中配置 ACP 代理",
   configureLlm: "请先在设置中配置 LLM。",
+  configureLlmTitle: "请先在设置中配置 LLM",
   settingsSaved: "设置已保存",
   checkAcpLlmConfig: "请检查 ACP 与 LLM 配置",
   status: {

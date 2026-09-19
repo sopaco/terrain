@@ -99,6 +99,12 @@
 
     const hybridNativeLlm = $derived(usesNativeLlm(project.agentExecution));
 
+    // Ask runs through the external ACP agent in pure ACP mode and through the native
+    // LLM in hybrid mode, so a missing ACP binary does not block Ask in hybrid mode.
+    const askUnavailable = $derived(
+        hybridNativeLlm ? !project.llmStatus?.ready : !project.acpOk,
+    );
+
     const selectedRegistryDerived = $derived(selectedRegistryProject());
     const selectedProjectLabel = $derived(
         selectedProjectDisplayName(
@@ -677,7 +683,7 @@
             return;
         }
         if (project.agentContextBusy) return;
-        if (!project.acpOk) {
+        if (!project.acpOk && !hybridNativeLlm) {
             setStatus(t("app.configureAcp"), "error");
             return;
         }
@@ -820,8 +826,12 @@
             setStatus(t("terms.msg.selectProjectWithRepoPath"), "error");
             return;
         }
-        if (!project.acpOk) {
+        if (!project.acpOk && !hybridNativeLlm) {
             setStatus(t("app.status.acpNotFound"), "error");
+            return;
+        }
+        if (hybridNativeLlm && !project.llmStatus?.ready) {
+            setStatus(t("app.configureLlm"), "error");
             return;
         }
         const slug = project.selectedSlug;
@@ -911,8 +921,13 @@
             project.deepWikiInitialQuestion = null;
             return;
         }
-        if (!project.acpOk) {
+        // In hybrid mode Ask runs on the native LLM, so a missing ACP binary does not block it.
+        if (!project.acpOk && !hybridNativeLlm) {
             setStatus(t("app.configureAcp"), "error");
+            return;
+        }
+        if (hybridNativeLlm && !project.llmStatus?.ready) {
+            setStatus(t("app.configureLlm"), "error");
             return;
         }
         project.deepWikiInitialQuestion = question ?? null;
@@ -1482,11 +1497,13 @@
                     {/if}
 
                     <AskBar
-                        disabled={!project.selectedSlug || !project.acpOk}
+                        disabled={!project.selectedSlug || askUnavailable}
                         disabledReason={!project.selectedSlug
                             ? tr("app.selectProjectFirst")
-                            : !project.acpOk
-                              ? tr("app.configureAcpTitle")
+                            : askUnavailable
+                              ? (hybridNativeLlm
+                                  ? tr("app.configureLlmTitle")
+                                  : tr("app.configureAcpTitle"))
                               : null}
                         placeholder={project.activeDoc
                             ? tr("app.askDocPlaceholder", {
@@ -1549,8 +1566,9 @@
                 // keep previous mode
             }
             project.acpOk = await checkAcp();
+            // Hybrid mode only requires the LLM (ACP is optional — Litho falls back to it).
             const ok = hybridNativeLlm
-                ? status.ready && project.acpOk
+                ? status.ready
                 : project.acpOk;
             setStatus(
                 ok ? tr("app.settingsSaved") : tr("app.checkAcpLlmConfig"),

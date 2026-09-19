@@ -16,6 +16,7 @@ export default {
   configureAcp: "Configure the ACP agent in Settings first.",
   configureAcpTitle: "Configure the ACP agent in Settings first",
   configureLlm: "Configure the LLM in Settings first.",
+  configureLlmTitle: "Configure the LLM in Settings first",
   settingsSaved: "Settings saved",
   checkAcpLlmConfig: "Check the ACP and LLM configuration",
   status: {

@@ -10,6 +10,8 @@ pub const DEFAULT_ACP_BINARY: &str = "opencode";
 pub const DEFAULT_ACP_ARGS: &str = "acp";
 pub const DEFAULT_OLLAMA_MODEL: &str = "qwen3.5:9b";
 pub const DEFAULT_OLLAMA_HOST: &str = "http://localhost:11434";
+pub const DEFAULT_OLLAMA_CLOUD_BASE_URL: &str = "https://ollama.com/v1";
+pub const DEFAULT_OLLAMA_CLOUD_MODEL: &str = "gpt-oss:120b-cloud";
 pub const DEFAULT_OPENAI_BASE_URL: &str = "https://integrate.api.nvidia.com/v1";
 pub const DEFAULT_OPENAI_MODEL: &str = "stepfun-ai/step-3.7-flash";
 pub const DEFAULT_LMSTUDIO_BASE_URL: &str = "http://localhost:1234/v1";
@@ -189,6 +191,15 @@ pub fn default_profile_for(provider: &str) -> ProviderProfile {
             ollama_host: Some(DEFAULT_OLLAMA_HOST.into()),
             ..Default::default()
         },
+        // Ollama Cloud is OpenAI-compatible (`https://ollama.com/v1`) and authenticates
+        // with a Bearer API key, so it routes through the OpenAI client.
+        "ollama-cloud" => ProviderProfile {
+            model: Some(DEFAULT_OLLAMA_CLOUD_MODEL.into()),
+            api_key: None,
+            base_url: Some(DEFAULT_OLLAMA_CLOUD_BASE_URL.into()),
+            ollama_host: Some(DEFAULT_OLLAMA_HOST.into()),
+            ..Default::default()
+        },
         _ => ProviderProfile {
             model: Some(DEFAULT_OPENAI_MODEL.into()),
             api_key: None,
@@ -213,7 +224,7 @@ pub fn normalize_model_settings(settings: &mut ModelSettings) {
 }
 
 fn normalize_settings(settings: &mut ModelSettings) {
-    for p in ["openai", "lmstudio", "ollama"] {
+    for p in ["openai", "lmstudio", "ollama", "ollama-cloud"] {
         settings
             .profiles
             .entry(p.into())

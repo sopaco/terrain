@@ -1,14 +1,19 @@
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use adk_core::Llm;
 use adk_model::ollama::{OllamaConfig, OllamaModel};
 use adk_model::openai::{OpenAIClient, OpenAIConfig, OpenAIResponsesClient, OpenAIResponsesConfig};
 use anyhow::{Context, Result, bail};
+use futures::StreamExt;
 pub use terrain_core::LlmStatus;
 pub use terrain_core::settings::{
     DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL,
     DEFAULT_OLLAMA_HOST, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL, OpenAiApiMode,
 };
+
+const PROBE_TIMEOUT: Duration = Duration::from_secs(12);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmProvider {
@@ -267,6 +272,123 @@ pub fn ensure_llm(config: &ModelConfig) -> Result<()> {
 
 pub fn load_dotenv() {
     let _ = dotenvy::dotenv();
+}
+
+/// Fetch the model list a provider endpoint actually serves.
+///
+/// OpenAI-compatible endpoints (openai / lmstudio / ollama-cloud) expose
+/// `GET {base_url}/models` → `{ "data": [ { "id": … } ] }`; local Ollama exposes
+/// `GET {ollama_host}/api/tags` → `{ "models": [ { "name": … } ] }`.
+/// Returns the ids sorted alphabetically.
+pub async fn list_provider_models(
+    provider: &str,
+    base_url: Option<&str>,
+    api_key: Option<&str>,
+    ollama_host: Option<&str>,
+) -> Result<Vec<String>> {
+    if parse_provider(provider) == LlmProvider::Ollama {
+        let host = ollama_host
+            .map(str::trim)
+            .filter(|h| !h.is_empty())
+            .unwrap_or(DEFAULT_OLLAMA_HOST);
+        let url = format!("{}/api/tags", host.trim_end_matches('/'));
+        let body = http_get_json(&url, None).await?;
+        let models = body
+            .get("models")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| anyhow::anyhow!("unexpected response from {url}: missing `models`"))?;
+        return Ok(models
+            .iter()
+            .filter_map(|m| m.get("name").and_then(serde_json::Value::as_str))
+            .map(str::to_string)
+            .collect());
+    }
+
+    let default_base = match provider.to_ascii_lowercase().as_str() {
+        "lmstudio" | "lm-studio" | "lm_studio" => crate::settings::DEFAULT_LMSTUDIO_BASE_URL,
+        "ollama-cloud" => crate::settings::DEFAULT_OLLAMA_CLOUD_BASE_URL,
+        _ => DEFAULT_OPENAI_BASE_URL,
+    };
+    let base = base_url
+        .map(str::trim)
+        .filter(|u| !u.is_empty())
+        .unwrap_or(default_base);
+    let url = format!("{}/models", base.trim_end_matches('/'));
+    let key = api_key.map(str::trim).filter(|k| !k.is_empty());
+    let body = http_get_json(&url, key).await?;
+    let data = body
+        .get("data")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("unexpected response from {url}: missing `data`"))?;
+    Ok(data
+        .iter()
+        .filter_map(|m| m.get("id").and_then(serde_json::Value::as_str))
+        .map(str::to_string)
+        .collect())
+}
+
+async fn http_get_json(url: &str, bearer: Option<&str>) -> Result<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .timeout(PROBE_TIMEOUT)
+        .build()
+        .context("failed to build HTTP client")?;
+    let mut req = client.get(url);
+    if let Some(key) = bearer {
+        req = req.bearer_auth(key);
+    }
+    let resp = req.send().await.context(format!("request failed: {url}"))?;
+    let status = resp.status();
+    let text = resp.text().await.unwrap_or_default();
+    if !status.is_success() {
+        bail!("{url} returned HTTP {status}: {}", text.chars().take(300).collect::<String>());
+    }
+    serde_json::from_str(&text).with_context(|| format!("invalid JSON from {url}"))
+}
+
+/// Live connectivity probe: send one minimal (1-token) request to the configured endpoint.
+///
+/// Unlike [`llm_status`] (a pure config check), this exercises the real endpoint, API key
+/// and model id, so auth failures and unknown model ids surface here with the server's
+/// own error message.
+pub async fn probe_llm(config: &ModelConfig) -> Result<String> {
+    ensure_llm(config)?;
+    let llm = build_llm(config)?;
+    let request = adk_core::LlmRequest {
+        model: config.model.clone(),
+        contents: vec![adk_core::Content::new("user").with_text("ping")],
+        config: Some(adk_core::GenerateContentConfig {
+            max_output_tokens: Some(1),
+            ..Default::default()
+        }),
+        tools: HashMap::new(),
+        previous_response_id: None,
+    };
+
+    let probe = async {
+        let mut stream = llm
+            .generate_content(request, false)
+            .await
+            .context("LLM request failed")?;
+        let response = stream
+            .next()
+            .await
+            .ok_or_else(|| anyhow::anyhow!("LLM returned no response"))?
+            .context("LLM request failed")?;
+        let _ = response;
+        Ok::<(), anyhow::Error>(())
+    };
+    tokio::time::timeout(PROBE_TIMEOUT, probe)
+        .await
+        .map_err(|_| anyhow::anyhow!("LLM probe timed out after {}s", PROBE_TIMEOUT.as_secs()))??;
+
+    let endpoint = match config.provider {
+        LlmProvider::Ollama => config.ollama_host.clone(),
+        _ => config
+            .openai_base_url
+            .clone()
+            .unwrap_or_else(|| DEFAULT_OPENAI_BASE_URL.into()),
+    };
+    Ok(format!("reached {endpoint} (model {})", config.model))
 }
 
 #[cfg(test)]

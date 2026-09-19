@@ -43,16 +43,9 @@ async fn run_agent_context_if_needed(
             );
             return Ok(false);
         }
-    } else if !acp_available(acp) {
-        notes.push(
-            lang.tr(
-                "Agent 友好的知识资产：请先在设置中配置 ACP 代理",
-                "Agent knowledge assets: please configure an ACP agent in Settings first",
-            )
-            .into(),
-        );
-        return Ok(false);
     } else if !llm_status(model_config).ready {
+        // Hybrid mode: the native LLM is required; the ACP binary is optional (Litho
+        // falls back to it when the ACP command cannot run).
         notes.push(
             lang.tr(
                 "Agent 友好的知识资产：请先在设置中配置 LLM",
@@ -144,7 +137,8 @@ pub async fn run_project_initialization(
     let mut litho_ran = false;
 
     if needs_human {
-        if acp_available(acp) {
+        if acp_available(acp) || !execution_pure_acp(acp) {
+            // Hybrid mode runs Litho through the native LLM when the ACP command cannot run.
             on_progress(ProgressEvent::project_init(
                 "human_docs",
                 lang.tr(
@@ -157,6 +151,7 @@ pub async fn run_project_initialization(
                 &project_slug,
                 repo_path,
                 acp,
+                model_config,
                 knowledge,
                 LithoRunMode::Auto,
                 &on_litho_progress,

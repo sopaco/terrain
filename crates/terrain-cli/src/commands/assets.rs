@@ -32,7 +32,7 @@ pub async fn run(paths: &KnowledgePaths, command: AssetCommands) -> Result<()> {
             let slug = slug_from(&repo_path, slug);
             let repo = repo_path.display().to_string();
             let acp = resolve_acp_settings();
-            let job = prepare_litho_generation(paths, &slug, &repo, &acp);
+            let job = prepare_litho_generation(paths, &slug, &repo, &acp, &resolve_model_config());
             print_json(&job)
         }
         AssetCommands::Plan { repo_path, slug } => {
@@ -49,6 +49,7 @@ pub async fn run(paths: &KnowledgePaths, command: AssetCommands) -> Result<()> {
                 &slug,
                 &repo,
                 &acp,
+                &resolve_model_config(),
                 &resolve_knowledge_settings(),
                 LithoRunMode::from_force_refresh(force),
                 |p| eprintln!("[{}] {}", p.stage, p.message),

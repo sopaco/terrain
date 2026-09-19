@@ -11,6 +11,9 @@ use terrain_core::{
 };
 
 use crate::acp::{acp_spawn_command, build_acp_config};
+#[cfg(feature = "opencode")]
+use crate::litho_native::{NativeLithoCtx, run_native_litho_turn};
+use crate::model::ModelConfig;
 use crate::settings::AcpSettings;
 
 /// Whether a Litho run may reuse the existing doc set.
@@ -40,16 +43,99 @@ const STABLE_TICKS: u32 = 10;
 const MAX_COMPOSITION_ATTEMPTS: u32 = 3;
 const DEFAULT_WALL_TIMEOUT_SECS: u64 = 45 * 60;
 
+/// Which backend runs the Litho turns: the external ACP agent, or — in hybrid mode when
+/// the configured ACP command cannot run — the native LLM with path-restricted tools.
+#[cfg(feature = "opencode")]
+// ponytail: built once per run and only passed by reference; boxing the ctx adds
+// indirection without any measurable win.
+#[allow(clippy::large_enum_variant)]
+enum LithoTransport {
+    /// Pure ACP mode: ACP failures surface to the user (its own error is the useful
+    /// diagnostic — no LLM may be configured at all in that mode).
+    AcpStrict(AcpTurnConfig),
+    /// Hybrid mode: ACP first, with a runtime fallback to the native LLM when the ACP
+    /// turn fails (spawn failure or protocol error — e.g. the binary exists on PATH but
+    /// does not support ACP).
+    AcpWithFallback {
+        acp: AcpTurnConfig,
+        native: NativeLithoCtx,
+    },
+    /// Hybrid mode with the ACP command not even present on PATH: native LLM directly.
+    Native(NativeLithoCtx),
+}
+
+#[cfg(feature = "opencode")]
+struct AcpTurnConfig {
+    acp: AcpSettings,
+    repo_path: String,
+    plan: terrain_core::LithoPlan,
+}
+
+#[cfg(feature = "opencode")]
+impl LithoTransport {
+    fn label(&self) -> String {
+        match self {
+            Self::AcpStrict(cfg) | Self::AcpWithFallback { acp: cfg, .. } => {
+                acp_spawn_command(&cfg.acp)
+            }
+            Self::Native(ctx) => format!("native LLM (model {})", ctx.model_config.model),
+        }
+    }
+}
+
+/// Pure ACP mode keeps spawning the ACP command strictly (its failure is the useful
+/// diagnostic — no LLM may be configured at all in that mode). Hybrid mode falls back to
+/// the native LLM when the ACP command is unavailable on PATH *and* — at runtime — when
+/// an ACP turn fails (e.g. the binary exists but has no ACP support), which no portable
+/// pre-flight check can detect.
+#[cfg(feature = "opencode")]
+fn litho_transport(
+    paths: &terrain_core::KnowledgePaths,
+    model_config: &ModelConfig,
+    repo_path: &str,
+    plan: &terrain_core::LithoPlan,
+    acp_settings: &AcpSettings,
+) -> LithoTransport {
+    let native = NativeLithoCtx {
+        paths: paths.clone(),
+        model_config: model_config.clone(),
+        plan: plan.clone(),
+    };
+    let acp_cfg = || AcpTurnConfig {
+        acp: acp_settings.clone(),
+        repo_path: repo_path.to_string(),
+        plan: plan.clone(),
+    };
+    if crate::acp::execution_pure_acp(acp_settings) {
+        LithoTransport::AcpStrict(acp_cfg())
+    } else if crate::acp::acp_available(acp_settings) {
+        LithoTransport::AcpWithFallback {
+            acp: acp_cfg(),
+            native,
+        }
+    } else {
+        LithoTransport::Native(native)
+    }
+}
+
 pub fn prepare_litho_generation(
     paths: &KnowledgePaths,
     project_slug: &str,
     repo_path: &str,
     acp_settings: &AcpSettings,
+    model_config: &ModelConfig,
 ) -> LithoGenerationJob {
+    // Only used by the native-fallback label path (opencode feature).
+    let _ = model_config;
     let plan = plan_litho_generation(paths, project_slug, repo_path);
     let prompt = build_litho_generation_prompt(&plan);
-    let spawn = acp_spawn_command(acp_settings);
-    let acp_command = format!("{spawn} --cwd {repo_path}");
+    #[cfg(feature = "opencode")]
+    let acp_command = {
+        let transport = litho_transport(paths, model_config, repo_path, &plan, acp_settings);
+        format!("{} --cwd {repo_path}", transport.label())
+    };
+    #[cfg(not(feature = "opencode"))]
+    let acp_command = format!("{} --cwd {repo_path}", acp_spawn_command(acp_settings));
 
     let status = if plan.skill_ready {
         "ready".into()
@@ -117,12 +203,39 @@ async fn prompt_agent_with_heartbeat(
     prompt: String,
     stage: &str,
     waiting_message: String,
-    mut on_progress: impl FnMut(LithoProgress),
+    on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
     use adk_acp::prompt_agent;
 
+    let agent_handle = tokio::spawn(async move {
+        prompt_agent(&config, &prompt)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))
+    });
+    await_litho_turn_with_heartbeat(agent_handle, stage, waiting_message, on_progress).await
+}
+
+#[cfg(feature = "opencode")]
+async fn prompt_native_with_heartbeat(
+    ctx: NativeLithoCtx,
+    prompt: String,
+    stage: &str,
+    waiting_message: String,
+    on_progress: impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    let agent_handle =
+        tokio::spawn(async move { run_native_litho_turn(&ctx, prompt).await });
+    await_litho_turn_with_heartbeat(agent_handle, stage, waiting_message, on_progress).await
+}
+
+#[cfg(feature = "opencode")]
+async fn await_litho_turn_with_heartbeat(
+    mut agent_handle: tokio::task::JoinHandle<anyhow::Result<String>>,
+    stage: &str,
+    waiting_message: String,
+    mut on_progress: impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
     let stage_label = stage.to_string();
-    let mut agent_handle = tokio::spawn(async move { prompt_agent(&config, &prompt).await });
     let wall_timeout = litho_wall_timeout();
     let started = Instant::now();
     let ui_lang = terrain_core::current_language();
@@ -138,8 +251,8 @@ async fn prompt_agent_with_heartbeat(
 
         tokio::select! {
             result = &mut agent_handle => {
-                let inner = result.map_err(|e| anyhow::anyhow!("ACP litho task failed: {e}"))?;
-                return inner.map_err(|e| anyhow::anyhow!("ACP litho agent failed: {e}"));
+                let inner = result.map_err(|e| anyhow::anyhow!("Litho task failed: {e}"))?;
+                return inner.map_err(|e| anyhow::anyhow!("Litho agent failed: {e}"));
             }
             _ = tokio::time::sleep(Duration::from_secs(POLL_INTERVAL_STABLE_SECS)) => {
                 let secs = started.elapsed().as_secs();
@@ -157,7 +270,7 @@ async fn prompt_agent_with_heartbeat(
     }
 }
 
-/// Run Litho document generation via OpenCode ACP.
+/// Run Litho document generation via the configured ACP agent.
 #[cfg(feature = "opencode")]
 #[allow(clippy::too_many_arguments)]
 async fn prompt_agent_with_doc_poll(
@@ -168,12 +281,67 @@ async fn prompt_agent_with_doc_poll(
     litho_workspace: PathBuf,
     stage: &str,
     waiting_message: String,
-    mut on_progress: impl FnMut(LithoProgress),
+    on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
     use adk_acp::prompt_agent;
 
+    let agent_handle = tokio::spawn(async move {
+        prompt_agent(&config, &prompt)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))
+    });
+    await_litho_turn_with_doc_poll(
+        agent_handle,
+        human_dir,
+        research_dir,
+        litho_workspace,
+        stage,
+        waiting_message,
+        on_progress,
+    )
+    .await
+}
+
+#[cfg(feature = "opencode")]
+#[allow(clippy::too_many_arguments)]
+async fn prompt_native_with_doc_poll(
+    ctx: NativeLithoCtx,
+    prompt: String,
+    human_dir: PathBuf,
+    research_dir: Option<PathBuf>,
+    litho_workspace: PathBuf,
+    stage: &str,
+    waiting_message: String,
+    on_progress: impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    let agent_handle =
+        tokio::spawn(async move { run_native_litho_turn(&ctx, prompt).await });
+    await_litho_turn_with_doc_poll(
+        agent_handle,
+        human_dir,
+        research_dir,
+        litho_workspace,
+        stage,
+        waiting_message,
+        on_progress,
+    )
+    .await
+}
+
+/// Await a Litho turn while polling the doc directories for progress (shared by the ACP
+/// and native transports).
+#[cfg(feature = "opencode")]
+#[allow(clippy::too_many_arguments)]
+async fn await_litho_turn_with_doc_poll(
+    mut agent_handle: tokio::task::JoinHandle<anyhow::Result<String>>,
+    human_dir: PathBuf,
+    research_dir: Option<PathBuf>,
+    litho_workspace: PathBuf,
+    stage: &str,
+    waiting_message: String,
+    mut on_progress: impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
     let stage_label = stage.to_string();
-    let mut agent_handle = tokio::spawn(async move { prompt_agent(&config, &prompt).await });
 
     let poll_interval = Duration::from_secs(POLL_INTERVAL_SECS);
     let poll_interval_stable = Duration::from_secs(POLL_INTERVAL_STABLE_SECS);
@@ -192,7 +360,7 @@ async fn prompt_agent_with_doc_poll(
         if started.elapsed() >= wall_timeout {
             agent_handle.abort();
             anyhow::bail!(
-                "Litho ACP session exceeded wall timeout ({}s). \
+                "Litho session exceeded wall timeout ({}s). \
                  human docs: {last_human}, research docs: {last_research}",
                 wall_timeout.as_secs()
             );
@@ -200,8 +368,8 @@ async fn prompt_agent_with_doc_poll(
 
         tokio::select! {
             result = &mut agent_handle => {
-                let inner = result.map_err(|e| anyhow::anyhow!("ACP litho task failed: {e}"))?;
-                return inner.map_err(|e| anyhow::anyhow!("ACP litho agent failed: {e}"));
+                let inner = result.map_err(|e| anyhow::anyhow!("Litho task failed: {e}"))?;
+                return inner.map_err(|e| anyhow::anyhow!("Litho agent failed: {e}"));
             }
             _ = tokio::time::sleep(if stable_ticks > 0 {
                 poll_interval_stable
@@ -253,7 +421,7 @@ async fn prompt_agent_with_doc_poll(
                         agent_handle.abort();
                         tracing::warn!(
                             human,
-                            "litho: full human doc set detected but ACP session did not finish — completing early"
+                            "litho: full human doc set detected but the session did not finish — completing early"
                         );
                         on_progress(ProgressEvent::litho(
                             "done",
@@ -291,10 +459,176 @@ async fn prompt_agent_with_doc_poll(
     }
 }
 
+/// A failure that triggers the hybrid native-LLM fallback: anything the ACP transport
+/// itself reports (spawn failure, protocol error, agent crash). Our own wall-timeout
+/// bail does NOT qualify — after 45 minutes a retry from scratch would be wrong.
+/// # ponytail: string check on the timeout message; switch to a typed error if the
+/// timeout text ever changes.
+#[cfg(feature = "opencode")]
+fn acp_failure_warrants_fallback(err: &anyhow::Error) -> bool {
+    !format!("{err:#}").contains("wall timeout")
+}
+
+/// Run one Litho turn through the configured transport, with doc polling.
+#[cfg(feature = "opencode")]
+#[allow(clippy::too_many_arguments)]
+async fn litho_turn_doc_poll(
+    transport: &LithoTransport,
+    prompt: String,
+    human_dir: PathBuf,
+    research_dir: Option<PathBuf>,
+    litho_workspace: PathBuf,
+    stage: &str,
+    waiting_message: String,
+    on_progress: &mut impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    match transport {
+        LithoTransport::AcpStrict(cfg) => {
+            prompt_agent_with_doc_poll(
+                litho_acp_config(&cfg.acp, &cfg.repo_path, &cfg.plan),
+                prompt,
+                human_dir,
+                research_dir,
+                litho_workspace,
+                stage,
+                waiting_message,
+                on_progress,
+            )
+            .await
+        }
+        LithoTransport::AcpWithFallback { acp, native } => {
+            match prompt_agent_with_doc_poll(
+                litho_acp_config(&acp.acp, &acp.repo_path, &acp.plan),
+                prompt.clone(),
+                human_dir.clone(),
+                research_dir.clone(),
+                litho_workspace.clone(),
+                stage,
+                waiting_message.clone(),
+                &mut *on_progress,
+            )
+            .await
+            {
+                Ok(response) => Ok(response),
+                Err(acp_err) if acp_failure_warrants_fallback(&acp_err) => {
+                    native_litho_fallback(native, &acp_err, stage, on_progress);
+                    prompt_native_with_doc_poll(
+                        native.clone(),
+                        prompt,
+                        human_dir,
+                        research_dir,
+                        litho_workspace,
+                        stage,
+                        waiting_message,
+                        on_progress,
+                    )
+                    .await
+                }
+                Err(e) => Err(e),
+            }
+        }
+        LithoTransport::Native(ctx) => {
+            prompt_native_with_doc_poll(
+                ctx.clone(),
+                prompt,
+                human_dir,
+                research_dir,
+                litho_workspace,
+                stage,
+                waiting_message,
+                on_progress,
+            )
+            .await
+        }
+    }
+}
+
+/// Log + tell the user (progress channel) that the ACP agent failed and the native LLM
+/// is taking over — the fallback must not be silent.
+#[cfg(feature = "opencode")]
+fn native_litho_fallback(
+    native: &NativeLithoCtx,
+    acp_err: &anyhow::Error,
+    stage: &str,
+    on_progress: &mut impl FnMut(LithoProgress),
+) {
+    let lang = terrain_core::current_language();
+    tracing::warn!(
+        error = %acp_err,
+        model = %native.model_config.model,
+        "litho: ACP agent failed; falling back to the native LLM"
+    );
+    on_progress(ProgressEvent::litho(
+        stage.to_string(),
+        lang.tr(
+            &format!("ACP 代理启动失败（{acp_err}），已改用内置 LLM 继续"),
+            &format!("ACP agent failed to start ({acp_err}); continuing with the built-in LLM"),
+        )
+        .to_string(),
+    ));
+}
+
+/// Run one Litho turn through the configured transport (incremental update variant).
+#[cfg(feature = "opencode")]
+async fn litho_turn_heartbeat(
+    transport: &LithoTransport,
+    prompt: String,
+    stage: &str,
+    waiting_message: String,
+    on_progress: &mut impl FnMut(LithoProgress),
+) -> anyhow::Result<String> {
+    match transport {
+        LithoTransport::AcpStrict(cfg) => {
+            prompt_agent_with_heartbeat(
+                litho_acp_config(&cfg.acp, &cfg.repo_path, &cfg.plan),
+                prompt,
+                stage,
+                waiting_message,
+                &mut *on_progress,
+            )
+            .await
+        }
+        LithoTransport::AcpWithFallback { acp, native } => {
+            match prompt_agent_with_heartbeat(
+                litho_acp_config(&acp.acp, &acp.repo_path, &acp.plan),
+                prompt.clone(),
+                stage,
+                waiting_message.clone(),
+                &mut *on_progress,
+            )
+            .await
+            {
+                Ok(response) => Ok(response),
+                Err(acp_err) if acp_failure_warrants_fallback(&acp_err) => {
+                    native_litho_fallback(native, &acp_err, stage, on_progress);
+                    prompt_native_with_heartbeat(
+                        native.clone(),
+                        prompt,
+                        stage,
+                        waiting_message,
+                        &mut *on_progress,
+                    )
+                    .await
+                }
+                Err(e) => Err(e),
+            }
+        }
+        LithoTransport::Native(ctx) => {
+            prompt_native_with_heartbeat(
+                ctx.clone(),
+                prompt,
+                stage,
+                waiting_message,
+                &mut *on_progress,
+            )
+            .await
+        }
+    }
+}
+
 #[cfg(feature = "opencode")]
 async fn run_composition_phase(
-    acp_settings: &AcpSettings,
-    repo_path: &str,
+    transport: &LithoTransport,
     job: &LithoGenerationJob,
     human_dir: PathBuf,
     litho_workspace: PathBuf,
@@ -309,8 +643,8 @@ async fn run_composition_phase(
         ),
     ));
     let composition_prompt = build_litho_composition_prompt(&job.plan);
-    prompt_agent_with_doc_poll(
-        litho_acp_config(acp_settings, repo_path, &job.plan),
+    litho_turn_doc_poll(
+        transport,
         composition_prompt,
         human_dir,
         None,
@@ -328,8 +662,7 @@ async fn run_composition_phase(
 
 #[cfg(feature = "opencode")]
 async fn run_composition_with_retries(
-    acp_settings: &AcpSettings,
-    repo_path: &str,
+    transport: &LithoTransport,
     job: &LithoGenerationJob,
     human_dir: PathBuf,
     litho_workspace: PathBuf,
@@ -353,8 +686,7 @@ async fn run_composition_with_retries(
             ));
         }
         let response = run_composition_phase(
-            acp_settings,
-            repo_path,
+            transport,
             job,
             human_dir.clone(),
             litho_workspace.clone(),
@@ -385,19 +717,22 @@ async fn run_composition_with_retries(
 /// updated in place from the Git diff — the four-phase research pipeline only runs when there
 /// is no usable doc set to build on. [`LithoRunMode::FullRebuild`] always wipes and rebuilds.
 #[cfg(feature = "opencode")]
+#[allow(clippy::too_many_arguments)]
 pub async fn run_litho_generation(
     paths: &KnowledgePaths,
     project_slug: &str,
     repo_path: &str,
     acp_settings: &AcpSettings,
+    model_config: &ModelConfig,
     knowledge: &KnowledgeSettings,
     mode: LithoRunMode,
     mut on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<LithoGenerationResult> {
-    let job = prepare_litho_generation(paths, project_slug, repo_path, acp_settings);
+    let job = prepare_litho_generation(paths, project_slug, repo_path, acp_settings, model_config);
     if !job.plan.skill_ready {
         anyhow::bail!("Litho skill not found at {}", job.plan.skill_dir);
     }
+    let transport = litho_transport(paths, model_config, repo_path, &job.plan, acp_settings);
 
     let lang = terrain_core::current_language();
     let human_dir = paths.human_docs_dir(project_slug);
@@ -417,7 +752,7 @@ pub async fn run_litho_generation(
             paths,
             project_slug,
             repo_path,
-            acp_settings,
+            &transport,
             knowledge,
             job,
             &human_dir,
@@ -429,7 +764,7 @@ pub async fn run_litho_generation(
 
     on_progress(ProgressEvent::litho(
         "starting",
-        format!("Spawning ACP agent ({})…", acp_spawn_command(acp_settings)),
+        format!("Spawning agent ({})…", transport.label()),
     ));
 
     std::fs::create_dir_all(&job.plan.human_output_dir)?;
@@ -439,8 +774,7 @@ pub async fn run_litho_generation(
 
     let response_excerpt = if research_ready {
         run_composition_with_retries(
-            acp_settings,
-            repo_path,
+            &transport,
             &job,
             human_dir.clone(),
             litho_workspace.clone(),
@@ -457,8 +791,8 @@ pub async fn run_litho_generation(
         ));
 
         let prompt = build_litho_generation_prompt(&job.plan);
-        let response = prompt_agent_with_doc_poll(
-            litho_acp_config(acp_settings, repo_path, &job.plan),
+        let response = litho_turn_doc_poll(
+            &transport,
             prompt,
             human_dir.clone(),
             Some(litho_workspace.clone()),
@@ -478,8 +812,7 @@ pub async fn run_litho_generation(
             && (litho_research_ready(&litho_workspace) || has_litho_research_artifacts(&litho_workspace))
         {
             excerpt = run_composition_with_retries(
-                acp_settings,
-                repo_path,
+                &transport,
                 &job,
                 human_dir.clone(),
                 litho_workspace.clone(),
@@ -534,7 +867,7 @@ async fn run_litho_incremental_or_skip(
     paths: &KnowledgePaths,
     project_slug: &str,
     repo_path: &str,
-    acp_settings: &AcpSettings,
+    transport: &LithoTransport,
     knowledge: &KnowledgeSettings,
     job: LithoGenerationJob,
     human_dir: &Path,
@@ -644,8 +977,8 @@ async fn run_litho_incremental_or_skip(
     let existing_docs = list_human_doc_names(human_dir);
     let prompt = build_litho_update_prompt(&job.plan, &plan, &existing_docs);
 
-    let response = prompt_agent_with_heartbeat(
-        litho_acp_config(acp_settings, repo_path, &job.plan),
+    let response = litho_turn_heartbeat(
+        transport,
         prompt,
         "updating",
         lang.tr(
@@ -706,9 +1039,79 @@ pub async fn run_litho_generation(
     _project_slug: &str,
     _repo_path: &str,
     _acp_settings: &AcpSettings,
+    _model_config: &ModelConfig,
     _knowledge: &KnowledgeSettings,
     _mode: LithoRunMode,
     _on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<LithoGenerationResult> {
     anyhow::bail!("ACP support not enabled (rebuild with opencode feature)")
+}
+
+#[cfg(all(test, feature = "opencode"))]
+mod tests {
+    use super::*;
+    use crate::model::LlmProvider;
+    use terrain_core::settings::{AgentExecution, OpenAiApiMode};
+
+    fn transport_for(agent_execution: AgentExecution, binary: Option<&str>) -> LithoTransport {
+        let plan = terrain_core::LithoPlan {
+            project_slug: "p".into(),
+            repo_path: "/repo".into(),
+            skill_dir: "/skill".into(),
+            human_output_dir: "/out".into(),
+            litho_workspace_dir: "/ws".into(),
+            skill_ready: true,
+        };
+        let acp = AcpSettings {
+            binary: binary.map(str::to_string),
+            agent_execution,
+            ..AcpSettings::default()
+        };
+        let model = ModelConfig {
+            provider: LlmProvider::Openai,
+            model: "m".into(),
+            ollama_host: "http://localhost:11434".into(),
+            openai_api_key: Some("k".into()),
+            openai_base_url: Some("https://example.com/v1".into()),
+            openai_api_mode: OpenAiApiMode::ChatCompletions,
+        };
+        litho_transport(&KnowledgePaths::new(), &model, "/repo", &plan, &acp)
+    }
+
+    #[test]
+    fn pure_acp_is_strict() {
+        assert!(matches!(
+            transport_for(AgentExecution::Acp, Some("definitely-not-a-real-binary-xyz")),
+            LithoTransport::AcpStrict(_)
+        ));
+    }
+
+    #[test]
+    fn hybrid_with_missing_binary_goes_native() {
+        assert!(matches!(
+            transport_for(AgentExecution::AcpNative, Some("definitely-not-a-real-binary-xyz")),
+            LithoTransport::Native(_)
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn hybrid_with_present_binary_falls_back_at_runtime() {
+        // `sh` is on PATH — the pre-flight passes, so the transport must keep the ACP
+        // attempt and only switch to the native LLM when the turn itself fails.
+        assert!(matches!(
+            transport_for(AgentExecution::AcpNative, Some("sh")),
+            LithoTransport::AcpWithFallback { .. }
+        ));
+    }
+
+    #[test]
+    fn fallback_filter_spares_wall_timeouts() {
+        let timeout = anyhow::anyhow!("litho stage exceeded wall timeout (2700s)");
+        assert!(!acp_failure_warrants_fallback(&timeout));
+        let spawn = anyhow::anyhow!(
+            "ACP protocol error: Internal error: Process exited with exit status: 1"
+        );
+        assert!(acp_failure_warrants_fallback(&spawn));
+    }
 }

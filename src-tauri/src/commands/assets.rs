@@ -71,6 +71,7 @@ pub fn generate_human_docs_cmd(
         &slug,
         &repo_path,
         &resolved_acp_settings(),
+        &state.model_config(),
     ))
 }
 
@@ -98,12 +99,14 @@ pub async fn run_litho_generation_cmd(
     };
 
     let acp = resolved_acp_settings();
+    let model_config = state.model_config();
     // `force_refresh` is the UI's 「重新生成」 — an explicit rebuild bypasses incremental update.
     let result = run_litho_generation(
         &paths,
         &slug,
         &repo_path,
         &acp,
+        &model_config,
         &resolved_knowledge_settings(),
         LithoRunMode::from_force_refresh(force_refresh.unwrap_or(false)),
         emit_progress,
