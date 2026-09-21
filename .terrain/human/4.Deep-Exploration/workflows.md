@@ -1,29 +1,29 @@
-# workflows（业务流程编排）领域
+# 工作流编排（Workflows）领域
 
-**模块路径**：`crates/terrain-agent/src/workflows/`
-**生成日期**：2026-09-15
+**模块路径**：`crates/terrain-agent/src/workflows/`（mod.rs、init.rs、quick_refresh.rs、ask.rs、sdd.rs）
+**生成日期**：2026-09-21
 
 ---
 
-## 这个模块在做什么
+## 概述
 
-workflows 模块是知识工厂的"生产计划科"——它把 core 的各个车间按"扫描→文档→上下文→保鲜"的固定顺序串成端到端任务，并负责任务级错误处理、进度上报与结果组装。如果把 Terrain 比作一条汽车生产线，workflows 就是那个决定"这批零件先去焊接车间、再去喷漆车间、最后质检出厂"的调度员：它不亲自干活，但知道每一步该找谁、顺序是什么、失败了怎么办。
+workflows 模块是 Terrain **一切"动作"的入口总闸**：项目初始化、快速保鲜、知识问答、SDD 四阶段——四大工作流的执行编排全部在这里。它们各自是一个"编排函数"，把 `terrain-core`（离线能力）与 `terrain-agent`（智能调用）拼成完整流程，并统一产出结构化结果（`ProjectInitResult` / `QuickRefreshResult` / `ChatReply` / `SddPhaseResult`）与进度回调。核心设计是**只暴露四个成品函数 + 一组进度类型，编排结构不外泄**——GUI 与 CLI 都看不到内部，只消费这几个"成品"。
 
-这个模块的核心价值在于"编排"——它把分散的 core/agent 能力按业务逻辑串联起来，让 CLI 和 Tauri 只需调用一个函数就能完成端到端任务。每个工作流都共享同一个 `Runtime`（paths + model_config + agent_executor），确保两种形态行为一致。
+把它想成**餐厅的四道招牌菜**：`run_project_initialization` 是"全宴"（扫描 → 文档 → 上下文全上），`run_quick_refresh` 是"轻食"（快扫 + 增量刷新），`ask_knowledge` 是"单点菜"（回答一个问题并可流式上菜），`run_sdd_phase` 是"套餐分级"（必须按顺序上菜）。它们共享同一座厨房（core/agent），但菜谱结构与纪律各不相同。工程顶层理念是**容错分层**：局部失败不中断全局、坏结果绝不静默覆盖好资产（详见第 3 章流程与第 5 章错误处理）。
 
 ---
 
 ## 核心功能点
 
-1. **Init 编排**：scan → （可选）ACP Litho `human/` → agent context → freshness 基线 → 汇总 `ProjectInitResult`（含 human_doc_count + notes）。核心实现在 `crates/terrain-agent/src/workflows/init.rs:105`。
+1. **项目初始化（`run_project_initialization`）**：`init.rs:98`。先 `scan_repo` 得 `ScanReport`；`litho_human_complete_with_research`（init.rs:133）判定 human/ 是否完整，不全才 `run_litho_generation(LithoRunMode::Auto)`；最后 `run_agent_context_if_needed`（init.rs:16-94，`force_refresh=litho_ran`）保证上下文。产出 `ProjectInitResult`（`ipc/workflows.rs:69-79`：scan_files_written / repack_tokens / agent_context_generated / human_doc_count / litho_ran / notes）。**可选环节失败只记 notes，流程继续**。
 
-2. **Ask 编排**：构造 ChatEngine → 按可用性选路径 → 流式把 `AskStreamEvent` 回吐；LLM 缺失 → `fallback_search_reply`。核心实现在 `crates/terrain-agent/src/workflows/ask.rs:11`。
+2. **快速保鲜（`run_quick_refresh`）**：`quick_refresh.rs:22`。快扫 + repack（同步则跳过）→ 上下文门禁（`agent_execution_ready`）→ `run_agent_context_generation(force_full=false)`（增量优先，`plan_incremental_update` 三态）→ 可选 Litho 增量（`incremental_refresh && incremental_human_docs`）→ `compute_freshness`（quick_refresh.rs:240）收尾落账。产 `QuickRefreshResult`（refresh_mode + refresh_reason + notes，已翻译成人话）。
 
-3. **QuickRefresh 编排**：repack 是否 in-sync → 增量/全量 context → 可选增量 human → freshness 重算 → `QuickRefreshResult`。核心实现在 `crates/terrain-agent/src/workflows/quick_refresh.rs:22`。
+3. **知识问答（`ask_knowledge`）**：`ask.rs:11`。`runtime.chat_engine()` 失败即 `fallback_search_reply`（纯检索兜底，`ask.rs:79`，诚实标注"LLM 不可用"）；引擎可用则 `ChatEngine.ask` 流式回推。产 `ChatReply`（answer + citations + usage）。**LLM 不可用不等于没有回答**。
 
-4. **SDD 编排**：进程级 guard → 是否 `CodeGen`/`execution_pure_acp` 决定走 ACP 还是 Native LLM → 写入 `sdd/sessions/{id}/outputs/{N}.md` → 校验非空。核心实现在 `crates/terrain-agent/src/workflows/sdd.rs:14`。
+4. **SDD 四阶段（`run_sdd_phase`）**：`sdd.rs:14`。`plan_sdd_workflow` → 前置产物校验（缺则 bail 指名阶段）→ 后端分派（`execution_pure_acp || phase==CodeGen` 走 ACP，否则 LLM）→ `save_sdd_output` 白名单非空落盘。产 `SddPhaseResult`。**流程纪律绝不通融**。
 
-5. **Litho 编排**：计划 → 研究任务广播执行 → 顺序 composition（最多重试 3 次）→ 产物稳定检测 → 墙钟超时兜底（45min）。核心实现在 `crates/terrain-agent/src/litho.rs:388`。
+5. **进度与结果统一**：四个工作流都带`on_progress` 回调；结果类型在 `ipc/workflows.rs` 定义（ts-rs 派生），GUI/CLI 消费同一套结构。
 
 ---
 
@@ -31,60 +31,67 @@ workflows 模块是知识工厂的"生产计划科"——它把 core 的各个�
 
 | 组件/类型 | 文件路径 | 核心职责 |
 |---------|---------|---------|
-| `run_project_initialization` | `crates/terrain-agent/src/workflows/init.rs:105` | 项目初始化入口 |
-| `ask_knowledge` | `crates/terrain-agent/src/workflows/ask.rs:11` | Ask 问答入口 |
-| `fallback_search_reply` | `crates/terrain-agent/src/workflows/ask.rs:79` | LLM 不可用时的纯检索降级 |
-| `run_quick_refresh` | `crates/terrain-agent/src/workflows/quick_refresh.rs:22` | 快速刷新入口 |
-| `run_sdd_phase` | `crates/terrain-agent/src/workflows/sdd.rs:14` | SDD 阶段执行入口 |
-| `run_litho_generation` | `crates/terrain-agent/src/litho.rs:388` | Litho 四阶段驱动 |
-| `ProjectInitResult` | `crates/terrain-agent/src/workflows/mod.rs` | 初始化结果（含 human_doc_count + notes） |
-| `QuickRefreshResult` | `crates/terrain-agent/src/workflows/mod.rs` | 快速刷新结果 |
+| `run_project_initialization` | `crates/terrain-agent/src/workflows/init.rs:98` | 全量初始化编排 |
+| `run_agent_context_if_needed` | `crates/terrain-agent/src/workflows/init.rs:16` | 上下文门禁 + 增量/全量 + `force_refresh` |
+| `run_quick_refresh` | `crates/terrain-agent/src/workflows/quick_refresh.rs:22` | 轻量保鲜编排 |
+| `ask_knowledge` | `crates/terrain-agent/src/workflows/ask.rs:11` | 问答 + 检索兜底 |
+| `fallback_search_reply` | `crates/terrain-agent/src/workflows/ask.rs:79` | LLM 不可用的检索兜底 |
+| `run_sdd_phase` | `crates/terrain-agent/src/workflows/sdd.rs:14` | SDD 阶段执行（前置 + 分派 + 落盘） |
+| `run_sdd_llm_phase` / `run_sdd_acp_phase` | `crates/terrain-agent/src/workflows/sdd.rs:114,130` | 后端分派实现 |
+| `ProjectInitResult` / `QuickRefreshResult` | `crates/terrain-core/src/ipc/workflows.rs:69` / 相关 | 统一结果类型 |
+| `SddPhaseArg`（CLI） | `crates/terrain-cli/src/cli.rs` | `--phase` 枚举映射 |
 
 ---
 
 ## 内部数据流
 
+四大工作流入口到产出的总揽：它们共享"扫描/资产/智能"三件套，但编排顺序与纪律各不相同——这条总览图把"全宴 vs 轻食 vs 单点 vs 套餐"排序画在一条横带上。
+
 ```mermaid
-flowchart TD
-    WF["workflows 编排器"] --> INIT["run_project_initialization<br/>init.rs:105"]
-    WF --> ASKWF["ask_knowledge<br/>ask.rs:11"]
-    WF --> QR["run_quick_refresh<br/>quick_refresh.rs:22"]
-    WF --> SDDWF["run_sdd_phase<br/>sdd.rs:14"]
-    INIT --> ING["ingest.scan_repo"]
-    INIT --> LITHO["litho.run_litho_generation"]
-    INIT --> CTX["run_agent_context_if_needed"]
-    INIT --> FR["compute_freshness"]
-    ASKWF --> ENG["ChatEngine<br/>Native/ACP"]
-    QR --> ING2["scan + repack"]
-    QR --> CTX2["增量 context"]
-    QR --> FR2["freshness 重算"]
-    SDDWF --> SDDR["前置校验 → LLM/ACP → 产物落盘"]
+flowchart LR
+    subgraph 入口
+        E1["run_project_initialization"]
+        E2["run_quick_refresh"]
+        E3["ask_knowledge"]
+        E4["run_sdd_phase"]
+    end
+    subgraph 共享设施
+        F1["scan_repo / repack"]
+        F2["资产就绪 / 增量计划"]
+        F3["ChatEngine / ACP"]
+        F4["compute_freshness"]
+    end
+    subgraph 产物
+        G1["ProjectInitResult"]
+        G2["QuickRefreshResult"]
+        G3["ChatReply"]
+        G4["SddPhaseResult"]
+    end
+    E1 --> F1 --> F2 --> F3 --> F4
+    E2 --> F1 --> F2 --> F3 --> F4
+    E3 --> F3
+    E4 --> F3
+    F1 --> G1
+    F4 --> G2
+    F3 --> G3
+    F4 --> G4
 ```
 
-**关键步骤说明**：
-1. **Init 编排**（`run_project_initialization`）：由 `init.rs:105` 处理，按顺序串联 scan → litho → context → freshness
-2. **Ask 编排**（`ask_knowledge`）：由 `ask.rs:11` 处理，构造 ChatEngine 并路由
-3. **QuickRefresh 编排**（`run_quick_refresh`）：由 `quick_refresh.rs:22` 处理，增量优先策略
-
----
-
-## 关键数据流与状态
-
-| 流程 | 输入 | 输出 | 失败兜底 |
-|------|------|------|---------|
-| Init | 仓库路径（--slug） | `ProjectInitResult` | notes 收集故障；无 LLM 时跳过文档生成 |
-| Ask | 问题 + project slug | `ChatReply`（流式事件） | `fallback_search_reply`（搜索引用） |
-| QuickRefresh | path/slug | `QuickRefreshResult` | 增量不可信 → 全量重做 |
-| SDD phase | phase + input | 阶段产物文件 | 前序未完成直接报错；产物空报错 |
-| Litho | research 计划 | `human/` 文档集 | 缺文档重试≤3 次；端到端墙钟超时 |
+**关键步骤说明**（以初始化为例，其余见各自领域页）：
+1. 扫描（init.rs:98）：`ProjectScanner.scan_repo` 得出 `ScanReport`，全流程的原料。
+2. 文档门禁（init.rs:133）：human/ 已齐则跳 Litho，避免重复昂贵的生成。
+3. 上下文（init.rs:16）：`run_agent_context_if_needed` 先门禁（ACP/LLM ready）再增量/全量；任一失败只记 notes。
+4. 汇总（`ProjectInitResult`）：scan_files_written / repack_tokens / human_doc_count / litho_ran / notes 全带，前端一条看一眼就懂"这次初始化成了什么"。
 
 ---
 
 ## 关键接口与扩展点
 
-**新流程接入**：加一个 `workflows/<name>.rs` 模块 + 在 CLI/Tauri 注册即可，全链路共享 Runtime。
-
-**与 chat/llm 的松耦合**：workflows 不直接碰 LLM 实现细节，仅通过 `ChatEngine` 与 `*IfNeeded` 判定暴露最小表面。
+- **四大成品函数**：`run_project_initialization` / `run_quick_refresh` / `ask_knowledge` / `run_sdd_phase`——GUI 与 CLI 的唯一消费面，编排结构不外泄。
+- **`run_agent_context_if_needed`**：init 与 quick_refresh 复用的上下文门禁函数，`force_refresh`（init）与 `force_full=false`（refresh）两条调用语义区分明显。
+- **`fallback_search_reply`**：Ask 的检索兜底；任何调用方想要"LLM 失效时的诚实答案"都可复用。
+- **扩展「新工作流」**：① `workflows/xxx.rs` 编排函数；② `workflows/mod.rs` 导出；③ 需要的话 `ipc/workflows.rs` 加结果类型。既有设施（scan/assets/chat/freshness）全程复用，无需触碰。
+- **进度回调**：`on_progress(ProjectWorkflowProgress)` 类型（`ipc/workflows.rs`）统一描述工作流各阶段，前端进度环与日志都靠它。
 
 ---
 
@@ -92,44 +99,37 @@ flowchart TD
 
 | 交互模块 | 方向 | 接口/协议 | 说明 |
 |---------|------|---------|------|
-| cli | 被依赖 | `terrain init/ask/refresh/sdd` | CLI 子命令直接调用 workflow |
-| tauri | 被依赖 | Tauri invoke 命令 | 桌面端通过 IPC 调用 workflow |
-| ingest | 依赖 | `scan_repo` | workflows 调用 ingest 的扫描功能 |
-| assets | 依赖 | `plan_litho_generation` / `run_agent_context_generation` | workflows 调用 assets 的生成功能 |
-| chat | 依赖 | `ChatEngine` | workflows 通过 ChatEngine 执行 Ask/SDD |
-| freshness | 依赖 | `compute_freshness` | workflows 在末尾调用保鲜 |
+| `ingest` | 依赖 | `ProjectScanner.scan_repo` | 扫描是 init/refresh 的第一步 |
+| `assets` | 依赖 | `plan_incremental_update` / `build_*_prompt` | 增量决策与 prompt 构建 |
+| `litho` | 依赖 | `run_litho_generation`（Auto） | init 文档 / refresh 增量文档 |
+| `chat`（ChatEngine） | 依赖 | `ChatEngine.ask` / `load_session` | ask 与 sdd 的问答核心 |
+| `acp` | 依赖 | `agent_execution_ready` / `sdd_acp_config` | 门禁与子进程配置 |
+| `freshness` | 依赖 | `compute_freshness` | refresh 收尾落账 |
+| `runtime` | 依赖 | `runtime.chat_engine()` | 共享引擎与配置失效 |
+| `schema` / `ts_ipc` | 依赖 | 结果类型 | IPC 单源 |
 
 ---
 
 ## 跨模块协作场景
 
-> 本模块在核心业务流程中的角色
+**在「初始化一条新项目」中**：`run_project_initialization` 先 `scan_repo`，再经 `run_agent_context_if_needed` 门禁（ACP 不可用就 notes+skip），最后 `run_litho_generation(Auto)` 生成 human 文档并 `litho_ran→force_refresh`。一次调用，四条产线（scan/repack/context/litho）全部编排，且**任一步骤失败都在 notes 里透明报告、流程不停**（init.rs:36-56,163-171）。
 
-**在项目初始化中**：workflows 是总调度。具体参与：
-- `run_project_initialization` 按顺序调用 ingest → litho → context → freshness
-- 任何单步失败不会导致全局中断，notes 收集故障信息
-
-**在 DeepWiki Ask 中**：workflows 是路由器。具体参与：
-- `ask_knowledge` 构造 ChatEngine，按配置路由到 Native 或 ACP
-- 流式事件通过 Tauri Channel 或 NDJSON stdout 推送
-
-**在快速刷新中**：workflows 是增量策略执行者。具体参与：
-- `run_quick_refresh` 先检查 in-sync，再决定增量/全量
-- Litho 只在 `incremental_human_docs` 开启时更新
+**在「快速保鲜 vs 初始化」的取舍中**：快速保鲜刻意**不**做全量 Litho（quick_refresh.rs:162-164 注释"从头生成属于初始化"），只在 `incremental_refresh && incremental_human_docs` 时增量更新文档，其余阶段走破坏性最小的增量路径——**同一套能力，两种编排，成本完全不同**。这印证了"工作流层是取舍层，core/agent 是能力层"的架构。
 
 ---
 
 ## 性能考量
 
-- **顺序固定**：scan → docs → context → freshness，避免并发竞争
-- **增量优先**：QuickRefresh 默认增量，Litho 默认跳过
-- **墙钟超时**：Litho 45min、Ask 1200s，确保不会无限等待
-- **最多重试 3 次**：Litho 编排阶段最多重试 3 次（`MAX_COMPOSITION_ATTEMPTS=3`）
+- **增量优先**：refresh 与 init 的上下文阶段都走 `plan_incremental_update`，小变更只付一次 diff 驱动回合，避免完整架构走查。
+- **门禁前置省成本**：`agent_execution_ready` 在任何模型调用前判定，不可用直接 skip 并记 notes，不在"注定失败"的路径上花钱。
+- **落账零 IO**：`compute_freshness` 用账本缓存（git 未变即直接读），刷新收尾近乎零成本。
+- **超时保护**：Ask `1200s` 墙钟、Litho `45min`、探活 `12s`——每个编排都有确定性出口。
 
 ---
 
 ## 实现亮点
 
-- **"局部失败不全局中断"**：每个工作流都设计了降级路径和 notes 收集，确保部分失败不影响整体
-- **共享 Runtime**：所有工作流共享同一个 Runtime（paths + model_config + agent_executor），确保 CLI 和 Tauri 行为一致
-- **Litho 产物稳定检测**：通过"稳定样本计数"启发式判断文档集是否完整，避免无谓等待
+1. **"只暴露成品，编排不外泄"**：四大入口是 GUI/CLI 的全部消费面，编排细节（门禁、三态、回退）都压在工作流内部——消费方不可能写出"绕过纪律"的调用。
+2. **容错分层贯彻**：init/refresh 的"可选环节失败 → notes + 继续"，与 sdd 的"前置缺失 → bail"形成对照——**同一代码库内两种容错观，各自服务正确场景**。
+3. **`ProjectInitResult` 的一次性看板**：scan/repack/context/human/litho + notes 一个对象讲清一整个初始化会话，前端无需再拼装。
+4. **复用而非复制**：`run_agent_context_if_needed`、`fallback_search_reply`、`build_phase_infos` 这类"半成品函数"在工作流间被复用，避免四个入口各自实现一遍门禁/兜底/进度的命运。
