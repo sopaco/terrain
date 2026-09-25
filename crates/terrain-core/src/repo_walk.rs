@@ -16,6 +16,57 @@ static GITIGNORE_CACHE: LazyLock<GitignoreCache> = LazyLock::new(|| Mutex::new(H
 
 pub const META_DISCOVER_MAX_DEPTH: usize = 6;
 
+/// Directories that must never be indexed, regardless of `.gitignore`
+/// (dependency / build / vendor output that is often present but not ignored).
+pub const SKIP_DIRS: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    "vendor",
+    ".venv",
+    "venv",
+    "site-packages",
+    "__pycache__",
+    ".tox",
+    ".nox",
+    ".eggs",
+    ".svelte-kit",
+    ".next",
+    ".terrain",
+    ".DS_Store",
+];
+
+/// Gitignore-aware walk over repository files, pruning dependency/vendor directories.
+///
+/// Honours `.gitignore`, `.ignore`, global/exclude rules and hidden entries, so vendored
+/// dependencies (`.venv/`, `venv/`, `site-packages/`, …) are never indexed as project content.
+pub fn repo_file_walk(repo: &Path, max_depth: Option<usize>) -> ignore::Walk {
+    let mut builder = WalkBuilder::new(repo);
+    builder
+        .hidden(true)
+        .require_git(false)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .ignore(true);
+    if let Some(depth) = max_depth {
+        builder.max_depth(Some(depth));
+    }
+    let root = repo.to_path_buf();
+    builder
+        .filter_entry(move |entry| !should_skip_dir(&root, entry.path()))
+        .build()
+}
+
+/// Whether `path` sits inside a directory that must be skipped, relative to `repo`.
+pub fn should_skip_dir(repo: &Path, path: &Path) -> bool {
+    let rel = path.strip_prefix(repo).unwrap_or(path);
+    rel.components()
+        .any(|c| matches!(c.as_os_str().to_str(), Some(name) if SKIP_DIRS.contains(&name)))
+}
+
 /// Walk repository entries for `terrain-meta.json` discovery, honoring `.gitignore`.
 pub fn discover_repo_walk(repo: &Path) -> ignore::Walk {
     WalkBuilder::new(repo)

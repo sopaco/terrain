@@ -23,6 +23,7 @@ export default {
     pathAria: "Document path",
     backToTop: "Back to top",
     top: "Top",
+    source: "Source",
   },
   toc: {
     ariaLabel: "Table of contents",

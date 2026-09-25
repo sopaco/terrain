@@ -23,6 +23,7 @@ export default {
     pathAria: "文档路径",
     backToTop: "回到顶部",
     top: "顶部",
+    source: "来源",
   },
   toc: {
     ariaLabel: "文章目录",

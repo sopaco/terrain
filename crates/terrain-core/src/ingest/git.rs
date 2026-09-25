@@ -1,11 +1,10 @@
 use std::path::Path;
 
-use walkdir::WalkDir;
-
 use crate::doc::write_doc;
 use crate::error::Result;
 use crate::path_portable::stored_repo_path;
 use crate::paths::KnowledgePaths;
+use crate::repo_walk::repo_file_walk;
 use crate::render::{project_frontmatter, project_index_body};
 use crate::schema::ProjectMeta;
 
@@ -67,15 +66,8 @@ fn detect_tech_stack(repo: &Path) -> Vec<String> {
 
 fn summarize_tree(repo: &Path, max_depth: usize) -> String {
     let mut lines = Vec::new();
-    for entry in WalkDir::new(repo)
-        .max_depth(max_depth)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
+    for entry in repo_file_walk(repo, Some(max_depth)).filter_map(|e| e.ok()) {
         let path = entry.path();
-        if should_skip(path) {
-            continue;
-        }
         let depth = entry.depth();
         let indent = "  ".repeat(depth);
         let name = path
@@ -87,7 +79,11 @@ fn summarize_tree(repo: &Path, max_depth: usize) -> String {
         if depth == 0 {
             continue;
         }
-        let suffix = if entry.file_type().is_dir() { "/" } else { "" };
+        let suffix = if entry.file_type().is_some_and(|ft| ft.is_dir()) {
+            "/"
+        } else {
+            ""
+        };
         lines.push(format!("{indent}- {name}{suffix}"));
         if lines.len() >= 80 {
             lines.push("  - …".into());
@@ -99,16 +95,4 @@ fn summarize_tree(repo: &Path, max_depth: usize) -> String {
     } else {
         lines.join("\n")
     }
-}
-
-fn should_skip(path: &Path) -> bool {
-    path.components().any(|c| {
-        matches!(
-            c.as_os_str().to_str(),
-            Some(
-                ".git" | "node_modules" | "target" | "dist" | ".svelte-kit" | ".terrain"
-                    | ".DS_Store"
-            )
-        )
-    })
 }

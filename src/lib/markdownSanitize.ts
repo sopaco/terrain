@@ -37,6 +37,34 @@ export function stripFrontmatter(text: string): string {
   return text.replace(FRONTMATTER_RE, "");
 }
 
+const FRONTMATTER_PARSE_RE =
+  /^---[ \t]*\r?\n((?:[ \t]*[\w.-]+[ \t]*:[^\r\n]*\r?\n)+)---[ \t]*(?:\r?\n|$)/;
+
+/**
+ * Parse the leading YAML frontmatter into a flat `key → value` map.
+ * Same strict shape as `stripFrontmatter`; only scalar string values are kept
+ * (nested YAML is out of scope for display metadata such as `source`).
+ */
+export function parseFrontmatter(text: string): Record<string, string> {
+  const match = text.match(FRONTMATTER_PARSE_RE);
+  const out: Record<string, string> = {};
+  if (!match) return out;
+  for (const line of match[1].split(/\r?\n/)) {
+    const idx = line.indexOf(":");
+    if (idx <= 0) continue;
+    const key = line.slice(0, idx).trim();
+    let value = line.slice(idx + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
+      (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (key) out[key] = value;
+  }
+  return out;
+}
+
 /** Unwrap a single outer ```markdown / ```md fenced block if present. */
 export function unwrapMarkdownFence(text: string): string {
   const trimmed = text.trim();
