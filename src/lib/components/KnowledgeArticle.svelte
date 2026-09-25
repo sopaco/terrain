@@ -4,7 +4,7 @@
   import MarkdownViewer from "./MarkdownViewer.svelte";
   import MarkdownArticleToc from "./MarkdownArticleToc.svelte";
   import type { SourceCitation } from "../types";
-  import { prepareMarkdownForRender } from "../markdownSanitize";
+  import { parseFrontmatter, prepareMarkdownForRender } from "../markdownSanitize";
   import { extractMarkdownHeadingStructure } from "../markdownToc";
 
   interface Props {
@@ -43,6 +43,17 @@
     headings[0]?.text ?? crumbs[crumbs.length - 1] ?? path,
   );
 
+  /**
+   * Source file recorded in frontmatter (e.g. the OpenAPI spec a route doc was
+   * generated from). Surfacing it makes a wrong source — say, a dependency
+   * spec under `.venv/` — obvious at a glance.
+   */
+  const sourcePath = $derived.by(() => {
+    const fm = parseFrontmatter(body);
+    const source = fm["source"];
+    return source && source.trim() ? source.trim() : null;
+  });
+
   // The scroll container is reused across documents, so opening a new one would
   // otherwise inherit the previous document's offset.
   $effect(() => {
@@ -73,6 +84,12 @@
           {/each}
         </nav>
         <h1 class="knowledge-article-title" title={title}>{title}</h1>
+        {#if sourcePath}
+          <div class="knowledge-article-source" title={sourcePath}>
+            <span class="knowledge-article-source-label">{tr("knowledge.article.source")}</span>
+            <span class="knowledge-article-source-value">{sourcePath}</span>
+          </div>
+        {/if}
       </div>
 
       {#if scrolled}
@@ -171,6 +188,31 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .knowledge-article-source {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    margin-top: 0.125rem;
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .knowledge-article-source-label {
+    flex-shrink: 0;
+    color: var(--color-tr-ink-4);
+  }
+
+  .knowledge-article-source-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+    color: var(--color-tr-ink-3);
+    font-family: var(--font-mono, monospace);
   }
 
   .knowledge-article-top {

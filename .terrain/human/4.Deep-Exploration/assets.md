@@ -1,78 +1,97 @@
-# assets（知识资产生成）领域
+# 知识资产工厂（assets）领域
 
-**模块路径**：`crates/terrain-core/src/assets/`
-**生成日期**：2026-09-15
+**模块路径**：`crates/terrain-core/src/assets/`（repomix、agent_context、context_layers、litho、sdd、ask、incremental、env、project_meta、query、pack_read、mod）
+**生成日期**：2026-09-21
 
 ---
 
-## 这个模块在做什么
+## 概述
 
-assets 模块是 Terrain 知识工厂的"打包机 + 双车间调度器"。它的核心使命是把"源码仓库当前的状态"转化为"Agent 与人类可消费的知识文件"——并且决定每一种资产该在何时生成、以何方式更新。如果你把 Terrain 比作一条汽车生产线，assets 就是那个决定"这批零件该进哪个车间、用全新材料还是只换变更部分"的调度中心。
+assets 模块是 Terrain 的"知识工厂"——它不产出知识内容本身（那些由 terrain-agent 里的 LLM/ACP 完成），而是负责**一切都好管起来的骨架**：判定某类资产是否就绪、规划该怎么生成、构建喂给模型的 prompt、把模型产物安全写盘，并提供 pack 的字节级读取缓存。可以说，从 `agent/repomix.md` 到 `human/*.md` 到 `agent/context.md`，凡是 `.terrain/` 里需要"先判断再生成再落盘"环节的资产，决策与执行细节都收敛在这个模块里。
 
-这个模块之所以关键，是因为它同时管理着四种截然不同的知识资产：repomix 源码索引（供 Agent grep）、agent context 分层摘要（供 Agent 问答）、human C4 文档（供人类阅读）和 env 工具链配置（供 Agent 部署）。每种资产的生成时机、增量策略和完整性判定都不同，但它们共享同一个 `KnowledgePaths` 路径中央账本。
+把它想成工厂的车**间调度中心**：它知道每台机器（repomix、agent_context、litho、sdd、ask、env）该什么时候开、原料（源码、Git diff、前序工件）从哪来、成品放哪个货架（`.terrain/` 的哪个子目录）。它最重要的设计哲学是——**让一切智能环节可被"增量 + 显式跳过"驱动**：能增量就增量、能跳过就跳过，避免每次提交都付全量生成成本。这也是整个系统"增量优先、失败保守回退"架构原则的主要载体。
 
 ---
 
 ## 核心功能点
 
-1. **repomix 打包**：把源码折叠成带行号的 Markdown 包（`agent/repomix.md`），供 Agent 用 `grep-pack`/`read-pack-file` 检索。`baseline_matches_head` 检查当前 HEAD 是否与 pack 生成时的基线一致，不一致则需要重打。核心实现在 `crates/terrain-core/src/assets/repomix.rs`。
+1. **打包与就绪判定（`assets/repomix.rs`）**——`pack_agent_assets` 用内嵌 `repomix-core` 把源码打成 `agent/repomix.md` + `agent/meta.json`（`AgentPackMeta`：token 统计、baseline git HEAD）；`agent_pack_ready` 判定包是否已生成且与 HEAD 同步。它是 Ask 中观/微观检索的物理底座。
 
-2. **agent context 生成**：按 `context_layers`（`ContextSection` + `AGENT_CONTEXT_*_MAX_CHARS`）从模块扫描里组织分层摘要，写 `context.md` 并做 HEAD baseline 标记。16KiB 上下文上限确保输出精炼。核心实现在 `crates/terrain-core/src/assets/agent_context.rs`。
+2. **人类文档生成规划（`assets/litho.rs`）**——`plan_litho_generation` 产出 `LithoPlan`（skill 目录、输出目录、工作区、就绪标志）；`litho_human_complete_with_research` 判定 human/ 文档集是否完整（含研究区 `.litho-agent/` 是否齐备）；常量 `LITHO_CORE_RESEARCH_FILES` 定义研究检查点文件名清单。`write_human_docs_meta` 落盘人类文档基线。
 
-3. **Litho 编排**：`plan_litho_generation` 生成"定义文件 × N + 研究任务清单 × M + 四阶段 composition + human 文档集清单"的完整计划；`litho_human_complete_with_research` 判断文档集是否已齐（含研究产物）。核心实现在 `crates/terrain-core/src/assets/litho.rs`。
+3. **增量更新计划（`assets/incremental.rs`）**——`plan_incremental_update` 输入基线 HEAD + `IncrementalOptions` 输出 `KnowledgeUpdateMode`：`UpToDate` / `Incremental` / `Full`。变更文件数超 `incremental_max_changed_files`（默认 60）时返回 `Full { reason: "too_many_changed_files" }`。这是"增量优先"决策的单一真源。
 
-4. **增量更新决策**：`plan_incremental_update` 依据 git diff 把变更文件分组进 `KnowledgeUpdateMode`（Incremental/Full/Skipped/UpToDate），返回 reason 串（`full_after_incremental_untrustworthy` / `recovered_from_disk` / `up_to_date`）以便诊断。核心实现在 `crates/terrain-core/src/assets/incremental.rs`。
+4. **Agent 上下文资产（`assets/agent_context.rs`）**——`build_agent_context_prompt` 与 `build_agent_context_update_prompt` 构建生成/增量更新 prompt；`write_agent_context` 落盘；`agent_context_recorded_baseline_head` 维护基线；`agent_context_synced_with_head` 判定与 HEAD 同步。`context_layers.rs` 提供宏观/中观/微观三层切分。
 
-5. **Ask 前资产准备**：`prepare_agent_assets_for_ask` 在每次问答前确保 pack/context 与 HEAD 同步，实现"带着最新地图再上路"的设计哲学。核心实现在 `crates/terrain-core/src/assets/query.rs`。
+5. **SDD 资产（`assets/sdd.rs`）**——`plan_sdd_workflow` 产出 `SddPlan`（skill 目录/工作区/输出目录/`skill_ready`）；`build_sdd_phase_prompt` / `build_sdd_llm_prompt` 构建阶段 prompt；session CRUD（`create_sdd_session` 等）；`save_sdd_output` 用 `is_sdd_local_path` 白名单校验后安全写盘。
+
+6. **Ask 会话资产（`assets/ask.rs`）**——`create/list/load/save/set_active/delete/discard` 全套会话 CRUD；`save_ask_messages` 以 `serde_json::Value` 原样写 `messages.json`；`prune_old_sessions` 把 Ask 会话裁到 `MAX_ASK_SESSIONS=50`。
+
+7. **Pack 字节级读取缓存（`assets/pack_read.rs`）**——`read_agent_pack_file` 带缓存索引的字节偏移切片（≤150 行），`grep_agent_pack` 在 pack 代码块内做正则检索并还原 `file_path`+`file_line`。
+
+8. **环境集成资产（`assets/env/*.rs`）**——catalog 载入内置 `env-catalog/catalog.json`，status 探测本机安装状态，plan/apply 计算并执行按依赖顺序的变更方案，`agents_md.rs` patch 受管理的 `AGENTS.md` 片段。
+
+9. **项目元数据（`assets/project_meta.rs`）**——发现 `terrain-meta.json`（模块提示/ADR/术语），把人工维护的私域规范并进资产生成上下文。
 
 ---
 
 ## 关键组件
 
+这些组件覆盖"判定—规划—写盘—读取"四个环节，是 Terrain 离线的"状态层"。
+
 | 组件/类型 | 文件路径 | 核心职责 |
 |---------|---------|---------|
-| `KnowledgeAssets` | `crates/terrain-core/src/assets/mod.rs` | 模块入口，组织所有资产生成子模块 |
-| `AgentPackReport` | `crates/terrain-core/src/assets/repomix.rs` | pack 元信息（files/tokens/baseline） |
-| `AgentContextConfig` | `crates/terrain-core/src/assets/agent_context.rs` | context 生成配置（尺寸/章节上限） |
-| `ContextSection` | `crates/terrain-core/src/assets/agent_context.rs` | context 分章节抽象（标题 + 内容 + 截断） |
-| `LithoPlan` / `LithoStage` | `crates/terrain-core/src/assets/litho.rs` | 文档生成编排与阶段定义 |
-| `KnowledgeUpdateMode` | `crates/terrain-core/src/assets/incremental.rs` | 增量/全量/跳过/已同步 |
-| `KnowledgeUpdateReason` | `crates/terrain-core/src/assets/incremental.rs` | 决策原因（可上报 UI/CLI） |
+| `pack_agent_assets` / `agent_pack_ready` | `crates/terrain-core/src/assets/repomix.rs` | repomix 打包 + 就绪/同步判定 |
+| `plan_litho_generation` | `crates/terrain-core/src/assets/litho.rs` | 生成 `LithoPlan`（skill/输出/工作区） |
+| `litho_human_complete_with_research` | `crates/terrain-core/src/assets/litho.rs` | human/ + 研究区完整性判定 |
+| `plan_incremental_update` | `crates/terrain-core/src/assets/incremental.rs` | 增量三态计划（UpToDate/Incremental/Full） |
+| `build_agent_context_prompt` / `write_agent_context` | `crates/terrain-core/src/assets/agent_context.rs` | context 生成 prompt 与落盘 |
+| `plan_sdd_workflow` / `build_sdd_phase_prompt` | `crates/terrain-core/src/assets/sdd.rs` | SDD 工作流计划与阶段 prompt |
+| `save_sdd_output` / `is_sdd_local_path` | `crates/terrain-core/src/assets/sdd.rs:176` / `paths.rs:207` | SDD 产物安全写盘（路径白名单） |
+| `save_ask_messages` / `create_ask_session` | `crates/terrain-core/src/assets/ask.rs:259,150` | Ask 会话持久化（messages/meta/active） |
+| `read_agent_pack_file` | `crates/terrain-core/src/assets/pack_read.rs` | pack 字节级切片（带缓存索引） |
+| `grep_agent_pack` | `crates/terrain-core/src/assets/query.rs:58` | pack 代码块内 grep + 行号还原 |
+| env status/plan/apply | `crates/terrain-core/src/assets/env/{status,plan,apply}.rs` | 环境集成探测、计划、应用 |
+| `discover_project_meta` | `crates/terrain-core/src/assets/project_meta.rs` | `terrain-meta.json` 发现与解析 |
 
 ---
 
 ## 内部数据流
 
+以一个"要一份 Agent 上下文"为例，看 assets 是如何编排决策的。注意两条关键分叉：**同步则跳过**（不付任何模型成本）、**增量不合格则回退全量**（宁可多花成本也不让烂结果落盘）。
+
 ```mermaid
 flowchart TD
-    HEAD["Git HEAD 基线"] --> INCR["plan_incremental_update<br/>assets/incremental.rs"]
-    DIFF["git diff 文件集"] --> INCR
-    INCR -->|"Incremental"| MODE_INCR["增量 agent context 更新"]
-    INCR -->|"Full"| MODE_FULL["agent context 全量重建"]
-    INCR -->|"Skipped/原因"| DIAG["返回 reason 串"]
-    HEAD --> LITHO["plan_litho_generation<br/>assets/litho.rs"]
-    LITHO --> TASKS["研究任务清单"]
-    LITHO --> COMP["composition 计划"]
-    LITHO --> HUMAN["human 文档集清单 + 完整性判定"]
-    QUERY["prepare_agent_assets_for_ask<br/>assets/query.rs"] --> PACKCHECK{"pack 与 HEAD 同步？"}
-    PACKCHECK -->|"否"| REPACK["重新 repomix 打包"]
-    PACKCHECK -->|"是"| CTXCHECK{"context 与 HEAD 同步？"}
-    CTXCHECK -->|"否"| REGEN["重新生成 context"]
-    CTXCHECK -->|"是"| READY["资产就绪"]
+    A["资产请求<br/>agent_pack / context / human_docs"] --> B["就绪判定<br/>agent_pack_ready / litho_human_complete"]
+    B --> C{"就绪且与 HEAD 同步?"}
+    C -- 是 --> D["显式跳过<br/>记 refresh_reason"]
+    C -- 否 --> E["plan_incremental_update<br/>IncrementalOptions + baseline HEAD"]
+    E --> F{"KnowledgeUpdateMode?"}
+    F -- UpToDate --> G["只重打基线<br/>write_human_docs_meta skipped"]
+    F -- Incremental --> H["build_*_update_prompt<br/>带 git diff 证据"]
+    H --> I["模型外科手术式修改"]
+    I --> J{"增量子集校验?<br/>reject_incremental_document"}
+    J -- 合格 --> K["落盘 + 更新基线"]
+    J -- 不合格 --> L["回退全量<br/>full_after_incremental"]
+    F -- Full(变更过大) --> M["build_*_prompt 全量重生成"]
+    M --> K
+    K --> N["pack_read/query 提供<br/>字节切片读取服务"]
 ```
 
 **关键步骤说明**：
-1. **增量决策**（`plan_incremental_update`）：由 `assets/incremental.rs` 处理，根据 git diff 文件数与 `incremental_max_changed_files` 阈值决定 Incremental 或 Full
-2. **Litho 计划**（`plan_litho_generation`）：由 `assets/litho.rs` 处理，定义研究阶段与编排阶段的任务清单
-3. **Ask 前同步**（`prepare_agent_assets_for_ask`）：由 `assets/query.rs` 处理，确保 pack 和 context 都与当前 HEAD 一致
+1. 就绪过滤（repomix.rs）：`agent_pack_ready` / `litho_human_complete_with_research` 在生成前先问"要不要生成"。这是成本的第一个闸门。
+2. 增量计划（incremental.rs：`plan_incremental_update`）：以 Git HEAD 为基线，用 diff 证据喂模型做局部修补；变更过大自动回退 `Full`。
+3. 写盘约束（sdd.rs `save_sdd_output` + `paths.rs is_sdd_local_path`）：SDD 产物只允许落在 `~/.terrain/sdd/` 白名单内，杜绝模型输出路径越界写盘。
+4. 读取服务（pack_read.rs / query.rs）：生成完 pack 之后的检索与切片都走这里，`grep_repomix_pack` 返回带 `file_path`+`file_line` 的可定位命中。
 
 ---
 
 ## 关键接口与扩展点
 
-assets 模块的核心扩展点在于"新增知识资产"：只需在 `assets/mod.rs` 加一个组装步骤，将其纳入 `litho_human_complete_with_research` 判定或增量 reason 体系，即可被 Init/Refresh 流程自动覆盖。
-
-`KnowledgeUpdateMode` 枚举是增量策略的插桩点——新增一种更新模式（如"仅更新特定章节"）只需扩展枚举变体和 `plan_incremental_update` 的判定逻辑。
+- **`plan_incremental_update(baseline_head, options) -> KnowledgeUpdateMode`**：整个系统增量语义的单一真源，任何"要不要重跑"的决策都可复用。
+- **`build_*_prompt` 系列**：`build_litho_generation_prompt` / `build_litho_composition_prompt` / `build_sdd_phase_prompt` / `build_agent_context_prompt`——"如何引导模型"收口一处，`prompts/mod.rs:3-6` 只是薄 re-export 门面。新增任务类型只需在 assets 下添一个 prompt 构建器。
+- **`pack_read` / `query` 两个读取接口**：`read_agent_pack_file`（按路径读切片）与 `grep_repomix_pack`（按正则 grep）是 Agent 检索的孪生工具，都由 tools.rs 暴露给模型。
+- **新增资产类型**：在 `assets/` 下加子模块 + 在 `AssetGenerationPlan` / `KnowledgeUpdateMode` 枚举上扩展即可，外围工作流不变。
 
 ---
 
@@ -80,45 +99,39 @@ assets 模块的核心扩展点在于"新增知识资产"：只需在 `assets/mo
 
 | 交互模块 | 方向 | 接口/协议 | 说明 |
 |---------|------|---------|------|
-| ingest | 被依赖 | `ProjectScanner.scan_repo` | scan 的产出是 assets 的输入 |
-| freshness | 依赖 | `baseline_matches_head` | assets 检查基线是否需要重打 |
-| chat | 被依赖 | `prepare_agent_assets_for_ask` | Ask 前确保资产就绪 |
-| workflows | 被依赖 | `run_litho_generation` | workflows 调用 assets 的 Litho 计划 |
-| settings | 依赖 | `KnowledgeSettings` | 增量策略参数从 settings 读取 |
-| env | 被依赖 | `assets/env/mod.rs` | env 是 assets 的子模块 |
+| `ingest` | 被依赖 | `maybe_pack_agent_assets` | 扫描后顺带触发 repomix 打包 |
+| `freshness` | 依赖 | Git 变更集 / 基线 | 增量计划需要 diff 证据与基线 HEAD |
+| `settings` | 依赖 | `KnowledgeSettings` / `IncrementalOptions` | 增量偏好、`incremental_max_changed_files` |
+| `preset_skills` | 依赖 | `resolve_sdd_skill_dir` / `default_sdd_skill_dir` | SDD skill 目录定位（`skill_ready`） |
+| `paths` / `doc` | 依赖 | `KnowledgePaths` / `write_doc` | 路径解析与文档读写 |
+| `terrain-agent`（litho / agent_context / workflows） | 消费 | `plan_litho_generation` / `build_*_prompt` | 所有 LLM 环节的离线决策底座 |
+| `tools` | 消费 | `read_agent_pack_file` / `grep_repomix_pack` | Ask 微层检索工具 |
+| `src-tauri` / `terrain-cli` | 消费 | `plan_assets_cmd` / `assets plan` 等 | 规划不执行的流水线命令 |
 
 ---
 
 ## 跨模块协作场景
 
-> 本模块在核心业务流程中的角色
+**在「项目初始化」中**：`run_project_initialization` 先经 `ProjectScanner` 扫描，随即 `maybe_pack_agent_assets`（本模块）产出 repomix 包；`litho_human_complete_with_research`（本模块）判定 human/ 是否已齐，不齐才调 Litho；随后 `run_agent_context_if_needed` 用 `agent_pack_ready` 判定、用 `plan_incremental_update` 决定 context 走增量还是全量。整条流水线的"要不要跑、跑增量还是全量、产物落哪"全部由 assets 的决策函数拍板，terrain-agent 只负责驱动模型。
 
-**在项目初始化中**：assets 是核心调度器。具体参与：
-- `ingest.scan_repo` 扫描完成后，`plan_litho_generation` 定义 Litho 的研究与编排计划
-- `run_litho_generation` 根据计划驱动 ACP Agent 生成 `human/` 文档集
-- `run_agent_context_if_needed` 生成 `agent/context.md`，与 pack 一起构成 Agent 可消费的知识
+**在「Ask 问答的微观检索层」中**：Agent 调 `grep_repomix_pack`（query.rs）在 `agent/repomix.md` 里定位代码块、拿到 `file_path`+`file_line`，再调 `read_agent_pack_file`（pack_read.rs）取字节切片。两个接口都来自本模块，构成"先定位、后切片"的两段式检索，其字节定位性能由 pack_read 的缓存索引保障（而不是每次全扫 1MB 文件）。
 
-**在 DeepWiki Ask 中**：assets 作为"守门人"确保知识最新。具体参与：
-- `prepare_agent_assets_for_ask` 在每次 turn 前检查 pack/context 与 HEAD 的同步状态
-- 不同步时自动补齐，确保 LLM 回答基于最新知识
-
-**在快速刷新中**：assets 的增量策略是性能关键。具体参与：
-- `plan_incremental_update` 根据 git diff 决定增量/全量/跳过
-- 增量 context 更新只处理变更部分，全量重建仅在 diff 不可信时触发
+**在「SDD 四阶段」中**：`plan_sdd_workflow` 产出 `SddPlan`，`build_sdd_llm_prompt` / `build_sdd_phase_prompt` 为每阶段拼 prompt（只带前序工件 + 当前草稿），`save_sdd_output` 白名单落盘——assets 负责全部"纸面管理"，terrain-agent 的 `run_sdd_phase` 只做执行调度。
 
 ---
 
 ## 性能考量
 
-- **repomix in-sync 跳过**：未变更时不重新打包源码，节省最耗时的 IO 操作
-- **增量 agent context**：按 git diff 分组，只更新变更部分；`incremental_max_changed_files=60` 阈值防止"增量吃到撑"
-- **Litho 启发式提前结束**：检测文档集完整后立即结束等待，避免无谓空转
-- **16KiB context 上限**：确保输出精炼，减少 LLM 消费的 token 数
+- **增量优先省 token**：`plan_incremental_update` 直接让"零 token 的保鲜"成为常态——repack 可跳过、context 可跳过、Litho 可跳过，每段都由 HEAD 比对兜底。
+- **pack_read 缓存索引**：对 ~1MB 的 repomix pack 不做线性全扫，`read_agent_pack_file` 用缓存的字节偏移定位，是 Agent 微观检索的性能基石。
+- **只 stat 不读正文**：SDD 的 `build_phase_infos` 判定阶段完成度只做 `is_file()` + 读 mtime，不读四个 md 的内容；大文件只在 prompt 拼装时按需 `read_to_string`。
+- **本地优先**：所有决策（就绪/增量/跳过）都是纯文件系统 + Git 元数据操作，不触网、不调模型，成本可忽略。
 
 ---
 
 ## 实现亮点
 
-- **Litho 完整性判定**（`litho_human_complete_with_research`）：不仅检查文档文件是否存在，还检查研究产物是否齐全，实现了"续传"能力——ACP 中途失败时产物仍在 `.litho-agent/`，下次可从断点继续
-- **增量 reason 体系**（`KnowledgeUpdateReason`）：每个决策都附带稳定的 reason 字符串（如 `full_after_incremental_untrustworthy`），便于 UI 展示和 CI 日志诊断
-- **Ask 前同步的"带着最新地图再上路"**：不是在 Init 时一次性同步，而是在每次问答前动态检查，确保即使用户在两次 Ask 之间提交了代码，回答也基于最新知识
+1. **"文件系统即状态机"**：SDD 阶段进度就是 `outputs/` 下有没有对应文件（`assets/sdd.rs:287`），删文件即回退进度——没有数据库、没有额外状态字段，与"文件系统是真理"的 Unix 精神一脉相承。
+2. **增量守恒的保守校验**：`reject_incremental_document` 要求增量结果必须是基线超集，否则先尝试从磁盘恢复 Agent 的就地编辑、再回退全量（`agent_context.rs:124-179`）——把"LLM 用摘要覆盖整篇好文档"的可能安全事故焊死。
+3. **路径即权限域**：`save_sdd_output` 的 `is_sdd_local_path` 白名单（`paths.rs:207`）让"目录即权限域"充当数据库式的写权限约束。
+4. **规划与执行彻底分离**：`plan_litho_generation` / `plan_sdd_workflow` / `plan_incremental_update` 都只产出"计划"不执行，让 CLI/Tauri 能提供"只看要做什么"的只读命令（`assets plan`），也让执行层可以把计划当上下文喂给模型。
