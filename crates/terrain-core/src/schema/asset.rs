@@ -25,6 +25,10 @@ pub enum AssetGenerator {
     OpenApiImporter,
 }
 
+/// Serde default for metas written before strategy versioning. Deliberately the
+/// legacy value: a missing `pack_strategy` always identifies a legacy (compressed)
+/// pack, which `agent_pack_synced_with_head` forces to repack. Current strategy
+/// lives in `assets::repomix::AGENT_PACK_STRATEGY`.
 fn default_pack_strategy() -> String {
     "architecture-context".into()
 }

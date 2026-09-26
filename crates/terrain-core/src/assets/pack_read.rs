@@ -143,10 +143,19 @@ pub struct AgentPackFileContent {
     /// Original requested end when clamped.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub requested_end_line: Option<u32>,
+    /// False when the section is a compressed/folded pack view: its `N:` prefixes
+    /// (and `start_line`/`end_line`) are compressed-view numbers, NOT source-file
+    /// line numbers, and must not be cited. Omitted when true.
+    #[serde(default, skip_serializing_if = "is_true")]
+    pub line_numbers_reliable: bool,
 }
 
 fn is_false(v: &bool) -> bool {
     !*v
+}
+
+fn is_true(v: &bool) -> bool {
+    *v
 }
 
 fn normalize_path(path: &str) -> String {
@@ -217,12 +226,14 @@ pub fn read_agent_pack_file(
 ) -> Result<AgentPackFileContent> {
     let (text, sections) = cached_pack(pack_path)?;
     let section = find_section(&sections, file_path)?;
+    let declared = crate::assets::repomix::pack_declares_source_line_numbers(&text);
     slice_section(
         &text[section.start..section.end],
         file_path,
         &section.path,
         start_line,
         end_line,
+        declared,
     )
 }
 
@@ -238,12 +249,14 @@ fn read_agent_pack_file_from_text(
 ) -> Result<AgentPackFileContent> {
     let sections = index_sections(pack_content);
     let section = find_section(&sections, file_path)?;
+    let declared = crate::assets::repomix::pack_declares_source_line_numbers(pack_content);
     slice_section(
         &pack_content[section.start..section.end],
         file_path,
         &section.path,
         start_line,
         end_line,
+        declared,
     )
 }
 
@@ -264,6 +277,7 @@ fn slice_section(
     matched_path: &str,
     start_line: Option<u32>,
     end_line: Option<u32>,
+    pack_declares_line_numbers: bool,
 ) -> Result<AgentPackFileContent> {
     let mut body_lines: Vec<&str> = Vec::new();
     let mut in_fence = false;
@@ -284,12 +298,32 @@ fn slice_section(
         body_lines.push(line);
     }
 
+    // A pack that declares the current strategy is uncompressed by construction:
+    // trust that over content scanning, so a source file that merely contains a
+    // `⋮` character (icons, fixtures) is not mislabelled as folded. Legacy packs
+    // fall back to detecting repomix fold markers (`⋮`), whose `N:` prefixes are
+    // compressed-view numbers, not source-file line numbers.
+    let line_numbers_reliable =
+        pack_declares_line_numbers || !body_lines.iter().any(|l| l.contains('⋮'));
+
+    // Numbering is a per-section property: repomix either prefixes every body
+    // line with `N:` or none of them. Decide from the first line so a stray
+    // `12:` inside an unnumbered file cannot inject a bogus line number into
+    // the positional sequence.
+    let numbered_mode = body_lines
+        .first()
+        .is_some_and(|l| parse_numbered_line(l).is_some());
     let numbered: Vec<(u32, &str)> = body_lines
         .iter()
         .enumerate()
-        .map(|(i, line)| match parse_numbered_line(line) {
-            Some((n, body)) => (n, body),
-            None => (i as u32 + 1, strip_line_number_prefix(line)),
+        .map(|(i, line)| {
+            if !numbered_mode {
+                return (i as u32 + 1, strip_line_number_prefix(line));
+            }
+            match parse_numbered_line(line) {
+                Some((n, body)) => (n, body),
+                None => (i as u32 + 1, strip_line_number_prefix(line)),
+            }
         })
         .collect();
 
@@ -311,6 +345,7 @@ fn slice_section(
             range_clamped: false,
             requested_start_line: None,
             requested_end_line: None,
+            line_numbers_reliable: true,
         });
     }
 
@@ -357,6 +392,7 @@ fn slice_section(
         } else {
             None
         },
+        line_numbers_reliable,
     })
 }
 
@@ -479,6 +515,69 @@ mod tests {
     fn does_not_bleed_into_the_next_section() {
         let got = read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", None, None).unwrap();
         assert!(!got.content.contains("pub fn other()"));
+    }
+
+    #[test]
+    fn folded_section_is_served_but_flagged_unreliable() {
+        // Legacy compressed pack: `⋮` fold markers mean every `N:` prefix is a
+        // compressed-view number, not a source-file line number.
+        const FOLDED: &str = "\
+### src/big.rs (5 lines)
+
+```rust
+1: Section
+2: ⋮----
+3: {
+4:     path: String,
+5: }
+```
+";
+        let got = read_agent_pack_file_from_text(FOLDED, "src/big.rs", None, None).unwrap();
+        assert!(got.content.contains("path: String"));
+        assert!(!got.line_numbers_reliable);
+        assert_eq!(got.start_line, 1);
+        assert_eq!(got.end_line, 5);
+    }
+
+    #[test]
+    fn unnumbered_section_stays_positional_despite_stray_prefix() {
+        // An unnumbered section whose content merely looks like `N:` text must
+        // not mix a bogus line number into the positional sequence.
+        const UNNUMBERED: &str = "\
+### log.txt (3 lines)
+
+```
+alpha
+12: beta
+gamma
+```
+";
+        let got = read_agent_pack_file_from_text(UNNUMBERED, "log.txt", Some(2), Some(3)).unwrap();
+        // Positional numbering: "12: beta" is line 2, not line 12.
+        assert_eq!(got.start_line, 2);
+        assert_eq!(got.end_line, 3);
+        assert!(got.content.contains("beta"));
+        assert!(got.line_numbers_reliable);
+    }
+
+    #[test]
+    fn declared_pack_keeps_reliable_line_numbers_despite_ellipsis() {
+        // A v2 pack is uncompressed by construction; a source line containing a
+        // literal `⋮` (icons, fixtures) must not be mistaken for a fold marker.
+        let declared = format!(
+            "# Repomix\nTerrain Agent Source Pack (repomix-core / {})\n\n\
+             ### src/menu.svelte (2 lines)\n\n```svelte\n1: <button>⋮</button>\n2: </div>\n```\n",
+            crate::assets::repomix::AGENT_PACK_STRATEGY
+        );
+        let got = read_agent_pack_file_from_text(&declared, "src/menu.svelte", None, None).unwrap();
+        assert!(got.line_numbers_reliable);
+        assert!(got.content.contains("⋮"));
+    }
+
+    #[test]
+    fn numbered_section_reports_reliable_line_numbers() {
+        let got = read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", Some(2), Some(2)).unwrap();
+        assert!(got.line_numbers_reliable);
     }
 
     #[test]

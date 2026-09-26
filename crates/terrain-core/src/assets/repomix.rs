@@ -14,14 +14,37 @@ use crate::schema::{AgentPackMeta, AssetGenerator};
 use super::pack_read::{agent_pack_ready, invalidate_pack_text_cache};
 
 /// Architecture-oriented agent context — not a full code dump.
-pub const AGENT_PACK_STRATEGY: &str = "architecture-context";
+///
+/// v2: uncompressed, comments intact. `N:` prefixes must be true source-file
+/// line numbers because `GrepMatch::file_line` / `AgentPackFileContent::start_line`
+/// feed source citations; a compressed or comment-stripped view renumbers lines
+/// and breaks every citation built on it. The bump also forces a repack of
+/// legacy v1 packs (see [`agent_pack_synced_with_head`]).
+pub const AGENT_PACK_STRATEGY: &str = "architecture-context-v2";
 
-const AGENT_CONTEXT_HEADER: &str = "\
-Terrain Agent Source Pack (repomix-core / architecture-context)
+const AGENT_CONTEXT_HEADER_TEMPLATE: &str = "\
+Terrain Agent Source Pack (repomix-core / {strategy})
 Purpose: Indexed snapshot of project source code for Ask-mode retrieval.
 Use grep_agent_pack and read_agent_pack_file on demand — never load this entire file into LLM context.
 Auto-packed on first Ask when missing; use 重建源码索引 in the Terrain UI to refresh after large codebase changes.
 ";
+
+/// Pack header text carrying the current strategy, so a pack can declare that its
+/// `N:` prefixes are source-file line numbers. Pack readers trust this over
+/// content heuristics (see [`pack_declares_source_line_numbers`]).
+fn agent_context_header() -> String {
+    AGENT_CONTEXT_HEADER_TEMPLATE.replace("{strategy}", AGENT_PACK_STRATEGY)
+}
+
+/// True when the pack text declares the current [`AGENT_PACK_STRATEGY`] — those packs
+/// are uncompressed and comment-intact, so their `N:` prefixes are true source-file
+/// line numbers and no fold scanning is needed.
+///
+/// Legacy packs (or any pack without the declaration) fall back to per-section fold
+/// detection, which is conservative in the unsafe direction.
+pub fn pack_declares_source_line_numbers(pack_text: &str) -> bool {
+    pack_text.contains(&format!("repomix-core / {AGENT_PACK_STRATEGY}"))
+}
 
 /// Paths excluded from agent context to reduce noise and refresh cost.
 fn architecture_ignore_patterns() -> Vec<String> {
@@ -67,10 +90,13 @@ pub struct AgentPackReport {
     pub skipped: bool,
 }
 
-/// True when pack exists and its Git baseline matches current HEAD (ignores dirty working tree).
+/// True when pack exists, was built by the current [`AGENT_PACK_STRATEGY`], and its
+/// Git baseline matches current HEAD (ignores dirty working tree).
 ///
-/// Use this to decide whether repomix packing can be skipped. A dirty tree may still differ from
-/// the last pack on disk; freshness scoring and Ask trust blocks surface that separately.
+/// Use this to decide whether repomix packing can be skipped. A dirty tree may still
+/// differ from the last pack on disk; freshness scoring and Ask trust blocks surface
+/// that separately. Legacy-strategy packs (compressed / comment-stripped) always
+/// report unsynced so the next pack rebuilds with source-true line numbers.
 pub fn agent_pack_synced_with_head(
     paths: &KnowledgePaths,
     project_slug: &str,
@@ -82,6 +108,9 @@ pub fn agent_pack_synced_with_head(
     let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)) else {
         return false;
     };
+    if meta.pack_strategy != AGENT_PACK_STRATEGY {
+        return false;
+    }
     baseline_matches_head(repo_path, meta.baseline_git_head.as_deref())
 }
 
@@ -144,9 +173,14 @@ pub async fn pack_agent_assets(
     let mut config = RepomixConfig::default();
     config.output.style = OutputStyle::Markdown;
     config.output.file_path = output_path.display().to_string();
-    config.output.header_text = Some(AGENT_CONTEXT_HEADER.into());
-    config.output.compress = true;
-    config.output.remove_comments = true;
+    config.output.header_text = Some(agent_context_header());
+    // No compression, no comment removal: both rewrite the file into a renumbered
+    // view whose `N:` prefixes no longer match source-file line numbers, breaking
+    // every citation built on them (grep file_line, SourceCitation). The pack is
+    // consumed via grep + bounded slice reads, never loaded whole, so full-fidelity
+    // output is the affordable choice here.
+    config.output.compress = false;
+    config.output.remove_comments = false;
     config.output.show_line_numbers = true;
     config.output.top_files_length = 20;
     config.ignore.custom_ignore = architecture_ignore_patterns();
@@ -258,13 +292,19 @@ mod tests {
         .to_string()
     }
 
-    fn write_pack_assets(paths: &KnowledgePaths, slug: &str, repo_path: &str, head: &str) {
+    fn write_pack_assets(
+        paths: &KnowledgePaths,
+        slug: &str,
+        repo_path: &str,
+        head: &str,
+        strategy: &str,
+    ) {
         fs::write(paths.agent_pack_main(slug), "# pack\n").unwrap();
         let meta = AgentPackMeta {
             project: slug.to_string(),
             repo_path: repo_path.to_string(),
             generator: AssetGenerator::RepomixCore,
-            pack_strategy: AGENT_PACK_STRATEGY.into(),
+            pack_strategy: strategy.to_string(),
             output_file: "repomix.md".into(),
             total_files: 1,
             total_tokens: 10,
@@ -290,7 +330,13 @@ mod tests {
         crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
         let paths = KnowledgePaths::new();
         paths.ensure_project_layout(slug).unwrap();
-        write_pack_assets(&paths, slug, &repo.display().to_string(), &head);
+        write_pack_assets(
+            &paths,
+            slug,
+            &repo.display().to_string(),
+            &head,
+            AGENT_PACK_STRATEGY,
+        );
 
         fs::write(repo.join("dirty.rs"), "x").unwrap();
 
@@ -312,7 +358,13 @@ mod tests {
         crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
         let paths = KnowledgePaths::new();
         paths.ensure_project_layout(slug).unwrap();
-        write_pack_assets(&paths, slug, &repo.display().to_string(), &head);
+        write_pack_assets(
+            &paths,
+            slug,
+            &repo.display().to_string(),
+            &head,
+            AGENT_PACK_STRATEGY,
+        );
 
         fs::write(repo.join("next.rs"), "y").unwrap();
         Command::new("git")
@@ -325,6 +377,33 @@ mod tests {
             .current_dir(repo)
             .output()
             .unwrap();
+
+        assert!(!agent_pack_synced_with_head(
+            &paths,
+            slug,
+            &repo.display().to_string()
+        ));
+    }
+
+    #[test]
+    fn pack_not_synced_when_strategy_is_legacy() {
+        // Legacy v1 packs are compressed views whose `N:` prefixes are not
+        // source-file line numbers — they must be rebuilt even at a matching HEAD.
+        let _lock = crate::registry::registry_test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let head = init_git_repo(repo);
+        let slug = "legacy-strategy-pack";
+        crate::registry::register_project(slug, &repo.display().to_string()).unwrap();
+        let paths = KnowledgePaths::new();
+        paths.ensure_project_layout(slug).unwrap();
+        write_pack_assets(
+            &paths,
+            slug,
+            &repo.display().to_string(),
+            &head,
+            "architecture-context",
+        );
 
         assert!(!agent_pack_synced_with_head(
             &paths,

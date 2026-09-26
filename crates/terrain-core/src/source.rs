@@ -444,11 +444,19 @@ pub fn resolve_source_citation(
     }
 
     let resolved_repo = repos.into_iter().next().unwrap_or_default();
+    // Legacy compressed packs carry compressed-view line numbers that do not
+    // match the source file; zeroing them keeps the UI from anchoring on a
+    // wrong line. Content itself (structure/symbols) remains readable.
+    let (slice_start, slice_end) = if pack_file.line_numbers_reliable {
+        (pack_file.start_line, pack_file.end_line)
+    } else {
+        (0, 0)
+    };
     Ok(SourceSlice {
         repo_path: resolved_repo,
         file_path: pack_file.matched_path,
-        start_line: pack_file.start_line,
-        end_line: pack_file.end_line,
+        start_line: slice_start,
+        end_line: slice_end,
         content: pack_file.content,
     })
 }
