@@ -298,8 +298,10 @@ pub fn grep_agent_pack_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
         FunctionTool::new(
             "grep_agent_pack",
             "Regex search in agent/repomix.md. Each hit includes file_path and file_line (source line \
-             within the pack slice). Use file_line for read_agent_pack_file — NOT line_number (repomix.md \
-             position). Identical pattern+project returns cached hits.",
+             within the pack slice; null when the section is a compressed/folded view whose line \
+             numbers are unreliable — never cite a line number from such a hit). Use file_line for \
+             read_agent_pack_file — NOT line_number (repomix.md position). Identical pattern+project \
+             returns cached hits.",
             move |ctx, args| {
                 let paths = paths.clone();
                 async move {
@@ -334,10 +336,23 @@ pub fn grep_agent_pack_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                         params.limit.unwrap_or(20),
                     )
                     .map_err(map_core_err)?;
-                    let response = truncate_tool_json(
-                        json!({ "hits": hits, "pack_path": pack.display().to_string() }),
-                        MAX_TOOL_JSON_CHARS,
-                    );
+                    let folded_hits = hits
+                        .iter()
+                        .filter(|h| h.file_path.is_some() && h.file_line.is_none())
+                        .count();
+                    let mut response = json!({
+                        "hits": hits,
+                        "pack_path": pack.display().to_string(),
+                    });
+                    if folded_hits > 0 {
+                        response["warning"] = json!(format!(
+                            "{folded_hits} of {} hits are in compressed/folded pack sections: their line \
+                             numbers do NOT match the source files. Do not cite line numbers for these hits; \
+                             the pack is stale — suggest rebuilding the source index (重建源码索引 / Terrain scan).",
+                            hits.len()
+                        ));
+                    }
+                    let response = truncate_tool_json(response, MAX_TOOL_JSON_CHARS);
                     store_cached(
                         &session_id,
                         "grep_agent_pack",
@@ -384,8 +399,10 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
             "read_agent_pack_file",
             "Read a source file slice from agent/repomix.md. Use file_line from grep_agent_pack hits \
              for start_line/end_line (≤150 lines). Do NOT use grep line_number or context.md repo line \
-             numbers — the pack may contain a folded/truncated slice. Omit line args to read the full \
-             packed section. Identical args return cached content.",
+             numbers — the pack may contain a folded/truncated slice. When the response carries \
+             line_numbers_reliable=false the slice is a compressed view: its lines do not correspond \
+             to source-file lines and must not be cited by line number. Omit line args to read the \
+             full packed section. Identical args return cached content.",
             move |ctx, args| {
                 let paths = paths.clone();
                 async move {
@@ -437,6 +454,13 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
                             slice.start_line,
                             slice.end_line,
                         ));
+                    }
+                    if !slice.line_numbers_reliable {
+                        response["warning"] = json!(
+                            "This section is a compressed/folded pack view: its line numbers do NOT \
+                             match the source file. Do not cite line numbers from this slice; the pack \
+                             is stale — suggest rebuilding the source index (重建源码索引 / Terrain scan)."
+                        );
                     }
                     let response = truncate_tool_json(response, MAX_TOOL_JSON_CHARS);
                     store_cached(
