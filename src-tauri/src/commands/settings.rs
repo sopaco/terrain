@@ -61,7 +61,7 @@ pub fn check_llm(state: State<'_, AppState>) -> terrain_agent::LlmStatus {
     llm_status(&state.model_config())
 }
 
-/// Live validation: send one minimal (1-token) request to the configured endpoint.
+/// Live validation: send one minimal request to the configured endpoint.
 /// Returns the LLM status with `ready`/`message` reflecting the real network result,
 /// including the server's own error message on failure.
 #[tauri::command]

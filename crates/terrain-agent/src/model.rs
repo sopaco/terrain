@@ -14,6 +14,10 @@ pub use terrain_core::settings::{
 };
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(12);
+/// OpenAI's Responses API rejects `max_output_tokens` below 16
+/// ("integer below minimum value"); Chat Completions has no such floor.
+/// Use 16 so the probe works across both API styles.
+const PROBE_MAX_OUTPUT_TOKENS: i32 = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmProvider {
@@ -345,7 +349,7 @@ async fn http_get_json(url: &str, bearer: Option<&str>) -> Result<serde_json::Va
     serde_json::from_str(&text).with_context(|| format!("invalid JSON from {url}"))
 }
 
-/// Live connectivity probe: send one minimal (1-token) request to the configured endpoint.
+/// Live connectivity probe: send one minimal request to the configured endpoint.
 ///
 /// Unlike [`llm_status`] (a pure config check), this exercises the real endpoint, API key
 /// and model id, so auth failures and unknown model ids surface here with the server's
@@ -357,7 +361,7 @@ pub async fn probe_llm(config: &ModelConfig) -> Result<String> {
         model: config.model.clone(),
         contents: vec![adk_core::Content::new("user").with_text("ping")],
         config: Some(adk_core::GenerateContentConfig {
-            max_output_tokens: Some(1),
+            max_output_tokens: Some(PROBE_MAX_OUTPUT_TOKENS),
             ..Default::default()
         }),
         tools: HashMap::new(),
