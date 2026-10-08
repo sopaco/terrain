@@ -39,6 +39,10 @@ fn architecture_ignore_patterns() -> Vec<String> {
         "**/vendor/**",
         "**/node_modules/**",
         "**/target/**",
+        // Vendored per-platform tool bundles (node runtime, rtk/terrain binaries,
+        // OpenSSL headers) — agent context never needs them.
+        "packages/*/*",
+        "packages/*/*/**",
         "**/dist/**",
         "**/build/**",
         "**/coverage/**",
