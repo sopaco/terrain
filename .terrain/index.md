@@ -20,69 +20,79 @@ source: .
 
 ## Structure
 
-  - Cargo.toml
-  - svelte.config.js
-  - crates/
-    - terrain-ts-export/
-    - terrain-core/
-    - terrain-agent/
-    - terrain-cli/
-  - index.html
-  - LICENSE
   - preset_skills/
-    - litho-documents-skill/
-    - sdd-workflow-skill/
     - terrain-ask-skill/
+    - sdd-workflow-skill/
     - agent-architecture-skill/
     - agent-context-skill/
+    - litho-documents-skill/
+  - assets/
+    - app_icon_re.png
+    - screenshots/
+    - intro/
+    - app-icon.png
+    - banner.webp
+    - graph_knowledge_factory.webp
+  - CLAUDE.md
   - env-catalog/
-    - agent-tools.template.json
+    - catalog.json
     - agents-md/
     - skills/
-    - catalog.json
-  - Cargo.lock
-  - bun.lock
+    - agent-tools.template.json
+  - LICENSE
+  - Cargo.toml
+  - .agents/
+    - skills/
+  - vite.config.ts
   - README.md
-  - package.json
-  - README_zh.md
-  - scripts/
-    - cross-windows-terrain.sh
-    - check-i18n-parity.ts
+  - .claude/
+    - skills/
+  - .codegraph/
+    - codegraph.db
+    - .gitignore
+  - npm/
+    - README.md
+    - packages/
+    - scripts/
+    - package.json
+    - .gitignore
+    - package-lock.json
   - packages/
     - codegraph/
     - terrain/
     - rtk/
+  - scripts/
+    - check-i18n-parity.ts
+    - cross-windows-terrain.sh
+  - index.html
   - src-tauri/
     - Cargo.toml
-    - tauri.conf.json
-    - capabilities/
-    - build.rs
-    - gen/
     - binaries/
     - icons/
+    - bundled-resources/
+    - tauri.conf.json
+    - build.rs
+    - capabilities/
+    - gen/
     - src/
-  - tsconfig.json
   - rust-toolchain.toml
+  - README_zh.md
+  - package.json
   - AGENTS.md
-  - vite.config.ts
-  - assets/
-    - app_icon_re.png
-    - screenshots/
-    - graph_knowledge_factory.webp
-    - intro/
-    - app-icon.png
-    - banner.webp
-  - npm/
-    - README.md
-    - package-lock.json
-    - package.json
-    - scripts/
-    - packages/
-  - CLAUDE.md
+  - crates/
+    - terrain-cli/
+    - terrain-ts-export/
+    - terrain-core/
+    - terrain-agent/
+  - .gitignore
   - src/
     - main.ts
-    - app.css
-    - App.svelte
+    - UsageWindow.svelte
     - vite-env.d.ts
     - lib/
-    - UsageWindow.svelte
+    - App.svelte
+    - app.css
+  - svelte.config.js
+  - Cargo.lock
+  - bun.lock
+  - tsconfig.json
