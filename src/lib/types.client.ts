@@ -92,6 +92,12 @@ export interface GraphifyStatus {
   staleness: "fresh" | "stale" | "unknown";
 }
 
+/** AI-generated commit message (Rust GeneratedCommitMessage). */
+export interface GeneratedCommitMessage {
+  summary: string;
+  description: string;
+}
+
 export interface GraphifyViewPayload {
   html: string | null;
   html_too_large: boolean;

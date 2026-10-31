@@ -1,5 +1,16 @@
 <script lang="ts">
-  import { Check, ChevronDown, GitBranch, Loader2, TriangleAlert } from "@lucide/svelte";
+  import {
+    Archive,
+    Check,
+    ChevronDown,
+    GitBranch,
+    Loader2,
+    PackageOpen,
+    Sparkles,
+    TriangleAlert,
+    Undo2,
+  } from "@lucide/svelte";
+  import { ask } from "@tauri-apps/plugin-dialog";
   import {
     getGitBranches,
     getGitCommitDiff,
@@ -9,10 +20,16 @@
     getGitStatus,
     gitCheckout,
     gitCommitFiles,
+    gitCreateBranch,
+    gitDiscardFile,
     gitFetch,
+    gitGenerateCommitMessage,
     gitMerge,
     gitPull,
     gitPush,
+    gitStashPop,
+    gitStashPush,
+    gitUndoLastCommit,
   } from "../api";
   import { tr } from "../i18n";
   import type {
@@ -119,6 +136,8 @@
 
   let conflictFlag = $state(false);
   let mergeBranch = $state("");
+  let newBranchName = $state("");
+  let generating = $state(false);
   let view = $state<"changes" | "history">("changes");
   let dropdownOpen = $state(false);
   let mergeRowOpen = $state(false);
@@ -160,6 +179,40 @@
     const repo = repoPath;
     if (!repo) return;
     await runGitOp(() => gitPull(repo), { announce: true });
+  }
+
+  async function doStashPush() {
+    const repo = repoPath;
+    if (!repo) return;
+    await runGitOp(() => gitStashPush(repo), { announce: true });
+  }
+
+  async function doStashPop() {
+    const repo = repoPath;
+    if (!repo) return;
+    await runGitOp(() => gitStashPop(repo), { announce: true });
+  }
+
+  async function doUndoLastCommit() {
+    const repo = repoPath;
+    if (!repo) return;
+    const yes = await ask(tr("git.undoCommitConfirmBody"), {
+      title: tr("git.undoCommitConfirmTitle"),
+      kind: "warning",
+    });
+    if (!yes) return;
+    await runGitOp(() => gitUndoLastCommit(repo), { announce: true });
+  }
+
+  async function doCreateBranch() {
+    const repo = repoPath;
+    const name = newBranchName.trim();
+    if (!repo || !name) return;
+    const ok = await runGitOp(() => gitCreateBranch(repo, name), { announce: true });
+    if (ok) {
+      newBranchName = "";
+      dropdownOpen = false;
+    }
   }
 
   // --- Changes view: Desktop-style include set (UI-owned, not the git index).
@@ -229,6 +282,36 @@
       descText = "";
       include.clear();
     }
+  }
+
+  async function generateMessage() {
+    const repo = repoPath;
+    if (!repo || busy || include.size === 0) return;
+    busy = true;
+    generating = true;
+    try {
+      const msg = await gitGenerateCommitMessage(repo, [...include]);
+      summaryText = msg.summary;
+      descText = msg.description;
+      onStatus?.(tr("git.generated"), "success");
+    } catch (e) {
+      onStatus?.(String(e), "error");
+    } finally {
+      generating = false;
+      busy = false;
+    }
+  }
+
+  async function discardFile(path: string) {
+    const repo = repoPath;
+    if (!repo || busy) return;
+    const yes = await ask(tr("git.discardConfirmBody", { path }), {
+      title: tr("git.discardConfirmTitle"),
+      kind: "warning",
+    });
+    if (!yes) return;
+    include.delete(path);
+    await runGitOp(() => gitDiscardFile(repo, path));
   }
 
   // --- History view.
@@ -412,6 +495,52 @@
               </div>
             {/if}
           </div>
+          <div class="mt-1 border-t border-tr-border pt-1">
+            <p class="px-2 py-1 text-[11px] text-tr-ink-3">{tr("git.newBranchLabel")}</p>
+            <div class="flex items-center gap-1.5 p-1">
+              <input
+                bind:value={newBranchName}
+                placeholder={tr("git.newBranchInput")}
+                aria-label={tr("git.newBranchLabel")}
+                class="min-w-0 flex-1 rounded-lg border border-tr-border-strong bg-tr-elevated px-2 py-1 text-xs outline-none focus:border-tr-accent"
+              />
+              <button
+                type="button"
+                class="tr-press shrink-0 rounded-lg bg-tr-accent px-2.5 py-1 text-xs font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
+                disabled={busy || !newBranchName.trim()}
+                onclick={() => void doCreateBranch()}
+              >
+                {tr("git.newBranchCreate")}
+              </button>
+            </div>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy}
+              onclick={() => void doStashPush()}
+            >
+              <Archive size={14} class="shrink-0 text-tr-ink-3" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{tr("git.stash")}</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy}
+              onclick={() => void doStashPop()}
+            >
+              <PackageOpen size={14} class="shrink-0 text-tr-ink-3" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{tr("git.stashPop")}</span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-tr-ink-2 transition-colors hover:bg-tr-elevated disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy}
+              onclick={() => void doUndoLastCommit()}
+            >
+              <Undo2 size={14} class="shrink-0 text-tr-ink-3" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{tr("git.undoCommit")}</span>
+            </button>
+          </div>
         </div>
       {/if}
     </div>
@@ -551,6 +680,19 @@
                 {#if entry.conflict}
                   <span class="shrink-0 text-tr-critical" title={tr("git.conflictBanner")}>⚠</span>
                 {/if}
+                <button
+                  type="button"
+                  class="tr-press shrink-0 rounded p-0.5 text-tr-ink-4 transition-colors hover:text-tr-critical"
+                  title={tr("git.discard")}
+                  aria-label={tr("git.discard") + " " + entry.path}
+                  disabled={busy}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    void discardFile(entry.path);
+                  }}
+                >
+                  <Undo2 size={12} aria-hidden="true" />
+                </button>
               </div>
             {/each}
           {/if}
@@ -568,14 +710,30 @@
             placeholder={tr("git.descPlaceholder")}
             class="mt-2 w-full resize-none rounded-lg border border-tr-border-strong bg-tr-elevated px-2.5 py-1.5 text-xs outline-none focus:border-tr-accent"
           ></textarea>
-          <button
-            type="button"
-            class="tr-press mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
-            disabled={busy || !summaryText.trim() || include.size === 0}
-            onclick={() => void commit()}
-          >
-            {tr("git.commitTo", { branch: status.branch })}
-          </button>
+          <div class="mt-2 flex gap-2">
+            <button
+              type="button"
+              class="tr-press inline-flex items-center gap-1.5 rounded-lg border border-tr-border-strong bg-tr-surface px-2.5 py-1.5 text-xs font-medium text-tr-ink-2 transition-colors hover:bg-tr-raised disabled:opacity-50"
+              disabled={busy || include.size === 0}
+              onclick={() => void generateMessage()}
+            >
+              {#if generating}
+                <Loader2 size={12} class="animate-spin" aria-hidden="true" />
+                {tr("git.generating")}
+              {:else}
+                <Sparkles size={12} class="text-tr-accent" aria-hidden="true" />
+                {tr("git.generateAi")}
+              {/if}
+            </button>
+            <button
+              type="button"
+              class="tr-press inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-tr-accent px-3 py-1.5 text-xs font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
+              disabled={busy || !summaryText.trim() || include.size === 0}
+              onclick={() => void commit()}
+            >
+              {tr("git.commitTo", { branch: status.branch })}
+            </button>
+          </div>
         </footer>
       </section>
 

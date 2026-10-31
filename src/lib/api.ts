@@ -12,6 +12,7 @@ import type {
   BatchUpdateResult,
   DashboardSummary,
   FreshnessSummary,
+  GeneratedCommitMessage,
   GitBranches,
   GitCommit,
   GitDiff,
@@ -389,3 +390,21 @@ export const gitFetch = (repoPath: string) =>
 
 export const gitCheckout = (repoPath: string, branch: string) =>
   invoke<GitOpResult>("git_checkout_cmd", { repoPath, branch });
+
+export const gitGenerateCommitMessage = (repoPath: string, files: string[]) =>
+  invoke<GeneratedCommitMessage>("git_generate_commit_message_cmd", { repoPath, files });
+
+export const gitDiscardFile = (repoPath: string, path: string) =>
+  invoke<GitOpResult>("git_discard_file_cmd", { repoPath, path });
+
+export const gitUndoLastCommit = (repoPath: string) =>
+  invoke<GitOpResult>("git_undo_last_commit_cmd", { repoPath });
+
+export const gitStashPush = (repoPath: string) =>
+  invoke<GitOpResult>("git_stash_push_cmd", { repoPath });
+
+export const gitStashPop = (repoPath: string) =>
+  invoke<GitOpResult>("git_stash_pop_cmd", { repoPath });
+
+export const gitCreateBranch = (repoPath: string, name: string) =>
+  invoke<GitOpResult>("git_create_branch_cmd", { repoPath, name });

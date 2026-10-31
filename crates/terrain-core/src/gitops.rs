@@ -394,8 +394,14 @@ const MAX_DIFF_BYTES: usize = 512 * 1024;
 
 /// Unified patch for one file: `staged` chooses index-vs-HEAD over worktree.
 pub fn diff_file(repo: &Path, path: &str, staged: bool) -> Result<GitDiff> {
+    let is_untracked = {
+        let (ok, listing) = run_git(repo, &["ls-files", "--", path])?;
+        ok && listing.trim().is_empty()
+    };
     let mut args: Vec<&str> = if staged {
         vec!["diff", "--no-color", "--cached", "--"]
+    } else if is_untracked {
+        vec!["diff", "--no-color", EMPTY_TREE, "--"]
     } else {
         vec!["diff", "--no-color", "--"]
     };
@@ -600,5 +606,152 @@ mod desktop_mirror_tests {
         let diff = diff_file(&repo, "a.txt", false).unwrap();
         assert!(diff.text.contains("+again"), "diff: {}", diff.text);
         assert!(!diff.text.contains("+changed"));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// v3 operations: stash, discard, undo-commit, create-branch; untracked diffs
+// via the constant empty-tree hash (platform-independent).
+
+/// Git's well-known empty tree object id — same in every repository.
+pub const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+/// Stash all changes (tracked + untracked) with a marker message.
+pub fn stash_push(repo: &Path) -> Result<GitOpResult> {
+    op(
+        repo,
+        &[
+            "stash",
+            "push",
+            "--include-untracked",
+            "--quiet",
+            "-m",
+            "terrain stash",
+        ],
+        "git stash",
+    )
+}
+
+/// Pop the most recent stash back onto the working tree.
+pub fn stash_pop(repo: &Path) -> Result<GitOpResult> {
+    op(repo, &["stash", "pop", "--quiet"], "git stash pop")
+}
+
+/// How many stashes exist (0 = none).
+pub fn stash_count(repo: &Path) -> usize {
+    let (_ok, text) = run_git(repo, &["stash", "list", "--quiet"]).unwrap_or((true, String::new()));
+    text.lines().filter(|l| !l.trim().is_empty()).count()
+}
+
+/// Discard one file's working-tree changes. Tracked files are restored from
+/// HEAD; untracked files are deleted (they live nowhere else).
+pub fn discard_file(repo: &Path, path: &str) -> Result<GitOpResult> {
+    let path = path.trim().to_owned();
+    if path.is_empty() {
+        return Err(CoreError::InvalidDoc("empty path".to_owned()));
+    }
+    // Untracked = not in the index/HEAD: deleting is the discard.
+    let (ok, _text) = run_git(repo, &["ls-files", "--", &path])?;
+    if !ok || _text.trim().is_empty() {
+        let target = repo.join(&path);
+        if target.is_file() {
+            std::fs::remove_file(&target)?;
+            return Ok(GitOpResult {
+                ok: true,
+                output: format!("removed untracked {path}"),
+            });
+        }
+        return Err(CoreError::InvalidDoc(format!(
+            "file not tracked and not present: {path}"
+        )));
+    }
+    op(repo, &["restore", "--", &path], "git restore")
+}
+
+/// Undo the last commit, keeping its changes in the working tree.
+pub fn undo_last_commit(repo: &Path) -> Result<GitOpResult> {
+    op(
+        repo,
+        &["reset", "--mixed", "--quiet", "HEAD~1"],
+        "git reset HEAD~1",
+    )
+}
+
+/// Create a new branch from the current HEAD and switch to it.
+pub fn create_branch(repo: &Path, name: &str) -> Result<GitOpResult> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(CoreError::InvalidDoc("empty branch name".to_owned()));
+    }
+    op(
+        repo,
+        &["checkout", "-b", name, "--quiet"],
+        "git checkout -b",
+    )
+}
+
+#[cfg(test)]
+mod v3_tests {
+    use super::*;
+
+    fn temp_repo(name: &str) -> std::path::PathBuf {
+        let repo = std::env::temp_dir().join(format!("gitops-v3-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&repo);
+        std::fs::create_dir_all(&repo).unwrap();
+        for args in [
+            ["init", "-q", "."],
+            ["config", "user.email", "t@t"],
+            ["config", "user.name", "t"],
+            ["config", "commit.gpgsign", "false"],
+        ] {
+            let _ = crate::process::command("git").args(args).current_dir(&repo).output();
+        }
+        std::fs::write(repo.join("a.txt"), "hello\n").unwrap();
+        let _ = crate::process::command("git").args(["add", "."]).current_dir(&repo).output();
+        let _ = crate::process::command("git").args(["commit", "-m", "init"]).current_dir(&repo).output();
+        std::fs::write(repo.join("b.txt"), "second\n").unwrap();
+        let _ = crate::process::command("git").args(["add", "."]).current_dir(&repo).output();
+        let _ = crate::process::command("git").args(["commit", "-m", "second"]).current_dir(&repo).output();
+        repo
+    }
+
+    #[test]
+    fn stash_and_undo_roundtrip() {
+        let repo = temp_repo("stash");
+        std::fs::write(repo.join("a.txt"), "dirty\n").unwrap();
+        stash_push(&repo).unwrap();
+        assert_eq!(stash_count(&repo), 1);
+        let st = status(&repo).unwrap();
+        assert!(st.entries.is_empty(), "worktree clean after stash");
+        stash_pop(&repo).unwrap();
+        assert_eq!(stash_count(&repo), 0);
+        let st = status(&repo).unwrap();
+        assert!(st.entries.iter().any(|e| e.unstaged == Some("M".to_owned())));
+
+        undo_last_commit(&repo).unwrap();
+        let st = status(&repo).unwrap();
+        // reset --mixed: the undone commit's file returns as untracked
+        assert!(st.entries.iter().any(|e| e.path == "b.txt" && e.untracked));
+    }
+
+    #[test]
+    fn discard_and_branch_and_untracked_diff() {
+        let repo = temp_repo("discard");
+        std::fs::write(repo.join("a.txt"), "changed\n").unwrap();
+        std::fs::write(repo.join("untracked.txt"), "new\n").unwrap();
+
+        discard_file(&repo, "a.txt").unwrap();
+        let st = status(&repo).unwrap();
+        assert!(!st.entries.iter().any(|e| e.path == "a.txt"));
+
+        discard_file(&repo, "untracked.txt").unwrap();
+        assert!(!repo.join("untracked.txt").exists());
+
+        let diff = diff_file(&repo, "a.txt", false).unwrap();
+        assert!(diff.text.is_empty());
+
+        create_branch(&repo, "terrain-v3-test").unwrap();
+        let st = status(&repo).unwrap();
+        assert_eq!(st.branch, "terrain-v3-test");
     }
 }
