@@ -33,4 +33,23 @@ export default {
   tooLargeTitle: "graph.html too large to display",
   tooLargeHint: "Open the repo folder and view .terrain/graphify-out/graph.html in a browser.",
   loadFailed: "Failed to load graph data",
+  views: { graphify: "Graphify", understand: "Understand" },
+  ua: {
+    title: "Understand (UA)",
+    busy: "Working…",
+    started: "Viewer started",
+    installTitle: "Understand toolchain not ready",
+    installHint: "Needs Node >= 18, the UA plugin and a built viewer:",
+    pluginMissingHint:
+      "Install the plugin: /plugin marketplace add Egonex-AI/Understand-Anything",
+    viewerMissingHint: "Env integration tool-understand clones and builds it.",
+    viewerTitle: "Viewer not running",
+    viewerHint: "Serve the local graph at 127.0.0.1 (one-time token, read-only).",
+    startViewer: "Start viewer",
+    missingGraphTitle: "No semantic graph yet",
+    missingGraphHint:
+      "Run the understand skill with your coding agent — it writes .ua/ and .terrain/understand/index.md.",
+    bankDir: ".terrain/understand/",
+    stats: { nodes: "Nodes", links: "Links", analyzed: "Analyzed" },
+  },
 } as const;

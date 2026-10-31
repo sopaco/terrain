@@ -253,6 +253,7 @@ const DOC_SUBDIRS: &[&str] = &[
     "routes",
     "events",
     "knowledge",
+    "understand",
     "agent",
 ];
 

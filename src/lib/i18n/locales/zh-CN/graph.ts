@@ -33,4 +33,22 @@ export default {
   tooLargeTitle: "graph.html 过大，无法在此展示",
   tooLargeHint: "请打开仓库目录，用浏览器查看 .terrain/graphify-out/graph.html。",
   loadFailed: "图谱数据加载失败",
+  views: { graphify: "Graphify", understand: "Understand" },
+  ua: {
+    title: "Understand (UA)",
+    busy: "处理中…",
+    started: "查看服务器已启动",
+    installTitle: "Understand 工具链未就绪",
+    installHint: "需要 Node ≥ 18、UA 插件和已构建的 viewer：",
+    pluginMissingHint: "安装插件：/plugin marketplace add Egonex-AI/Understand-Anything",
+    viewerMissingHint: "env 集成 tool-understand 会克隆并构建它。",
+    viewerTitle: "查看服务器未运行",
+    viewerHint: "在 127.0.0.1 本地提供图谱（一次性 token，只读）。",
+    startViewer: "启动查看服务器",
+    missingGraphTitle: "还没有语义图谱",
+    missingGraphHint:
+      "用编码 agent 运行 understand skill——它写入 .ua/ 和 .terrain/understand/index.md。",
+    bankDir: ".terrain/understand/",
+    stats: { nodes: "节点", links: "连线", analyzed: "分析时间" },
+  },
 } as const;

@@ -68,3 +68,10 @@ pub(crate) struct GraphifyDonePayload {
     pub ok: bool,
     pub message: String,
 }
+
+#[derive(Clone, Serialize)]
+pub(crate) struct UaViewerReadyPayload {
+    pub project_slug: String,
+    pub url: String,
+    pub port: u16,
+}

@@ -9,12 +9,14 @@ use terrain_core::KnowledgePaths;
 
 pub struct AppState {
     pub runtime: Runtime,
+    pub ua_viewers: commands::UaViewerMap,
 }
 
 impl AppState {
     pub fn new(paths: KnowledgePaths) -> Self {
         Self {
             runtime: Runtime::new(paths),
+            ua_viewers: commands::UaViewerMap::default(),
         }
     }
 
@@ -139,6 +141,8 @@ pub fn run() {
             commands::git_commit_diff_cmd,
             commands::git_fetch_cmd,
             commands::open_local_path_cmd,
+            commands::ua_status_cmd,
+            commands::ua_viewer_cmd,
         ])
         .build(tauri::generate_context!())
         .expect("error while running Terrain")

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "integrations": [
     {
       "id": "skill-terrain-knowledge",
@@ -167,6 +167,45 @@
         "grep -q session_autosave \"$HOME/.claude/settings.json\" 2>/dev/null"
       ],
       "depends_on": []
+    },
+    {
+      "id": "tool-understand",
+      "kind": "tool",
+      "label": "Understand-Anything Toolchain",
+      "description": "代码语义知识图谱（LLM 辅助，Claude Code 插件）+ 纯 Node 查看服务器；输出归档 .ua/，记忆库入 .terrain/understand/",
+      "optional": true,
+      "check": [
+        "node",
+        "--version"
+      ],
+      "install_steps": [
+        {
+          "cmd": "sh",
+          "args": [
+            "-c",
+            "test -d \"$HOME/.terrain/understand-anything/repo/.git\" || git clone --depth 1 https://github.com/Egonex-AI/Understand-Anything \"$HOME/.terrain/understand-anything/repo\""
+          ]
+        },
+        {
+          "cmd": "sh",
+          "args": [
+            "-c",
+            "cd \"$HOME/.terrain/understand-anything/repo/understand-anything-plugin\" && (corepack pnpm --version 2>/dev/null || npm install -g pnpm@10) && pnpm install --frozen-lockfile && pnpm --filter understand-anything-viewer build"
+          ]
+        }
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "skill-understand",
+      "kind": "skill",
+      "label": "Understand Skill",
+      "description": "代码语义知识图谱：运行 UA /understand 管线（agent 驱动），输出入 .ua/，索引入 .terrain/understand/index.md；语义级问题先读它，架构级问题仍读 graphify-out",
+      "skill_dir": "understand-skill",
+      "depends_on": [
+        "tool-understand",
+        "skill-terrain-knowledge"
+      ]
     }
   ],
   "agents_md_blocks": [
@@ -182,12 +221,12 @@
     },
     {
       "id": "skills",
-      "version": 3,
+      "version": 4,
       "fragment": "agents-md/skills.fragment"
     },
     {
       "id": "tools",
-      "version": 4,
+      "version": 5,
       "fragment": "agents-md/tools.fragment"
     }
   ]

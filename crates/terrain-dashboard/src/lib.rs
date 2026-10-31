@@ -6,6 +6,7 @@
 
 pub mod dashboard;
 pub mod graphify;
+pub mod ua;
 
 pub use dashboard::{
     AddProjectError, AddProjectOk, AddProjectsResult, BatchProgressEvent, BatchUpdateResult,
@@ -17,4 +18,8 @@ pub use dashboard::{
 pub use graphify::{
     GraphifyAction, GraphifyCommunity, GraphifyGraphInfo, GraphifyRunOutcome, git_head,
     install_hint, read_graph_info, resolve_graphify_bin, run_graphify_action,
+};
+pub use ua::{
+    UaStatus, parse_viewer_banner, pick_viewer_port, port_alive, resolve_ua_repo,
+    resolve_ua_viewer, ua_status, viewer_start_error,
 };

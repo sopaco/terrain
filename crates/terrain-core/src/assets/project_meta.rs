@@ -152,25 +152,30 @@ pub fn discover_meta_files(repo: &Path) -> Vec<PathBuf> {
     found
 }
 
-/// Auto-scan `.terrain/knowledge/**/*.md` for private domain knowledge.
+/// Auto-scan `.terrain/knowledge/**/*.md` (private domain knowledge) and
+/// `.terrain/understand/*.md` (UA analysis index/summaries — the JSON graphs
+/// are too token-heavy to inject; markdown entry points only).
 pub fn collect_knowledge_dir_inputs(repo: &Path) -> Vec<CollectedMetaInput> {
-    let dir = repo.join(".terrain").join(KNOWLEDGE_DIR);
-    if !dir.is_dir() {
-        return Vec::new();
+    let roots = [
+        repo.join(".terrain").join(KNOWLEDGE_DIR),
+        repo.join(".terrain").join("understand"),
+    ];
+    let mut files: Vec<PathBuf> = Vec::new();
+    for dir in roots.iter().filter(|d| d.is_dir()) {
+        files.extend(
+            walkdir::WalkDir::new(dir)
+                .max_depth(4)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_file())
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .is_some_and(|ext| ext == "md" || ext == "markdown")
+                })
+                .map(|e| e.path().to_path_buf()),
+        );
     }
-
-    let mut files: Vec<PathBuf> = walkdir::WalkDir::new(&dir)
-        .max_depth(4)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            e.path()
-                .extension()
-                .is_some_and(|ext| ext == "md" || ext == "markdown")
-        })
-        .map(|e| e.path().to_path_buf())
-        .collect();
     files.sort();
 
     files
@@ -183,8 +188,13 @@ pub fn collect_knowledge_dir_inputs(repo: &Path) -> Vec<CollectedMetaInput> {
                 .unwrap_or_else(|_| path.display().to_string());
             let content = std::fs::read_to_string(&path).ok()?;
             let (body, truncated) = truncate_chars(&content, DEFAULT_INPUT_MAX_CHARS);
+            let label = if rel.contains("understand/") {
+                format!("Understand graph ({})", rel)
+            } else {
+                format!("Private knowledge ({})", rel)
+            };
             Some(CollectedMetaInput {
-                label: format!("Private knowledge ({})", rel),
+                label,
                 source: path_in_repo(repo, &path),
                 content: body,
                 truncated,

@@ -12,6 +12,8 @@ export {
   type GraphifyStatus,
   type GraphifyViewPayload,
   type GeneratedCommitMessage,
+  type UaStatus,
+  type UaViewerInfo,
   type AskKnowledgeReplyUi,
   type AskStreamEvent,
   type AssistantStep,

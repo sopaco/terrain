@@ -18,6 +18,7 @@
 | 知识保鲜重算（自愈，勿只读静态 JSON） | `~/.terrain/bin/terrain tools freshness --project <slug>` |
 | CodeGraph 独立过期检测（`<cg> status` 不可信时） | `~/.terrain/bin/terrain tools codegraph-drift --project <slug>` |
 | 代码知识图谱 | `graphify-skill`；架构问题先读 `.terrain/graphify-out/GRAPH_REPORT.md`，改码后 `GRAPHIFY_OUT=.terrain/graphify-out graphify update .` |
+| 语义知识图谱（UA） | `understand-skill`；语义/领域/角色问题先读 `.terrain/understand/index.md`，原始 JSON 在 `.ua/`；增量更新走 UA 插件 hook 或 /understand --auto-update |
 
 ### Agent 工具解析（必读）
 

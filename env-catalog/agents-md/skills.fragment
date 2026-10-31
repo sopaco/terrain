@@ -7,5 +7,6 @@
 | `codegraph-skill` | 符号关系；`~/.terrain/bin/codegraph` 或 `bunx codegraph` |
 | `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain-ai/rtk` |
 | `graphify-skill` | 代码知识图谱：`.terrain/graphify-out/` 读取与增量更新，架构问题先看报告 |
+| `understand-skill` | 语义知识图谱（UA）：`.ua/` 管线 + `.terrain/understand/index.md` 索引；语义/领域/角色问题先读 |
 
-加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。
+加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）→ understand（语义层，最贵，仅在被问或被要求时）。

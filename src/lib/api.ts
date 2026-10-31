@@ -28,6 +28,8 @@ import type {
   LithoGenerationJob,
   LithoPlan,
   LlmStatus,
+  UaStatus,
+  UaViewerInfo,
   ModelSettings,
   ProjectInitResult,
   ProjectOverview,
@@ -322,6 +324,12 @@ export const runGraphify = (
 
 export const getGraphifyView = (repoPath: string) =>
   invoke<GraphifyViewPayload>("get_graphify_view_cmd", { repoPath });
+
+export const getUaStatus = (repoPath: string) =>
+  invoke<UaStatus>("ua_status_cmd", { repoPath });
+
+export const startUaViewer = (repoPath: string) =>
+  invoke<UaViewerInfo>("ua_viewer_cmd", { repoPath });
 
 export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
 

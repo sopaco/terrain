@@ -22,6 +22,7 @@ fn is_terrain_knowledge_markdown_path(file_path: &str) -> bool {
     }
     p.starts_with("human/")
         || p.starts_with("knowledge/")
+        || p.starts_with("understand/")
         || p.starts_with("modules/")
         || p.starts_with("interfaces/")
         || p.starts_with("routes/")

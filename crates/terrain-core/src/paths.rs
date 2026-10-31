@@ -244,6 +244,7 @@ impl KnowledgePaths {
         std::fs::create_dir_all(base.join(".litho-agent"))?;
         std::fs::create_dir_all(base.join("agent"))?;
         std::fs::create_dir_all(base.join("knowledge"))?;
+        std::fs::create_dir_all(base.join("understand"))?;
         std::fs::create_dir_all(base.join("env"))?;
         // Nested .gitignore / .gitattributes travel with the directory, so every
         // project gets the asset-tracking policy without running env integration.
