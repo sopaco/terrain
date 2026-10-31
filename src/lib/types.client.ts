@@ -121,6 +121,8 @@ export interface UaStatus {
   node_major: number | null;
   viewer_available: boolean;
   viewer_path: string;
+  /** UA config.json autoUpdate flag — terrain's update auto-chain gate. */
+  auto_update: boolean;
   install_steps_hint: string;
 }
 

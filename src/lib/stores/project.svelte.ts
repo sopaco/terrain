@@ -16,6 +16,8 @@ export type ProjectTaskState = {
   lithoProgress: string;
   graphifyBusy: boolean;
   graphifyProgress: string;
+  uaBusy: boolean;
+  uaProgress: string;
 };
 
 export const project = $state({
@@ -56,23 +58,24 @@ export function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {
     lithoProgress: "",
     graphifyBusy: false,
     graphifyProgress: "",
+    uaBusy: false,
+    uaProgress: "",
   };
   project.projectTasks[slug] = { ...prev, ...patch };
 }
 
 export function currentTask(): ProjectTaskState {
-  if (!project.selectedSlug) {
-    return { repackBusy: false, lithoBusy: false, lithoProgress: "", graphifyBusy: false, graphifyProgress: "" };
-  }
-  return (
-    project.projectTasks[project.selectedSlug] ?? {
-      repackBusy: false,
-      lithoBusy: false,
-      lithoProgress: "",
-      graphifyBusy: false,
-      graphifyProgress: "",
-    }
-  );
+  const empty: ProjectTaskState = {
+    repackBusy: false,
+    lithoBusy: false,
+    lithoProgress: "",
+    graphifyBusy: false,
+    graphifyProgress: "",
+    uaBusy: false,
+    uaProgress: "",
+  };
+  if (!project.selectedSlug) return empty;
+  return project.projectTasks[project.selectedSlug] ?? empty;
 }
 
 export function selectedRegistryProject() {

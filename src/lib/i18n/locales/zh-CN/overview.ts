@@ -96,6 +96,9 @@ export default {
     agentSubtitle: "模块地图、架构与流程等，供 Agent 与问答使用",
     structuredTitle: "结构化条目",
     structuredSubtitle: "terrain-meta.json 派生的元数据，供工具消费",
+    graphTitle: "代码知识图谱",
+    graphSubtitle: "Graphify AST + Understand 语义图 — 生成、打开、刷新（不限量）",
+    graphMeta: "打开图谱标签（.terrain/graphify-out）进行生成或刷新。",
   },
   banner: {
     processing: "处理中…",

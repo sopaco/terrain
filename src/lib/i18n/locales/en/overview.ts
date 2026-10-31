@@ -97,6 +97,10 @@ export default {
     agentSubtitle: "Module map, architecture, and flows for Agents",
     structuredTitle: "Structured Entries",
     structuredSubtitle: "Metadata derived from terrain-meta.json for tools",
+    graphTitle: "Code Knowledge Graph",
+    graphSubtitle:
+      "Graphify AST + Understand semantic — generate, open, refresh (unlimited)",
+    graphMeta: "Open the Graph tab (.terrain/graphify-out) to generate or refresh.",
   },
   banner: {
     processing: "Processing…",
