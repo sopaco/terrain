@@ -6,5 +6,6 @@
 | `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
 | `codegraph-skill` | 符号关系；`~/.terrain/bin/codegraph` 或 `bunx codegraph` |
 | `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain-ai/rtk` |
+| `graphify-skill` | 代码知识图谱：`.terrain/graphify-out/` 读取与增量更新，架构问题先看报告 |
 
 加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。

@@ -14,6 +14,8 @@ export type ProjectTaskState = {
   repackBusy: boolean;
   lithoBusy: boolean;
   lithoProgress: string;
+  graphifyBusy: boolean;
+  graphifyProgress: string;
 };
 
 export const project = $state({
@@ -52,19 +54,23 @@ export function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {
     repackBusy: false,
     lithoBusy: false,
     lithoProgress: "",
+    graphifyBusy: false,
+    graphifyProgress: "",
   };
   project.projectTasks[slug] = { ...prev, ...patch };
 }
 
 export function currentTask(): ProjectTaskState {
   if (!project.selectedSlug) {
-    return { repackBusy: false, lithoBusy: false, lithoProgress: "" };
+    return { repackBusy: false, lithoBusy: false, lithoProgress: "", graphifyBusy: false, graphifyProgress: "" };
   }
   return (
     project.projectTasks[project.selectedSlug] ?? {
       repackBusy: false,
       lithoBusy: false,
       lithoProgress: "",
+      graphifyBusy: false,
+      graphifyProgress: "",
     }
   );
 }

@@ -60,7 +60,35 @@ export interface ChatMessage {
   usage?: TokenUsage;
 }
 
-export type AppTab = "overview" | "knowledge" | "sdd" | "env";
+export type AppTab = "dashboard" | "overview" | "knowledge" | "graph" | "sdd" | "env";
+
+/** Mirror of the Rust `GraphifyStatus` command payload (src-tauri commands/graphify.rs). */
+export interface GraphifyCommunity {
+  name: string;
+  size: number;
+}
+
+export interface GraphifyStatus {
+  binary_available: boolean;
+  binary_path: string;
+  out_dir: string;
+  graph_present: boolean;
+  report_present: boolean;
+  html_present: boolean;
+  wiki_present: boolean;
+  graph_mtime_secs: number | null;
+  nodes: number | null;
+  links: number | null;
+  communities: GraphifyCommunity[] | null;
+  built_at_commit: string | null;
+  head_commit: string | null;
+  staleness: "fresh" | "stale" | "unknown";
+}
+
+export interface GraphifyViewPayload {
+  html: string | null;
+  html_too_large: boolean;
+}
 
 /** Normalize IPC reply timestamps for UI code expecting `number`. */
 export type AskKnowledgeReplyUi = Omit<AskKnowledgeReply, "completed_at"> & {

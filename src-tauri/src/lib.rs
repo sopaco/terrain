@@ -110,6 +110,12 @@ pub fn run() {
             commands::run_env_integration_cmd,
             commands::usage_probe_cmd,
             commands::usage_snapshot_cmd,
+            commands::graphify_status_cmd,
+            commands::run_graphify_cmd,
+            commands::get_graphify_view_cmd,
+            commands::get_dashboard_summary_cmd,
+            commands::run_dashboard_batch_cmd,
+            commands::add_projects_cmd,
             commands::open_local_path_cmd,
         ])
         .build(tauri::generate_context!())

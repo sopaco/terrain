@@ -13,5 +13,6 @@ path = "src/main.rs"
 
 [dependencies]
 terrain-core = { workspace = true, features = ["ts-export", "repomix"] }
+terrain-dashboard = { workspace = true, features = ["ts-export"] }
 terrain-agent = { workspace = true, features = ["ts-export"] }
 ts-rs = { workspace = true }

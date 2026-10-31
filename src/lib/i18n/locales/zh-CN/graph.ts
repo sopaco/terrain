@@ -1,0 +1,36 @@
+/** 代码知识图谱面板（Graphify）。 */
+export default {
+  title: "代码图谱",
+  descLine1: "由 Graphify 从本仓库代码构建的交互式 AST 知识图谱。",
+  descAssetsPre: "图谱资产位于仓库的 ",
+  descAssetsPost: " 目录：",
+  noProject: "请先选择一个已索引的项目。",
+  graphDir: ".terrain/graphify-out/graph.html",
+  installTitle: "未找到 Graphify CLI",
+  installHint: "安装一次，然后重新打开 Terrain：",
+  missingGraphTitle: "还没有图谱",
+  missingGraphHint: "生成基于 AST 的本地代码知识图谱（无 LLM、无 API 成本）。",
+  statsAbsent: "—",
+  staleness: {
+    fresh: "与当前提交一致",
+    stale: "落后于当前提交",
+    unknown: "构建提交未知",
+  },
+  stats: {
+    nodes: "节点",
+    links: "边",
+    built: "构建于",
+  },
+  communities: "社区",
+  actions: {
+    generate: "生成图谱",
+    update: "更新图谱",
+    openFolder: "打开图谱目录",
+  },
+  busy: "正在运行 graphify…",
+  updateHint: "AST 增量更新",
+  extractHint: "首次构建（纯 AST）",
+  tooLargeTitle: "graph.html 过大，无法在此展示",
+  tooLargeHint: "请打开仓库目录，用浏览器查看 .terrain/graphify-out/graph.html。",
+  loadFailed: "图谱数据加载失败",
+} as const;

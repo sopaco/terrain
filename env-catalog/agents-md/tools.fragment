@@ -5,6 +5,7 @@
 | RTK | `~/.terrain/bin/rtk` | `bunx @terrain-ai/rtk` 或 `npx @terrain-ai/rtk` |
 | CodeGraph | `~/.terrain/bin/codegraph` | `bunx codegraph` 或 `npx codegraph` |
 | Terrain CLI | `~/.terrain/bin/terrain` | `bunx @terrain-ai/cli` 或 `npx @terrain-ai/cli` |
+| Graphify | `graphify`（PATH；可用 `GRAPHIFY_BIN` 覆盖） | `uv tool install graphifyy` / `pipx install graphifyy` |
 | 知识文件 | `.terrain/` 仓库内路径 | 直接 Read/Grep，无需 CLI |
 
 | 场景 | 用法 |
@@ -16,6 +17,7 @@
 | ACP 知识查询 | `~/.terrain/bin/terrain tools …` |
 | 知识保鲜重算（自愈，勿只读静态 JSON） | `~/.terrain/bin/terrain tools freshness --project <slug>` |
 | CodeGraph 独立过期检测（`<cg> status` 不可信时） | `~/.terrain/bin/terrain tools codegraph-drift --project <slug>` |
+| 代码知识图谱 | `graphify-skill`；架构问题先读 `.terrain/graphify-out/GRAPH_REPORT.md`，改码后 `GRAPHIFY_OUT=.terrain/graphify-out graphify update .` |
 
 ### Agent 工具解析（必读）
 

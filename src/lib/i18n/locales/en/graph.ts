@@ -1,0 +1,36 @@
+/** Code knowledge graph panel (Graphify). */
+export default {
+  title: "Code Graph",
+  descLine1: "Interactive AST knowledge graph built by Graphify from this repo's code.",
+  descAssetsPre: "Graph assets live in the repo's ",
+  descAssetsPost: " directory:",
+  noProject: "Select an indexed project first.",
+  graphDir: ".terrain/graphify-out/graph.html",
+  installTitle: "Graphify CLI not found",
+  installHint: "Install it once, then reopen Terrain:",
+  missingGraphTitle: "No graph yet",
+  missingGraphHint: "Generate a local, AST-only code graph (no LLM, no API cost).",
+  statsAbsent: "—",
+  staleness: {
+    fresh: "Up to date",
+    stale: "Older than current commit",
+    unknown: "Commit unknown",
+  },
+  stats: {
+    nodes: "Nodes",
+    links: "Links",
+    built: "Built",
+  },
+  communities: "Communities",
+  actions: {
+    generate: "Generate graph",
+    update: "Update graph",
+    openFolder: "Open graph folder",
+  },
+  busy: "Running graphify…",
+  updateHint: "AST-only incremental update",
+  extractHint: "First build (AST-only)",
+  tooLargeTitle: "graph.html too large to display",
+  tooLargeHint: "Open the repo folder and view .terrain/graphify-out/graph.html in a browser.",
+  loadFailed: "Failed to load graph data",
+} as const;

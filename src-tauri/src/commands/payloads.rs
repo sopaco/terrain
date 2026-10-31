@@ -54,3 +54,17 @@ pub(crate) struct EnvOptDonePayload {
     pub repo_path: String,
     pub result: EnvApplyResult,
 }
+
+#[derive(Clone, Serialize)]
+pub(crate) struct GraphifyProgressPayload {
+    pub project_slug: String,
+    pub stage: String,
+    pub message: String,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct GraphifyDonePayload {
+    pub project_slug: String,
+    pub ok: bool,
+    pub message: String,
+}

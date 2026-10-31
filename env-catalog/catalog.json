@@ -27,6 +27,14 @@
       "depends_on": ["tool-codegraph", "skill-terrain-knowledge"]
     },
     {
+      "id": "skill-graphify",
+      "kind": "skill",
+      "label": "Graphify Skill",
+      "description": "代码知识图谱：先读 .terrain/graphify-out/ 报告与 wiki，代码变更后增量更新（AST-only，无 API 成本）",
+      "skill_dir": "graphify-skill",
+      "depends_on": ["tool-graphify", "skill-terrain-knowledge"]
+    },
+    {
       "id": "skill-rtk",
       "kind": "skill",
       "label": "RTK Token 优化 Skill",
@@ -60,6 +68,19 @@
       "depends_on": []
     },
     {
+      "id": "tool-graphify",
+      "kind": "tool",
+      "label": "Graphify CLI",
+      "description": "代码知识图谱构建 — 本地 tree-sitter AST 抽取，写入 .terrain/graphify-out/（代码路径无 LLM）",
+      "optional": true,
+      "check": ["graphify", "--version"],
+      "install_steps": [
+        { "cmd": "uv", "args": ["tool", "install", "graphifyy"] },
+        { "cmd": "pipx", "args": ["install", "graphifyy"] }
+      ],
+      "depends_on": []
+    },
+    {
       "id": "agents-md",
       "kind": "agents_md",
       "label": "AGENTS.md 工作指南",
@@ -87,12 +108,12 @@
     },
     {
       "id": "skills",
-      "version": 2,
+      "version": 3,
       "fragment": "agents-md/skills.fragment"
     },
     {
       "id": "tools",
-      "version": 3,
+      "version": 4,
       "fragment": "agents-md/tools.fragment"
     }
   ]

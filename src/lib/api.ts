@@ -8,7 +8,13 @@ import type {
   EnvApplyResult,
   EnvPlan,
   EnvStatus,
+  AddProjectsResult,
+  BatchUpdateResult,
+  DashboardSummary,
   FreshnessSummary,
+  GraphifyCommunity,
+  GraphifyStatus,
+  GraphifyViewPayload,
   HumanDocEntry,
   KnowledgeDoc,
   LithoGenerationJob,
@@ -280,6 +286,34 @@ export const runEnvIntegration = (
   reinstallIds: string[] = [],
 ) =>
   invoke<EnvApplyResult>("run_env_integration_cmd", { repoPath, selectedIds, reinstallIds });
+
+export const getDashboardSummary = () =>
+  invoke<DashboardSummary>("get_dashboard_summary_cmd");
+
+export const runDashboardBatch = (
+  projectSlugs: string[] | null,
+  concurrency?: number,
+) =>
+  invoke<BatchUpdateResult>("run_dashboard_batch_cmd", {
+    projectSlugs,
+    concurrency: concurrency ?? null,
+  });
+
+export const addProjects = (repoPaths: string[]) =>
+  invoke<AddProjectsResult>("add_projects_cmd", { repoPaths });
+
+export const getGraphifyStatus = (repoPath: string) =>
+  invoke<GraphifyStatus>("graphify_status_cmd", { repoPath });
+
+export const runGraphify = (
+  repoPath: string,
+  projectSlug: string | null,
+  action: "extract" | "update",
+) =>
+  invoke<void>("run_graphify_cmd", { repoPath, projectSlug, action });
+
+export const getGraphifyView = (repoPath: string) =>
+  invoke<GraphifyViewPayload>("get_graphify_view_cmd", { repoPath });
 
 export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
 

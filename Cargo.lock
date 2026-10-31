@@ -5519,6 +5519,7 @@ dependencies = [
  "tauri-plugin-shell",
  "terrain-agent",
  "terrain-core",
+ "terrain-dashboard",
  "time",
  "tokio",
  "tracing",
@@ -5567,6 +5568,7 @@ dependencies = [
  "slug",
  "terrain-agent",
  "terrain-core",
+ "terrain-dashboard",
  "tokio",
 ]
 
@@ -5593,11 +5595,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "terrain-dashboard"
+version = "0.9.8"
+dependencies = [
+ "serde",
+ "serde_json",
+ "terrain-core",
+ "tokio",
+ "ts-rs",
+]
+
+[[package]]
 name = "terrain-ts-export"
 version = "0.9.8"
 dependencies = [
  "terrain-agent",
  "terrain-core",
+ "terrain-dashboard",
  "ts-rs",
 ]
 

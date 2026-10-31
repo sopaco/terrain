@@ -37,9 +37,13 @@ export default {
     assetJoin: ", ",
   },
   nav: {
+    dashboard: "Fleet",
+    dashboardTitle: "Cross-project dashboard",
     overview: "Overview",
     overviewTitle: "Project overview",
     knowledge: "Wiki",
+    graph: "Graph",
+    graphTitle: "Code knowledge graph (Graphify)",
     env: "Env",
     sddTitle: "SDD workflow: spec-driven development",
     ariaLabel: "Main navigation",

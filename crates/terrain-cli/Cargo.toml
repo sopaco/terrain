@@ -15,6 +15,7 @@ anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
 serde.workspace = true
 terrain-core.workspace = true
+terrain-dashboard.workspace = true
 terrain-agent.workspace = true
 dotenvy.workspace = true
 serde_json.workspace = true

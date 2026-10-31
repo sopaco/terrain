@@ -1,5 +1,7 @@
 mod assets;
+mod dashboard;
 mod env;
+mod graphify;
 mod knowledge;
 mod payloads;
 mod project;
@@ -40,7 +42,9 @@ pub fn init_paths() -> KnowledgePaths {
 }
 
 pub use assets::*;
+pub use dashboard::*;
 pub use env::*;
+pub use graphify::*;
 pub use knowledge::*;
 pub use project::*;
 pub use sessions::*;

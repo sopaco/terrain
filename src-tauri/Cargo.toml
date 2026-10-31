@@ -36,6 +36,7 @@ time.workspace = true
 
 terrain-core.workspace = true
 terrain-agent.workspace = true
+terrain-dashboard.workspace = true
 slug.workspace = true
 arboard = "3"
 base64 = "0.22"

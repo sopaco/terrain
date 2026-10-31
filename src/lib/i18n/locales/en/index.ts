@@ -9,6 +9,8 @@ import sdd from "./sdd";
 import ask from "./ask";
 import usage from "./usage";
 import env from "./env";
+import graph from "./graph";
+import dashboard from "./dashboard";
 import knowledge from "./knowledge";
 import misc from "./misc";
 
@@ -24,6 +26,8 @@ export const en = {
   ask,
   usage,
   env,
+  graph,
+  dashboard,
   knowledge,
   misc,
 };

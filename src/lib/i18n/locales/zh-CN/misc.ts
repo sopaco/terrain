@@ -37,9 +37,13 @@ export default {
     assetJoin: "、",
   },
   nav: {
+    dashboard: "总控",
+    dashboardTitle: "跨项目仪表盘",
     overview: "概览",
     overviewTitle: "项目概览",
     knowledge: "知识库",
+    graph: "图谱",
+    graphTitle: "代码知识图谱（Graphify）",
     env: "环境",
     sddTitle: "SDD 工作流：规格驱动开发",
     ariaLabel: "主导航",
