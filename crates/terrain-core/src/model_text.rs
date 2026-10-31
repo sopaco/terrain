@@ -5,45 +5,37 @@ const THINK_OPEN: &str = concat!("<", "think", ">");
 const THINK_CLOSE: &str = concat!("<", "/", "think", ">");
 
 static MARKDOWN_FENCE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?s)^```(?:markdown|md)\s*\n(.*)\n```\s*$")
-        .expect("markdown fence regex")
+    Regex::new(r"(?s)^```(?:markdown|md)\s*\n(.*)\n```\s*$").expect("markdown fence regex")
 });
 
-static HEADING_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([。；;：:])(### )").expect("heading break regex")
-});
+static HEADING_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([。；;：:])(### )").expect("heading break regex"));
 
-static BOLD_SECTION_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([。`])(\*\*\d+\.\d+)").expect("bold section break regex")
-});
+static BOLD_SECTION_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([。`])(\*\*\d+\.\d+)").expect("bold section break regex"));
 
-static BOLD_LABEL_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([。])(\*\*[^*]+\*\*：)").expect("bold label break regex")
-});
+static BOLD_LABEL_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([。])(\*\*[^*]+\*\*：)").expect("bold label break regex"));
 
-static NUMBERED_LIST_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\*\*)(\d+\.\s+\*\*)").expect("numbered list break regex")
-});
+static NUMBERED_LIST_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\*\*)(\d+\.\s+\*\*)").expect("numbered list break regex"));
 
 static NUMBERED_LIST_AFTER_LABEL_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"([：:])(\d+\.\s+\*\*)").expect("numbered list after label regex")
 });
 
-static PAREN_CJK_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(`\))([\x{4e00}-\x{9fff}])").expect("paren cjk break regex")
-});
+static PAREN_CJK_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(`\))([\x{4e00}-\x{9fff}])").expect("paren cjk break regex"));
 
 static PAREN_BOLD_CJK_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(\))(\*\*[^*]+\*\*)([\x{4e00}-\x{9fff}])").expect("paren bold cjk break regex")
 });
 
-static BOLD_AFTER_PAREN_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\))(\*\*[^*]+:\*\*)").expect("bold after paren break regex")
-});
+static BOLD_AFTER_PAREN_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\))(\*\*[^*]+:\*\*)").expect("bold after paren break regex"));
 
-static STEPS_LABEL_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\*\*[^*]+:\*\*)(\d+\.)").expect("steps label break regex")
-});
+static STEPS_LABEL_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\*\*[^*]+:\*\*)(\d+\.)").expect("steps label break regex"));
 
 static H3_TITLE_BOLD_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(### [^*]+?)(\*\*[^*]+：[^*]*\*\*)").expect("h3 title bold regex")
@@ -57,36 +49,30 @@ static SENTENCE_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"([。！？])([\x{4e00}-\x{9fff}看当从不这无每])").expect("sentence break regex")
 });
 
-static EMPHASIS_CJK_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\*)([从当不无这每])").expect("emphasis cjk break regex")
-});
+static EMPHASIS_CJK_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\*)([从当不无这每])").expect("emphasis cjk break regex"));
 
-static CARET_EMPHASIS_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\*\^([^^*]+)\^\*").expect("caret emphasis regex")
-});
+static CARET_EMPHASIS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\*\^([^^*]+)\^\*").expect("caret emphasis regex"));
 
-static LONE_CARET_EMPHASIS_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\^([^^*]+)\^").expect("lone caret emphasis regex")
-});
+static LONE_CARET_EMPHASIS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\^([^^*]+)\^").expect("lone caret emphasis regex"));
 
 /// Break inline `##` headings glued to prior sentences (common with local models).
-static INLINE_H2_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([。；;：:.!?])\s*(## )").expect("inline h2 break regex")
-});
+static INLINE_H2_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([。；;：:.!?])\s*(## )").expect("inline h2 break regex"));
 
 static INLINE_H2_AFTER_WORD_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"([\x{4e00}-\x{9fff}a-zA-Z0-9`\)])\s*(## )").expect("inline h2 after word regex")
 });
 
 /// Break inline `###`–`######` headings glued to prior text on the same line.
-static INLINE_SUBHEADING_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([^\n\r])(#{3,6} )").expect("inline subheading break regex")
-});
+static INLINE_SUBHEADING_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\n\r])(#{3,6} )").expect("inline subheading break regex"));
 
 /// Break any `##`–`######` heading not already at line start (LLM flattened output).
-static INLINE_HEADING_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([^\n\r#])(#{2,6} )").expect("inline heading break regex")
-});
+static INLINE_HEADING_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\n\r#])(#{2,6} )").expect("inline heading break regex"));
 
 /// Heading title glued to body text (e.g. `## 标题Terrain **bold**`).
 static HEADING_GLUE_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -94,33 +80,28 @@ static HEADING_GLUE_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Fenced code block glued to prior prose.
-static INLINE_FENCE_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([^\n\r`])(```[\w]+)").expect("inline fence break regex")
-});
+static INLINE_FENCE_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\n\r`])(```[\w]+)").expect("inline fence break regex"));
 
 static INLINE_BARE_FENCE_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"([^\n\r`])(```)([^\w\n\r])").expect("inline bare fence break regex")
 });
 
 /// Fenced code block immediately followed by a heading.
-static FENCE_BEFORE_HEADING_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"```(#{1,6} )").expect("fence before heading regex")
-});
+static FENCE_BEFORE_HEADING_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"```(#{1,6} )").expect("fence before heading regex"));
 
 /// Numbered list item glued to prior sentence (`…标准2. **Item**`).
-static GLUED_NUMBERED_LIST_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([^\n\d])(\d+\.\s+\*\*)").expect("glued numbered list regex")
-});
+static GLUED_NUMBERED_LIST_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\n\d])(\d+\.\s+\*\*)").expect("glued numbered list regex"));
 
 /// Table rows glued together (`| a | b || c | d |`).
-static GLUED_TABLE_ROW_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\|\|").expect("glued table row regex")
-});
+static GLUED_TABLE_ROW_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\|\|").expect("glued table row regex"));
 
 /// Newline after fenced-code language tag (` ```toml# ...`).
-static FENCE_LANG_NEWLINE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(```[\w]+)([^\n\r\w])").expect("fence lang newline regex")
-});
+static FENCE_LANG_NEWLINE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(```[\w]+)([^\n\r\w])").expect("fence lang newline regex"));
 
 /// Body text glued after a heading that ends with `)`.
 static HEADING_PAREN_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -128,19 +109,16 @@ static HEADING_PAREN_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Markdown table starting on the same line as prose.
-static TABLE_AFTER_COLON_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([：:])(\| )").expect("table after colon regex")
-});
+static TABLE_AFTER_COLON_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([：:])(\| )").expect("table after colon regex"));
 
 /// Unordered list glued to prior heading text on the same line.
-static HEADING_LIST_BREAK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(#{1,6} [^\n]+?)(-\s*`)").expect("heading list break regex")
-});
+static HEADING_LIST_BREAK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(#{1,6} [^\n]+?)(-\s*`)").expect("heading list break regex"));
 
 /// Unordered list item glued to prior inline text (`Provider- \`code\``).
-static GLUED_UNORDERED_LIST_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([^\n\r])(-\s*`)").expect("glued unordered list regex")
-});
+static GLUED_UNORDERED_LIST_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\n\r])(-\s*`)").expect("glued unordered list regex"));
 
 static PROMOTE_REQUIRED_H3_RE: LazyLock<Regex> = LazyLock::new(|| {
     let escaped: Vec<String> = crate::language::all_agent_context_section_titles()
@@ -165,7 +143,9 @@ fn break_before_known_sections(text: &str) -> String {
         // `## 标题` glued to first content char on the same line
         let glued = format!(r"## {title}([^\n#])");
         if let Ok(re) = Regex::new(&glued) {
-            out = re.replace_all(&out, &format!("## {title}\n\n$1")).into_owned();
+            out = re
+                .replace_all(&out, &format!("## {title}\n\n$1"))
+                .into_owned();
         }
     }
     out
@@ -217,7 +197,11 @@ fn strip_qwen_reasoning_prefix(text: &str) -> String {
 pub fn unwrap_markdown_fence(text: &str) -> String {
     let trimmed = text.trim();
     if let Some(caps) = MARKDOWN_FENCE_RE.captures(trimmed) {
-        return caps.get(1).map(|m| m.as_str().trim()).unwrap_or(trimmed).to_string();
+        return caps
+            .get(1)
+            .map(|m| m.as_str().trim())
+            .unwrap_or(trimmed)
+            .to_string();
     }
     trimmed.to_string()
 }
@@ -240,9 +224,10 @@ pub fn extract_markdown_body(text: &str) -> String {
     }
     // Skip a lone document title (`# …`) before real `##` sections.
     if text.starts_with("# ")
-        && let Some(idx) = text.find("\n## ") {
-            return text[idx + 1..].trim_start().to_string();
-        }
+        && let Some(idx) = text.find("\n## ")
+    {
+        return text[idx + 1..].trim_start().to_string();
+    }
     // Inline preamble before the first `##` on the same line (local LLM output).
     if let Some(idx) = text.find("## ") {
         return text[idx..].to_string();
@@ -253,7 +238,9 @@ pub fn extract_markdown_body(text: &str) -> String {
 /// Fix headings, lists, fences, and tables run together on one line.
 /// Always applied — local LLM providers often return zero newlines.
 pub fn repair_inline_section_headings(text: &str) -> String {
-    let mut out = INLINE_H2_BREAK_RE.replace_all(text, "$1\n\n$2").into_owned();
+    let mut out = INLINE_H2_BREAK_RE
+        .replace_all(text, "$1\n\n$2")
+        .into_owned();
     out = INLINE_H2_AFTER_WORD_RE
         .replace_all(&out, "$1\n\n$2")
         .into_owned();
@@ -279,7 +266,9 @@ pub fn repair_inline_section_headings(text: &str) -> String {
         .replace_all(&out, "$1\n\n$2")
         .into_owned();
     out = GLUED_TABLE_ROW_RE.replace_all(&out, "|\n|").into_owned();
-    out = FENCE_LANG_NEWLINE_RE.replace_all(&out, "$1\n$2").into_owned();
+    out = FENCE_LANG_NEWLINE_RE
+        .replace_all(&out, "$1\n$2")
+        .into_owned();
     out = HEADING_PAREN_BODY_RE
         .replace_all(&out, "$1\n\n$2")
         .into_owned();
@@ -307,17 +296,27 @@ pub fn repair_flattened_markdown(text: &str) -> String {
 
     let mut out = layout;
     out = CARET_EMPHASIS_RE.replace_all(&out, "*$1*").into_owned();
-    out = LONE_CARET_EMPHASIS_RE.replace_all(&out, "*$1*").into_owned();
+    out = LONE_CARET_EMPHASIS_RE
+        .replace_all(&out, "*$1*")
+        .into_owned();
     out = HEADING_BREAK_RE.replace_all(&out, "$1\n\n$2").into_owned();
     out = H3_TITLE_BOLD_RE.replace_all(&out, "$1\n\n$2").into_owned();
-    out = BOLD_BEFORE_CJK_RE.replace_all(&out, "$1\n\n$2").into_owned();
+    out = BOLD_BEFORE_CJK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
     out = SENTENCE_BREAK_RE.replace_all(&out, "$1\n\n$2").into_owned();
-    out = EMPHASIS_CJK_BREAK_RE.replace_all(&out, "$1\n\n$2").into_owned();
+    out = EMPHASIS_CJK_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
     out = BOLD_SECTION_BREAK_RE
         .replace_all(&out, "$1\n\n$2")
         .into_owned();
-    out = BOLD_LABEL_BREAK_RE.replace_all(&out, "$1\n\n$2").into_owned();
-    out = NUMBERED_LIST_BREAK_RE.replace_all(&out, "$1\n$2").into_owned();
+    out = BOLD_LABEL_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
+    out = NUMBERED_LIST_BREAK_RE
+        .replace_all(&out, "$1\n$2")
+        .into_owned();
     out = NUMBERED_LIST_AFTER_LABEL_RE
         .replace_all(&out, "$1\n$2")
         .into_owned();
@@ -326,14 +325,18 @@ pub fn repair_flattened_markdown(text: &str) -> String {
     out = out.replace("{ pub ", "{\n pub ");
     out = out.replace(", pub ", ",\n pub ");
     out = out.replace("}```", "}\n```\n\n");
-    out = PAREN_CJK_BREAK_RE.replace_all(&out, "$1\n\n$2").into_owned();
+    out = PAREN_CJK_BREAK_RE
+        .replace_all(&out, "$1\n\n$2")
+        .into_owned();
     out = PAREN_BOLD_CJK_BREAK_RE
         .replace_all(&out, "$1\n\n$2\n\n$3")
         .into_owned();
     out = BOLD_AFTER_PAREN_BREAK_RE
         .replace_all(&out, "$1\n\n$2")
         .into_owned();
-    out = STEPS_LABEL_BREAK_RE.replace_all(&out, "$1\n$2").into_owned();
+    out = STEPS_LABEL_BREAK_RE
+        .replace_all(&out, "$1\n$2")
+        .into_owned();
     out
 }
 
@@ -405,16 +408,13 @@ mod tests {
     fn prepare_model_markdown_end_to_end() {
         let open = concat!("<", "think", ">");
         let close = concat!("<", "/", "think", ">");
-        let input = format!(
-            "{open}planning{close}\n\n```markdown\n## 项目概览\n\nHello\n```"
-        );
+        let input = format!("{open}planning{close}\n\n```markdown\n## 项目概览\n\nHello\n```");
         assert_eq!(prepare_model_markdown(&input), "## 项目概览\n\nHello");
     }
 
     #[test]
     fn repairs_real_flattened_ask_sample() {
-        let path = std::path::Path::new(env!("HOME"))
-            .join(".terrain/debug/last-ask-raw.md");
+        let path = std::path::Path::new(env!("HOME")).join(".terrain/debug/last-ask-raw.md");
         if !path.exists() {
             return;
         }
@@ -438,12 +438,24 @@ mod tests {
     fn repairs_flattened_llm_provider_ask_markdown() {
         let input = "说明如下：## 核心依赖与协议Terrain **不直接实现** 客户端：1. **One**2. **Two**特性```toml\nkey = 1\n```## 总结Done。";
         let out = prepare_chat_markdown(input);
-        assert!(out.contains("\n\n## 核心依赖与协议"), "missing h2 break: {out}");
-        assert!(out.contains("\n\nTerrain"), "missing heading/body break: {out}");
+        assert!(
+            out.contains("\n\n## 核心依赖与协议"),
+            "missing h2 break: {out}"
+        );
+        assert!(
+            out.contains("\n\nTerrain"),
+            "missing heading/body break: {out}"
+        );
         assert!(out.contains("\n\n1. **One**"), "missing list break: {out}");
-        assert!(out.contains("\n\n2. **Two**"), "missing list item break: {out}");
+        assert!(
+            out.contains("\n\n2. **Two**"),
+            "missing list item break: {out}"
+        );
         assert!(out.contains("\n\n```toml"), "missing fence break: {out}");
-        assert!(out.contains("\n\n## 总结"), "missing trailing heading break: {out}");
+        assert!(
+            out.contains("\n\n## 总结"),
+            "missing trailing heading break: {out}"
+        );
     }
 
     #[test]
@@ -468,14 +480,8 @@ mod tests {
     fn repairs_glued_section_title() {
         let input = "## 项目概览`repomix-rs` 是一个工具。## 架构设计系统采用分层架构。";
         let out = prepare_model_markdown(input);
-        assert!(
-            out.contains("## 项目概览"),
-            "missing 项目概览: {out}"
-        );
-        assert!(
-            out.contains("## 架构设计"),
-            "missing 架构设计: {out}"
-        );
+        assert!(out.contains("## 项目概览"), "missing 项目概览: {out}");
+        assert!(out.contains("## 架构设计"), "missing 架构设计: {out}");
         assert!(!out.contains("## 项目概览`"));
     }
 

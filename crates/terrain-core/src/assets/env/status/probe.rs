@@ -306,7 +306,11 @@ mod probe_env_tests {
         };
         assert!(tool_check_passes(std::path::Path::new("."), &def));
         let def_false = IntegrationDef {
-            check: Some(vec!["bash".to_owned(), "-lc".to_owned(), "false".to_owned()]),
+            check: Some(vec![
+                "bash".to_owned(),
+                "-lc".to_owned(),
+                "false".to_owned(),
+            ]),
             ..def
         };
         assert!(!tool_check_passes(std::path::Path::new("."), &def_false));

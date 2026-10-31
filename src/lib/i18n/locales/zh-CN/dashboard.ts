@@ -9,6 +9,7 @@ export default {
     nodes: "节点",
     links: "边",
     stale: "过期图谱",
+    costToday: "今日成本",
   },
   binary: {
     missing: "未找到 Graphify CLI —— 批量更新已禁用。",
@@ -27,6 +28,7 @@ export default {
     status: "Terrain",
     graph: "图谱",
     staleness: "图谱状态",
+    costToday: "今日成本",
     lastBatch: "上次批量",
     missingAssets: { count: "缺 {count} 项" },
   },

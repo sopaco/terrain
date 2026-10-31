@@ -9,7 +9,7 @@
 //! summary of the change (missing baseline, unreachable commit, non-Git repo, too many changed
 //! files) falls back to [`KnowledgeUpdateMode::Full`].
 
-use crate::freshness::{git_change_set, git_snapshot, GitChangeSet, GitChangedFile};
+use crate::freshness::{GitChangeSet, GitChangedFile, git_change_set, git_snapshot};
 use crate::settings::KnowledgeSettings;
 
 /// How many changed paths to spell out in a prompt before switching to a count.
@@ -471,9 +471,10 @@ mod tests {
         assert!(evidence.contains("- D main.rs"));
         assert!(evidence.contains("- W dirty.rs"));
         assert!(evidence.contains("swap entrypoint"));
-        assert!(plan
-            .update_rules_block(IncrementalOutputMode::WholeDocumentReply)
-            .contains("verbatim"));
+        assert!(
+            plan.update_rules_block(IncrementalOutputMode::WholeDocumentReply)
+                .contains("verbatim")
+        );
     }
 
     /// A realistic 7-section document, as the baseline to protect.
@@ -615,7 +616,8 @@ mod tests {
                 reason: "too_many_changed_files"
             }
         ));
-        assert!(plan_incremental_update(&repo_s, Some(&baseline), true, opts(true, 5))
-            .is_incremental());
+        assert!(
+            plan_incremental_update(&repo_s, Some(&baseline), true, opts(true, 5)).is_incremental()
+        );
     }
 }

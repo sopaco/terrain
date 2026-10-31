@@ -9,6 +9,7 @@ export default {
     nodes: "Nodes",
     links: "Links",
     stale: "Stale graphs",
+    costToday: "Cost today",
   },
   binary: {
     missing: "Graphify CLI not found — batch updates are disabled.",
@@ -27,6 +28,7 @@ export default {
     status: "Terrain",
     graph: "Graph",
     staleness: "Graph state",
+    costToday: "Cost today",
     lastBatch: "Last batch",
     missingAssets: { count: "{count} missing" },
   },

@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use ignore::gitignore::Gitignore;
-use ignore::WalkBuilder;
 use ignore::Match;
+use ignore::WalkBuilder;
+use ignore::gitignore::Gitignore;
 
 use std::sync::LazyLock;
 
@@ -92,9 +92,10 @@ pub fn build_repo_gitignore(repo: &Path) -> Gitignore {
     let key = repo.to_path_buf();
     if let Ok(guard) = GITIGNORE_CACHE.lock()
         && let Some((cached_mtime, ig)) = guard.get(&key)
-            && cached_mtime == &mtime {
-                return ig.clone();
-            }
+        && cached_mtime == &mtime
+    {
+        return ig.clone();
+    }
 
     let ig = if gi.is_file() {
         Gitignore::new(gi).0
@@ -117,10 +118,7 @@ pub fn is_path_gitignored(repo: &Path, path: &Path) -> bool {
         return false;
     };
     let ig = build_repo_gitignore(repo);
-    matches!(
-        ig.matched_path_or_any_parents(rel, false),
-        Match::Ignore(_)
-    )
+    matches!(ig.matched_path_or_any_parents(rel, false), Match::Ignore(_))
 }
 
 pub fn is_terrain_knowledge(path: &Path) -> bool {

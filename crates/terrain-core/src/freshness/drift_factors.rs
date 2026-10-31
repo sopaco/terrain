@@ -2,12 +2,13 @@
 
 use crate::schema::FreshnessDriftFactor;
 
+use super::MACRO_PRELOAD_THRESHOLD;
 use super::git::{DriftBasis, GitDrift, GitSnapshot};
 use super::scoring::{
-    discount_context_score, COMMITS_PENALTY_CAP, COMMITS_PENALTY_PER, CONTEXT_DISCOUNT,
-    FILES_PENALTY_CAP, SYNC_AGE_PENALTY_CAP, SYNC_AGE_PENALTY_PER_DAY, UNMEASURED_DRIFT_PENALTY,
+    COMMITS_PENALTY_CAP, COMMITS_PENALTY_PER, CONTEXT_DISCOUNT, FILES_PENALTY_CAP,
+    SYNC_AGE_PENALTY_CAP, SYNC_AGE_PENALTY_PER_DAY, UNMEASURED_DRIFT_PENALTY,
+    discount_context_score,
 };
-use super::MACRO_PRELOAD_THRESHOLD;
 
 pub(crate) struct DriftExplainInput<'a> {
     pub git: &'a GitSnapshot,
@@ -97,7 +98,8 @@ pub(crate) fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<Freshnes
     };
     let ctx_commits = input.ctx_drift.commits_since_baseline;
     let ctx_changed = input.ctx_drift.changed_files.len();
-    let ctx_drifted = input.ctx_ready && ctx_baseline_differs && (ctx_commits > 0 || ctx_changed > 0);
+    let ctx_drifted =
+        input.ctx_ready && ctx_baseline_differs && (ctx_commits > 0 || ctx_changed > 0);
 
     if input.git.is_git_repo {
         // Drift that could not be measured is explained before anything else. With zero counts it

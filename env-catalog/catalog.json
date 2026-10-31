@@ -81,6 +81,37 @@
       "depends_on": []
     },
     {
+      "id": "tool-cccost",
+      "kind": "tool",
+      "label": "cccost Cost Tracker",
+      "description": "成本追踪（claude-code-cli-cost-tracker，MIT）— Terrain 使用它作为首选本地成本来源；install 安装 statusline + hook + /cccost",
+      "optional": true,
+      "check": [
+        "bash",
+        "-lc",
+        "test -f \"$HOME/.claude/cccost.py\""
+      ],
+      "install_steps": [
+        {
+          "cmd": "git",
+          "args": [
+            "clone",
+            "--depth",
+            "1",
+            "https://github.com/Facta-Dev/claude-code-cli-cost-tracker",
+            "/tmp/cccost-install-terrain"
+          ]
+        },
+        {
+          "cmd": "bash",
+          "args": [
+            "/tmp/cccost-install-terrain/install.sh"
+          ]
+        }
+      ],
+      "depends_on": []
+    },
+    {
       "id": "tool-graphify",
       "kind": "tool",
       "label": "Graphify CLI",

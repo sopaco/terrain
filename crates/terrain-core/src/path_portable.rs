@@ -24,13 +24,14 @@ pub const REPO_AGENT_TOOLS_MANIFEST: &str = ".terrain/env/agent-tools.json";
 /// Convert an absolute path under `$HOME` to `~/…` for agent manifests.
 pub fn to_tilde_path(path: &Path) -> String {
     if let Some(home) = user_home()
-        && let Ok(rest) = path.strip_prefix(&home) {
-            let rest = rest.to_string_lossy();
-            if rest.is_empty() {
-                return "~".into();
-            }
-            return format!("~/{rest}");
+        && let Ok(rest) = path.strip_prefix(&home)
+    {
+        let rest = rest.to_string_lossy();
+        if rest.is_empty() {
+            return "~".into();
         }
+        return format!("~/{rest}");
+    }
     normalize_slashes(&path.display().to_string())
 }
 
@@ -104,10 +105,7 @@ mod tests {
         let spec = repo.join("examples/openapi.yaml");
         fs::create_dir_all(spec.parent().unwrap()).unwrap();
         fs::write(&spec, "openapi: 3").unwrap();
-        assert_eq!(
-            path_in_repo(&repo, &spec),
-            "examples/openapi.yaml"
-        );
+        assert_eq!(path_in_repo(&repo, &spec), "examples/openapi.yaml");
         assert_eq!(path_in_repo(&repo, &repo), ".");
     }
 

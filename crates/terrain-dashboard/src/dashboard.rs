@@ -106,6 +106,8 @@ pub struct DashboardRow {
     pub head_commit: Option<String>,
     /// "fresh" | "stale" | "unknown" — graph vs the repo's current git HEAD.
     pub staleness: String,
+    /// Today's agent spend for this repo from the local cost tracker (ccc).
+    pub cost_today_usd: Option<f64>,
     pub activity: ProjectActivity,
     pub docs: DocsCoverage,
     /// Vault integration state for this project.
@@ -124,6 +126,8 @@ pub struct DashboardTotals {
     pub stale: u64,
     pub total_nodes: u64,
     pub total_links: u64,
+    /// Fleet-wide spend today (sum of per-repo costs from the tracker).
+    pub total_cost_usd_today: f64,
 }
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
@@ -420,6 +424,12 @@ pub fn scan_dashboard(
         }
 
         let head_commit = if repo.is_dir() { git_head(&repo) } else { None };
+        let cost_today_usd = if repo.is_dir() {
+            terrain_core::read_cost_today(&reg.slug)
+        } else {
+            None
+        };
+        totals.total_cost_usd_today += cost_today_usd.unwrap_or(0.0);
         let staleness = staleness_of(&graph.built_at_commit, &head_commit);
         let (activity, authors) = if repo.is_dir() {
             read_git_activity(&repo)
@@ -461,6 +471,7 @@ pub fn scan_dashboard(
             graph,
             head_commit,
             staleness,
+            cost_today_usd,
             activity,
             docs,
             vault_configured,

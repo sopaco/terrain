@@ -5,11 +5,10 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use crate::process::command as hidden_command;
 use crate::platform::{
-    bundled_binary_candidates, codegraph_wrapper_candidates, platform_key,
-    platform_key_for_target,
+    bundled_binary_candidates, codegraph_wrapper_candidates, platform_key, platform_key_for_target,
 };
+use crate::process::command as hidden_command;
 
 static BUNDLED: OnceLock<BundledTools> = OnceLock::new();
 
@@ -141,7 +140,9 @@ pub fn resolve_sidecar_next_to_exe(exe_dir: &Path, name: &str) -> Option<PathBuf
                 .join(&bin_name),
         );
     }
-    candidates.into_iter().find(|candidate| is_executable_file(candidate))
+    candidates
+        .into_iter()
+        .find(|candidate| is_executable_file(candidate))
 }
 
 pub(crate) fn bundled_rtk() -> Option<PathBuf> {
@@ -200,10 +201,7 @@ mod tests {
             assert_eq!(tools.rtk.as_deref(), Some(rtk.as_path()));
             return;
         }
-        let fallback = packages_root()
-            .join("rtk")
-            .join("darwin-arm64")
-            .join("rtk");
+        let fallback = packages_root().join("rtk").join("darwin-arm64").join("rtk");
         if fallback.is_file() {
             assert_eq!(tools.rtk.as_deref(), Some(fallback.as_path()));
         }

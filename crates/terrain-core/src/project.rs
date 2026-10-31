@@ -1,15 +1,17 @@
 use std::path::Path;
 
-use crate::doc::{read_doc, read_json};
-use crate::error::{CoreError, Result};
 use crate::assets::{
     count_markdown_in_dir, has_litho_research_artifacts, litho_human_complete_with_research,
 };
-use crate::human::count_human_docs;
+use crate::doc::{read_doc, read_json};
+use crate::error::{CoreError, Result};
 use crate::freshness::read_freshness_ledger;
+use crate::human::count_human_docs;
 use crate::paths::KnowledgePaths;
 use crate::registry::{ProjectRegistryEntry, ProjectRegistryStatus};
-use crate::schema::{AgentPackMeta, DocCounts, FreshnessSummary, LithoStatus, ProjectOverview, SyncMeta};
+use crate::schema::{
+    AgentPackMeta, DocCounts, FreshnessSummary, LithoStatus, ProjectOverview, SyncMeta,
+};
 
 /// Build a unified registry row for the desktop project list.
 pub fn build_registry_entry(
@@ -83,8 +85,9 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
         .title
         .clone()
         .unwrap_or_else(|| project_slug.to_string());
-    let repo_path = resolve_project_repo_path(paths, project_slug, doc.frontmatter.source.as_deref())
-        .unwrap_or_default();
+    let repo_path =
+        resolve_project_repo_path(paths, project_slug, doc.frontmatter.source.as_deref())
+            .unwrap_or_default();
 
     let tech_stack = parse_tech_stack(&doc.body);
     let structure_preview = parse_section(&doc.body, "Structure");
@@ -92,9 +95,7 @@ pub fn get_project_overview(paths: &KnowledgePaths, project_slug: &str) -> Resul
 
     let sync_meta = read_json::<SyncMeta>(paths.sync_meta_path(project_slug)).ok();
     let synced_at = sync_meta.as_ref().map(|m| m.synced_at.clone());
-    let collectors = sync_meta
-        .map(|m| m.collectors)
-        .unwrap_or_default();
+    let collectors = sync_meta.map(|m| m.collectors).unwrap_or_default();
 
     let agent_pack = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug)).ok();
     let doc_counts = count_docs(paths, project_slug)?;
@@ -212,11 +213,11 @@ pub fn resolve_project_repo_path(
     }
     if let Ok(meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug))
         && !meta.repo_path.is_empty()
-            && let Some(repo) =
-                crate::path_portable::resolve_stored_repo_path(&meta.repo_path, project_slug)
-            {
-                return Ok(repo);
-            }
+        && let Some(repo) =
+            crate::path_portable::resolve_stored_repo_path(&meta.repo_path, project_slug)
+    {
+        return Ok(repo);
+    }
     if let Some(repo) = crate::registry::repo_path_for_slug(project_slug) {
         return Ok(repo);
     }
@@ -226,9 +227,9 @@ pub fn resolve_project_repo_path(
         if let Some(source) = doc.frontmatter.source.filter(|s| !s.is_empty())
             && let Some(repo) =
                 crate::path_portable::resolve_stored_repo_path(&source, project_slug)
-            {
-                return Ok(repo);
-            }
+        {
+            return Ok(repo);
+        }
     }
     Err(CoreError::ProjectNotFound(format!(
         "cannot resolve repository path for project '{project_slug}'"
@@ -265,7 +266,9 @@ fn build_asset_health(
     vec![
         AssetTrackHealth {
             track: "human".into(),
-            label: lang.tr("人类友好的知识库", "Human-friendly knowledge base").into(),
+            label: lang
+                .tr("人类友好的知识库", "Human-friendly knowledge base")
+                .into(),
             ready: litho.human_docs_complete,
             summary: if litho.human_docs_complete {
                 lang.tr(
@@ -283,7 +286,11 @@ fn build_asset_health(
                 lang.tr("未生成", "Not generated").into()
             },
             detail: if litho.human_docs_complete {
-                lang.tr("适合新人阅读与 DeepWiki", "Good for onboarding and DeepWiki").into()
+                lang.tr(
+                    "适合新人阅读与 DeepWiki",
+                    "Good for onboarding and DeepWiki",
+                )
+                .into()
             } else if litho.has_research_artifacts {
                 lang.tr(
                     "有 Litho 研究中间产物，编排未完成",
@@ -291,10 +298,17 @@ fn build_asset_health(
                 )
                 .into()
             } else if litho.has_human_docs {
-                lang.tr("Litho 文档不完整，请重新生成", "Litho docs are incomplete; please regenerate")
-                    .into()
+                lang.tr(
+                    "Litho 文档不完整，请重新生成",
+                    "Litho docs are incomplete; please regenerate",
+                )
+                .into()
             } else {
-                lang.tr("适合新人阅读与 DeepWiki", "Good for onboarding and DeepWiki").into()
+                lang.tr(
+                    "适合新人阅读与 DeepWiki",
+                    "Good for onboarding and DeepWiki",
+                )
+                .into()
             },
             freshness_score: None,
             stale: None,
@@ -302,7 +316,9 @@ fn build_asset_health(
         },
         AssetTrackHealth {
             track: "agent_context".into(),
-            label: lang.tr("Agent 友好的知识资产", "Agent-friendly knowledge assets").into(),
+            label: lang
+                .tr("Agent 友好的知识资产", "Agent-friendly knowledge assets")
+                .into(),
             ready: agent_ctx.ready,
             summary: if agent_ctx.ready {
                 lang.tr(
@@ -314,7 +330,10 @@ fn build_asset_health(
                 lang.tr("未生成", "Not generated").into()
             },
             detail: lang
-                .tr("架构/模块/流程，无代码细节", "Architecture/modules/flows, no code details")
+                .tr(
+                    "架构/模块/流程，无代码细节",
+                    "Architecture/modules/flows, no code details",
+                )
                 .into(),
             freshness_score: None,
             stale: None,
@@ -334,7 +353,10 @@ fn build_asset_health(
                 })
                 .unwrap_or_else(|| lang.tr("未打包", "Not packed").into()),
             detail: lang
-                .tr("repomix 压缩签名，按需 grep", "Repomix compressed signatures, grep on demand")
+                .tr(
+                    "repomix 压缩签名，按需 grep",
+                    "Repomix compressed signatures, grep on demand",
+                )
                 .into(),
             freshness_score: None,
             stale: None,
@@ -355,7 +377,10 @@ fn build_asset_health(
             } else if openapi_count > 0 {
                 lang.tr(
                     &format!("{} 接口 · {} 路由", counts.interfaces, counts.routes),
-                    &format!("{} interfaces · {} routes", counts.interfaces, counts.routes),
+                    &format!(
+                        "{} interfaces · {} routes",
+                        counts.interfaces, counts.routes
+                    ),
                 )
                 .to_string()
             } else {
@@ -443,7 +468,9 @@ fn build_agent_env_status(repo_path: &str) -> crate::schema::AgentEnvStatus {
             detail: lang
                 .tr(
                     &format!("Skills · 工具链 · AGENTS.md · 私域知识 {knowledge_count} 篇"),
-                    &format!("Skills · Toolchain · AGENTS.md · {knowledge_count} private knowledge docs"),
+                    &format!(
+                        "Skills · Toolchain · AGENTS.md · {knowledge_count} private knowledge docs"
+                    ),
                 )
                 .to_string(),
         },
@@ -529,10 +556,7 @@ mod tests {
 
         assert_eq!(read_remark_file(&path), None);
         write_remark_file(&path, "  团队内部备注  ").unwrap();
-        assert_eq!(
-            read_remark_file(&path).as_deref(),
-            Some("团队内部备注")
-        );
+        assert_eq!(read_remark_file(&path).as_deref(), Some("团队内部备注"));
         write_remark_file(&path, "").unwrap();
         assert!(!path.exists());
         let _ = fs::remove_dir_all(&dir);

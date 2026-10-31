@@ -2,8 +2,8 @@
 
 use chrono::{DateTime, Utc};
 
-use super::git::{DriftBasis, GitDrift};
 use super::FRESH_THRESHOLD;
+use super::git::{DriftBasis, GitDrift};
 
 /// Commit drift penalty per commit behind baseline (capped).
 pub(crate) const COMMITS_PENALTY_PER: i32 = 2;

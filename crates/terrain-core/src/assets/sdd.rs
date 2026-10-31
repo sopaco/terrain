@@ -24,7 +24,11 @@ fn session_meta_path(sessions_dir: &Path, session_id: &str) -> PathBuf {
 
 pub fn new_session_id(title: &str) -> String {
     let base = slug::slugify(title.trim());
-    let base = if base.is_empty() { "sdd".to_string() } else { base };
+    let base = if base.is_empty() {
+        "sdd".to_string()
+    } else {
+        base
+    };
     let ts = chrono::Utc::now().format("%Y%m%d%H%M%S");
     format!("{base}-{ts}")
 }
@@ -46,15 +50,16 @@ pub fn list_sdd_sessions(paths: &KnowledgePaths, project_slug: &str) -> Vec<SddS
         let id = entry.file_name().to_string_lossy().into_owned();
         let meta_path = session_meta_path(&sessions_dir, &id);
         if let Ok(raw) = std::fs::read_to_string(&meta_path)
-            && let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw) {
-                sessions.push(SddSessionInfo {
-                    id: meta.id,
-                    title: meta.title,
-                    created_at: meta.created_at,
-                    updated_at: meta.updated_at,
-                });
-                continue;
-            }
+            && let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw)
+        {
+            sessions.push(SddSessionInfo {
+                id: meta.id,
+                title: meta.title,
+                created_at: meta.created_at,
+                updated_at: meta.updated_at,
+            });
+            continue;
+        }
         sessions.push(SddSessionInfo {
             id: id.clone(),
             title: id,
@@ -169,8 +174,8 @@ pub fn resolve_sdd_session_id(paths: &KnowledgePaths, project_slug: &str) -> Str
         project_slug,
         crate::language::current_language().tr("默认需求", "Default requirement"),
     )
-        .map(|s| s.id)
-        .unwrap_or_else(|_| "default".into())
+    .map(|s| s.id)
+    .unwrap_or_else(|_| "default".into())
 }
 
 pub fn save_sdd_output(
@@ -423,7 +428,12 @@ fn read_prior_outputs(output_dir: &str, up_to: SddPhase) -> String {
         }
         let path = sdd_phase_output_path(dir, phase);
         if let Ok(body) = std::fs::read_to_string(&path) {
-            parts.push(format!("### {} ({})\n\n{}", phase.label(), path.display(), body));
+            parts.push(format!(
+                "### {} ({})\n\n{}",
+                phase.label(),
+                path.display(),
+                body
+            ));
         }
     }
     parts.join("\n\n")

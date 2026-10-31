@@ -34,9 +34,7 @@ fn session_has_content(sessions_dir: &Path, session_id: &str) -> bool {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
         return false;
     };
-    value
-        .as_array()
-        .is_some_and(|arr| !arr.is_empty())
+    value.as_array().is_some_and(|arr| !arr.is_empty())
 }
 
 /// First `max_chars` Unicode scalar values (safe for CJK titles).
@@ -87,10 +85,11 @@ pub fn list_ask_sessions(paths: &KnowledgePaths, project_slug: &str) -> Vec<AskS
         }
         let meta_path = session_meta_path(&sessions_dir, &id);
         if let Ok(raw) = std::fs::read_to_string(&meta_path)
-            && let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw) {
-                sessions.push(meta_to_info(meta));
-                continue;
-            }
+            && let Ok(meta) = serde_json::from_str::<SessionMetaFile>(&raw)
+        {
+            sessions.push(meta_to_info(meta));
+            continue;
+        }
         sessions.push(AskSessionInfo {
             id: id.clone(),
             title: id,
@@ -171,10 +170,7 @@ pub fn create_ask_session(
     };
     let meta_path = session_meta_path(&sessions_dir, &id);
     std::fs::write(meta_path, serde_json::to_string_pretty(&meta)?)?;
-    std::fs::write(
-        session_messages_path(&sessions_dir, &id),
-        "[]",
-    )?;
+    std::fs::write(session_messages_path(&sessions_dir, &id), "[]")?;
     set_active_ask_session(paths, project_slug, &id)?;
     prune_old_sessions(paths, project_slug)?;
     Ok(meta_to_info(meta))
@@ -246,9 +242,10 @@ fn last_replied_date_from_messages(messages: &serde_json::Value) -> String {
         for msg in arr.iter().rev() {
             if msg.get("role").and_then(|r| r.as_str()) == Some("assistant") {
                 if let Some(ts) = msg.get("timestamp").and_then(|t| t.as_u64())
-                    && let Some(dt) = chrono::DateTime::from_timestamp_millis(ts as i64) {
-                        return dt.format("%Y-%m-%d").to_string();
-                    }
+                    && let Some(dt) = chrono::DateTime::from_timestamp_millis(ts as i64)
+                {
+                    return dt.format("%Y-%m-%d").to_string();
+                }
                 return today_date_string();
             }
         }
@@ -323,7 +320,10 @@ mod tests {
 
     #[test]
     fn title_truncates_by_char_not_byte() {
-        assert_eq!(title_from_question("你好世界欢迎使用", 10), "你好世界欢迎使用");
+        assert_eq!(
+            title_from_question("你好世界欢迎使用", 10),
+            "你好世界欢迎使用"
+        );
         assert_eq!(title_from_question("你好世界欢迎使用", 4), "你好世界");
         assert_eq!(title_from_question("  hello world  ", 10), "hello worl");
     }

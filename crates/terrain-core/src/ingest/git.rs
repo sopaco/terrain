@@ -4,8 +4,8 @@ use crate::doc::write_doc;
 use crate::error::Result;
 use crate::path_portable::stored_repo_path;
 use crate::paths::KnowledgePaths;
-use crate::repo_walk::repo_file_walk;
 use crate::render::{project_frontmatter, project_index_body};
+use crate::repo_walk::repo_file_walk;
 use crate::schema::ProjectMeta;
 
 pub struct GitScanner<'a> {

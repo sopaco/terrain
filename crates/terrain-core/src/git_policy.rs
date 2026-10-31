@@ -231,7 +231,11 @@ mod tests {
         assert!(ignore.contains("!.meta/human.json"));
         // Committed documents' provenance must not be ignored — otherwise another
         // clone pairs fresh content with a stale local baseline.
-        assert!(!ignore.lines().any(|l| l.trim() == "agent/context-meta.json"));
+        assert!(
+            !ignore
+                .lines()
+                .any(|l| l.trim() == "agent/context-meta.json")
+        );
         assert!(!ignore.lines().any(|l| l.trim() == ".meta/"));
         // knowledge/ must stay committable.
         assert!(!ignore.lines().any(|l| l.trim() == "knowledge/"));
@@ -273,7 +277,11 @@ mod tests {
 
         let ignore_out = std::fs::read_to_string(root.join(".gitignore")).unwrap();
         assert!(ignore_out.contains("agent/meta.json"));
-        assert!(!ignore_out.lines().any(|l| l.trim() == "agent/context-meta.json"));
+        assert!(
+            !ignore_out
+                .lines()
+                .any(|l| l.trim() == "agent/context-meta.json")
+        );
         assert!(!ignore_out.lines().any(|l| l.trim() == ".meta/"));
         assert!(ignore_out.contains("!.meta/human.json"));
         let _ = std::fs::remove_dir_all(&root);

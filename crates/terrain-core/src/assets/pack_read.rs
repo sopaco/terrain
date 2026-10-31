@@ -159,9 +159,7 @@ fn is_true(v: &bool) -> bool {
 }
 
 fn normalize_path(path: &str) -> String {
-    path.trim()
-        .trim_start_matches("./")
-        .replace('\\', "/")
+    path.trim().trim_start_matches("./").replace('\\', "/")
 }
 
 fn path_suffix_segments_match(requested: &str, header: &str) -> bool {
@@ -195,11 +193,11 @@ fn path_matches(requested: &str, header: &str) -> bool {
 fn strip_line_number_prefix(line: &str) -> &str {
     if let Some((prefix, rest)) = line.split_once(':')
         && !prefix.is_empty()
-            && prefix.chars().all(|c| c.is_ascii_digit())
-            && rest.starts_with(' ')
-        {
-            return &rest[1..];
-        }
+        && prefix.chars().all(|c| c.is_ascii_digit())
+        && rest.starts_with(' ')
+    {
+        return &rest[1..];
+    }
     line
 }
 
@@ -211,9 +209,10 @@ fn strip_line_number_prefix(line: &str) -> &str {
 /// requires a space after the colon and would return the whole `42:` verbatim.
 fn parse_numbered_line(line: &str) -> Option<(u32, &str)> {
     if let Some((prefix, rest)) = line.split_once(':')
-        && let Ok(num) = prefix.parse::<u32>() {
-            return Some((num, rest.strip_prefix(' ').unwrap_or(rest)));
-        }
+        && let Ok(num) = prefix.parse::<u32>()
+    {
+        return Some((num, rest.strip_prefix(' ').unwrap_or(rest)));
+    }
     None
 }
 
@@ -265,9 +264,7 @@ fn find_section<'a>(sections: &'a [Section], file_path: &str) -> Result<&'a Sect
     sections
         .iter()
         .find(|s| path_matches(file_path, &s.path))
-        .ok_or_else(|| {
-            CoreError::InvalidDoc(format!("file not found in agent pack: {file_path}"))
-        })
+        .ok_or_else(|| CoreError::InvalidDoc(format!("file not found in agent pack: {file_path}")))
 }
 
 /// Extract the fenced body of a single pack section and apply the line range.
@@ -443,7 +440,8 @@ mod tests {
 
     #[test]
     fn clamps_out_of_range_line_request() {
-        let got = read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", Some(190), Some(260)).unwrap();
+        let got =
+            read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", Some(190), Some(260)).unwrap();
         assert_eq!(got.total_lines, 3);
         assert!(got.range_clamped);
         assert_eq!(got.start_line, 1);
@@ -453,13 +451,8 @@ mod tests {
 
     #[test]
     fn matches_prefixed_pack_path() {
-        let got = read_agent_pack_file_from_text(
-            SAMPLE,
-            "android-au/src/lib.rs",
-            None,
-            None,
-        )
-        .unwrap();
+        let got =
+            read_agent_pack_file_from_text(SAMPLE, "android-au/src/lib.rs", None, None).unwrap();
         assert_eq!(got.matched_path, "src/lib.rs");
     }
 

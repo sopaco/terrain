@@ -12,7 +12,11 @@ export type DashboardRow = { slug: string, name: string, repo_path: string, stat
 /**
  * "fresh" | "stale" | "unknown" — graph vs the repo's current git HEAD.
  */
-staleness: string, activity: ProjectActivity, docs: DocsCoverage, 
+staleness: string, 
+/**
+ * Today's agent spend for this repo from the local cost tracker (ccc).
+ */
+cost_today_usd: number | null, activity: ProjectActivity, docs: DocsCoverage, 
 /**
  * Vault integration state for this project.
  */

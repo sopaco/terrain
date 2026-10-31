@@ -204,11 +204,7 @@ fn path_directories() -> Vec<PathBuf> {
 }
 
 fn path_separator() -> &'static str {
-    if cfg!(windows) {
-        ";"
-    } else {
-        ":"
-    }
+    if cfg!(windows) { ";" } else { ":" }
 }
 
 fn merge_paths(primary: &str, secondary: &str) -> String {
@@ -260,11 +256,7 @@ fn run_shell_output(args: &[&str]) -> Option<String> {
             return None;
         }
         let path = String::from_utf8(output.stdout).ok()?;
-        if path.is_empty() {
-            None
-        } else {
-            Some(path)
-        }
+        if path.is_empty() { None } else { Some(path) }
     }
     #[cfg(not(unix))]
     {
@@ -374,11 +366,7 @@ fn windows_user_path() -> Option<String> {
         return None;
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if path.is_empty() {
-        None
-    } else {
-        Some(path)
-    }
+    if path.is_empty() { None } else { Some(path) }
 }
 
 #[cfg(not(windows))]

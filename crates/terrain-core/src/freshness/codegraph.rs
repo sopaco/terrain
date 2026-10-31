@@ -90,7 +90,12 @@ mod tests {
         let Ok(status) = status else {
             return;
         };
-        assert!(status.success(), "git {:?} failed in {}", args, repo.display());
+        assert!(
+            status.success(),
+            "git {:?} failed in {}",
+            args,
+            repo.display()
+        );
     }
 
     fn git_commit_at(repo: &Path, message: &str, when: &str) {
@@ -103,19 +108,15 @@ mod tests {
         let Ok(status) = status else {
             return;
         };
-        assert!(
-            status.success(),
-            "git commit failed in {}",
-            repo.display()
-        );
+        assert!(status.success(), "git commit failed in {}", repo.display());
     }
 
     fn set_file_time_rfc3339(path: &Path, when: &str) {
         let dt = DateTime::parse_from_rfc3339(when)
             .expect("valid RFC3339 test timestamp")
             .with_timezone(&Utc);
-        let modified = std::time::UNIX_EPOCH
-            + std::time::Duration::from_secs(dt.timestamp().max(0) as u64);
+        let modified =
+            std::time::UNIX_EPOCH + std::time::Duration::from_secs(dt.timestamp().max(0) as u64);
         if let Ok(file) = std::fs::OpenOptions::new().write(true).open(path) {
             let _ = file.set_modified(modified);
         }
@@ -138,7 +139,6 @@ mod tests {
             .map(|s| s.success())
             .unwrap_or(false)
     }
-
 
     #[test]
     fn codegraph_drift_missing_index() {
@@ -164,63 +164,63 @@ mod tests {
     #[test]
     fn codegraph_drift_not_stale_when_index_is_current() {
         with_git_repo(|| {
-        let dir = tempfile::tempdir().unwrap();
-        let repo = dir.path();
-        init_test_repo(repo);
-        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
-        let db = repo.join(".codegraph/codegraph.db");
-        std::fs::write(&db, b"sqlite").unwrap();
-        set_file_time_rfc3339(&db, "2020-12-01T00:00:00Z");
+            let dir = tempfile::tempdir().unwrap();
+            let repo = dir.path();
+            init_test_repo(repo);
+            std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+            let db = repo.join(".codegraph/codegraph.db");
+            std::fs::write(&db, b"sqlite").unwrap();
+            set_file_time_rfc3339(&db, "2020-12-01T00:00:00Z");
 
-        let report = codegraph_drift(&repo.display().to_string());
-        assert!(report.index_present);
-        assert!(!report.likely_stale);
-        assert_eq!(report.commits_after_index, 0);
+            let report = codegraph_drift(&repo.display().to_string());
+            assert!(report.index_present);
+            assert!(!report.likely_stale);
+            assert_eq!(report.commits_after_index, 0);
         });
     }
 
     #[test]
     fn codegraph_drift_stale_when_source_changes_after_index() {
         with_git_repo(|| {
-        let dir = tempfile::tempdir().unwrap();
-        let repo = dir.path();
-        init_test_repo(repo);
-        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
-        let db = repo.join(".codegraph/codegraph.db");
-        std::fs::write(&db, b"sqlite").unwrap();
-        set_file_time_rfc3339(&db, "2020-06-01T00:00:00Z");
-        std::fs::write(repo.join("src/b.rs"), "fn b() {}\n").unwrap();
-        git_in(repo, &["add", "src/b.rs"]);
-        git_commit_at(repo, "add b", "2020-12-01T00:00:00Z");
+            let dir = tempfile::tempdir().unwrap();
+            let repo = dir.path();
+            init_test_repo(repo);
+            std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+            let db = repo.join(".codegraph/codegraph.db");
+            std::fs::write(&db, b"sqlite").unwrap();
+            set_file_time_rfc3339(&db, "2020-06-01T00:00:00Z");
+            std::fs::write(repo.join("src/b.rs"), "fn b() {}\n").unwrap();
+            git_in(repo, &["add", "src/b.rs"]);
+            git_commit_at(repo, "add b", "2020-12-01T00:00:00Z");
 
-        let report = codegraph_drift(&repo.display().to_string());
-        assert!(report.index_present);
-        assert!(report.likely_stale);
-        assert!(report.commits_after_index > 0);
-        assert!(report.changed_files.iter().any(|p| p == "src/b.rs"));
+            let report = codegraph_drift(&repo.display().to_string());
+            assert!(report.index_present);
+            assert!(report.likely_stale);
+            assert!(report.commits_after_index > 0);
+            assert!(report.changed_files.iter().any(|p| p == "src/b.rs"));
         });
     }
 
     #[test]
     fn codegraph_drift_ignores_knowledge_only_commits() {
         with_git_repo(|| {
-        let dir = tempfile::tempdir().unwrap();
-        let repo = dir.path();
-        init_test_repo(repo);
-        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
-        let db = repo.join(".codegraph/codegraph.db");
-        std::fs::write(&db, b"sqlite").unwrap();
-        set_file_time_rfc3339(&db, "2020-06-01T00:00:00Z");
-        std::fs::create_dir_all(repo.join(".terrain/agent")).unwrap();
-        std::fs::write(repo.join(".terrain/agent/context.md"), "# ctx\n").unwrap();
-        git_in(repo, &["add", ".terrain/agent/context.md"]);
-        git_commit_at(repo, "refresh context", "2020-12-01T00:00:00Z");
+            let dir = tempfile::tempdir().unwrap();
+            let repo = dir.path();
+            init_test_repo(repo);
+            std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+            let db = repo.join(".codegraph/codegraph.db");
+            std::fs::write(&db, b"sqlite").unwrap();
+            set_file_time_rfc3339(&db, "2020-06-01T00:00:00Z");
+            std::fs::create_dir_all(repo.join(".terrain/agent")).unwrap();
+            std::fs::write(repo.join(".terrain/agent/context.md"), "# ctx\n").unwrap();
+            git_in(repo, &["add", ".terrain/agent/context.md"]);
+            git_commit_at(repo, "refresh context", "2020-12-01T00:00:00Z");
 
-        let report = codegraph_drift(&repo.display().to_string());
-        assert!(report.index_present);
-        assert!(report.commits_after_index > 0);
-        assert!(!report.likely_stale);
-        assert!(report.changed_files.is_empty());
+            let report = codegraph_drift(&repo.display().to_string());
+            assert!(report.index_present);
+            assert!(report.commits_after_index > 0);
+            assert!(!report.likely_stale);
+            assert!(report.changed_files.is_empty());
         });
     }
 }
