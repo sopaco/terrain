@@ -683,7 +683,7 @@ mod tests {
             .find(|f| f.id == "baseline_match")
             .expect("baseline_match factor");
         assert!(!matched.detail.contains("均基于"), "{}", matched.detail);
-        assert!(matched.detail.contains("见下方条目"), "{}", matched.detail);
+        assert!(matched.detail.contains("see the entry below"), "{}", matched.detail);
     }
 
     #[test]
@@ -715,8 +715,8 @@ mod tests {
             .find(|f| f.id == "baseline_match")
             .expect("baseline_match factor");
         // Must not promise an entry that was never emitted.
-        assert!(!matched.detail.contains("见下方条目"), "{}", matched.detail);
-        assert!(matched.detail.contains("不扣分"), "{}", matched.detail);
+        assert!(!matched.detail.contains("see the entry below"), "{}", matched.detail);
+        assert!(matched.detail.contains("no points are deducted"), "{}", matched.detail);
     }
 
     fn unmeasured_input<'a>(
