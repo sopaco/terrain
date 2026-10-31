@@ -49,6 +49,7 @@ export default {
     missingGraphHint:
       "用编码 agent 运行 understand skill——它写入 .ua/ 和 .terrain/understand/index.md。",
     bankDir: ".terrain/understand/",
+    actions: { analyze: "分析 (UA)", update: "更新语义图谱" },
     stats: { nodes: "节点", links: "连线", analyzed: "分析时间" },
   },
 } as const;

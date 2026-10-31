@@ -20,6 +20,6 @@ pub use graphify::{
     install_hint, read_graph_info, resolve_graphify_bin, run_graphify_action,
 };
 pub use ua::{
-    UaStatus, parse_viewer_banner, pick_viewer_port, port_alive, resolve_ua_repo,
-    resolve_ua_viewer, ua_status, viewer_start_error,
+    UaAction, UaStatus, parse_viewer_banner, pick_viewer_port, port_alive, resolve_ua_repo,
+    resolve_ua_viewer, run_ua_action, ua_status,
 };

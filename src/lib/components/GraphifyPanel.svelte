@@ -8,6 +8,7 @@
     getUaStatus,
     openLocalPath,
     runGraphify,
+    runUa,
     startUaViewer,
   } from "../api";
   import { tr } from "../i18n";
@@ -44,6 +45,9 @@
   const busy = $derived(task?.graphifyBusy ?? false);
   const progressLine = $derived(task?.graphifyProgress ?? "");
   const hasGraph = $derived(status?.graph_present ?? false);
+
+  const uaBusy = $derived(task?.uaBusy ?? false);
+  const uaProgressLine = $derived(task?.uaProgress ?? "");
 
   async function loadStatus() {
     if (!repoPath) {
@@ -92,6 +96,19 @@
       // Completion (success or failure) arrives via the graphify-done event.
     } catch (e) {
       setProjectTask(projectSlug, { graphifyBusy: false, graphifyProgress: "" });
+      onStatus?.(String(e), "error");
+    }
+  }
+
+  // Terrain-centralized UA pipeline (deterministic scripts + terrain's native
+  // LLM) — no Claude Code needed; Claude Code can also run the skill flow.
+  async function runUaAction(action: "analyze" | "update") {
+    if (!repoPath || !projectSlug || uaBusy) return;
+    setProjectTask(projectSlug, { uaBusy: true, uaProgress: "" });
+    try {
+      await runUa(repoPath, projectSlug, action);
+    } catch (e) {
+      setProjectTask(projectSlug, { uaBusy: false, uaProgress: "" });
       onStatus?.(String(e), "error");
     }
   }
@@ -192,6 +209,32 @@
               ev.payload.ok ? "success" : "error",
             );
             void loadStatus();
+            // Auto-chain the UA semantic graph when the user enabled it.
+            if (ev.payload.ok && uaStatus?.auto_update) void runUaAction("update");
+          }
+        }),
+      );
+      unsubs.push(
+        await listen<{
+          project_slug: string;
+          stage: string;
+          message: string;
+        }>("ua-progress", (ev) => {
+          if (projectSlug && ev.payload.project_slug === projectSlug) {
+            setProjectTask(projectSlug, { uaProgress: ev.payload.message });
+          }
+        }),
+      );
+      unsubs.push(
+        await listen<{
+          project_slug: string;
+          ok: boolean;
+          message: string;
+        }>("ua-done", (ev) => {
+          if (projectSlug && ev.payload.project_slug === projectSlug) {
+            setProjectTask(projectSlug, { uaBusy: false, uaProgress: "" });
+            onStatus?.(ev.payload.message, ev.payload.ok ? "success" : "error");
+            void loadUaStatus();
           }
         }),
       );
@@ -284,6 +327,20 @@
           ></iframe>
           <div class="flex shrink-0 flex-wrap items-center gap-2 text-xs text-tr-ink-3">
             {@render uaChips(st)}
+            <button
+              type="button"
+              class="tr-press inline-flex items-center gap-1.5 rounded-lg bg-tr-accent px-3.5 py-1.5 font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
+              disabled={uaBusy}
+              onclick={() => void runUaAction("update")}
+            >
+              {#if uaBusy}
+                <Loader2 size={14} class="animate-spin" aria-hidden="true" />
+                {tr("ua.busy")}
+              {:else}
+                <RefreshCw size={14} aria-hidden="true" />
+                {tr("ua.actions.update")}
+              {/if}
+            </button>
           </div>
         {:else}
           <div
@@ -315,7 +372,30 @@
           <Network size={28} class="text-tr-ink-4" aria-hidden="true" />
           <p class="text-sm font-medium text-tr-ink-2">{tr("ua.missingGraphTitle")}</p>
           <p class="max-w-md text-xs text-tr-ink-3">{tr("ua.missingGraphHint")}</p>
-          <code class="rounded-lg bg-tr-raised px-3 py-2 text-[11px] text-tr-ink-2">{tr("ua.bankDir")}</code>
+          <button
+            type="button"
+            class="tr-press inline-flex items-center gap-1.5 rounded-lg bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
+            disabled={uaBusy}
+            onclick={() => void runUaAction("analyze")}
+          >
+            {#if uaBusy}
+              <Loader2 size={15} class="animate-spin" aria-hidden="true" />
+              {tr("ua.busy")}
+            {:else}
+              <Sparkles size={15} aria-hidden="true" />
+              {tr("ua.actions.analyze")}
+            {/if}
+          </button>
+        </div>
+      {/if}
+
+      {#if (activeView === "understand" && uaBusy && uaProgressLine)}
+        <div
+          class="shrink-0 overflow-hidden rounded-lg border border-tr-accent-soft bg-tr-accent-soft px-3 py-2"
+          role="status"
+          aria-live="polite"
+        >
+          <p class="truncate text-xs text-tr-ink-2">{uaProgressLine || tr("ua.busy")}</p>
         </div>
       {/if}
     {:else if statusLoading || !status}

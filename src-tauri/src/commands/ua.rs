@@ -9,7 +9,9 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
-use terrain_dashboard::{UaStatus, parse_viewer_banner, pick_viewer_port, ua_status};
+use terrain_dashboard::{
+    UaAction, UaStatus, parse_viewer_banner, pick_viewer_port, run_ua_action, ua_status,
+};
 
 use super::util::validate_repo;
 use crate::AppState;
@@ -154,4 +156,52 @@ pub async fn ua_viewer_cmd(
         },
     );
     Ok(info)
+}
+
+/// `action`: "analyze" (full) | "update" (incremental) — terrain-centralized
+/// UA pipeline: deterministic scripts + terrain's own native LLM for the
+/// semantic slots. Streams ua-progress / ua-done.
+#[tauri::command]
+pub async fn run_ua_cmd(
+    app: AppHandle,
+    repo_path: String,
+    project_slug: Option<String>,
+    action: String,
+) -> Result<(), String> {
+    let repo = validate_repo(&repo_path)?;
+    let slug = project_slug.unwrap_or_else(|| super::slugify_repo(&repo_path));
+    let action = match action.as_str() {
+        "analyze" => UaAction::Analyze,
+        "update" => UaAction::Update,
+        other => return Err(format!("unknown UA action: {other}")),
+    };
+
+    let emitter: Arc<dyn Fn(&str) + Send + Sync> = {
+        let app = app.clone();
+        let slug = slug.clone();
+        Arc::new(move |line: &str| {
+            let _ = app.emit(
+                "ua-progress",
+                super::payloads::UaProgressPayload {
+                    project_slug: slug.clone(),
+                    stage: "run".to_owned(),
+                    message: line.to_owned(),
+                },
+            );
+        })
+    };
+
+    let outcome = run_ua_action(&repo, action, emitter).await;
+    let _ = app.emit(
+        "ua-done",
+        super::payloads::UaDonePayload {
+            project_slug: slug,
+            ok: outcome.ok,
+            message: outcome.message.clone(),
+        },
+    );
+    if !outcome.ok {
+        return Err(outcome.message);
+    }
+    Ok(())
 }

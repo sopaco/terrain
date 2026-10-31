@@ -45,6 +45,7 @@
         onOpenArchitectureDoc?: () => void;
         onOpenHumanOverview?: () => void;
         onOpenStructured?: () => void;
+        onOpenGraph?: () => void;   // open the Graph tab
         quickRefreshBusy?: boolean;
         freshnessLoading?: boolean;
         onQuickRefresh?: () => void;
@@ -77,6 +78,7 @@
         onOpenArchitectureDoc,
         onOpenHumanOverview,
         onOpenStructured,
+        onOpenGraph,
         quickRefreshBusy = false,
         freshnessLoading = false,
         onQuickRefresh,
@@ -969,23 +971,18 @@
                             : undefined}
                         secondaryDisabled={agentContextBusy || !llmReady}
                     />
-                    {#if structuredAsset}
-                        {@const structuredAction =
-                            assetPrimaryAction(structuredAsset)}
-                        <OverviewKnowledgeCard
-                            title={tr("overview.card.structuredTitle")}
-                            subtitle={tr("overview.card.structuredSubtitle")}
-                            meta={structuredAsset.summary}
-                            ready={structuredAsset.ready}
-                            icon="list"
-                            primaryLabel={structuredAction?.label ??
-                                tr("common.open")}
-                            onPrimary={structuredAction?.onClick}
-                            primaryDisabled={structuredAction?.disabled ??
-                                !structuredAction}
-                        />
-                    {/if}
-                </div>
+	                    {#if onOpenGraph}
+	                        <OverviewKnowledgeCard
+	                            title={tr("overview.card.graphTitle")}
+	                            subtitle={tr("overview.card.graphSubtitle")}
+	                            meta={tr("overview.card.graphMeta")}
+	                            ready={true}
+	                            icon="list"
+	                            primaryLabel={tr("common.open")}
+	                            onPrimary={onOpenGraph}
+	                        />
+	                    {/if}
+	                </div>
 
                 {#if needsGenerationSetup}
                     <div

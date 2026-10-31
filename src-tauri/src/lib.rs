@@ -143,6 +143,7 @@ pub fn run() {
             commands::open_local_path_cmd,
             commands::ua_status_cmd,
             commands::ua_viewer_cmd,
+            commands::run_ua_cmd,
         ])
         .build(tauri::generate_context!())
         .expect("error while running Terrain")

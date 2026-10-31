@@ -331,6 +331,12 @@ export const getUaStatus = (repoPath: string) =>
 export const startUaViewer = (repoPath: string) =>
   invoke<UaViewerInfo>("ua_viewer_cmd", { repoPath });
 
+export const runUa = (
+  repoPath: string,
+  projectSlug: string | null,
+  action: "analyze" | "update",
+) => invoke<void>("run_ua_cmd", { repoPath, projectSlug, action });
+
 export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
 
 export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefresh = false) =>

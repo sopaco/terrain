@@ -50,6 +50,7 @@ export default {
     missingGraphHint:
       "Run the understand skill with your coding agent — it writes .ua/ and .terrain/understand/index.md.",
     bankDir: ".terrain/understand/",
+    actions: { analyze: "Analyze with UA", update: "Update semantic graph" },
     stats: { nodes: "Nodes", links: "Links", analyzed: "Analyzed" },
   },
 } as const;

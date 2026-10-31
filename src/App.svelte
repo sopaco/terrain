@@ -1261,6 +1261,7 @@
                 ? openOverviewHumanDoc
                 : undefined}
             onOpenStructured={openStructuredDocs}
+            onOpenGraph={() => (project.activeTab = "graph")}
             quickRefreshBusy={project.quickRefreshBusy}
             freshnessLoading={project.freshnessLoading}
             onQuickRefresh={triggerQuickRefresh}
