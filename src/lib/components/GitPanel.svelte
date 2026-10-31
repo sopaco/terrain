@@ -17,6 +17,7 @@
     getGitCommitFilesList,
     getGitDiffFile,
     getGitHistory,
+    getGitMergePreview,
     getGitStatus,
     gitCheckout,
     gitCommitFiles,
@@ -37,6 +38,7 @@
     GitCommit,
     GitDiff,
     GitFileEntry,
+    GitMergePreview,
     GitOpResult,
     GitStatus,
   } from "../types";
@@ -141,6 +143,16 @@
   let view = $state<"changes" | "history">("changes");
   let dropdownOpen = $state(false);
   let mergeRowOpen = $state(false);
+
+  // Merge preview: what the selected branch brings into the current one.
+  let mergePreview = $state<GitMergePreview | null>(null);
+  let mergePreviewLoading = $state(false);
+  let mergePreviewErr = $state<string | null>(null);
+  let mergePreviewSeq = 0; // plain counter: guards stale previews
+
+  const nothingToMerge = $derived(
+    mergePreview !== null && mergePreviewErr === null && mergePreview.commits.length === 0,
+  );
 
   const ahead = $derived(status?.ahead ?? 0);
   const behind = $derived(status?.behind ?? 0);
@@ -322,6 +334,8 @@
   let commitDiff = $state<GitDiff | null>(null);
   let historyLoading = $state(false);
 
+  const selectedCommit = $derived(commits.find((c) => c.hash === selectedHash) ?? null);
+
   function relTime(secs: number): string {
     const delta = Date.now() / 1000 - secs;
     if (delta < 60) return "now";
@@ -418,6 +432,34 @@
     void refresh();
   });
 
+  // Live merge preview while the merge row is open (Desktop's merge dialog).
+  $effect(() => {
+    const repo = repoPath;
+    const branch = mergeRowOpen ? mergeBranch : "";
+    if (!repo || !branch) {
+      mergePreview = null;
+      mergePreviewErr = null;
+      mergePreviewLoading = false;
+      return;
+    }
+    const seq = ++mergePreviewSeq;
+    mergePreviewLoading = true;
+    mergePreviewErr = null;
+    getGitMergePreview(repo, branch)
+      .then((p) => {
+        if (seq === mergePreviewSeq) mergePreview = p;
+      })
+      .catch((e) => {
+        if (seq === mergePreviewSeq) {
+          mergePreview = null;
+          mergePreviewErr = String(e);
+        }
+      })
+      .finally(() => {
+        if (seq === mergePreviewSeq) mergePreviewLoading = false;
+      });
+  });
+
   $effect(() => {
     const choices = mergeChoices;
     if (choices.length > 0 && !choices.includes(mergeBranch)) {
@@ -487,12 +529,41 @@
                 <button
                   type="button"
                   class="tr-press shrink-0 rounded-lg bg-tr-accent px-2.5 py-1 text-xs font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
-                  disabled={busy || !mergeBranch}
+                  disabled={busy || !mergeBranch || nothingToMerge}
                   onclick={() => void doMerge()}
                 >
                   {tr("git.mergeBtn")}
                 </button>
               </div>
+              {#if mergePreviewLoading}
+                <p class="px-2 pb-1 text-[11px] text-tr-ink-3">{tr("git.mergePreviewLoading")}</p>
+              {:else if mergePreviewErr}
+                <p class="px-2 pb-1 text-[11px] text-tr-critical">{mergePreviewErr}</p>
+              {:else if mergePreview && mergePreview.commits.length === 0}
+                <p class="px-2 pb-1 text-[11px] text-tr-ink-3">{tr("git.mergePreviewNone")}</p>
+              {:else if mergePreview}
+                <div class="flex flex-col gap-1 px-2 pb-1.5">
+                  <p class="text-[11px] text-tr-ink-3">
+                    {tr("git.mergePreviewCommits", { count: mergePreview.commits.length })}
+                    {#if mergePreview.shortstat}
+                      <span class="text-tr-ink-4">· {mergePreview.shortstat}</span>
+                    {/if}
+                  </p>
+                  <ul class="max-h-28 space-y-0.5 overflow-y-auto text-[11px] text-tr-ink-2">
+                    {#each mergePreview.commits.slice(0, 8) as c (c.hash)}
+                      <li class="truncate" title={c.summary}>
+                        <span class="font-mono text-tr-ink-4">{c.short}</span>
+                        {c.summary}
+                      </li>
+                    {/each}
+                  </ul>
+                  {#if mergePreview.commits.length > 8}
+                    <p class="text-[11px] text-tr-ink-4">
+                      {tr("git.mergePreviewMore", { count: mergePreview.commits.length - 8 })}
+                    </p>
+                  {/if}
+                </div>
+              {/if}
             {/if}
           </div>
           <div class="mt-1 border-t border-tr-border pt-1">
@@ -794,8 +865,24 @@
       </section>
 
       <section class="flex min-w-0 flex-1 flex-col">
-        {#if selectedHash}
+        {#if selectedHash && selectedCommit}
           <div class="min-h-0 flex-1 overflow-y-auto">
+            <header class="border-b border-tr-border px-3 py-2">
+              <p class="text-sm font-medium text-tr-ink">{selectedCommit.summary}</p>
+              {#if selectedCommit.body}
+                <p class="mt-1 whitespace-pre-wrap text-xs text-tr-ink-2">
+                  {selectedCommit.body}
+                </p>
+              {/if}
+              <p class="mt-1 flex items-center gap-1.5 text-[11px] text-tr-ink-3">
+                <span class="min-w-0 truncate">
+                  <span class="sr-only">{tr("git.author")}: </span>{selectedCommit.author}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span class="shrink-0 whitespace-nowrap">{relTime(Number(selectedCommit.time_secs))}</span>
+                <span class="ml-auto shrink-0 font-mono text-tr-ink-4">{selectedCommit.short}</span>
+              </p>
+            </header>
             <p class="px-3 py-2 text-[11px] font-medium text-tr-ink-3">{tr("git.filesChanged")}</p>
             {#each commitFiles as entry (entry.path)}
               <button

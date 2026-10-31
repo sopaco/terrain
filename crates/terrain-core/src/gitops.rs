@@ -243,6 +243,70 @@ pub fn merge(repo: &Path, branch: &str) -> Result<GitOpResult> {
     Ok(GitOpResult { ok, output: text })
 }
 
+/// What a merge would bring in: the commits `HEAD..<branch>` and the combined
+/// shortstat of `HEAD...<branch>` (files changed / insertions / deletions).
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
+#[derive(Debug, Clone, Serialize)]
+pub struct GitMergePreview {
+    /// The branch being merged in.
+    pub branch: String,
+    /// Incoming commits (newest first; `body` is empty here).
+    pub commits: Vec<GitCommit>,
+    /// `git diff --shortstat HEAD...<branch>` text; empty when up to date.
+    pub shortstat: String,
+}
+
+/// Preview of the commits a merge would apply, mirroring desktop/desktop's
+/// merge-branch-dialog (commit list + change-size summary) before confirming.
+pub fn merge_preview(repo: &Path, branch: &str) -> Result<GitMergePreview> {
+    let branch = branch.trim();
+    if branch.is_empty() {
+        return Err(CoreError::InvalidDoc("empty branch name".to_owned()));
+    }
+    let range = format!("HEAD..{branch}");
+    let (ok, text) = run_git(
+        repo,
+        &[
+            "log",
+            "-n",
+            "100",
+            &range,
+            "--pretty=format:\u{1e}%H\u{1f}%h\u{1f}%an\u{1f}%ct\u{1f}%s\u{1f}",
+        ],
+    )?;
+    if !ok {
+        return Err(CoreError::InvalidDoc(format!(
+            "git merge preview failed: {text}"
+        )));
+    }
+    let commits = text
+        .split('\u{1e}')
+        .filter(|record| !record.trim().is_empty())
+        .filter_map(|record| {
+            let record = record.trim_end_matches('\n');
+            let mut parts = record.splitn(6, '\u{1f}');
+            Some(GitCommit {
+                hash: parts.next()?.to_owned(),
+                short: parts.next()?.to_owned(),
+                author: parts.next()?.to_owned(),
+                time_secs: parts.next()?.trim().parse().unwrap_or(0),
+                summary: parts.next().unwrap_or("").to_owned(),
+                body: String::new(),
+            })
+        })
+        .collect();
+    let (_ok2, shortstat) = run_git(
+        repo,
+        &["diff", "--shortstat", &format!("HEAD...{branch}")],
+    )?;
+    Ok(GitMergePreview {
+        branch: branch.to_owned(),
+        commits,
+        shortstat: shortstat.trim().to_owned(),
+    })
+}
+
 /// Push current branch (sets upstream on first push).
 pub fn push(repo: &Path) -> Result<GitOpResult> {
     let st = status(repo)?;
@@ -348,7 +412,7 @@ mod tests {
             .current_dir(&repo)
             .output();
         let _ = crate::process::command("git")
-            .args(["commit", "-m", "feature work"])
+            .args(["commit", "-m", "feature work", "-m", "adds c.txt"])
             .current_dir(&repo)
             .output();
         let _ = crate::process::command("git")
@@ -363,6 +427,59 @@ mod tests {
         let res = merge(&repo, "feature").unwrap();
         assert!(res.ok, "merge output: {}", res.output);
         assert!(repo.join("c.txt").exists());
+    }
+
+    #[test]
+    fn merge_preview_lists_incoming() {
+        let repo = temp_repo("preview");
+        let _ = crate::process::command("git")
+            .args(["checkout", "-q", "-b", "feature"])
+            .current_dir(&repo)
+            .output();
+        std::fs::write(repo.join("c.txt"), "f\n").unwrap();
+        let _ = crate::process::command("git")
+            .args(["add", "."])
+            .current_dir(&repo)
+            .output();
+        let _ = crate::process::command("git")
+            .args(["commit", "-q", "-m", "feature work", "-m", "adds c.txt"])
+            .current_dir(&repo)
+            .output();
+        let _ = crate::process::command("git")
+            .args(["checkout", "-q", "main"])
+            .current_dir(&repo)
+            .output();
+
+        let preview = merge_preview(&repo, "feature").unwrap();
+        assert_eq!(preview.commits.len(), 1, "{:?}", preview.commits);
+        assert!(preview.commits[0].summary.contains("feature work"));
+        assert!(preview.shortstat.contains("1 file changed"), "stat: {}", preview.shortstat);
+
+        // Up to date: nothing incoming, empty stat.
+        merge(&repo, "feature").unwrap();
+        let none = merge_preview(&repo, "feature").unwrap();
+        assert!(none.commits.is_empty());
+        assert!(none.shortstat.is_empty(), "stat: {}", none.shortstat);
+    }
+
+    #[test]
+    fn history_keeps_multiline_body() {
+        let repo = temp_repo("body");
+        std::fs::write(repo.join("a.txt"), "changed\n").unwrap();
+        let _ = crate::process::command("git")
+            .args(["add", "."])
+            .current_dir(&repo)
+            .output();
+        let _ = crate::process::command("git")
+            .args(["commit", "-q", "-m", "subject line", "-m", "body para one", "-m", "body para two"])
+            .current_dir(&repo)
+            .output();
+
+        let log = history(&repo, 5).unwrap();
+        let top = log.first().unwrap();
+        assert_eq!(top.summary, "subject line");
+        assert!(top.body.contains("body para one"), "body: {:?}", top.body);
+        assert!(top.body.contains("body para two"), "body: {:?}", top.body);
     }
 }
 
@@ -380,6 +497,8 @@ pub struct GitCommit {
     pub author: String,
     pub time_secs: u64,
     pub summary: String,
+    /// Full commit-message body (everything after the subject), trimmed.
+    pub body: String,
 }
 
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
@@ -434,22 +553,27 @@ pub fn history(repo: &Path, limit: usize) -> Result<Vec<GitCommit>> {
             "log",
             "-n",
             &lim,
-            "--pretty=format:%H\u{1f}%h\u{1f}%an\u{1f}%ct\u{1f}%s",
+            // The record separator (\u{1e}) keeps multi-line bodies (%b)
+            // inside one record; fields are split on \u{1f}.
+            "--pretty=format:\u{1e}%H\u{1f}%h\u{1f}%an\u{1f}%ct\u{1f}%s\u{1f}%b",
         ],
     )?;
     if !ok {
         return Err(CoreError::InvalidDoc(format!("git log failed: {text}")));
     }
     let commits = text
-        .lines()
-        .filter_map(|line| {
-            let mut parts = line.split('\u{1f}');
+        .split('\u{1e}')
+        .filter(|record| !record.trim().is_empty())
+        .filter_map(|record| {
+            let record = record.trim_end_matches('\n');
+            let mut parts = record.splitn(6, '\u{1f}');
             Some(GitCommit {
                 hash: parts.next()?.to_owned(),
                 short: parts.next()?.to_owned(),
                 author: parts.next()?.to_owned(),
                 time_secs: parts.next()?.trim().parse().unwrap_or(0),
                 summary: parts.next().unwrap_or("").to_owned(),
+                body: parts.next().unwrap_or("").trim().to_owned(),
             })
         })
         .collect();

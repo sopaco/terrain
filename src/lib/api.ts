@@ -17,6 +17,7 @@ import type {
   GitCommit,
   GitDiff,
   GitFileEntry,
+  GitMergePreview,
   GitOpResult,
   GitStatus,
   GraphifyCommunity,
@@ -353,6 +354,9 @@ export const gitCommit = (repoPath: string, message: string) =>
 
 export const gitMerge = (repoPath: string, branch: string) =>
   invoke<GitOpResult>("git_merge_cmd", { repoPath, branch });
+
+export const getGitMergePreview = (repoPath: string, branch: string) =>
+  invoke<GitMergePreview>("git_merge_preview_cmd", { repoPath, branch });
 
 export const gitPush = (repoPath: string) =>
   invoke<GitOpResult>("git_push_cmd", { repoPath });

@@ -122,6 +122,7 @@ pub fn run() {
             commands::git_unstage_cmd,
             commands::git_commit_cmd,
             commands::git_merge_cmd,
+            commands::git_merge_preview_cmd,
             commands::git_push_cmd,
             commands::git_pull_cmd,
             commands::git_checkout_cmd,

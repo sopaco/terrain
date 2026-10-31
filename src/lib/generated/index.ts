@@ -40,6 +40,7 @@ export type { GitBranches } from "./GitBranches";
 export type { GitCommit } from "./GitCommit";
 export type { GitDiff } from "./GitDiff";
 export type { GitFileEntry } from "./GitFileEntry";
+export type { GitMergePreview } from "./GitMergePreview";
 export type { GitOpResult } from "./GitOpResult";
 export type { GitStatus } from "./GitStatus";
 export type { GraphifyCommunity } from "./GraphifyCommunity";

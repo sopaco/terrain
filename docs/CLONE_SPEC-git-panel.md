@@ -33,9 +33,19 @@ or branding copied.
 5. **Sync** — `fetch` + existing `push` (auto `--set-upstream origin`) +
    `pull --ff-only`; ahead/behind from status (E6).
 6. **Branches** — dropdown lists local branches; selection switches via
-   `checkout`; merge targets the current branch (E7).
+   `checkout`; merge targets the current branch (E7). Before merging a
+   **merge preview** (`merge_preview`, `git_merge_preview_cmd`) shows the
+   incoming `HEAD..branch` commits and the `HEAD...branch` `--shortstat`
+   (mirrors Desktop's merge-branch-dialog); Merge is disabled when the branch
+   is up to date.
 7. **Conflicts** — banner listing conflicted paths when status reports them;
    resolution happens in the user's editor, then include + commit (E8).
+8. **History detail** — `history` returns each commit's full body (`%b`); the
+   history pane renders subject + body + author/time/hash above the
+   per-commit file list and per-file patches (E5 expandable-commit-summary).
+9. **AI commit message** — `git_generate_commit_message_cmd` feeds the
+   included files' diffs (20 KB cap) to the configured native LLM and returns
+   {summary, description}; the "Generate with AI" button sits beside Commit.
 
 ## UI contract (Terrain tokens)
 

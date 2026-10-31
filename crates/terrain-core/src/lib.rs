@@ -78,7 +78,9 @@ pub use freshness::{
     git_change_set, git_commit_exists, git_snapshot, read_freshness_ledger,
     resolve_freshness_summary, write_freshness_ledger,
 };
-pub use gitops::{GitBranches, GitCommit, GitDiff, GitFileEntry, GitOpResult, GitStatus};
+pub use gitops::{
+    GitBranches, GitCommit, GitDiff, GitFileEntry, GitMergePreview, GitOpResult, GitStatus,
+};
 pub use human::{count_human_docs, list_human_docs, read_human_doc};
 pub use ingest::{AgentPackSummary, ProjectScanner, ScanReport};
 pub use integrations::{

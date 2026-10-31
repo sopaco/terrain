@@ -6,7 +6,7 @@ use terrain_agent::ChatEngine;
 
 use terrain_core::{
     ChatPhase, ChatTokenUsage, ChatToolCallRecord, GitBranches, GitCommit, GitDiff, GitFileEntry,
-    GitOpResult, GitStatus, gitops,
+    GitMergePreview, GitOpResult, GitStatus, gitops,
 };
 
 use super::util::validate_repo;
@@ -75,6 +75,18 @@ pub async fn git_merge_cmd(repo_path: String, branch: String) -> Result<GitOpRes
     tauri::async_runtime::spawn_blocking(move || gitops::merge(&repo, &branch))
         .await
         .map_err(|e| format!("git merge failed: {e}"))?
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_merge_preview_cmd(
+    repo_path: String,
+    branch: String,
+) -> Result<GitMergePreview, String> {
+    let repo = validate_repo(&repo_path)?;
+    tauri::async_runtime::spawn_blocking(move || gitops::merge_preview(&repo, &branch))
+        .await
+        .map_err(|e| format!("git merge preview failed: {e}"))?
         .map_err(|e| e.to_string())
 }
 
