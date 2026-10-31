@@ -84,7 +84,15 @@ export default {
     repomix: "Repomix",
     graph: "Graph",
     wiki: "Wiki",
+    vault: "Vault",
     present: "present",
     missing: "missing",
+  },
+  vault: {
+    banner:
+      "No Obsidian vault found at ~/vault — vault integration is off for graphify projects.",
+    bannerHint:
+      "Create ~/vault (or run the memory-setup installer) and re-run a project update to link the graph.",
+    rowHint: "Vault link not configured — run Update on this project.",
   },
 } as const;

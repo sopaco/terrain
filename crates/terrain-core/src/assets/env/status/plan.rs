@@ -240,6 +240,17 @@ pub fn plan_env_integration(
                     )
                     .into(),
             }),
+            "user_env" => steps.push(EnvPlanStep {
+                id: def.id.clone(),
+                label: def.label.clone(),
+                kind: def.kind.clone(),
+                action: lang
+                    .tr(
+                        "创建 vault、安装 autosave 脚本、注册 SessionEnd hook、添加每日 sync cron、链接 graphify 图谱",
+                        "Create the vault, install autosave scripts, register the SessionEnd hook, add the daily sync cron, link graphify graphs",
+                    )
+                    .into(),
+            }),
             "gitignore" => steps.push(EnvPlanStep {
                 id: def.id.clone(),
                 label: def.label.clone(),

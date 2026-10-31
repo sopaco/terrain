@@ -12,4 +12,8 @@ export type DashboardRow = { slug: string, name: string, repo_path: string, stat
 /**
  * "fresh" | "stale" | "unknown" — graph vs the repo's current git HEAD.
  */
-staleness: string, activity: ProjectActivity, docs: DocsCoverage, last_batch: LastBatchRecord | null, };
+staleness: string, activity: ProjectActivity, docs: DocsCoverage, 
+/**
+ * Vault integration state for this project.
+ */
+vault_configured: boolean, vault_path: string | null, last_batch: LastBatchRecord | null, };

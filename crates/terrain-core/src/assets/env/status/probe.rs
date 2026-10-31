@@ -71,7 +71,10 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
             } else {
                 lang.tr(
                     &format!("缺少 {}/{name}（重新集成以补齐）", missing.join(", ")),
-                    &format!("Missing {}/{name} (re-integrate to restore)", missing.join(", ")),
+                    &format!(
+                        "Missing {}/{name} (re-integrate to restore)",
+                        missing.join(", ")
+                    ),
                 )
                 .to_string()
             }
@@ -99,7 +102,8 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
                 )
                 .into()
             } else {
-                lang.tr("未配置或版本过旧", "Not configured or outdated").into()
+                lang.tr("未配置或版本过旧", "Not configured or outdated")
+                    .into()
             }
         }
         "gitignore" => {
@@ -204,7 +208,8 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
     }
     if !ok {
         return if def.id == "tool-bun" {
-            lang.tr("可选：bun 未检测到", "Optional: bun not detected").into()
+            lang.tr("可选：bun 未检测到", "Optional: bun not detected")
+                .into()
         } else {
             lang.tr("未安装", "Not installed").into()
         };
@@ -216,11 +221,13 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
                 .as_ref()
                 .is_some_and(|p| run_bundled_check(p, &["gain"], repo))
             {
-                lang.tr("已安装（Terrain bundled）", "Installed (Terrain bundled)").into()
+                lang.tr("已安装（Terrain bundled）", "Installed (Terrain bundled)")
+                    .into()
             } else if command_succeeds("rtk", &["gain"], repo) {
                 lang.tr("已安装（PATH）", "Installed (PATH)").into()
             } else {
-                lang.tr("已安装（项目本地）", "Installed (project-local)").into()
+                lang.tr("已安装（项目本地）", "Installed (project-local)")
+                    .into()
             }
         }
         "tool-codegraph" => {
@@ -239,7 +246,13 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
 }
 
 fn command_succeeds(program: &str, args: &[&str], cwd: &Path) -> bool {
-    crate::process::command(program)
+    // GUI-launched apps get a minimal PATH; resolve through the augmented
+    // login-shell PATH so checks like `graphify --version` still find shims in
+    // ~/.local/bin or ~/.terrain/bin.
+    let resolved = crate::shell_path::resolve_executable(program)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| program.to_owned());
+    crate::process::command(resolved)
         .args(args)
         .current_dir(cwd)
         .stdout(std::process::Stdio::null())
@@ -263,5 +276,39 @@ mod tests {
         std::fs::write(dir.join(".codegraph/codegraph.db"), b"x").unwrap();
         assert!(codegraph_index_ready(&dir));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod probe_env_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn generic_check_via_bash_resolves() {
+        // The generic arm must run the check command as-is; `bash -lc` is
+        // available on dev machines and proves a non-zero exit propagates.
+        let def = IntegrationDef {
+            id: "test-check".to_owned(),
+            kind: "tool".to_owned(),
+            label: "test".to_owned(),
+            description: String::new(),
+            skill_dir: None,
+            preset_skill: None,
+            optional: false,
+            required: false,
+            depends_on: Vec::new(),
+            package: None,
+            check: Some(vec!["bash".to_owned(), "-lc".to_owned(), "true".to_owned()]),
+            install_steps: Vec::new(),
+            skip_commands: Vec::new(),
+            patterns: Vec::new(),
+            bundled: false,
+        };
+        assert!(tool_check_passes(std::path::Path::new("."), &def));
+        let def_false = IntegrationDef {
+            check: Some(vec!["bash".to_owned(), "-lc".to_owned(), "false".to_owned()]),
+            ..def
+        };
+        assert!(!tool_check_passes(std::path::Path::new("."), &def_false));
     }
 }

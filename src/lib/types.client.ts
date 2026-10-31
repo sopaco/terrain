@@ -60,7 +60,14 @@ export interface ChatMessage {
   usage?: TokenUsage;
 }
 
-export type AppTab = "dashboard" | "overview" | "knowledge" | "graph" | "sdd" | "env";
+export type AppTab =
+  | "dashboard"
+  | "overview"
+  | "knowledge"
+  | "graph"
+  | "git"
+  | "sdd"
+  | "env";
 
 /** Mirror of the Rust `GraphifyStatus` command payload (src-tauri commands/graphify.rs). */
 export interface GraphifyCommunity {

@@ -171,6 +171,7 @@
     { key: "repomix", field: "repomix" },
     { key: "graph", field: "graph" },
     { key: "wiki", field: "wiki" },
+    { key: "vault", field: "vault" },
   ] as const;
 
   /** Per-project max weekly commits, for scaling each small-multiple sparkline. */
@@ -366,6 +367,18 @@
       </button>
     </div>
 
+    {#if summary.vault_root_exists === false}
+      <div class="shrink-0 rounded-xl border border-tr-watch/30 bg-tr-watch-soft px-4 py-3" role="note">
+        <div class="flex items-start gap-3">
+          <TriangleAlert size={18} class="mt-0.5 shrink-0 text-tr-watch" aria-hidden="true" />
+          <div class="text-sm text-tr-on-watch">
+            <p>{tr("dashboard.vault.banner")}</p>
+            <p class="mt-1 text-xs opacity-80">{tr("dashboard.vault.bannerHint")}</p>
+          </div>
+        </div>
+      </div>
+    {/if}
+
     {#if batchRunning && batchLine}
       <div
         class="shrink-0 rounded-lg border border-tr-accent-soft bg-tr-accent-soft px-3 py-2"
@@ -399,6 +412,15 @@
                 <span class={`inline-block rounded-full px-2.5 py-1 ${statusChipClass(row.status)}`}>
                   {statusLabel(row.status)}
                 </span>
+                {#if row.docs.vault === false && summary?.vault_root_exists && row.graph.graph_present}
+                  <span
+                    class="ml-1 inline-flex items-center gap-0.5 text-[11px] text-tr-ink-4"
+                    title={tr("dashboard.vault.rowHint")}
+                  >
+                    <TriangleAlert size={10} aria-hidden="true" />
+                    {tr("dashboard.docs.vault")}
+                  </span>
+                {/if}
                 {#if row.status === "partial" && row.missing_assets.length > 0}
                   <p class="mt-1 text-[11px] text-tr-on-watch">
                     {tr("dashboard.table.missingAssets.count", { count: row.missing_assets.length })}
@@ -565,7 +587,7 @@
                   ></div>
                 {/each}
               </div>
-              <span class="shrink-0 text-[11px] text-tr-ink-4">{docPresent(row)}/5</span>
+              <span class="shrink-0 text-[11px] text-tr-ink-4">{docPresent(row)}/6</span>
             </div>
           {/each}
         </div>

@@ -11,7 +11,8 @@ pub use dashboard::{
     AddProjectError, AddProjectOk, AddProjectsResult, BatchProgressEvent, BatchUpdateResult,
     CachedGraphInfo, DashboardRow, DashboardSummary, DashboardTotals, DocsCoverage,
     LastBatchRecord, ProjectActivity, ProjectCollaboration, ProjectUpdateResult, add_projects,
-    batch_update_graphs, scan_dashboard, staleness_of,
+    batch_update_graphs, scan_dashboard, staleness_of, sync_vault_link, vault_link_current,
+    vault_link_path, vault_root,
 };
 pub use graphify::{
     GraphifyAction, GraphifyCommunity, GraphifyGraphInfo, GraphifyRunOutcome, git_head,

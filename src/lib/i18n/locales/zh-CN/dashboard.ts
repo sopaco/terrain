@@ -83,7 +83,13 @@ export default {
     repomix: "Repomix",
     graph: "图谱",
     wiki: "Wiki",
+    vault: "Vault",
     present: "已有",
     missing: "缺失",
+  },
+  vault: {
+    banner: "未在 ~/vault 找到 Obsidian 仓库 —— graphify 项目的 vault 集成已关闭。",
+    bannerHint: "创建 ~/vault（或运行 memory-setup 安装器）并重新执行项目更新即可关联图谱。",
+    rowHint: "Vault 关联未配置 —— 请对该项目执行更新。",
   },
 } as const;

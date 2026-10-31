@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use terrain_core::{
-    build_context_overview, codegraph_drift, extract_context_section, grep_file,
+    AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS, AgentPackMeta, KnowledgePaths, KnowledgeSearch,
+    SearchOptions, build_context_overview, codegraph_drift, extract_context_section, grep_file,
     read_agent_pack_file, read_doc_at_in_project, resolve_freshness_summary,
-    resolve_project_repo_path, split_context_sections, AgentPackMeta, KnowledgePaths,
-    KnowledgeSearch, SearchOptions, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
+    resolve_project_repo_path, split_context_sections,
 };
 
 use crate::cli::ToolsCommands;
@@ -92,6 +92,22 @@ pub fn run(paths: &KnowledgePaths, command: ToolsCommands) -> Result<()> {
                 .with_context(|| format!("resolve repo path for project '{project}'"))?;
             let report = codegraph_drift(&repo_path);
             print_json(&report)
+        }
+        ToolsCommands::GraphifyStatus { project } => {
+            let repo_path = resolve_project_repo_path(paths, &project, None)
+                .with_context(|| format!("resolve repo path for project '{project}'"))?;
+            let repo = std::path::PathBuf::from(&repo_path);
+            let info = terrain_dashboard::read_graph_info(&repo);
+            let vault = terrain_dashboard::vault_link_current(&repo, &project);
+            print_json(&serde_json::json!({
+                "project": project,
+                "repo_path": repo_path,
+                "binary_available": terrain_dashboard::resolve_graphify_bin().is_some(),
+                "graph": info,
+                "vault_configured": vault.is_some(),
+                "vault_path": vault,
+                "vault_root_exists": terrain_dashboard::vault_root().is_dir(),
+            }))
         }
     }
 }

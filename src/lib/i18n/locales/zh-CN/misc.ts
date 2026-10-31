@@ -44,6 +44,8 @@ export default {
     knowledge: "知识库",
     graph: "图谱",
     graphTitle: "代码知识图谱（Graphify）",
+    git: "Git",
+    gitTitle: "Git 工作区：提交、合并、推送",
     env: "环境",
     sddTitle: "SDD 工作流：规格驱动开发",
     ariaLabel: "主导航",

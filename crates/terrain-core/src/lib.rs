@@ -4,6 +4,7 @@ pub mod doc;
 pub mod error;
 pub mod freshness;
 pub mod git_policy;
+pub mod gitops;
 pub mod human;
 pub mod ingest;
 pub mod integrations;
@@ -21,6 +22,7 @@ pub mod project;
 pub mod prompts;
 pub mod registry;
 pub mod repo;
+pub mod vault;
 pub mod repo_walk;
 pub mod render;
 pub mod schema;
@@ -157,6 +159,7 @@ pub use schema::{
 pub use search::{
     KnowledgeSearch, ProjectSummary, SearchHit, SearchOptions, read_doc_at, read_doc_at_in_project,
 };
+pub use gitops::{GitBranches, GitCommit, GitDiff, GitFileEntry, GitOpResult, GitStatus};
 pub use shell_path::{
     augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,
 };

@@ -168,6 +168,8 @@
     let GraphifyPanel = $state<GraphifyPanelType | null>(null);
     type DashboardPanelType = typeof import("./lib/components/DashboardPanel.svelte").default;
     let DashboardPanel = $state<DashboardPanelType | null>(null);
+    type GitPanelType = typeof import("./lib/components/GitPanel.svelte").default;
+    let GitPanel = $state<GitPanelType | null>(null);
 
     $effect(() => {
         if (project.activeTab === "graph" && !GraphifyPanel) {
@@ -181,6 +183,14 @@
         if (project.activeTab === "dashboard" && !DashboardPanel) {
             void import("./lib/components/DashboardPanel.svelte").then((m) => {
                 DashboardPanel = m.default;
+            });
+        }
+    });
+
+    $effect(() => {
+        if (project.activeTab === "git" && !GitPanel) {
+            void import("./lib/components/GitPanel.svelte").then((m) => {
+                GitPanel = m.default;
             });
         }
     });
@@ -1307,6 +1317,17 @@
                 <GraphifyPanel
                     repoPath={project.selectedRepoPath}
                     projectSlug={project.selectedSlug}
+                    onStatus={(message, kind) => setStatus(message, kind)}
+                />
+            {/if}
+        </div>
+    {/if}
+
+    {#if project.activeTab === "git"}
+        <div class="flex min-h-0 flex-1 flex-col">
+            {#if GitPanel}
+                <GitPanel
+                    repoPath={project.selectedRepoPath}
                     onStatus={(message, kind) => setStatus(message, kind)}
                 />
             {/if}

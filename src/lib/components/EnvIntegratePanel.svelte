@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { getEnvStatus, planEnvIntegration, runEnvIntegration } from "../api";
   import type { EnvIntegrationStatus, EnvPlan, EnvStatus } from "../types";
+  import { Sparkles } from "@lucide/svelte";
   import { tr } from "../i18n";
   import EnvPlanPanel from "./EnvPlanPanel.svelte";
   import HelpButton from "./icons/HelpButton.svelte";
@@ -29,7 +30,11 @@
   const toolItems = $derived(status?.items.filter((i) => i.kind === "tool") ?? []);
   const configItems = $derived(
     status?.items.filter(
-      (i) => i.kind === "agents_md" || i.kind === "gitignore" || i.kind === "terrain_ignore",
+      (i) =>
+        i.kind === "agents_md" ||
+        i.kind === "gitignore" ||
+        i.kind === "terrain_ignore" ||
+        i.kind === "user_env",
     ) ?? [],
   );
 
@@ -186,6 +191,13 @@
     void refreshPlan(selected);
   }
 
+  // ponytail: plan refresh lags the click (refreshPlan is async); apply reads the
+  // reactive `selected` set directly, so the fresh selection is what gets applied.
+  function applyAll() {
+    selectAllPending();
+    void apply();
+  }
+
   async function apply() {
     if (!repoPath || applyCount === 0) return;
     applying = true;
@@ -311,6 +323,15 @@
         {tr("env.clearSelection")}
       </button>
       <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          class="tr-press flex items-center gap-1.5 rounded-lg bg-tr-accent px-4 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
+          disabled={applying}
+          onclick={applyAll}
+        >
+          <Sparkles size={14} strokeWidth={2.5} class="shrink-0" aria-hidden="true" />
+          {tr("env.applyAllAuto")}
+        </button>
         <button
           type="button"
           class="tr-press rounded-lg bg-tr-accent px-4 py-1.5 text-xs font-medium transition-colors hover:bg-tr-accent-hover disabled:opacity-50"

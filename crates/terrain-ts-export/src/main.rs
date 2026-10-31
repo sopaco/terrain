@@ -79,6 +79,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     terrain_dashboard::ProjectActivity::export_all_to(&out)?;
     terrain_dashboard::DocsCoverage::export_all_to(&out)?;
     terrain_dashboard::ProjectCollaboration::export_all_to(&out)?;
+    terrain_core::GitStatus::export_all_to(&out)?;
+    terrain_core::GitBranches::export_all_to(&out)?;
+    terrain_core::GitOpResult::export_all_to(&out)?;
+    terrain_core::GitCommit::export_all_to(&out)?;
+    terrain_core::GitDiff::export_all_to(&out)?;
 
     terrain_core::UsageSnapshot::export_all_to(&out)?;
     terrain_core::UsageProbeResult::export_all_to(&out)?;

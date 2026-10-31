@@ -44,6 +44,8 @@ export default {
     knowledge: "Wiki",
     graph: "Graph",
     graphTitle: "Code knowledge graph (Graphify)",
+    git: "Git",
+    gitTitle: "Git worktree: commit, merge, push",
     env: "Env",
     sddTitle: "SDD workflow: spec-driven development",
     ariaLabel: "Main navigation",

@@ -313,6 +313,11 @@ pub enum ToolsCommands {
         #[arg(long)]
         project: String,
     },
+    /// Graphify graph + vault status for one project (JSON)
+    GraphifyStatus {
+        #[arg(long)]
+        project: String,
+    },
 }
 
 #[derive(Subcommand)]

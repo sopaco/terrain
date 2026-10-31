@@ -12,6 +12,12 @@ import type {
   BatchUpdateResult,
   DashboardSummary,
   FreshnessSummary,
+  GitBranches,
+  GitCommit,
+  GitDiff,
+  GitFileEntry,
+  GitOpResult,
+  GitStatus,
   GraphifyCommunity,
   GraphifyStatus,
   GraphifyViewPayload,
@@ -322,3 +328,64 @@ export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefr
 
 export const openLocalPath = (path: string) =>
   invoke<void>("open_local_path_cmd", { path });
+
+export const getGitStatus = (repoPath: string) =>
+  invoke<GitStatus>("git_status_cmd", { repoPath });
+
+export const getGitBranches = (repoPath: string) =>
+  invoke<GitBranches>("git_branches_cmd", { repoPath });
+
+export const gitStage = (
+  repoPath: string,
+  paths: string[] | null,
+  all: boolean,
+) => invoke<GitOpResult>("git_stage_cmd", { repoPath, paths, all });
+
+export const gitUnstage = (
+  repoPath: string,
+  paths: string[] | null,
+  all: boolean,
+) => invoke<GitOpResult>("git_unstage_cmd", { repoPath, paths, all });
+
+export const gitCommit = (repoPath: string, message: string) =>
+  invoke<GitOpResult>("git_commit_cmd", { repoPath, message });
+
+export const gitMerge = (repoPath: string, branch: string) =>
+  invoke<GitOpResult>("git_merge_cmd", { repoPath, branch });
+
+export const gitPush = (repoPath: string) =>
+  invoke<GitOpResult>("git_push_cmd", { repoPath });
+
+export const gitPull = (repoPath: string) =>
+  invoke<GitOpResult>("git_pull_cmd", { repoPath });
+
+export const getGitDiffFile = (repoPath: string, path: string, staged?: boolean) =>
+  invoke<GitDiff>("git_diff_file_cmd", { repoPath, path, staged: staged ?? false });
+
+export const getGitHistory = (repoPath: string, limit?: number) =>
+  invoke<GitCommit[]>("git_history_cmd", { repoPath, limit: limit ?? null });
+
+export const getGitCommitFilesList = (repoPath: string, hash: string) =>
+  invoke<GitFileEntry[]>("git_commit_files_list_cmd", { repoPath, hash });
+
+export const getGitCommitDiff = (repoPath: string, hash: string, path: string | null) =>
+  invoke<GitDiff>("git_commit_diff_cmd", { repoPath, hash, path });
+
+export const gitCommitFiles = (
+  repoPath: string,
+  summary: string,
+  description: string | null,
+  files: string[],
+) =>
+  invoke<GitOpResult>("git_commit_files_cmd", {
+    repoPath,
+    summary,
+    description,
+    files,
+  });
+
+export const gitFetch = (repoPath: string) =>
+  invoke<GitOpResult>("git_fetch_cmd", { repoPath });
+
+export const gitCheckout = (repoPath: string, branch: string) =>
+  invoke<GitOpResult>("git_checkout_cmd", { repoPath, branch });

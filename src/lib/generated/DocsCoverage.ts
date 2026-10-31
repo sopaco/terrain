@@ -3,4 +3,8 @@
 /**
  * Per-asset documentation coverage of one project.
  */
-export type DocsCoverage = { agent_context: boolean, human_docs: boolean, repomix: boolean, graph: boolean, wiki: boolean, };
+export type DocsCoverage = { agent_context: boolean, human_docs: boolean, repomix: boolean, graph: boolean, wiki: boolean, 
+/**
+ * Vault link configured (vault/graphify/<slug>/graphify-out).
+ */
+vault: boolean, };

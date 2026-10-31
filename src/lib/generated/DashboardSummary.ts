@@ -7,4 +7,8 @@ export type DashboardSummary = { generated_at_secs: bigint, binary_available: bo
 /**
  * Inferred cross-project collaborations (shared git contributors).
  */
-collaborations: Array<ProjectCollaboration>, };
+collaborations: Array<ProjectCollaboration>, 
+/**
+ * Whether any vault directory exists at the vault root (feature gate).
+ */
+vault_root_exists: boolean, };

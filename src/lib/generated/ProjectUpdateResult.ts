@@ -4,4 +4,8 @@ export type ProjectUpdateResult = { project_slug: string, ok: boolean,
 /**
  * "update" or "extract+update" (first build).
  */
-action: string, duration_secs: number, error: string | null, };
+action: string, duration_secs: number, error: string | null, 
+/**
+ * Vault link path when it was installed/refreshed by this run.
+ */
+vault: string | null, };

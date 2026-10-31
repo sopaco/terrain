@@ -12,6 +12,7 @@ import env from "./env";
 import graph from "./graph";
 import dashboard from "./dashboard";
 import knowledge from "./knowledge";
+import git from "./git";
 import misc from "./misc";
 
 /** zh-CN is the schema source for all locales. */
@@ -30,5 +31,6 @@ export const zhCN = {
   graph,
   dashboard,
   knowledge,
+  git,
   misc,
 };

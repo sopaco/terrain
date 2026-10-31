@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BookOpen, Gauge, LayoutDashboard, Network, SquareTerminal, Workflow } from "@lucide/svelte";
+  import { BookOpen, Gauge, GitBranch, LayoutDashboard, Network, SquareTerminal, Workflow } from "@lucide/svelte";
   import { tr } from "../i18n";
   import type { AppTab } from "../types";
 
@@ -16,6 +16,7 @@
     { id: "dashboard", label: tr("misc.nav.dashboard"), title: tr("misc.nav.dashboardTitle") },
     { id: "knowledge", label: tr("misc.nav.knowledge"), title: tr("terms.knowledgeTab") },
     { id: "graph", label: tr("misc.nav.graph"), title: tr("misc.nav.graphTitle") },
+    { id: "git", label: tr("misc.nav.git"), title: tr("misc.nav.gitTitle") },
     { id: "env", label: tr("misc.nav.env"), title: tr("terms.agentEnv") },
     { id: "sdd", label: "SDD", title: tr("misc.nav.sddTitle") },
   ]);
@@ -42,6 +43,8 @@
       <BookOpen size={18} strokeWidth={1.8} aria-hidden="true" />
     {:else if tab.id === "graph"}
       <Network size={18} strokeWidth={1.8} aria-hidden="true" />
+    {:else if tab.id === "git"}
+      <GitBranch size={18} strokeWidth={1.8} aria-hidden="true" />
     {:else if tab.id === "env"}
       <SquareTerminal size={18} strokeWidth={1.8} aria-hidden="true" />
     {:else}
