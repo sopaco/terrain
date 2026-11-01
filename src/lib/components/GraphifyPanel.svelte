@@ -139,7 +139,7 @@
     try {
       const info = await startUaViewer(repoPath);
       uaUrl = info.url;
-      onStatus?.(tr("ua.started"), "success");
+      onStatus?.(tr("graph.ua.started"), "success");
       void loadUaStatus();
     } catch (e) {
       onStatus?.(String(e), "error");
@@ -293,7 +293,7 @@
       {#if uaLoading && !st}
         <div class="flex items-center gap-2 text-sm text-tr-ink-3" role="status" aria-busy="true">
           <Loader2 size={16} class="animate-spin" aria-hidden="true" />
-          <span>{tr("ua.busy")}</span>
+          <span>{tr("graph.ua.busy")}</span>
         </div>
       {:else if st && !st.viewer_available}
         <div
@@ -303,24 +303,24 @@
           <div class="flex items-start gap-3">
             <TriangleAlert size={18} class="mt-0.5 shrink-0 text-tr-watch" aria-hidden="true" />
             <div class="min-w-0">
-              <p class="text-sm font-medium text-tr-ink-2">{tr("ua.installTitle")}</p>
+              <p class="text-sm font-medium text-tr-ink-2">{tr("graph.ua.installTitle")}</p>
               <p class="mt-1 text-xs text-tr-ink-3">
-                {tr("ua.installHint")}
+                {tr("graph.ua.installHint")}
                 {#if !st.plugin_available}
-                  {tr("ua.pluginMissingHint")}
+                  {tr("graph.ua.pluginMissingHint")}
                 {/if}
               </p>
               <pre
                 class="mt-2 overflow-x-auto rounded-lg bg-tr-raised px-3 py-2 text-xs text-tr-ink-2"
               >node ~/.terrain/.../viewer.mjs &lt;project-dir&gt; --no-open</pre>
-              <p class="mt-1 text-[11px] text-tr-ink-3">{tr("ua.viewerMissingHint")}</p>
+              <p class="mt-1 text-[11px] text-tr-ink-3">{tr("graph.ua.viewerMissingHint")}</p>
             </div>
           </div>
         </div>
       {:else if st && st.graph_present}
         {#if uaUrl}
           <iframe
-            title={tr("ua.title")}
+            title={tr("graph.ua.title")}
             class="min-h-40 w-full flex-1 rounded-xl border border-tr-border bg-tr-page"
             src={uaUrl}
             sandbox="allow-scripts allow-same-origin"
@@ -335,10 +335,10 @@
             >
               {#if uaBusy}
                 <Loader2 size={14} class="animate-spin" aria-hidden="true" />
-                {tr("ua.busy")}
+                {tr("graph.ua.busy")}
               {:else}
                 <RefreshCw size={14} aria-hidden="true" />
-                {tr("ua.actions.update")}
+                {tr("graph.ua.actions.update")}
               {/if}
             </button>
           </div>
@@ -347,8 +347,8 @@
             class="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-tr-border-strong bg-tr-surface/50 px-6 py-10 text-center"
           >
             <Sparkles size={28} class="text-tr-ink-4" aria-hidden="true" />
-            <p class="text-sm font-medium text-tr-ink-2">{tr("ua.viewerTitle")}</p>
-            <p class="max-w-md text-xs text-tr-ink-3">{tr("ua.viewerHint")}</p>
+            <p class="text-sm font-medium text-tr-ink-2">{tr("graph.ua.viewerTitle")}</p>
+            <p class="max-w-md text-xs text-tr-ink-3">{tr("graph.ua.viewerHint")}</p>
             <button
               type="button"
               class="tr-press inline-flex items-center gap-1.5 rounded-lg bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
@@ -357,10 +357,10 @@
             >
               {#if uaViewerStarting}
                 <Loader2 size={15} class="animate-spin" aria-hidden="true" />
-                {tr("ua.busy")}
+                {tr("graph.ua.busy")}
               {:else}
                 <Play size={15} aria-hidden="true" />
-                {tr("ua.startViewer")}
+                {tr("graph.ua.startViewer")}
               {/if}
             </button>
           </div>
@@ -370,8 +370,8 @@
           class="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-tr-border-strong bg-tr-surface/50 px-6 py-10 text-center"
         >
           <Network size={28} class="text-tr-ink-4" aria-hidden="true" />
-          <p class="text-sm font-medium text-tr-ink-2">{tr("ua.missingGraphTitle")}</p>
-          <p class="max-w-md text-xs text-tr-ink-3">{tr("ua.missingGraphHint")}</p>
+          <p class="text-sm font-medium text-tr-ink-2">{tr("graph.ua.missingGraphTitle")}</p>
+          <p class="max-w-md text-xs text-tr-ink-3">{tr("graph.ua.missingGraphHint")}</p>
           <button
             type="button"
             class="tr-press inline-flex items-center gap-1.5 rounded-lg bg-tr-accent px-4 py-2 text-sm font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"
@@ -380,10 +380,10 @@
           >
             {#if uaBusy}
               <Loader2 size={15} class="animate-spin" aria-hidden="true" />
-              {tr("ua.busy")}
+              {tr("graph.ua.busy")}
             {:else}
               <Sparkles size={15} aria-hidden="true" />
-              {tr("ua.actions.analyze")}
+              {tr("graph.ua.actions.analyze")}
             {/if}
           </button>
         </div>
@@ -395,7 +395,7 @@
           role="status"
           aria-live="polite"
         >
-          <p class="truncate text-xs text-tr-ink-2">{uaProgressLine || tr("ua.busy")}</p>
+          <p class="truncate text-xs text-tr-ink-2">{uaProgressLine || tr("graph.ua.busy")}</p>
         </div>
       {/if}
     {:else if statusLoading || !status}
@@ -539,14 +539,14 @@
     </span>
     {#if s.nodes !== null}
       <span class="rounded-full bg-tr-elevated px-2.5 py-1">
-        {tr("ua.stats.nodes")}: {s.nodes}
+        {tr("graph.ua.stats.nodes")}: {s.nodes}
       </span>
       <span class="rounded-full bg-tr-elevated px-2.5 py-1">
-        {tr("ua.stats.links")}: {s.links}
+        {tr("graph.ua.stats.links")}: {s.links}
       </span>
     {/if}
     <span class="rounded-full bg-tr-elevated px-2.5 py-1">
-      {tr("ua.stats.analyzed")}: {s.analyzed_at ?? tr("graph.statsAbsent")}
+      {tr("graph.ua.stats.analyzed")}: {s.analyzed_at ?? tr("graph.statsAbsent")}
     </span>
   {/snippet}
 </div>
