@@ -249,7 +249,21 @@ async fn run_child(
         (progress)(&format!("  │ ! {}", line));
     }
     if !out.status.success() {
-        return Err(format!("{} exited non-zero ({})", program, out.status.code().unwrap_or(-1)));
+        // Surface both streams so a runtime failure (Python traceback etc.)
+        // lands in the UI's  payload, not only on the progress tick.
+        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_owned();
+        let short_stderr = if stderr.len() > 1_200 {
+            format!("…{}", &stderr[stderr.len() - 1_200..])
+        } else {
+            stderr
+        };
+        return Err(format!(
+            "{} exited non-zero ({})
+{}",
+            program,
+            out.status.code().unwrap_or(-1),
+            short_stderr,
+        ));
     }
     Ok(out)
 }
