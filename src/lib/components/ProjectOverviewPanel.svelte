@@ -46,6 +46,7 @@
         onOpenHumanOverview?: () => void;
         onOpenStructured?: () => void;
         onOpenGraph?: () => void;   // open the Graph tab
+        onGenerateGraph?: () => void;  // trigger regeneration (graph tab)
         quickRefreshBusy?: boolean;
         freshnessLoading?: boolean;
         onQuickRefresh?: () => void;
@@ -79,6 +80,7 @@
         onOpenHumanOverview,
         onOpenStructured,
         onOpenGraph,
+        onGenerateGraph,
         quickRefreshBusy = false,
         freshnessLoading = false,
         onQuickRefresh,
@@ -980,7 +982,10 @@
 	                            icon="list"
 	                            primaryLabel={tr("common.open")}
 	                            onPrimary={onOpenGraph}
-	                        />
+                            secondaryLabel={onGenerateGraph ? tr("common.regenerate") : undefined}
+                            onSecondary={onGenerateGraph}
+                            secondaryDisabled={!onGenerateGraph}
+                        />
 	                    {/if}
 	                </div>
 

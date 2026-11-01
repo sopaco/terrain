@@ -1260,8 +1260,8 @@
             onOpenHumanOverview={project.projectOverview?.litho.has_human_docs
                 ? openOverviewHumanDoc
                 : undefined}
-            onOpenStructured={openStructuredDocs}
             onOpenGraph={() => (project.activeTab = "graph")}
+            onGenerateGraph={() => (project.activeTab = "graph")}
             quickRefreshBusy={project.quickRefreshBusy}
             freshnessLoading={project.freshnessLoading}
             onQuickRefresh={triggerQuickRefresh}
