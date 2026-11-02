@@ -273,12 +273,46 @@ pub async fn open_ua_window_cmd(
         .parse()
         .map_err(|e| format!("viewer url invalid: {e}"))?;
     // Same label = focuses/updates the existing window instead of stacking.
-    tauri::WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(url))
-        .title(format!("Understand — {}", repo.file_name().and_then(|n| n.to_str()).unwrap_or("project")))
-        .inner_size(1280.0, 860.0)
-        .minimizable(true)
-        .maximizable(true)
-        .build()
-        .map_err(|e| format!("failed to open UA window: {e}"))?;
+    let window_result = tauri::WebviewWindowBuilder::new(
+        &app,
+        &label,
+        WebviewUrl::External(url.clone()),
+    )
+    .title(format!(
+        "Understand — {}",
+        repo.file_name().and_then(|n| n.to_str()).unwrap_or("project")
+    ))
+    .inner_size(1280.0, 860.0)
+    .minimizable(true)
+    .maximizable(true)
+    .build();
+    // Debug trail for the window layer (the one piece not observable from the
+    // server side): outcome of every open attempt.
+    let _ = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/ua-window-debug.log")
+        .map(|mut f| {
+            use std::io::Write;
+            let _ = writeln!(
+                f,
+                "{} open {} -> {}",
+                chrono_now_secs(),
+                info.url,
+                if window_result.is_ok() { "ok" } else { "fail" }
+            );
+        });
+    if let Err(e) = window_result {
+        // Fallback: the system browser (the viewer's own default UX) — always
+        // renders; keeps the dashboard visible until the window layer works.
+        let _ = std::process::Command::new("open").arg(info.url.as_str()).output();
+    }
     Ok(info)
+}
+
+fn chrono_now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
