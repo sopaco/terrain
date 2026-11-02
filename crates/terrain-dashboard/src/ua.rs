@@ -436,7 +436,16 @@ pub async fn run_ua_action(
         return UaRunOutcome { ok: false, message: format!("promote: {e}") };
     }
 
-    // phase 7 fingerprints (best effort)
+    // Phase 6b: layers + tour via UA core's deterministic fallbacks
+    // (detectLayers/generateHeuristicTour — exported library functions, no
+    // LLM). Without them the dashboard's default view renders "No tour
+    // available" and the canvas stays empty.
+    (progress)("phase 6b: layers + tour (deterministic)");
+    if let Err(e) = run_layers_tour(&ua_dir, &knowledge_graph, &node_bin, repo, &progress) {
+        return UaRunOutcome { ok: false, message: format!("layers/tour: {e}") };
+    }
+
+
     let all_files: Vec<String> = batches_json["batches"]
         .as_array().cloned().unwrap_or_default()
         .into_iter()
@@ -543,6 +552,63 @@ fn promote_knowledge_graph(
         serde_json::to_string_pretty(&envelope).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("write {}: {}", knowledge_graph.display(), e))
+}
+
+const UA_LAYERS_TOUR_MJS: &str = r#"#!/usr/bin/env node
+// Terrain-authored driver (clean-room): fills `layers` and `tour` in a UA
+// knowledge-graph using @understand-anything/core's deterministic fallbacks.
+import fs from "node:fs";
+import { pathToFileURL } from "node:url";
+const [corePath, graphPath] = process.argv.slice(2);
+if (!corePath || !graphPath) {
+  console.error("usage: node ua-layers-tour.mjs <core-dist/index.js> <knowledge-graph.json>");
+  process.exit(1);
+}
+const core = await import(pathToFileURL(corePath).href);
+const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
+const layers = core.detectLayers(graph) ?? [];
+const tour = core.generateHeuristicTour(graph) ?? [];
+graph.layers = layers;
+graph.tour = tour;
+fs.writeFileSync(graphPath, JSON.stringify(graph, null, 2));
+console.log(`layers:${layers.length} tour:${tour.length}`);
+"#;
+
+/// Write + run the layers/tour driver. Requires node + the built core.
+fn run_layers_tour(
+    ua_dir: &Path,
+    knowledge_graph: &Path,
+    node_bin: &str,
+    repo: &Path,
+    progress: &Arc<dyn Fn(&str) + Send + Sync>,
+) -> Result<(), String> {
+    let Some(core_js) = resolve_ua_repo()
+        .map(|r| r.join("understand-anything-plugin/packages/core/dist/index.js"))
+        .filter(|p| p.is_file())
+    else {
+        return Err("core dist missing (tool-understand incomplete)".to_owned());
+    };
+    let script = std::env::temp_dir().join("ua-layers-tour.mjs");
+    std::fs::write(&script, UA_LAYERS_TOUR_MJS)
+        .map_err(|e| format!("write driver: {e}"))?;
+    let out = std::process::Command::new(node_bin)
+        .arg(script.display().to_string())
+        .arg(core_js.display().to_string())
+        .arg(knowledge_graph.display().to_string())
+        .current_dir(repo)
+        .output()
+        .map_err(|e| format!("run driver: {e}"))?;
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout).trim(),
+        String::from_utf8_lossy(&out.stderr).trim()
+    );
+    (progress)(&format!("  {}", text));
+    if !out.status.success() {
+        return Err(text);
+    }
+    let _ = ua_dir;
+    Ok(())
 }
 
 /// Self-heal a knowledge-graph.json written by an older run (bare
