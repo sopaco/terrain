@@ -49,6 +49,8 @@ export const project = $state({
   helpOpen: false,
   deepWikiOpen: false,
   deepWikiInitialQuestion: null as string | null,
+  /** Set by the Overview graph card's Regenerate — one-shot Graphify+UA refresh. */
+  pendingGraphRefresh: false,
 });
 
 export function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {

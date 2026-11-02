@@ -249,6 +249,18 @@
   $effect(() => {
     if (activeView === "understand" && repoPath) void loadUaStatus();
   });
+
+  // One-shot dual refresh from the Overview card: Graphify (extract-or-update)
+  // then UA (analyze) — sequential, then the flag clears for the next click.
+  $effect(() => {
+    if (!project.pendingGraphRefresh || !repoPath || !projectSlug) return;
+    project.pendingGraphRefresh = false;
+    void (async () => {
+      const action = status?.graph_present ? "update" as const : "extract" as const;
+      await run(action);
+      await runUaAction("analyze");
+    })();
+  });
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col gap-4 p-4">

@@ -1261,7 +1261,10 @@
                 ? openOverviewHumanDoc
                 : undefined}
             onOpenGraph={() => (project.activeTab = "graph")}
-            onGenerateGraph={() => (project.activeTab = "graph")}
+            onGenerateGraph={() => {
+                project.pendingGraphRefresh = true;
+                project.activeTab = "graph";
+            }}
             quickRefreshBusy={project.quickRefreshBusy}
             freshnessLoading={project.freshnessLoading}
             onQuickRefresh={triggerQuickRefresh}
