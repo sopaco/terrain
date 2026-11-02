@@ -403,8 +403,8 @@ pub async fn run_ua_action(
     if !assembled.is_file() {
         return UaRunOutcome { ok: false, message: "merge produced no assembled-graph.json".to_owned() };
     }
-    if let Err(e) = std::fs::copy(&assembled, &knowledge_graph) {
-        return UaRunOutcome { ok: false, message: format!("promote assembled graph: {e}") };
+    if let Err(e) = promote_knowledge_graph(&assembled, &scan_out, &knowledge_graph, repo) {
+        return UaRunOutcome { ok: false, message: format!("promote: {e}") };
     }
 
     // phase 7 fingerprints (best effort)
@@ -455,6 +455,65 @@ pub async fn run_ua_action(
         ok: true,
         message: format!("UA (centralized) pipeline complete — {} nodes in .ua/knowledge-graph.json.", n),
     }
+}
+
+/// Wrap the merge's bare `{nodes,edges}` assembled-graph into UA's full
+/// `KnowledgeGraphSchema` envelope (validateGraph is fatal on missing
+/// `project` meta), deriving the project meta from the scan + repo.
+fn promote_knowledge_graph(
+    assembled: &Path,
+    scan_out: &Path,
+    knowledge_graph: &Path,
+    repo: &Path,
+) -> Result<(), String> {
+    let raw = std::fs::read_to_string(assembled)
+        .map_err(|e| format!("read {}: {}", assembled.display(), e))?;
+    let graph: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("assembled-graph malformed: {e}"))?;
+    let raw_scan = std::fs::read_to_string(scan_out)
+        .map_err(|e| format!("read {}: {}", scan_out.display(), e))?;
+    let scan: serde_json::Value = serde_json::from_str(&raw_scan)
+        .map_err(|e| format!("scan-result malformed: {e}"))?;
+    let name = repo
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project")
+        .to_owned();
+    let languages: Vec<String> = scan["stats"]["byLanguage"]
+        .as_object()
+        .map(|m| m.keys().cloned().collect())
+        .unwrap_or_default();
+    let scan_frameworks: Vec<String> = scan["frameworks"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect())
+        .unwrap_or_default();
+    let stamp = std::process::Command::new("date")
+        .args(["-u", "+%Y-%m-%dT%H:%M:%SZ"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_owned());
+    let envelope = serde_json::json!({
+        "version": "1.0.0",
+        "project": {
+            "name": name,
+            "languages": languages,
+            "frameworks": scan_frameworks,
+            "description": format!(
+                "Structural (AST-tier) knowledge graph of {name}, built centrally by Terrain."
+            ),
+            "analyzedAt": stamp,
+            "gitCommitHash": crate::graphify::git_head(repo).unwrap_or_default(),
+        },
+        "nodes": graph["nodes"],
+        "edges": graph["edges"],
+        "layers": [],
+        "tour": [],
+    });
+    std::fs::write(
+        knowledge_graph,
+        serde_json::to_string_pretty(&envelope).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("write {}: {}", knowledge_graph.display(), e))
 }
 
 /// Phase-1b input for extract-import-map.mjs: `{projectRoot, files}` taken
@@ -522,7 +581,9 @@ fn synthesize_structural_batches(
             nodes.push(serde_json::json!({
                 "id": format!("file:{}", path),
                 "type": "file",
-                "name": name,
+                "name": name.clone(),
+                "summary": name,
+                "tags": [],
                 "filePath": path,
                 "complexity": "moderate",
             }));
