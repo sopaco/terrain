@@ -114,7 +114,7 @@ pub async fn ua_viewer_cmd(
     {
         let repo_str = repo.display().to_string();
         let _ = std::process::Command::new("pkill")
-            .args(["-f", &format!("viewer\.mjs {}", repo_str)])
+            .args(["-f", &format!("viewer[.]mjs {}", repo_str)])
             .output();
     }
     let (child, url, port) = {
