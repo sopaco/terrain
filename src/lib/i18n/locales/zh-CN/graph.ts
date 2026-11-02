@@ -45,6 +45,8 @@ export default {
     viewerTitle: "查看服务器未运行",
     viewerHint: "在 127.0.0.1 本地提供图谱（一次性 token，只读）。",
     startViewer: "启动查看服务器",
+    errorTitle: "查看服务器错误",
+    reload: "重新加载",
     missingGraphTitle: "还没有语义图谱",
     missingGraphHint:
       "用编码 agent 运行 understand skill——它写入 .ua/ 和 .terrain/understand/index.md。",

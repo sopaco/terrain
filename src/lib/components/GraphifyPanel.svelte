@@ -38,6 +38,8 @@
   let uaUrl = $state<string | null>(null);
   let uaViewerStarting = $state(false);
   let uaLoading = $state(false);
+  let uaError = $state<string | null>(null);
+  let uaFrameKey = $state(0);
   let lastUaRepo: string | null = null;
   let uaAutoStartDone = $state(false);
 
@@ -125,6 +127,7 @@
       // Repo switch: viewer URL is per-repo — drop it and re-arm auto-start.
       lastUaRepo = repoPath;
       uaUrl = null;
+      uaError = null;
       uaAutoStartDone = false;
     }
     uaLoading = true;
@@ -163,13 +166,22 @@
     try {
       const info = await startUaViewer(repoPath);
       uaUrl = info.url;
+      uaError = null;
       onStatus?.(tr("graph.ua.started"), "success");
       void loadUaStatus();
     } catch (e) {
+      uaError = String(e);
       onStatus?.(String(e), "error");
     } finally {
       uaViewerStarting = false;
     }
+  }
+
+  /** Reload the UA dashboard: restart the viewer if dead, remount the iframe. */
+  async function reloadUa() {
+    uaError = null;
+    uaFrameKey += 1;
+    await startViewer();
   }
 
   function builtAt(secs: number | null): string {
@@ -356,15 +368,51 @@
           </div>
         </div>
       {:else if st && st.graph_present}
+        {#if uaError}
+          <div
+            class="shrink-0 rounded-xl border border-tr-critical/40 bg-[color:var(--color-tr-critical-soft)] px-4 py-3"
+            role="alert"
+          >
+            <div class="flex items-start gap-3">
+              <TriangleAlert size={16} class="mt-0.5 shrink-0 text-tr-critical" aria-hidden="true" />
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-tr-ink-2">{tr("graph.ua.errorTitle")}</p>
+                <p class="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-[11px] text-tr-ink-3">{uaError}</p>
+              </div>
+              <button
+                type="button"
+                class="tr-press shrink-0 rounded-lg bg-tr-critical px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                disabled={uaViewerStarting}
+                onclick={() => void reloadUa()}
+              >
+                {#if uaViewerStarting}
+                  <Loader2 size={13} class="animate-spin" aria-hidden="true" />
+                {/if}
+                {tr("graph.ua.reload")}
+              </button>
+            </div>
+          </div>
+        {/if}
         {#if uaUrl}
-          <iframe
-            title={tr("graph.ua.title")}
-            class="min-h-40 w-full flex-1 rounded-xl border border-tr-border bg-tr-page"
-            src={uaUrl}
-            sandbox="allow-scripts allow-same-origin"
-          ></iframe>
+          {#key uaFrameKey}
+            <iframe
+              title={tr("graph.ua.title")}
+              class="min-h-40 w-full flex-1 rounded-xl border border-tr-border bg-tr-page"
+              src={uaUrl}
+              sandbox="allow-scripts allow-same-origin"
+            ></iframe>
+          {/key}
           <div class="flex shrink-0 flex-wrap items-center gap-2 text-xs text-tr-ink-3">
             {@render uaChips(st)}
+            <button
+              type="button"
+              class="tr-press inline-flex items-center gap-1.5 rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-tr-ink-2 transition-colors hover:bg-tr-raised disabled:opacity-50"
+              disabled={uaViewerStarting}
+              onclick={() => void reloadUa()}
+              title={tr("graph.ua.reload")}
+            >
+              <RefreshCw size={13} aria-hidden="true" />
+            </button>
             <button
               type="button"
               class="tr-press inline-flex items-center gap-1.5 rounded-lg bg-tr-accent px-3.5 py-1.5 font-medium text-tr-on-accent transition-colors hover:bg-tr-accent-hover disabled:opacity-50"

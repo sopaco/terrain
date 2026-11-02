@@ -46,6 +46,8 @@ export default {
     viewerTitle: "Viewer not running",
     viewerHint: "Serve the local graph at 127.0.0.1 (one-time token, read-only).",
     startViewer: "Start viewer",
+    errorTitle: "Viewer error",
+    reload: "Reload",
     missingGraphTitle: "No semantic graph yet",
     missingGraphHint:
       "Run the understand skill with your coding agent — it writes .ua/ and .terrain/understand/index.md.",

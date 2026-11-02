@@ -527,10 +527,46 @@ pub fn heal_knowledge_graph_envelope(repo: &Path) -> Result<bool, String> {
     let raw = std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
     let mut graph: serde_json::Value =
         serde_json::from_str(&raw).map_err(|e| format!("graph malformed: {e}"))?;
+    let mut changed = false;
     if graph.get("project").map(|p| p.is_object()).unwrap_or(false) {
-        return Ok(false);
+        // Envelope exists; node-level pass may still fix legacy gaps.
+    } else {
+        changed = true;
     }
     let meta = read_dir_meta(&dir);
+    // v2: also normalize nodes so the dashboard lands clean — missing
+    // `summary` (defaults to name) and `tags` (defaults to []) are the two
+    // auto-corrected categories seen on legacy graphs.
+    let node_name = |n: &serde_json::Value| -> String {
+        n.get("name")
+            .and_then(|v| v.as_str())
+            .map(str::to_owned)
+            .or_else(|| {
+                n.get("filePath")
+                    .and_then(|v| v.as_str())
+                    .map(|p| p.rsplit('/').next().unwrap_or(p).to_owned())
+            })
+            .or_else(|| n.get("id").and_then(|v| v.as_str()).map(str::to_owned))
+            .unwrap_or_else(|| "node".to_owned())
+    };
+    if let Some(nodes) = graph["nodes"].as_array_mut() {
+        for n in nodes.iter_mut() {
+            let has_summary = n
+                .get("summary")
+                .and_then(|v| v.as_str())
+                .map(|v| !v.trim().is_empty())
+                .unwrap_or(false);
+            let has_tags = n.get("tags").map(|v| v.is_array()).unwrap_or(false);
+            if !has_summary {
+                n["summary"] = serde_json::Value::String(node_name(n));
+                changed = true;
+            }
+            if !has_tags {
+                n["tags"] = serde_json::json!([]);
+                changed = true;
+            }
+        }
+    }
     let stamp = std::process::Command::new("date")
         .args(["-u", "+%Y-%m-%dT%H:%M:%SZ"])
         .output()
@@ -571,6 +607,9 @@ pub fn heal_knowledge_graph_envelope(repo: &Path) -> Result<bool, String> {
         "layers": graph.get("layers").cloned().unwrap_or(serde_json::json!([])),
         "tour": graph.get("tour").cloned().unwrap_or(serde_json::json!([])),
     });
+    if !changed {
+        return Ok(false);
+    }
     std::fs::write(&path, serde_json::to_string_pretty(&healed).map_err(|e| e.to_string())?)
         .map_err(|e| format!("write {}: {e}", path.display()))?;
     Ok(true)
