@@ -38,6 +38,8 @@
   let uaUrl = $state<string | null>(null);
   let uaViewerStarting = $state(false);
   let uaLoading = $state(false);
+  let lastUaRepo: string | null = null;
+  let uaAutoStartDone = $state(false);
 
   const task = $derived(
     projectSlug ? (project.projectTasks[projectSlug] ?? null) : null,
@@ -119,6 +121,12 @@
       uaUrl = null;
       return;
     }
+    if (lastUaRepo !== repoPath) {
+      // Repo switch: viewer URL is per-repo — drop it and re-arm auto-start.
+      lastUaRepo = repoPath;
+      uaUrl = null;
+      uaAutoStartDone = false;
+    }
     uaLoading = true;
     try {
       uaStatus = await getUaStatus(repoPath);
@@ -131,6 +139,22 @@
     } finally {
       uaLoading = false;
     }
+  }
+
+  /** One auto-start attempt per repo: only when a graph exists and is servable. */
+  function maybeAutoStartViewer() {
+    if (
+      uaAutoStartDone ||
+      !repoPath ||
+      uaViewerStarting ||
+      uaUrl ||
+      !uaStatus?.graph_present ||
+      !uaStatus?.viewer_available
+    ) {
+      return;
+    }
+    uaAutoStartDone = true;
+    void startViewer();
   }
 
   async function startViewer() {
@@ -234,7 +258,7 @@
           if (projectSlug && ev.payload.project_slug === projectSlug) {
             setProjectTask(projectSlug, { uaBusy: false, uaProgress: "" });
             onStatus?.(ev.payload.message, ev.payload.ok ? "success" : "error");
-            void loadUaStatus();
+            void loadUaStatus().then(() => maybeAutoStartViewer());
           }
         }),
       );
@@ -247,7 +271,9 @@
   });
 
   $effect(() => {
-    if (activeView === "understand" && repoPath) void loadUaStatus();
+    if (activeView === "understand" && repoPath) {
+      void loadUaStatus().then(() => maybeAutoStartViewer());
+    }
   });
 
   // One-shot dual refresh from the Overview card: Graphify (extract-or-update)

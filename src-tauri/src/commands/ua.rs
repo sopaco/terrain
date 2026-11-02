@@ -41,6 +41,19 @@ pub struct UaViewerEntry {
 
 pub type UaViewerMap = Arc<Mutex<HashMap<String, UaViewerEntry>>>;
 
+/// Last ~500 chars of the viewer's stderr log, for error surfacing.
+fn stderr_tail(path: &std::path::Path) -> String {
+    std::fs::read_to_string(path)
+        .map(|s| {
+            if s.len() > 500 {
+                format!("…{}", &s[s.len() - 500..])
+            } else {
+                s
+            }
+        })
+        .unwrap_or_default()
+}
+
 /// Start (or return the already-running) UA viewer for a repo: spawn
 /// `node <viewer.mjs> <repo> --no-open --port <n>`, parse the startup banner.
 /// A previously registered viewer whose port went dead is replaced.
@@ -88,6 +101,8 @@ pub async fn ua_viewer_cmd(
         .ok_or_else(|| "node not found".to_owned())?;
 
     let port = pick_viewer_port().ok_or_else(|| "no free local port".to_owned())?;
+    let stderr_log = std::env::temp_dir().join(format!("ua-viewer-stderr-{port}.log"));
+    let _ = std::fs::remove_file(&stderr_log);
     let (child, url, port) = {
         let node_bin = node_bin.display().to_string();
         let viewer = viewer.display().to_string();
@@ -97,9 +112,16 @@ pub async fn ua_viewer_cmd(
                 .arg(&viewer)
                 .arg(&repo_dir)
                 .arg("--no-open")
-                .arg(format!("--port={port}"))
+                .arg("--port")
+                .arg(port.to_string())
                 .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::null())
+                .stderr(std::process::Stdio::from(
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(&stderr_log)
+                        .map_err(|e| format!("stderr log: {e}"))?,
+                ))
                 .spawn()
                 .map_err(|e| format!("failed to spawn viewer: {e}"))?;
             let stdout = child
@@ -112,8 +134,12 @@ pub async fn ua_viewer_cmd(
                 let mut line = String::new();
                 match reader.read_line(&mut line) {
                     Ok(0) => {
-                        let _ = child.kill();
-                        return Err("viewer exited before printing a Dashboard URL".to_owned());
+                        let code = child.wait().ok().and_then(|s| s.code()).map(|c| c.to_string());
+                        return Err(format!(
+                            "viewer exited (code {}) before printing a Dashboard URL. viewer stderr:\n{}",
+                            code.as_deref().unwrap_or("?"),
+                            stderr_tail(&stderr_log),
+                        ));
                     }
                     Ok(_) => {
                         if let Some(url) = parse_viewer_banner(&line) {
@@ -122,12 +148,18 @@ pub async fn ua_viewer_cmd(
                     }
                     Err(_) => {
                         let _ = child.kill();
-                        return Err("viewer stdout read failed".to_owned());
+                        return Err(format!(
+                            "viewer stdout read failed. viewer stderr:\n{}",
+                            stderr_tail(&stderr_log),
+                        ));
                     }
                 }
             }
             let _ = child.kill();
-            Err("viewer produced no Dashboard URL within 15s; is the graph data dir present?".to_owned())
+            Err(format!(
+                "viewer produced no Dashboard URL within 15s (port {port}). viewer stderr:\n{}",
+                stderr_tail(&stderr_log),
+            ))
         })
         .await
         .map_err(|e| format!("viewer spawn task failed: {e}"))?
