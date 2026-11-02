@@ -410,17 +410,39 @@ pub async fn run_ua_action(
         Ok(v) => v,
         Err(e) => return UaRunOutcome { ok: false, message: format!("batches.json malformed: {e}") },
     };
-    // Phase 2: synthesize structural batch graph fragments in-process (no
-    // LLM): one `file:<path>` node per file + `imports` edges whose endpoints
-    // both resolve in the full file set. merge-batch-graphs.py consumes these,
-    // normalizes IDs/complexity, and re-recovers imports from the scan's
-    // importMap deterministically — so the structural tier is complete e2e.
-    (progress)("phase 2: synthesizing structural batch graphs (no LLM)");
+    // Phase 2: per-batch deterministic structure extraction (tree-sitter —
+    // classes/functions/exports per file), then in-process synthesis of the
+    // merge-compatible batch graphs: file nodes + class nodes ("contains"
+    // edges) + resolvable imports edges. No LLM anywhere.
+    for b in batches_json["batches"].as_array().cloned().unwrap_or_default() {
+        let idx = b["batchIndex"].as_i64().unwrap_or(1);
+        let input_path = intermediate.join(format!("extract-input-{}.json", idx));
+        let input = serde_json::json!({
+            "projectRoot": repo.display().to_string(),
+            "batchFiles": b["files"],
+            "batchImportData": b["batchImportData"],
+        });
+        if let Err(e) = std::fs::write(&input_path, serde_json::to_string_pretty(&input).unwrap()) {
+            return UaRunOutcome { ok: false, message: format!("write extract-input-{}: {}", idx, e) };
+        }
+        (progress)(&format!("phase 2: extract batch {}", idx));
+        let results_path = intermediate.join(format!("extract-results-{}.json", idx));
+        if let Err(e) = run_child(
+            &node_bin,
+            &[script_dir.join("extract-structure.mjs").display().to_string(),
+              input_path.display().to_string(),
+              results_path.display().to_string()],
+            repo, progress.clone(),
+        ).await {
+            return UaRunOutcome { ok: false, message: format!("extract batch {} failed: {}", idx, e) };
+        }
+    }
+    (progress)("phase 2: synthesizing structural batch graphs (file + class nodes, no LLM)");
     let written = match synthesize_structural_batches(&batches_json, &intermediate) {
-        Ok(n) => n,
+        Ok(c) => c,
         Err(e) => return UaRunOutcome { ok: false, message: format!("batch synthesis failed: {e}") },
     };
-    (progress)(&format!("phase 2: wrote {} structural batches", written));
+    (progress)(&format!("phase 2: {} batches ready", written));
 
     // phase 3 merge
     (progress)("phase 3: merge batches");
@@ -748,11 +770,11 @@ fn inject_import_map(scan_out: &Path, im_out: &Path) -> Result<(), String> {
         .map_err(|e| format!("write {}: {}", scan_out.display(), e))
 }
 
-/// Build one merge-compatible batch file: `{nodes:[{id:"file:<path>",
-/// type:"file",name,filePath,complexity}], edges:[{source,target,type:"imports",
-/// direction:"forward",weight:1}]}`. Edges keep only in-batch + cross-batch
-/// pairs whose endpoints are in the global file set (merge drops the rest and
-/// re-recovers imports from scan-result's importMap on its own).
+/// Build merge-compatible batch fragments from the deterministic extract
+/// results: `{nodes:[file + class nodes], edges:[contains + imports]}`.
+/// merge-batch-graphs.py consumes these, normalizes, and re-recovers imports
+/// from the scan's importMap; classes carry filePath/lineRange so the
+/// dashboard's OPEN CODE whitelisting resolves them.
 fn synthesize_structural_batches(
     batches_json: &serde_json::Value,
     intermediate: &Path,
@@ -760,7 +782,6 @@ fn synthesize_structural_batches(
     let batches = batches_json["batches"]
         .as_array()
         .ok_or("batches.json has no 'batches' array")?;
-    // Global file set (used to keep only resolvable import edges).
     let mut all_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
     for b in batches {
         for f in b["files"].as_array().cloned().unwrap_or_default() {
@@ -776,9 +797,10 @@ fn synthesize_structural_batches(
         let mut edges = Vec::new();
         for f in b["files"].as_array().cloned().unwrap_or_default() {
             let Some(path) = f["path"].as_str() else { continue };
+            let file_id = format!("file:{}", path);
             let name = path.rsplit('/').next().unwrap_or(path).to_owned();
             nodes.push(serde_json::json!({
-                "id": format!("file:{}", path),
+                "id": file_id,
                 "type": "file",
                 "name": name.clone(),
                 "summary": name,
@@ -790,12 +812,43 @@ fn synthesize_structural_batches(
                 let Some(t) = tgt.as_str() else { continue };
                 if all_paths.contains(t) {
                     edges.push(serde_json::json!({
-                        "source": format!("file:{}", path),
+                        "source": file_id,
                         "target": format!("file:{}", t),
                         "type": "imports",
                         "direction": "forward",
                         "weight": 1,
                     }));
+                }
+            }
+            // Class nodes from the batch's extract results (when present).
+            let results_path = intermediate.join(format!("extract-results-{}.json", idx));
+            if let Ok(raw) = std::fs::read_to_string(&results_path) {
+                if let Ok(results) = serde_json::from_str::<serde_json::Value>(&raw) {
+                    for r in results["results"].as_array().cloned().unwrap_or_default() {
+                        if r["path"].as_str() != Some(path) {
+                            continue;
+                        }
+                        for c in r["classes"].as_array().cloned().unwrap_or_default() {
+                            let Some(cname) = c["name"].as_str() else { continue; };
+                            nodes.push(serde_json::json!({
+                                "id": format!("class:{}::{}", path, cname),
+                                "type": "class",
+                                "name": cname,
+                                "summary": cname,
+                                "tags": [],
+                                "filePath": path,
+                                "lineRange": [c["startLine"], c["endLine"]],
+                                "complexity": "moderate",
+                            }));
+                            edges.push(serde_json::json!({
+                                "source": file_id,
+                                "target": format!("class:{}::{}", path, cname),
+                                "type": "contains",
+                                "direction": "forward",
+                                "weight": 1,
+                            }));
+                        }
+                    }
                 }
             }
         }
@@ -852,16 +905,34 @@ mod ua_pipeline_tests {
                   "batchImportData": {} }
             ]
         });
+        std::fs::write(
+            dir.join("extract-results-1.json"),
+            r#"{"scriptCompleted":true,"results":[{"path":"src/a.py","classes":[{"name":"Greeter","startLine":4,"endLine":5,"methods":[],"properties":[]}]}]}"#,
+        ).unwrap();
         let n = synthesize_structural_batches(&batches_json, &dir).unwrap();
         assert_eq!(n, 2);
+        let b1_early: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(dir.join("batch-1.json")).unwrap(),
+        ).unwrap();
+        let class_nodes: Vec<&serde_json::Value> = b1_early["nodes"].as_array().unwrap()
+            .iter().filter(|nd| nd["type"] == "class").collect();
+        assert_eq!(class_nodes.len(), 1, "class node must synthesize: {:?}", b1_early);
+        assert_eq!(class_nodes[0]["id"], "class:src/a.py::Greeter");
+        assert_eq!(class_nodes[0]["filePath"], "src/a.py");
+        assert!(
+            b1_early["edges"].as_array().unwrap().iter().any(|e| e["type"] == "contains"
+                && e["target"] == "class:src/a.py::Greeter"),
+            "contains edge missing"
+        );
         let b1: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("batch-1.json")).unwrap()).unwrap();
         let ids: Vec<&str> = b1["nodes"].as_array().unwrap().iter()
             .filter_map(|nd| nd["id"].as_str()).collect();
-        assert_eq!(ids, ["file:src/a.py", "file:src/b.py"]);
+        assert_eq!(ids, ["file:src/a.py", "class:src/a.py::Greeter", "file:src/b.py"]);
         let edges = b1["edges"].as_array().unwrap();
-        assert_eq!(edges.len(), 1, "dangling import target must be dropped: {:?}", edges);
+        assert_eq!(edges.len(), 2, "imports (dangling dropped) + contains: {:?}", edges);
         assert_eq!(edges[0]["target"], "file:src/b.py");
+        assert_eq!(edges[1]["type"], "contains");
         let b2 = std::fs::read_to_string(dir.join("batch-2.json")).unwrap();
         assert!(b2.contains("file:docs/x.md"));
     }
