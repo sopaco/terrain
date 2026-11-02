@@ -75,6 +75,12 @@ pub async fn ua_viewer_cmd(
                 .to_owned(),
         );
     }
+    // Heal graphs written by older runs (bare {nodes,edges}) before serving:
+    // validateGraph is fatal without `project` meta → "Missing or invalid
+    // project metadata".
+    if let Err(e) = terrain_dashboard::heal_knowledge_graph_envelope(&repo) {
+        return Err(format!("graph envelope heal failed: {e}"));
+    }
     if !status.viewer_available {
         return Err(
             "UA viewer unavailable: need Node >= 18 and a built Understand-Anything checkout \

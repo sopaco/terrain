@@ -516,6 +516,66 @@ fn promote_knowledge_graph(
     .map_err(|e| format!("write {}: {}", knowledge_graph.display(), e))
 }
 
+/// Self-heal a knowledge-graph.json written by an older run (bare
+/// {nodes,edges} — validateGraph is fatal without `project` meta): re-wrap the
+/// existing graph in the full envelope in place. No-op when `project` exists.
+pub fn heal_knowledge_graph_envelope(repo: &Path) -> Result<bool, String> {
+    let Some((dir, _kind)) = ua_data_dir(repo) else {
+        return Ok(false);
+    };
+    let path = dir.join("knowledge-graph.json");
+    let raw = std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let mut graph: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("graph malformed: {e}"))?;
+    if graph.get("project").map(|p| p.is_object()).unwrap_or(false) {
+        return Ok(false);
+    }
+    let meta = read_dir_meta(&dir);
+    let stamp = std::process::Command::new("date")
+        .args(["-u", "+%Y-%m-%dT%H:%M:%SZ"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_owned());
+    let name = repo
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project")
+        .to_owned();
+    let languages: Vec<String> = graph["nodes"]
+        .as_array()
+        .map(|ns| {
+            ns.iter()
+                .filter_map(|n| n.get("language").and_then(|l| l.as_str()))
+                .map(str::to_owned)
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
+                .collect()
+        })
+        .unwrap_or_default();
+    let healed = serde_json::json!({
+        "version": "1.0.0",
+        "project": {
+            "name": name,
+            "languages": languages,
+            "frameworks": [],
+            "description": format!(
+                "Structural (AST-tier) knowledge graph of {name}, healed in place by Terrain."
+            ),
+            "analyzedAt": meta.as_ref().and_then(|m| m.last_analyzed_at.clone())
+                .unwrap_or_else(|| stamp.clone()),
+            "gitCommitHash": meta.as_ref().and_then(|m| m.git_commit_hash.clone())
+                .unwrap_or_else(|| crate::graphify::git_head(repo).unwrap_or_default()),
+        },
+        "nodes": graph["nodes"].clone(),
+        "edges": graph["edges"].clone(),
+        "layers": graph.get("layers").cloned().unwrap_or(serde_json::json!([])),
+        "tour": graph.get("tour").cloned().unwrap_or(serde_json::json!([])),
+    });
+    std::fs::write(&path, serde_json::to_string_pretty(&healed).map_err(|e| e.to_string())?)
+        .map_err(|e| format!("write {}: {e}", path.display()))?;
+    Ok(true)
+}
+
 /// Phase-1b input for extract-import-map.mjs: `{projectRoot, files}` taken
 /// straight from the fresh scan-result.json.
 fn build_import_map_input(
@@ -612,6 +672,30 @@ fn synthesize_structural_batches(
 #[cfg(test)]
 mod ua_pipeline_tests {
     use super::*;
+
+    #[test]
+    fn heal_wraps_stale_bare_graph() {
+        let dir = std::env::temp_dir().join(format!("ua-heal-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let ua = dir.join(".ua");
+        std::fs::create_dir_all(&ua).unwrap();
+        std::fs::write(
+            ua.join("knowledge-graph.json"),
+            r#"{"nodes":[{"id":"file:a.py","type":"file"}],"edges":[]}"#,
+        )
+        .unwrap();
+        assert!(heal_knowledge_graph_envelope(&dir).unwrap());
+        let g: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(ua.join("knowledge-graph.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(g["version"], "1.0.0");
+        assert_eq!(g["project"]["name"], dir.file_name().unwrap().to_str().unwrap());
+        assert_eq!(g["nodes"].as_array().unwrap().len(), 1);
+        // Idempotent on an already-healed file.
+        assert!(!heal_knowledge_graph_envelope(&dir).unwrap());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn synthesis_writes_merge_compatible_batches() {
