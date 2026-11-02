@@ -623,6 +623,14 @@
     <span class={`rounded-full px-2.5 py-1 ${uaChipClass(s)}`}>
       {uaChipLabel(s)}
     </span>
+    {#if s.worktree_dirty}
+      <span
+        class="rounded-full bg-tr-watch-soft px-2.5 py-1 text-tr-on-watch"
+        title={tr("graph.ua.dirtyHint")}
+      >
+        {tr("graph.ua.dirtyChip")}
+      </span>
+    {/if}
     {#if s.nodes !== null}
       <span class="rounded-full bg-tr-elevated px-2.5 py-1">
         {tr("graph.ua.stats.nodes")}: {s.nodes}

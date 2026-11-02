@@ -47,6 +47,8 @@ export default {
     startViewer: "启动查看服务器",
     errorTitle: "查看服务器错误",
     reload: "重新加载",
+    dirtyChip: "未提交的更改",
+    dirtyHint: "仓库存在未提交/未跟踪文件——UA 面板会持续标记，直到你提交后重新运行 Regenerate。",
     missingGraphTitle: "还没有语义图谱",
     missingGraphHint:
       "用编码 agent 运行 understand skill——它写入 .ua/ 和 .terrain/understand/index.md。",

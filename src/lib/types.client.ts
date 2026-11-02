@@ -123,6 +123,8 @@ export interface UaStatus {
   viewer_path: string;
   /** UA config.json autoUpdate flag — terrain's update auto-chain gate. */
   auto_update: boolean;
+  /** Uncommitted/untracked repo files — matches UA's dirty-window banner. */
+  worktree_dirty: boolean;
   install_steps_hint: string;
 }
 

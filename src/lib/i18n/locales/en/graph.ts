@@ -48,6 +48,9 @@ export default {
     startViewer: "Start viewer",
     errorTitle: "Viewer error",
     reload: "Reload",
+    dirtyChip: "Uncommitted changes",
+    dirtyHint:
+      "The repo has uncommitted/untracked files — UA's dashboard flags them until you commit, then run Regenerate.",
     missingGraphTitle: "No semantic graph yet",
     missingGraphHint:
       "Run the understand skill with your coding agent — it writes .ua/ and .terrain/understand/index.md.",

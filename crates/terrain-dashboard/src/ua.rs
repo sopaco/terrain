@@ -94,6 +94,8 @@ pub struct UaStatus {
     pub viewer_available: bool,
     pub viewer_path: String,
     pub auto_update: bool,
+    /// Uncommitted/untracked repo files (matches UA's own dirty-window banner).
+    pub worktree_dirty: bool,
     pub install_steps_hint: String,
 }
 
@@ -125,6 +127,7 @@ pub fn ua_status(repo: &Path) -> UaStatus {
         built_at_commit = meta .as_ref().and_then(|m| m.git_commit_hash.clone());
     }
     let staleness = crate::dashboard::staleness_of(&built_at_commit, &head);
+    let worktree_dirty = is_worktree_dirty(repo);
     let (node_available, node_major) = match node_version() {
         Some((_, m)) => (true, Some(m)),
         None => (false, None),
@@ -149,8 +152,34 @@ pub fn ua_status(repo: &Path) -> UaStatus {
         viewer_available: viewer_runnable,
         viewer_path: viewer.map(|p| p.display().to_string()).unwrap_or_default(),
         auto_update,
+        worktree_dirty,
         install_steps_hint: "Run the env integration tool-understand (Terrain desktop app).".to_owned(),
     }
+}
+
+/// True while the repo has staged/unstaged/untracked changes outside
+/// Terrain/UA machinery (.terrain/**, .ua/** excluded — mirrors the dashboard's
+/// dirty-window banner semantics minus our own data dirs).
+fn is_worktree_dirty(repo: &Path) -> bool {
+    let Ok(out) = std::process::Command::new("git")
+        .args(["status", "--porcelain=v1", "--untracked-files=normal"])
+        .current_dir(repo)
+        .output()
+    else {
+        return false;
+    };
+    if !out.status.success() {
+        return false;
+    }
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .any(|l| {
+            let p = l.get(3..).unwrap_or("").trim();
+            !p.is_empty()
+                && !p.starts_with(".terrain/")
+                && !p.starts_with(".ua/")
+                && !p.starts_with(".understand-anything/")
+        })
 }
 
 fn plugin_available() -> bool {
