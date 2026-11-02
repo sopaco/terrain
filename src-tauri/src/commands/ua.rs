@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use terrain_dashboard::{
     UaAction, UaStatus, parse_viewer_banner, pick_viewer_port, run_ua_action, ua_status,
@@ -108,7 +108,15 @@ pub async fn ua_viewer_cmd(
 
     let port = pick_viewer_port().ok_or_else(|| "no free local port".to_owned())?;
     let stderr_log = std::env::temp_dir().join(format!("ua-viewer-stderr-{port}.log"));
-    let _ = std::fs::remove_file(&stderr_log);
+    // Singleton per repo: kill strays from previous app sessions so repeated
+    // opens don't accumulate orphan viewers on ports nobody tracks.
+    #[cfg(unix)]
+    {
+        let repo_str = repo.display().to_string();
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", &format!("viewer\.mjs {}", repo_str)])
+            .output();
+    }
     let (child, url, port) = {
         let node_bin = node_bin.display().to_string();
         let viewer = viewer.display().to_string();
@@ -124,7 +132,8 @@ pub async fn ua_viewer_cmd(
                 .stderr(std::process::Stdio::from(
                     std::fs::OpenOptions::new()
                         .create(true)
-                        .append(true)
+                        .write(true)
+                        .truncate(true)
                         .open(&stderr_log)
                         .map_err(|e| format!("stderr log: {e}"))?,
                 ))
@@ -242,4 +251,34 @@ pub async fn run_ua_cmd(
         return Err(outcome.message);
     }
     Ok(())
+}
+
+/// Open the UA dashboard in a dedicated Terrain webview window (real
+/// origin http://127.0.0.1 — full UA UI, no iframe-in-page quirks).
+/// Ensures the viewer is running first; reuses one window per repo.
+#[tauri::command]
+pub async fn open_ua_window_cmd(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    repo_path: String,
+) -> Result<UaViewerInfo, String> {
+    let repo = validate_repo(&repo_path)?;
+    let info = ua_viewer_cmd(app.clone(), state, repo_path).await?;
+    let label = format!(
+        "ua-{}",
+        super::slugify_repo(&repo.display().to_string())
+    );
+    let url: tauri::Url = info
+        .url
+        .parse()
+        .map_err(|e| format!("viewer url invalid: {e}"))?;
+    // Same label = focuses/updates the existing window instead of stacking.
+    tauri::WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(url))
+        .title(format!("Understand — {}", repo.file_name().and_then(|n| n.to_str()).unwrap_or("project")))
+        .inner_size(1280.0, 860.0)
+        .minimizable(true)
+        .maximizable(true)
+        .build()
+        .map_err(|e| format!("failed to open UA window: {e}"))?;
+    Ok(info)
 }

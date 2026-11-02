@@ -1,12 +1,13 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
-  import { FolderOpen, Loader2, Network, Play, RefreshCw, Sparkles, TriangleAlert } from "@lucide/svelte";
+  import { FolderOpen, Loader2, Maximize2, Network, Play, RefreshCw, Sparkles, TriangleAlert } from "@lucide/svelte";
   import {
     getGraphifyStatus,
     getGraphifyView,
     getUaStatus,
     openLocalPath,
+    openUaWindow,
     runGraphify,
     runUa,
     startUaViewer,
@@ -144,20 +145,26 @@
     }
   }
 
-  /** One auto-start attempt per repo: only when a graph exists and is servable. */
+  /** One auto-open per repo: start viewer + open the dedicated window. */
   function maybeAutoStartViewer() {
     if (
       uaAutoStartDone ||
       !repoPath ||
       uaViewerStarting ||
-      uaUrl ||
       !uaStatus?.graph_present ||
       !uaStatus?.viewer_available
     ) {
       return;
     }
     uaAutoStartDone = true;
-    void startViewer();
+    void openUaWindow(repoPath)
+      .then((info) => {
+        uaUrl = info.url;
+      })
+      .catch((e) => {
+        uaError = String(e);
+        onStatus?.(String(e), "error");
+      });
   }
 
   async function startViewer() {
@@ -412,6 +419,21 @@
               title={tr("graph.ua.reload")}
             >
               <RefreshCw size={13} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="tr-press inline-flex items-center gap-1.5 rounded-lg border border-tr-border-strong px-2.5 py-1.5 text-tr-ink-2 transition-colors hover:bg-tr-raised disabled:opacity-50"
+              disabled={uaViewerStarting}
+              onclick={() => {
+                if (repoPath) {
+                  void openUaWindow(repoPath)
+                    .then((info) => { uaUrl = info.url; uaError = null; })
+                    .catch((e) => { uaError = String(e); onStatus?.(String(e), "error"); });
+                }
+              }}
+              title={tr("graph.ua.openWindow")}
+            >
+              <Maximize2 size={13} aria-hidden="true" />
             </button>
             <button
               type="button"

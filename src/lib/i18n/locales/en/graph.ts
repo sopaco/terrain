@@ -48,6 +48,7 @@ export default {
     startViewer: "Start viewer",
     errorTitle: "Viewer error",
     reload: "Reload",
+    openWindow: "Open in window",
     dirtyChip: "Uncommitted changes",
     dirtyHint:
       "The repo has uncommitted/untracked files — UA's dashboard flags them until you commit, then run Regenerate.",

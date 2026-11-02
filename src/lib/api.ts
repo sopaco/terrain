@@ -331,6 +331,9 @@ export const getUaStatus = (repoPath: string) =>
 export const startUaViewer = (repoPath: string) =>
   invoke<UaViewerInfo>("ua_viewer_cmd", { repoPath });
 
+export const openUaWindow = (repoPath: string) =>
+  invoke<UaViewerInfo>("open_ua_window_cmd", { repoPath });
+
 export const runUa = (
   repoPath: string,
   projectSlug: string | null,
