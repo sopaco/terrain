@@ -36,6 +36,8 @@ export default {
   views: { graphify: "Graphify", understand: "Understand" },
   ua: {
     title: "Understand (UA)",
+    descLine1: "Understand-Anything 语义知识图谱（LLM 辅助）。数据目录：",
+    graphDir: ".ua/（面板）· .terrain/understand/（索引）",
     busy: "处理中…",
     started: "查看服务器已启动",
     installTitle: "Understand 工具链未就绪",

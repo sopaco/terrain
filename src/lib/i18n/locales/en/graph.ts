@@ -36,6 +36,8 @@ export default {
   views: { graphify: "Graphify", understand: "Understand" },
   ua: {
     title: "Understand (UA)",
+    descLine1: "Semantic knowledge graph by Understand-Anything (LLM-assisted). Data dir:",
+    graphDir: ".ua/ (dashboard) · .terrain/understand/ (index)",
     busy: "Working…",
     started: "Viewer started",
     installTitle: "Understand toolchain not ready",

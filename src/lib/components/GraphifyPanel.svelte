@@ -338,8 +338,12 @@
         </div>
       </div>
       <p class="mt-1 text-sm text-tr-ink-3">
-        {tr("graph.descLine1")}
-        <code class="text-tr-ink-2">{tr("graph.graphDir")}</code>
+        {activeView === "understand"
+          ? tr("graph.ua.descLine1")
+          : tr("graph.descLine1")}
+        <code class="text-tr-ink-2">{activeView === "understand"
+          ? tr("graph.ua.graphDir")
+          : tr("graph.graphDir")}</code>
       </p>
     </header>
 

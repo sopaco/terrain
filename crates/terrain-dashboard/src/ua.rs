@@ -225,7 +225,12 @@ fn count_graph(dir: &Path) -> (Option<u64>, Option<u64>) {
     };
     (
         v.get("nodes").and_then(|a| a.as_array()).map(|a| a.len() as u64),
-        v.get("links").and_then(|a| a.as_array()).map(|a| a.len() as u64),
+        // UA graphs key edges as `edges` (KnowledgeGraphSchema); graphify's
+        // older shape used `links` — accept both.
+        v.get("edges")
+            .or_else(|| v.get("links"))
+            .and_then(|a| a.as_array())
+            .map(|a| a.len() as u64),
     )
 }
 
