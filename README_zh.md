@@ -293,7 +293,7 @@ Git ──scan──► index.md
 | 组件 | 用途 |
 |------|------|
 | **工具** | `~/.terrain/bin/`——CodeGraph、RTK、`terrain` CLI（`terrain tools` 用于 ACP） |
-| **Skills** | 标准 playbook——terrain-knowledge → repomix → codegraph → rtk |
+| **Skills** | `.agents/skills/` 与 `.claude/skills/` 下的四份 playbook（knowledge / repomix / codegraph / rtk）——由受管理的 `AGENTS.md`「Skill 路由」按任务**按需加载，最多一份**，不预读全部 |
 | **AGENTS.md** | 受管理的模板片段——知识优先的工作流、代码使用 repomix、Shell 使用 RTK |
 
 ### ③ 约定与工作流——路标

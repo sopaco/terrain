@@ -1,10 +1,19 @@
-### 可用 Skills
+### Skill 路由（按需，最多一份）
 
-| Skill | 用途 |
-|-------|------|
-| `terrain-knowledge-skill` | `.terrain/` 知识分层与查询顺序（先读） |
-| `repomix-context-skill` | grep/读取 `repomix.md` 源码切片 |
-| `codegraph-skill` | 符号关系；`~/.terrain/bin/codegraph` 或 `bunx codegraph` |
-| `rtk-skill` | 冗长 shell 加 rtk 前缀；`~/.terrain/bin/rtk` 或 `bunx @terrain-ai/rtk` |
+架构、实现细节、影响面任务先跑一次保鲜检查：
+`~/.terrain/bin/terrain tools freshness --project <slug>`
+其余任务（纯编辑、改类型、跑测试）不加载任何 Skill，直接读活仓库源码。
 
-加载顺序建议：knowledge → codegraph / repomix → rtk（执行命令时）。
+| 任务 | 只加载 | 跳过 |
+|------|--------|------|
+| 模块划分、流程、系统边界、业务术语 | `terrain-knowledge-skill` | repomix / codegraph / rtk |
+| 实现细节、按路径查源码 | `repomix-context-skill` | knowledge / codegraph / rtk |
+| 调用链、影响面 | `codegraph-skill` | knowledge / repomix |
+| 冗长 shell 输出（git / test / build） | `rtk-skill` | 其余三份 |
+| 拿不准 | `terrain-knowledge-skill`（单份 fallback） | 其余三份 |
+
+**失效短路**（依据已有输出，不额外跑探测命令）：
+
+- freshness 含 `index_missing_new_sources`，或 `macro_preload_allowed: false` → 索引缺新增源码，**跳过 repomix 查询**，直接 Grep/Read 活仓库；`agent/context.md` 仅作背景。
+- codegraph 非零退出 / 空输出，或 `terrain tools codegraph-drift --project <slug>` 报 `likely_stale: true` → **跳过 codegraph**，改用 Grep 活仓库，不要重试。
+- rtk 前缀执行失败 → 直接跑原命令，不要为它加载 `rtk-skill`。

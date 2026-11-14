@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "integrations": [
     {
       "id": "skill-terrain-knowledge",
@@ -77,22 +77,22 @@
   "agents_md_blocks": [
     {
       "id": "env-overview",
-      "version": 4,
+      "version": 5,
       "fragment": "agents-md/env-overview.fragment"
     },
     {
       "id": "knowledge-guide",
-      "version": 5,
+      "version": 6,
       "fragment": "agents-md/knowledge-guide.fragment"
     },
     {
       "id": "skills",
-      "version": 2,
+      "version": 3,
       "fragment": "agents-md/skills.fragment"
     },
     {
       "id": "tools",
-      "version": 3,
+      "version": 4,
       "fragment": "agents-md/tools.fragment"
     }
   ]

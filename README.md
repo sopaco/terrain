@@ -298,7 +298,7 @@ When sources conflict: **repomix > CodeGraph > context.md > human/**. Down-weigh
 | Component | Purpose |
 |-----------|---------|
 | **Tools** | `~/.terrain/bin/` — CodeGraph, RTK, `terrain` CLI (`terrain tools` for ACP) |
-| **Skills** | Standard playbooks — terrain-knowledge → repomix → codegraph → rtk |
+| **Skills** | Four playbooks in `.agents/skills/` and `.claude/skills/` (knowledge / repomix / codegraph / rtk) — the managed `AGENTS.md` router loads **at most one per task**, never all four |
 | **AGENTS.md** | Managed snippets — knowledge-first workflow, repomix for code, RTK for shell |
 
 ### ③ Conventions & workflow — the trail markers

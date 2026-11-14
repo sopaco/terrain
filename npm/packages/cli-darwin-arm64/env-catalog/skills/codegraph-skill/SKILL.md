@@ -1,113 +1,36 @@
 ---
 name: codegraph-skill
-description: Use when a coding agent needs symbol relationships, callers, callees, or change impact. Guides CodeGraph CLI usage (not MCP).
-version: 1.3.0
+description: Query symbol relationships, callers and change impact with the CodeGraph CLI. Load only for call-chain or impact questions, and skip it when the tool is unhealthy.
+version: 2.0.0
 ---
 
 # CodeGraph Skill
 
-[CodeGraph](https://colbymchenry.github.io/codegraph/) provides a pre-indexed **AST code graph** for this project.
+`<cg>` = `~/.terrain/bin/codegraph`，无 Terrain 安装时用 `bunx codegraph` / `npx codegraph`。**不要**运行 `codegraph install`（会另配 MCP 与 agent rules）。
 
-Terrain uses **CLI only** — do not run `codegraph install` (that configures MCP/agent rules separately).
+## 先判断能不能用
 
-## Resolve the CodeGraph command (read first)
+1. 做 impact / callers 前跑 `~/.terrain/bin/terrain tools codegraph-drift --project <slug>`：`<cg> status` 可能误报「最新」，这个基于 git 的独立检测才可信。
+2. `likely_stale: true` → `<cg> sync` 一次再查。
+3. 命令非零退出、空输出、`query` 查不到刚新增的符号 → **判定 unhealthy，立即跳过 CodeGraph**，改用 Grep 活仓库。不要重试、不要反复 sync。
 
-Use **conventional paths only** — never machine-specific absolute paths like `/Users/...` or `C:\Users\...`.
+## 命令
 
-On Windows, the wrapper may be `codegraph.cmd` or `codegraph.exe` under `~/.terrain/bin/`.
+| 意图 | 命令 |
+|------|------|
+| 定位符号 | `<cg> query <name>` |
+| 谁调用 X / X 调用谁 | `<cg> callers <symbol>` / `<cg> callees <symbol>` |
+| 改动影响面 | `<cg> impact <symbol>` |
+| 受影响测试 | `<cg> affected <files…>` |
+| 索引状态 / 刷新 | `<cg> status` / `<cg> sync` |
 
-| Priority | Command | When |
-|----------|---------|------|
-| 1 | `~/.terrain/bin/codegraph` | Terrain env integration (see existence check below) |
-| 2 | `bunx codegraph` | No Terrain install; needs network once |
-| 3 | `npx codegraph` | Same as bunx if Bun unavailable |
+索引在仓库内 `.codegraph/`；缺失时 `<cg> init -i`。
 
-Optional manifest (local, gitignored): `.terrain/env/agent-tools.json` — same `~/.terrain/bin/…` conventions.
+## 路径约定
 
-**Existence check (cross-platform):**
+一律用 `~/.terrain/bin/…`，不写机器相关绝对路径。Windows 上可能是 `codegraph.exe` / `codegraph.cmd`（`%USERPROFILE%\.terrain\bin\`）；用 `Test-Path "$HOME\.terrain\bin\codegraph*"` 检查，不要用 Unix 专用的 `test -x`。
 
-| Shell | Check |
-|-------|-------|
-| bash / zsh / Git Bash | `[ -x ~/.terrain/bin/codegraph ] \|\| [ -f ~/.terrain/bin/codegraph.exe ] \|\| [ -f ~/.terrain/bin/codegraph.cmd ]` |
-| PowerShell | `Test-Path "$HOME\.terrain\bin\codegraph*"` |
+## 边界
 
-In examples below, `<cg>` means your resolved prefix (`~/.terrain/bin/codegraph` or `bunx codegraph`).
-
-## Prerequisites
-
-The **index** is per-repo under `.codegraph/`. If missing, initialize from the repo root:
-
-```bash
-# bash / Git Bash
-if [ -x ~/.terrain/bin/codegraph ] || [ -f ~/.terrain/bin/codegraph.exe ] || [ -f ~/.terrain/bin/codegraph.cmd ]; then
-  ~/.terrain/bin/codegraph init -i
-else
-  bunx codegraph init -i
-fi
-```
-
-Refresh after edits: `<cg> sync`
-
-Health check:
-
-```bash
-<cg> status
-```
-
-**`<cg> status` can lie ("up to date" when it is not).** Observed case: index untouched for 10 days while 24 commits changed source files, `status` still reported fresh, and `<cg> query` on a symbol added days earlier returned nothing. Do not treat `status` as authoritative on its own.
-
-## CLI commands
-
-| Intent | Command |
-|--------|---------|
-| Find symbol by name | `<cg> query <name>` |
-| Who calls X | `<cg> callers <symbol>` |
-| What X calls | `<cg> callees <symbol>` |
-| Change blast radius | `<cg> impact <symbol>` |
-| Tests affected by file changes | `<cg> affected <files…>` |
-| Project file tree | `<cg> files` |
-| Index health | `<cg> status` |
-| Refresh after edits | `<cg> sync` |
-
-## Recommended workflow
-
-1. Read `.terrain/agent/context.md` (`terrain-knowledge-skill`)
-2. **Always** `<cg> sync` first — cheap, incremental, and removes the need to trust `status`'s own up-to-date claim
-3. `<cg> query <SymbolName>` to locate definition
-4. `callers` / `callees` / `impact` for relationship questions
-5. `repomix-context-skill` for full source text of a specific file
-6. Use **`rtk-skill`** for any follow-up shell commands (tests, git)
-
-## Independent staleness cross-check (mandatory before impact/callers analysis)
-
-Because `<cg> status` is not reliable, cross-check with Terrain's own git-based drift report before trusting `impact`/`callers`/`callees` results for anything safety-relevant (e.g. "is it safe to remove this function"):
-
-```bash
-~/.terrain/bin/terrain tools codegraph-drift --project <slug>
-# or: bunx @terrain-ai/cli tools codegraph-drift --project <slug>
-```
-
-This compares `.codegraph/codegraph.db`'s mtime against `git log --since` — independent of CodeGraph's own bookkeeping. If `likely_stale: true`, run `<cg> sync` and re-check before trusting query results.
-
-## When to use vs other skills
-
-| Use CodeGraph | Use instead |
-|---------------|-------------|
-| Symbol lookup, call chains | Architecture → `context.md` |
-| Impact before refactor | Business rules → `knowledge/` |
-| File/symbol graph | Raw source slice → repomix |
-| Verbose test/git output | `<rtk> cargo test`, `<rtk> git diff` |
-
-## Do not
-
-- Run `codegraph install` (Terrain manages AGENTS.md)
-- Blind `grep` the whole repo to re-verify CodeGraph AST results
-- Chain `query` + manual file reads when `impact` answers the question
-
-## Staleness
-
-If `<cg> status` shows pending files after your edits, or `terrain tools codegraph-drift` reports `likely_stale: true`:
-
-```bash
-<cg> sync
-```
+- 架构问题走 `terrain-knowledge-skill`；源码全文走 `repomix-context-skill`。
+- 不为「验证 AST 结果」再全仓 Grep 一遍；但 unhealthy 时 Grep 是唯一可信路径。

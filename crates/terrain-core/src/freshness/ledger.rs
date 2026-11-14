@@ -12,7 +12,10 @@ use crate::schema::{AgentContextMeta, AgentPackMeta, FreshnessLedger};
 
 use super::git::{git_output, working_tree_dirty_excluding_knowledge};
 
-const LEDGER_VERSION: u32 = 1;
+/// Bump whenever the scoring rules change. `freshness_ledger_still_valid` rejects ledgers
+/// written by an older binary, otherwise a cached verdict would keep describing the old rules
+/// (e.g. a green 88 with an index that is missing newly added source files).
+const LEDGER_VERSION: u32 = 2;
 
 pub(crate) const LEDGER_VERSION_CONST: u32 = LEDGER_VERSION;
 
@@ -47,6 +50,10 @@ pub(crate) fn freshness_ledger_still_valid(
     ledger: &FreshnessLedger,
     repo_path: &str,
 ) -> bool {
+    // A scoring change must never keep serving a verdict computed by the previous rules.
+    if ledger.version != LEDGER_VERSION {
+        return false;
+    }
     let repo = Path::new(repo_path);
     if !repo.join(".git").exists() {
         return false;

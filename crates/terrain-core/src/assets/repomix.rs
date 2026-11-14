@@ -20,7 +20,12 @@ use super::pack_read::{agent_pack_ready, invalidate_pack_text_cache};
 /// feed source citations; a compressed or comment-stripped view renumbers lines
 /// and breaks every citation built on it. The bump also forces a repack of
 /// legacy v1 packs (see [`agent_pack_synced_with_head`]).
-pub const AGENT_PACK_STRATEGY: &str = "architecture-context-v2";
+///
+/// v3: exclude generated Tauri desktop schemas from the pack. `agent_pack_synced_with_head`
+/// only compares this strategy string and the Git baseline — it does not hash the ignore
+/// rules — so bumping is the only way to guarantee that a pack built with the old rule set
+/// is actually replaced instead of being trusted indefinitely.
+pub const AGENT_PACK_STRATEGY: &str = "architecture-context-v3";
 
 const AGENT_CONTEXT_HEADER_TEMPLATE: &str = "\
 Terrain Agent Source Pack (repomix-core / {strategy})
@@ -69,6 +74,9 @@ fn architecture_ignore_patterns() -> Vec<String> {
         "**/dist/**",
         "**/build/**",
         "**/coverage/**",
+        // Per-platform Tauri desktop schemas: large generated JSON blobs with no source
+        // semantics. Six of these made up roughly a quarter of the pack's token volume.
+        "src-tauri/gen/schemas/**",
         "**/.git/**",
         "**/.terrain/**",
         "**/.litho-agent/**",
@@ -254,6 +262,31 @@ mod tests {
     use crate::schema::TokenHeavyFile;
     use std::fs;
     use std::path::Path;
+
+    #[test]
+    fn generated_tauri_schemas_are_excluded() {
+        let patterns = architecture_ignore_patterns();
+        assert!(
+            patterns.iter().any(|p| p == "src-tauri/gen/schemas/**"),
+            "generated desktop schemas must be excluded from the agent pack: {patterns:?}"
+        );
+    }
+
+    #[test]
+    fn strategy_change_invalidates_legacy_packs() {
+        // `agent_pack_synced_with_head` compares only the strategy string and the Git
+        // baseline; it never hashes the ignore rules. A rule change without a bump would
+        // leave packs built under the old rules trusted indefinitely.
+        let header = agent_context_header();
+        assert!(header.contains(AGENT_PACK_STRATEGY));
+        assert!(pack_declares_source_line_numbers(&header));
+        assert!(
+            !pack_declares_source_line_numbers(
+                "Terrain Agent Source Pack (repomix-core / architecture-context-v2)"
+            ),
+            "a pack built before the ignore-rule change must be treated as legacy"
+        );
+    }
 
     fn init_git_repo(repo: &Path) -> String {
         crate::process::command("git")

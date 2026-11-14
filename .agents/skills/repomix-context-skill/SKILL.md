@@ -1,84 +1,32 @@
 ---
 name: repomix-context-skill
-description: Use when an agent needs source code from the local repomix index under .terrain/agent/repomix.md (not committed; regenerate via Terrain scan).
-version: 1.3.0
+description: Read a source slice from the local .terrain/agent/repomix.md index. Load only for implementation detail questions; never load the whole pack.
+version: 2.0.0
 ---
 
 # Repomix Context Skill
 
-Terrain stores a **local repomix index** at `.terrain/agent/repomix.md` (gitignored, fast to regenerate).
+本地源码索引 `.terrain/agent/repomix.md`（gitignored，由 Terrain scan 重建）。
 
-Read **architecture first** via `terrain-knowledge-skill` → `.terrain/agent/context.md`.
+## 先确认索引可用
 
-## When to use
+freshness 含 `index_missing_new_sources` 或 `macro_preload_allowed: false` 时，**不要用本 Skill**：索引缺新增源码，直接 Grep/Read 活仓库，并建议重建索引。索引与 HEAD 一致时才继续。
 
-- Implementation details after reading `context.md`
-- Cross-file symbol search within the indexed snapshot
-- Locating handlers, types, routes
+## 切片格式（易错）
 
-## Query strategy (mandatory)
-
-1. **Read meta** — `.terrain/agent/meta.json` (`total_tokens`, `synced_at`, `top_files_by_tokens`)
-2. **Search the pack** — never load the entire file:
-   ```bash
-   # <rtk> = ~/.terrain/bin/rtk or bunx @terrain-ai/rtk (see rtk-skill)
-   <rtk> grep "struct ProjectOverview" .terrain/agent/repomix.md
-   <rtk> grep "### src/lib/api.ts" .terrain/agent/repomix.md
-   ```
-   Or agent Grep limited to that path with tight patterns.
-3. **Read slices** — extract matching `### path/to/file` sections only:
-   ```bash
-   <rtk> read .terrain/agent/repomix.md -l aggressive
-   ```
-   Then read the specific `### file` block (line range), ≤150 lines per read.
-4. **Refresh** — if `meta.json.synced_at` is stale, ask user to run Terrain **重建源码索引** / scan
-
-## Repomix section format
-
-Sections look like:
-
-```markdown
-### src/lib/foo.ts
-
-\`\`\`typescript
-... file content ...
-\`\`\`
-```
-
-Grep for `### relative/path` to jump to a file.
-
-## Paths
-
-| File | Purpose |
-|------|---------|
-| `.terrain/agent/repomix.md` | Full indexed snapshot (local only) |
-| `.terrain/agent/meta.json` | Pack metrics |
-| `.terrain/agent/context.md` | Architecture (read first) |
-
-## Do not
-
-- Commit or assume `repomix.md` exists in git
-- `cat` / Read the entire `repomix.md` (can be 100k+ tokens)
-- Read the live repository tree when the pack covers the question
-- Skip `context.md` and grep source for architecture questions
-
-## Regenerate index
-
-If `repomix.md` is missing:
+文件节的标题是 `### <相对路径> (<行数> lines)`，例如 `### crates/terrain-core/src/lib.rs (164 lines)`。路径后**带行数括号**，所以精确匹配 `### 路径` 会 0 命中。
 
 ```bash
-# bash / Git Bash — <terrain> = ~/.terrain/bin/terrain or bunx @terrain-ai/cli
-if [ -x ~/.terrain/bin/terrain ] || [ -x ~/.terrain/bin/terrain.exe ]; then
-  ~/.terrain/bin/terrain assets pack-agent .
-else
-  bunx @terrain-ai/cli assets pack-agent .
-fi
-# or from repo root in Terrain UI: 重建源码索引
+# 用带前缀的模式定位行号，再按行区间读，≤150 行/次
+grep -n "^### crates/terrain-core/src/lib.rs " .terrain/agent/repomix.md
 ```
 
-If neither `~/.terrain/bin/terrain` nor `bunx @terrain-ai/cli` works, ask the user to install Terrain or run **重建源码索引** from the desktop app.
+也可用 `~/.terrain/bin/terrain tools grep-pack --project <slug> --pattern <符号>` 定位；`read-pack-file` 需传 pack 内记录的相对路径，报「找不到文件」时**不要反复换路径**，直接读活仓库源码。
 
-## Related skills
+## 规则
 
-- **codegraph-skill** — symbol relationships (prefer before wide repomix grep)
-- **rtk-skill** — resolve `<rtk>` prefix for grep/read on the pack file
+- 绝不整包 Read / `cat` `repomix.md`（可达数十万 token）。
+- `.terrain/agent/meta.json` 记 pack 指标与同步时间。
+- 切片是**某次提交的快照**：与活仓库冲突时以活仓库为准。
+- 架构问题先走 `terrain-knowledge-skill`；符号关系走 `codegraph-skill`。
+- 缺索引时不自动重建（生成成本高、Windows 子进程有约束），提示用户走 Terrain UI「重建源码索引」或 `terrain assets pack-agent`。

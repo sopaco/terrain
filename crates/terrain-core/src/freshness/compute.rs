@@ -15,7 +15,9 @@ use crate::schema::{
 };
 
 use super::drift_factors::{build_drift_factors, DriftExplainInput};
-use super::git::{git_drift_since, git_snapshot, DriftBasis, GitDrift, GitSnapshot};
+use super::git::{
+    git_change_set, git_drift_since, git_snapshot, DriftBasis, GitDrift, GitSnapshot,
+};
 use super::ledger::{
     freshness_ledger_still_valid, read_freshness_ledger, write_freshness_ledger,
     LEDGER_VERSION_CONST,
@@ -41,6 +43,52 @@ fn layer_drift(repo_path: &str, baseline: Option<&str>, git: &GitSnapshot) -> Gi
         }
         None => git_drift_since(repo_path, None),
     }
+}
+
+/// Source files added after the pack's baseline commit — paths that structurally cannot be
+/// present in `agent/repomix.md`.
+///
+/// The pack is a snapshot taken at `baseline_git_head`, so an `A` entry in `baseline..HEAD`
+/// is a fact about a missing slice. Age and commit heuristics saturate at small caps and can
+/// still report a green score while entire new modules are absent, so this gate does not add
+/// another penalty: it caps the verdict and names the paths.
+///
+/// A missing or unreachable baseline returns an empty list. `score_layer` already fails closed
+/// for those cases; applying the gate there too would hide the `baseline_*` diagnosis.
+fn index_missing_new_sources(repo_path: &str, pack_baseline: Option<&str>) -> Vec<String> {
+    let Some(baseline) = pack_baseline else {
+        return Vec::new();
+    };
+    let Some(change_set) = git_change_set(repo_path, baseline) else {
+        return Vec::new();
+    };
+    let mut missing: Vec<String> = change_set
+        .changed
+        .into_iter()
+        // A rename is `R100`, so `starts_with('A')` matches only genuinely new paths.
+        .filter(|entry| entry.status.starts_with('A') && is_indexed_source_path(&entry.path))
+        .map(|entry| entry.path)
+        .collect();
+    missing.sort();
+    missing.dedup();
+    missing
+}
+
+/// Only paths the agent pack indexes: source files under the shipped source roots.
+///
+/// Mirrors the directory exclusions in `assets::repomix::architecture_ignore_patterns` so a
+/// newly added test or generated file is not reported as a missing index slice — the pack
+/// never contained those paths in the first place.
+fn is_indexed_source_path(path: &str) -> bool {
+    const SOURCE_ROOTS: [&str; 3] = ["crates/", "src/", "src-tauri/src/"];
+    const SOURCE_EXTENSIONS: [&str; 6] = [".rs", ".ts", ".tsx", ".svelte", ".js", ".toml"];
+    const NON_INDEXED_SEGMENTS: [&str; 6] =
+        ["tests", "test", "generated", "gen", "fixtures", "migrations"];
+    SOURCE_ROOTS.iter().any(|root| path.starts_with(root))
+        && SOURCE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
+        && !path
+            .split('/')
+            .any(|segment| NON_INDEXED_SEGMENTS.contains(&segment))
 }
 
 /// Compute freshness for all knowledge assets and persist `freshness.json`.
@@ -107,7 +155,26 @@ pub fn compute_freshness(
     let human_drift = layer_drift(&repo_path, human_baseline.as_deref(), &git);
     let human_score = score_layer(&human_drift, human_days, pack_total_files.max(1), git.dirty);
 
-    let overall_score = overall_freshness_score(pack_score, ctx_score, human_score);
+    let raw_overall_score = overall_freshness_score(pack_score, ctx_score, human_score);
+
+    // Fact-level gate: a source file added after the pack baseline has no slice in that pack.
+    // Cap the verdict in the warn band (VERIFY_THRESHOLD - 1) instead of below the macro
+    // threshold — architecture context is still useful, it just must be cross-checked.
+    let missing_new_sources = index_missing_new_sources(&repo_path, pack_baseline.as_deref());
+    let index_gate_active = !missing_new_sources.is_empty();
+    let overall_score = if index_gate_active {
+        raw_overall_score.min(VERIFY_THRESHOLD - 1)
+    } else {
+        raw_overall_score
+    };
+    // `context.md` is derived from the pack, so a missing slice makes the derived layer equally
+    // untrustworthy for those paths. Cap it too: `read_agent_context`'s freshness_warning reads
+    // `agent_context_score`, not `overall_score`, and would otherwise stay silent.
+    let agent_context_score = if index_gate_active {
+        ctx_score.min(VERIFY_THRESHOLD - 1)
+    } else {
+        ctx_score
+    };
 
     let commits_since = pack_drift
         .commits_since_baseline
@@ -121,7 +188,9 @@ pub fn compute_freshness(
         .unwrap_or(DriftBasis::Measured);
 
     let overall_stale = overall_score < FRESH_THRESHOLD;
-    let stale_reason = if !pack_ready || !ctx_ready {
+    let stale_reason = if index_gate_active {
+        Some("index_missing_new_sources".into())
+    } else if !pack_ready || !ctx_ready {
         Some("asset_not_ready".into())
     } else {
         stale_reason_for(overall_score, commits_since, git.dirty, true, unmeasured_basis)
@@ -145,6 +214,7 @@ pub fn compute_freshness(
         pack_total_files,
         pack_baseline: pack_baseline.as_deref(),
         ctx_baseline: ctx_baseline.as_deref(),
+        missing_new_sources: &missing_new_sources,
     });
 
     let sample_changed_files: Vec<String> = pack_drift
@@ -165,9 +235,9 @@ pub fn compute_freshness(
         last_computed_at: now.clone(),
         stale_reason: stale_reason.clone(),
         agent_pack_score: pack_score,
-        agent_context_score: ctx_score,
+        agent_context_score,
         human_docs_score: human_score,
-        macro_preload_allowed: ctx_score >= MACRO_PRELOAD_THRESHOLD,
+        macro_preload_allowed: ctx_score >= MACRO_PRELOAD_THRESHOLD && !index_gate_active,
         drift_factors,
         sample_changed_files: sample_changed_files.clone(),
         pack_baseline_short: short_git_ref(pack_baseline.as_deref()),
@@ -209,15 +279,15 @@ pub fn compute_freshness(
                 baseline_git_head: ctx_meta
                     .as_ref()
                     .and_then(|m| m.baseline_git_head.clone()),
-                stale: ctx_score < FRESH_THRESHOLD,
+                stale: agent_context_score < FRESH_THRESHOLD,
                 stale_reason: stale_reason_for(
-                    ctx_score,
+                    agent_context_score,
                     ctx_drift.commits_since_baseline,
                     git.dirty,
                     ctx_ready,
                     ctx_drift.basis,
                 ),
-                freshness_score: ctx_score,
+                freshness_score: agent_context_score,
             },
             human_docs: AssetFreshness {
                 path: "human/".into(),
@@ -340,5 +410,22 @@ mod tests {
         let block = format_freshness_trust_block(&summary);
         assert!(block.contains("overall_score: 34"));
         assert!(block.contains("DO NOT rely on preloaded macro context"));
+    }
+
+    #[test]
+    fn index_gate_only_counts_paths_the_pack_would_index() {
+        assert!(is_indexed_source_path(
+            "crates/terrain-core/src/assets/new_module.rs"
+        ));
+        assert!(is_indexed_source_path("src/lib/new_feature.ts"));
+        assert!(is_indexed_source_path("src-tauri/src/main.rs"));
+        // The pack excludes test/generated trees by design; these are not missing slices.
+        assert!(!is_indexed_source_path(
+            "crates/terrain-core/tests/process_convention.rs"
+        ));
+        assert!(!is_indexed_source_path("src/lib/generated/types.ts"));
+        assert!(!is_indexed_source_path("src-tauri/gen/schemas/foo.ts"));
+        assert!(!is_indexed_source_path("README.md"));
+        assert!(!is_indexed_source_path("npm/packages/foo/new.rs"));
     }
 }

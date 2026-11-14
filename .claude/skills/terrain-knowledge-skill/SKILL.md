@@ -1,90 +1,32 @@
 ---
 name: terrain-knowledge-skill
-description: Use when a coding agent needs project knowledge from Terrain .terrain/ assets. Guides layered reading of context, private knowledge, and repomix index.
-version: 1.2.0
+description: Use when an agent needs Terrain .terrain/ architecture or private-domain knowledge. Load only for architecture, glossary or routing questions.
+version: 2.0.0
 ---
 
 # Terrain Knowledge Skill
 
-Terrain stores **AI knowledge assets** under **`.terrain/`** in this repository (not a global `~/.terrain/knowledge` directory). The desktop app registry at `~/.terrain/registry.json` only maps slugs → repo paths.
+`.terrain/` 在**本仓库内**；`~/.terrain/registry.json` 只存路径映射。
 
-Load **`rtk-skill`** when you need to run shell commands during investigation (git, grep repomix file, tests). Resolve tools via **conventional paths** (`~/.terrain/bin/…`) with `bunx`/`npx` fallback — see `rtk-skill` / `codegraph-skill`.
+## 读取顺序
 
-## Knowledge layers (mandatory order)
+1. 架构问题先跑 `~/.terrain/bin/terrain tools freshness --project <slug>`（会按需重算；勿只读静态 `.terrain/.meta/freshness.json`）。
+2. 模块/流程/边界 → `.terrain/agent/context.md`（短，直接 Read）；业务术语 → `.terrain/knowledge/*.md`（按文件名排序）；结构化元数据 → `.terrain/agent/meta-inputs.md`。
+3. 实现细节转 `repomix-context-skill`；符号关系转 `codegraph-skill`；冗长 shell 转 `rtk-skill`。**一次只加载需要的一份。**
 
-1. **Architecture** — `.terrain/agent/context.md`
-   - Module map, core flows, system boundaries, tech stack
-   - Check `.terrain/agent/context-meta.json` or `meta.json` for asset timestamps
-   - Read directly (short); no RTK needed
+## 保鲜结论怎么用
 
-2. **Private domain** — `.terrain/knowledge/**/*.md`
-   - Business glossary, internal frameworks, APIs, scaffolding guides
-   - Team-maintained markdown; read in filename sort order when surveying
+| freshness 输出 | 动作 |
+|----------------|------|
+| `overall_score ≥ 80` | `context.md` 可作架构依据 |
+| `< 70` 或 `macro_preload_allowed: false` | 架构结论须用源码交叉验证 |
+| 因子 `index_missing_new_sources` | **跳过 repomix**，直接 Grep/Read 活仓库；detail 列出缺失路径，建议重建源码索引 |
+| `< 50` | 宏观上下文不可信 |
 
-3. **Structured meta** — `.terrain/agent/meta-inputs.md`
-   - Compiled from `terrain-meta.json` and `knowledge/` scans
+冲突优先级：**活仓库源码 > repomix 切片 > codegraph > `context.md` > `human/`**。
 
-4. **Source index** — see `repomix-context-skill`
-   - Local `.terrain/agent/repomix.md` (gitignored; regenerate via Terrain scan)
+## 边界
 
-## Knowledge freshness (mandatory before architecture answers)
-
-Before trusting `context.md` for module/architecture questions:
-
-```bash
-~/.terrain/bin/terrain tools freshness --project <slug>
-# or: bunx @terrain-ai/cli tools freshness --project <slug>
-```
-
-This recomputes when stale and writes `.terrain/.meta/freshness.json`. **Do not** only read that JSON statically — it is a local cache snapshot.
-
-| Score | Rule |
-|-------|------|
-| `< 50` | Do not rely on macro context; use `repomix-context-skill` |
-| `50–69` | Cross-check with repomix grep or `codegraph-skill` |
-| `≥ 70` | Architecture context is generally reliable |
-
-On conflict: **repomix source slices > codegraph > agent/context.md > human/**
-
-For symbol impact/callers, also see `codegraph-skill` (CodeGraph `status` can lie; use `terrain tools codegraph-drift`).
-
-## Query workflow
-
-```
-Task received
-  → freshness check (architecture tasks)
-  → Read context.md (or relevant section)
-  → If business/internal terms → read knowledge/*.md
-  → If symbol / call graph → codegraph-skill
-  → If implementation / source → repomix-context-skill
-  → If shell/git/test needed → rtk-skill (prefix with rtk)
-```
-
-## Rules
-
-- **Do not** invent module names that contradict `context.md` or `meta-inputs.md`
-- **Do not** read the entire live repository tree when indexed assets exist
-- **Do not** load full `repomix.md` into context — grep slices only (`rtk grep` on the file is OK)
-- Prefer `.terrain/` over guessing project structure
-
-## Private knowledge directory
-
-`.terrain/knowledge/` — developers add markdown here; Terrain scans on context generation.
-
-Example files:
-- `00-glossary.md` — domain terms
-- `10-internal-framework.md` — internal libs
-- `20-api-usage.md` — internal APIs
-- `30-scaffolding.md` — project generators
-
-## Human docs (optional)
-
-`.terrain/human/` — Litho-generated docs for humans; useful for onboarding context but denser than `context.md`.
-
-## Related skills
-
-| Skill | When |
-|-------|------|
-| `repomix-context-skill` | Source code from repomix index |
-| `codegraph-skill` | Callers, callees, impact |
-| `rtk-skill` | All verbose shell commands |
+- 不整包加载 `.terrain/agent/repomix.md`；按 `### <path> (<N> lines)` 标题定位切片，每次 ≤150 行。
+- 不臆造与 `context.md` / `meta-inputs.md` 矛盾的模块名。
+- `knowledge/` 由人维护；`refs` 指向已删除路径时降权。`human/` 体积大，非必要不读。

@@ -26,6 +26,8 @@ pub(crate) struct DriftExplainInput<'a> {
     pub pack_total_files: u32,
     pub pack_baseline: Option<&'a str>,
     pub ctx_baseline: Option<&'a str>,
+    /// Source files added after the pack baseline — see `compute::index_missing_new_sources`.
+    pub missing_new_sources: &'a [String],
 }
 
 /// Points `score_asset` deducts for files changed relative to a baseline.
@@ -264,6 +266,51 @@ pub(crate) fn build_drift_factors(input: &DriftExplainInput<'_>) -> Vec<Freshnes
                     )
                     .into(),
                 points_lost: Some(lost),
+            });
+        }
+
+        // A pack is a snapshot at `baseline_git_head`: source files added afterwards cannot be
+        // in it. Unlike the age/commit heuristics above this is a structural fact, so it is
+        // surfaced by name rather than folded into a capped point deduction — an agent reading
+        // the summary must know which paths to verify against the live repository.
+        if !input.missing_new_sources.is_empty() {
+            let count = input.missing_new_sources.len();
+            let shown: Vec<&str> = input
+                .missing_new_sources
+                .iter()
+                .take(8)
+                .map(String::as_str)
+                .collect();
+            let rest = count.saturating_sub(shown.len());
+            let tail = if rest > 0 {
+                format!(" … +{rest} more")
+            } else {
+                String::new()
+            };
+            factors.push(FreshnessDriftFactor {
+                id: "index_missing_new_sources".into(),
+                severity: "high".into(),
+                title: lang
+                    .tr(
+                        &format!("源码索引缺少 {count} 个新增源码文件"),
+                        &format!("Source index is missing {count} newly added source files"),
+                    )
+                    .to_string(),
+                detail: lang
+                    .tr(
+                        &format!(
+                            "索引生成于 baseline 提交，之后新增的源码文件不可能在其中：{}{}。这类结构性缺失不会体现在天数/提交数的漂移扣分里，因此 freshness 已被压入黄区并禁止宏观上下文预载。请重建源码索引（Terrain UI「重建源码索引」或 `terrain assets pack-agent`）；在此之前，涉及这些文件的结论一律回退到活仓库源码。",
+                            shown.join("、"),
+                            tail,
+                        ),
+                        &format!(
+                            "The index was generated at the baseline commit, so source files added afterwards cannot be in it: {}{}. This structural gap is invisible to the age/commit penalties, so freshness is capped in the warn band and macro preload is disabled. Rebuild the source index (Terrain UI > rebuild source index, or `terrain assets pack-agent`); until then, verify any claim about these files against the live repository.",
+                            shown.join(", "),
+                            tail,
+                        ),
+                    )
+                    .to_string(),
+                points_lost: None,
             });
         }
 
@@ -593,6 +640,7 @@ mod tests {
             pack_total_files: 0,
             pack_baseline: None,
             ctx_baseline: None,
+            missing_new_sources: &[],
         });
 
         let ids: Vec<_> = factors.iter().map(|f| f.id.as_str()).collect();
@@ -625,6 +673,7 @@ mod tests {
             pack_total_files: 100,
             pack_baseline: Some("deadbeef"),
             ctx_baseline: Some("deadbeef"),
+            missing_new_sources: &[],
         });
 
         let commits = factors
@@ -660,6 +709,7 @@ mod tests {
             pack_total_files: 24,
             pack_baseline: Some("abc123def456"),
             ctx_baseline: Some("de04626709e7"),
+            missing_new_sources: &[],
         });
 
         // Every point between raw 100 and the reported 88 must be attributable to a factor.
@@ -705,6 +755,7 @@ mod tests {
             pack_total_files: 24,
             pack_baseline: Some("abc123def456"),
             ctx_baseline: Some("de04626709e7"),
+            missing_new_sources: &[],
         });
 
         assert!(!factors.iter().any(|f| f.id == "context_baseline_behind"));
@@ -738,6 +789,7 @@ mod tests {
             pack_total_files: 24,
             pack_baseline: Some("56ae46f2"),
             ctx_baseline: Some("56ae46f2"),
+            missing_new_sources: &[],
         }
     }
 
@@ -808,5 +860,40 @@ mod tests {
             .expect("sync_time_unknown factor");
         assert_eq!(unknown.points_lost, Some(SYNC_AGE_PENALTY_CAP as u8));
         assert!(!factors.iter().any(|f| f.id == "pack_age"));
+    }
+
+    #[test]
+    fn missing_new_sources_are_explained_with_paths() {
+        let git = sample_git();
+        let drift = GitDrift::default();
+        let missing = vec![
+            "crates/terrain-core/src/assets/new_module.rs".to_string(),
+            "src/lib/new_feature.ts".to_string(),
+        ];
+        let mut input = unmeasured_input(&git, &drift, &drift);
+        input.missing_new_sources = &missing;
+        let factors = build_drift_factors(&input);
+
+        let factor = factors
+            .iter()
+            .find(|f| f.id == "index_missing_new_sources")
+            .expect("index_missing_new_sources factor");
+        assert_eq!(factor.severity, "high");
+        assert_eq!(factor.points_lost, None);
+        assert!(factor.detail.contains("new_module.rs"), "{}", factor.detail);
+        assert!(factor.detail.contains("new_feature.ts"), "{}", factor.detail);
+        assert!(
+            factor.detail.contains("重建源码索引") || factor.detail.contains("rebuild"),
+            "{}",
+            factor.detail
+        );
+    }
+
+    #[test]
+    fn no_missing_new_sources_emits_no_gate_factor() {
+        let git = sample_git();
+        let drift = GitDrift::default();
+        let factors = build_drift_factors(&unmeasured_input(&git, &drift, &drift));
+        assert!(!factors.iter().any(|f| f.id == "index_missing_new_sources"));
     }
 }
