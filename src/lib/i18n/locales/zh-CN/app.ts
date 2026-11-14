@@ -31,7 +31,10 @@ export default {
     projectSelected: "项目：{name}",
     scanningRepo: "正在扫描仓库…",
     lithoIncomplete: "Litho 文档未完成",
-    initComplete: "初始化完成：索引 {scan} 项，{term} {count} 篇{lithoNote}{note}",
+    initComplete:
+      "初始化完成「{name}」：索引 {scan} 项，{term} {count} 篇{lithoNote}{note}",
+    importBusy: "已有项目正在导入（{name}），请等待其完成",
+    removeWhileImporting: "「{name}」正在导入，完成后再尝试移除",
     quickRefreshing: "正在快速保鲜（扫描 + 索引 + Agent 知识资产）…",
     refreshDone: "保鲜完成：新鲜度 {score}/100{note}",
     noOverviewDoc: "尚未生成 1.概述.md，请先生成 {term}",
@@ -44,8 +47,8 @@ export default {
     generatingHuman: "正在生成 {term}（Litho）…",
     regeneratingHuman: "正在重新生成 {term}（Litho）…",
     newChatCreated: "已新建对话",
-    lithoDoneNoDocs: "Litho 已完成，但未写入 {term}（{slug}）",
-    lithoIncompleteWithCount: "{term} 未完成（{slug}，{count} 篇）",
-    lithoReady: "{term} 已就绪（{slug}，{count} 篇）",
+    lithoDoneNoDocs: "Litho 已完成，但未写入 {term}（{name}）",
+    lithoIncompleteWithCount: "{term} 未完成（{name}，{count} 篇）",
+    lithoReady: "{term} 已就绪（{name}，{count} 篇）",
   },
 } as const;

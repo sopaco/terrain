@@ -15,6 +15,10 @@
     selectedSlug: string | null;
     open: boolean;
     addBusy?: boolean;
+    /** Display name of the project currently being imported (may not be registered yet). */
+    importingName?: string | null;
+    importingPath?: string | null;
+    importingSlug?: string | null;
     ontoggle: () => void;
     onselect: (project: ProjectRegistryEntry) => void;
     onadd: () => void;
@@ -27,6 +31,9 @@
     selectedSlug,
     open,
     addBusy = false,
+    importingName = null,
+    importingPath = null,
+    importingSlug = null,
     ontoggle,
     onselect,
     onadd,
@@ -46,13 +53,45 @@
     registryProjects.find((p) => p.slug === selectedSlug) ?? null,
   );
 
+  const selectedImporting = $derived(
+    selectedEntry ? isImportTarget(selectedEntry) : false,
+  );
+
   const selectedBadge = $derived(
-    selectedEntry ? statusBadgeLabel(selectedEntry.status) : null,
+    selectedImporting
+      ? tr("misc.projects.importing")
+      : selectedEntry
+        ? statusBadgeLabel(selectedEntry.status)
+        : null,
   );
 
   const selectedBadgeTitle = $derived(
-    selectedEntry ? statusBadgeTitle(selectedEntry) : undefined,
+    selectedImporting
+      ? tr("misc.projects.importingTitle")
+      : selectedEntry
+        ? statusBadgeTitle(selectedEntry)
+        : undefined,
   );
+
+  /** The import target only joins the list after the backend registers it. */
+  const importingInList = $derived(
+    importingSlug
+      ? registryProjects.some((p) => p.slug === importingSlug)
+      : importingPath
+        ? registryProjects.some((p) => p.repo_path === importingPath)
+        : false,
+  );
+
+  const showPendingImport = $derived(
+    Boolean(importingName && !importingInList),
+  );
+
+  function isImportTarget(entry: ProjectRegistryEntry): boolean {
+    if (!importingName) return false;
+    if (importingSlug && entry.slug === importingSlug) return true;
+    if (importingPath && entry.repo_path === importingPath) return true;
+    return false;
+  }
 
   let triggerEl = $state<HTMLButtonElement | null>(null);
   let menuTop = $state(0);
@@ -79,6 +118,9 @@
 
   function confirmRemove(entry: ProjectRegistryEntry, e: MouseEvent) {
     e.stopPropagation();
+    // The running import would re-register the project at the end, so removing
+    // it mid-flight only looks like it worked.
+    if (isImportTarget(entry)) return;
     const label = registryDisplayName(entry);
     if (!confirm(tr("misc.projects.removeConfirm", { label }))) {
       return;
@@ -101,7 +143,11 @@
     </span>
     {#if selectedBadge}
       <span
-        class="shrink-0 rounded-full bg-tr-watch-soft px-1.5 py-0.5 text-[10px] font-medium text-tr-watch"
+        class={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+          selectedImporting
+            ? "bg-tr-watch text-tr-on-watch"
+            : "bg-tr-watch-soft text-tr-watch"
+        }`}
         title={selectedBadgeTitle}>{selectedBadge}</span
       >
     {/if}
@@ -121,9 +167,43 @@
       role="listbox"
     >
       <ul class="max-h-64 overflow-y-auto py-1">
+        {#if showPendingImport}
+          <li
+            class="mx-1 mb-1 flex items-start gap-2 rounded-lg border border-dashed border-tr-watch/40 bg-tr-watch-soft px-3 py-2"
+            aria-live="polite"
+          >
+            <span
+              class="mt-0.5 inline-block h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-tr-watch border-t-transparent"
+              aria-hidden="true"
+            ></span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-tr-ink" title={importingName ?? ""}>
+                {importingName}
+              </p>
+              {#if importingPath}
+                <p
+                  class="mt-0.5 truncate font-mono text-[10px] text-tr-ink-3"
+                  title={importingPath}
+                >
+                  {importingPath}
+                </p>
+              {/if}
+            </div>
+            <span
+              class="shrink-0 rounded-full bg-tr-watch px-1.5 py-0.5 text-[10px] font-medium text-tr-on-watch"
+            >
+              {tr("misc.projects.importing")}
+            </span>
+          </li>
+        {/if}
         {#each registryProjects as entry (entry.slug)}
-          {@const badge = statusBadgeLabel(entry.status)}
-          {@const badgeTitle = statusBadgeTitle(entry)}
+          {@const importing = isImportTarget(entry)}
+          {@const badge = importing
+            ? tr("misc.projects.importing")
+            : statusBadgeLabel(entry.status)}
+          {@const badgeTitle = importing
+            ? tr("misc.projects.importingTitle")
+            : statusBadgeTitle(entry)}
           <li class="mx-1 flex items-stretch gap-1">
             <button
               type="button"
@@ -142,7 +222,11 @@
                 >
                 {#if badge}
                   <span
-                    class="shrink-0 rounded-full bg-tr-watch-soft px-1.5 py-0.5 text-[10px] font-medium text-tr-watch"
+                    class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                      importing
+                        ? "bg-tr-watch text-tr-on-watch"
+                        : "bg-tr-watch-soft text-tr-watch"
+                    }"
                     title={badgeTitle}>{badge}</span
                   >
                 {/if}
@@ -173,9 +257,12 @@
             {#if onremove}
               <button
                 type="button"
-                class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical"
-                title={tr("misc.projects.remove")}
+                class="tr-press inline-flex shrink-0 items-center justify-center rounded px-2 text-tr-ink-3 transition-colors hover:bg-tr-critical-soft hover:text-tr-critical disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-tr-ink-3"
+                title={importing
+                  ? tr("misc.projects.removeBusy")
+                  : tr("misc.projects.remove")}
                 aria-label={tr("misc.projects.removeAria", { label: registryDisplayName(entry) })}
+                disabled={importing}
                 onclick={(e) => confirmRemove(entry, e)}
               >
                 <X size={14} strokeWidth={2} aria-hidden="true" />
@@ -183,7 +270,9 @@
             {/if}
           </li>
         {:else}
-          <li class="px-3 py-4 text-sm text-tr-ink-3">{tr("misc.projects.empty")}</li>
+          {#if !showPendingImport}
+            <li class="px-3 py-4 text-sm text-tr-ink-3">{tr("misc.projects.empty")}</li>
+          {/if}
         {/each}
       </ul>
       <div class="border-t border-tr-border-strong p-2">

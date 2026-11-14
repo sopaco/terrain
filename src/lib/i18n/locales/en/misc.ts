@@ -10,6 +10,19 @@ export default {
   },
   progress: {
     generating: "Generating knowledge assets",
+    importTitle: "Importing and initializing project",
+    stageScan: "Scan repository",
+    stageHumanDocs: "Generate {term}",
+    stageAgentContext: "Generate {term}",
+    stageDone: "Done",
+    stepSkippedTitle:
+      "Not run in this pass (already ready or missing configuration)",
+    importWillFocus: "Switches to “{name}” when done",
+    importNoFocus:
+      "You are viewing another project; find the imported project in the list afterwards",
+    backgroundTitle: "Background task running",
+    backgroundNote: "This task belongs to “{name}”; switching projects won't stop it",
+    switchToProject: "Switch to it",
   },
   errorNotice: {
     showDetails: "View details",
@@ -27,6 +40,9 @@ export default {
       'Remove "{label}" from the list?\n\nThis only removes the Terrain registration; the repository and its .terrain/ knowledge assets are not deleted.',
     statusStale: "Needs repair",
     statusPartial: "Incomplete",
+    importing: "Importing",
+    importingTitle: "Importing this repository; its status refreshes automatically when done",
+    removeBusy: "Importing — cannot remove yet",
     statusPartialTitle: "Not ready: {assets}",
     statusStaleTitle: "`.terrain` is missing or corrupted",
     repairStale:

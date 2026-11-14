@@ -29,6 +29,31 @@ export function selectedProjectDisplayName(
   return entry ? registryDisplayName(entry) : fallback;
 }
 
+/** Human label for a slug that may not be registered yet (e.g. mid-import). */
+export function registryDisplayNameForSlug(
+  slug: string | null | undefined,
+  projects: ProjectRegistryEntry[],
+): string {
+  if (!slug) return "";
+  const entry = findRegistryProject(slug, projects);
+  return entry ? registryDisplayName(entry) : slug;
+}
+
+/**
+ * Best-effort label for a repository that is still being imported: use the
+ * registry row once it exists, otherwise fall back to the folder name — never
+ * the currently selected project.
+ */
+export function importDisplayName(
+  slug: string | null | undefined,
+  repoPath: string,
+  projects: ProjectRegistryEntry[],
+): string {
+  const entry = findRegistryProject(slug, projects);
+  if (entry) return registryDisplayName(entry);
+  return repoBasename(repoPath) || slug || repoPath;
+}
+
 export function isRegistryStale(entry: ProjectRegistryEntry): boolean {
   return entry.status === "stale";
 }

@@ -10,6 +10,17 @@ export default {
   },
   progress: {
     generating: "正在生成知识资产",
+    importTitle: "正在导入并初始化项目",
+    stageScan: "扫描仓库",
+    stageHumanDocs: "生成{term}",
+    stageAgentContext: "生成{term}",
+    stageDone: "完成",
+    stepSkippedTitle: "本次未运行（已就绪或缺少配置）",
+    importWillFocus: "完成后将自动切换到「{name}」",
+    importNoFocus: "你正在浏览其他项目；导入完成后可在项目列表切换查看",
+    backgroundTitle: "后台任务进行中",
+    backgroundNote: "该任务属于「{name}」，切换项目不会中断",
+    switchToProject: "切换到该项目",
   },
   errorNotice: {
     showDetails: "查看详情",
@@ -27,6 +38,9 @@ export default {
       "从列表中移除「{label}」？\n\n仅移除 Terrain 登记，不会删除仓库或 .terrain/ 知识资产。",
     statusStale: "需修复",
     statusPartial: "待完善",
+    importing: "导入中",
+    importingTitle: "正在导入并初始化该仓库，完成后自动刷新状态",
+    removeBusy: "正在导入，暂时无法移除",
     statusPartialTitle: "尚未就绪：{assets}",
     statusStaleTitle: "`.terrain` 缺失或损坏",
     repairStale:

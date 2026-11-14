@@ -13,6 +13,10 @@
         hint?: string;
         actionLabel: string;
         busyLabel?: string;
+        /** Per-row progress text (e.g. the import message for *this* row only). */
+        progressNote?: string | null;
+        /** Tooltip when disabled for a reason the row itself cannot show. */
+        disabledHint?: string;
         onAction?: () => void;
         disabled?: boolean;
         busy?: boolean;
@@ -60,6 +64,7 @@
 
 {#snippet actionRow(item: OverviewActionItem, compact = false)}
     {@const AccentIcon = accentIcon[item.accent]}
+    {@const rowProgress = item.progressNote ?? progressNote}
     <div
         class={`flex items-start gap-3 rounded-xl border px-4 ${compact ? "py-3" : "py-4"} ${accentTint[item.accent]}`}
     >
@@ -81,9 +86,9 @@
                     {item.hint}
                 </p>
             {/if}
-            {#if progressNote}
+            {#if rowProgress}
                 <p class="mt-2 text-xs leading-relaxed text-tr-accent break-words">
-                    {progressNote}
+                    {rowProgress}
                 </p>
             {/if}
         </div>
@@ -97,7 +102,9 @@
                     onclick={item.onAction}
                     title={item.busy
                         ? (item.busyLabel ?? tr("overview.banner.processing"))
-                        : item.actionLabel}
+                        : item.disabled
+                          ? (item.disabledHint ?? item.actionLabel)
+                          : item.actionLabel}
                 >
                     {item.busy
                         ? (item.busyLabel ?? tr("overview.banner.processing"))

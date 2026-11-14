@@ -29,8 +29,14 @@
         agentContextBusy?: boolean;
         lithoBusy?: boolean;
         repackBusy?: boolean;
-        initBusy?: boolean;
-        initProgress?: string | null;
+        /** Any import/initialization run in flight (they are serialized). */
+        importBusy?: boolean;
+        /** Slug of the project being imported, once the backend resolved it. */
+        importTargetSlug?: string | null;
+        /** Repo path of the project being imported (known before the slug is). */
+        importTargetRepoPath?: string | null;
+        /** Progress text — only surfaced on the row that owns the running import. */
+        importProgress?: string | null;
         registryProjects?: ProjectRegistryEntry[];
         selectedRegistry?: ProjectRegistryEntry | null;
         onOpenKnowledge: () => void;
@@ -61,8 +67,10 @@
         agentContextBusy = false,
         lithoBusy = false,
         repackBusy = false,
-        initBusy = false,
-        initProgress = null,
+        importBusy = false,
+        importTargetSlug = null,
+        importTargetRepoPath = null,
+        importProgress = null,
         registryProjects = [],
         selectedRegistry = null,
         onOpenKnowledge,
@@ -90,6 +98,30 @@
     let remarkDraft = $state("");
     let remarkSaving = $state(false);
     let copiedPath = $state<string | null>(null);
+
+    /**
+     * Import runs are serialized, so only one row can own the in-flight run.
+     * Everything else is disabled (never marked busy) — showing 「重新初始化中…」
+     * on unrelated rows was the confusing part.
+     */
+    function importTargetsRow(
+        slug?: string | null,
+        repoPath?: string | null,
+    ): boolean {
+        if (!importBusy) return false;
+        if (importTargetSlug != null && slug === importTargetSlug) return true;
+        if (importTargetRepoPath != null && repoPath === importTargetRepoPath)
+            return true;
+        return false;
+    }
+
+    const importBlockedHint = $derived(
+        importBusy ? tr("overview.actions.importBlocked") : undefined,
+    );
+
+    const importTargetsOverview = $derived(
+        importTargetsRow(overview?.slug, overview?.repo_path),
+    );
 
     $effect(() => {
         if (freshnessHelpOpen) onRequestFreshnessCompute?.();
@@ -208,7 +240,8 @@
                     actionLabel: tr("overview.actions.quickRefresh"),
                     busyLabel: tr("overview.actions.quickRefreshing"),
                     onAction: onQuickRefresh,
-                    disabled: initBusy,
+                    disabled: importBusy,
+                    disabledHint: importBlockedHint,
                     busy: quickRefreshBusy,
                 });
             }
@@ -227,7 +260,8 @@
                     actionLabel: tr("overview.actions.refreshHumanDocs"),
                     busyLabel: tr("common.generating"),
                     onAction: onGenerateHuman,
-                    disabled: initBusy || lithoBusy || !lithoReady,
+                    disabled: importBusy || lithoBusy || !lithoReady,
+                    disabledHint: importBusy ? importBlockedHint : undefined,
                     busy: lithoBusy,
                 });
             } else if (
@@ -247,7 +281,8 @@
                     actionLabel: tr("overview.actions.refreshHumanDocs"),
                     busyLabel: tr("common.generating"),
                     onAction: onGenerateHuman,
-                    disabled: initBusy || lithoBusy || !lithoReady,
+                    disabled: importBusy || lithoBusy || !lithoReady,
+                    disabledHint: importBusy ? importBlockedHint : undefined,
                     busy: lithoBusy,
                 });
             }
@@ -270,8 +305,13 @@
                 busyLabel: tr("overview.actions.initializing"),
                 onAction: () =>
                     onInitializeProject(overview.repo_path, overview.slug),
-                disabled: initBusy,
-                busy: initBusy,
+                disabled: importBusy,
+                disabledHint:
+                    importBusy && !importTargetsOverview
+                        ? importBlockedHint
+                        : undefined,
+                busy: importTargetsOverview,
+                progressNote: importTargetsOverview ? importProgress : null,
             });
         }
 
@@ -299,25 +339,35 @@
     );
 
     const staleActionItems = $derived.by((): OverviewActionItem[] =>
-        staleRegistryProjects.map((entry) => ({
-            id: `stale-${entry.slug}`,
-            priority: 2,
-            accent: "amber" as const,
-            title: registryDisplayName(entry),
-            detail: registryRepairDetail(entry),
-            hint: initHint ?? undefined,
-            actionLabel: tr("overview.actions.reinit"),
-            busyLabel: tr("overview.actions.reinitializing"),
-            onAction: onInitializeProject
-                ? () => onInitializeProject(entry.repo_path, entry.slug)
-                : undefined,
-            disabled: initBusy || !onInitializeProject,
-            busy: initBusy,
-        })),
+        staleRegistryProjects.map((entry) => {
+            const isTarget = importTargetsRow(entry.slug, entry.repo_path);
+            return {
+                id: `stale-${entry.slug}`,
+                priority: 2,
+                accent: "amber" as const,
+                title: registryDisplayName(entry),
+                detail: registryRepairDetail(entry),
+                hint: initHint ?? undefined,
+                actionLabel: tr("overview.actions.reinit"),
+                busyLabel: tr("overview.actions.reinitializing"),
+                onAction: onInitializeProject
+                    ? () => onInitializeProject(entry.repo_path, entry.slug)
+                    : undefined,
+                disabled: importBusy || !onInitializeProject,
+                disabledHint:
+                    importBusy && !isTarget ? importBlockedHint : undefined,
+                busy: isTarget,
+                progressNote: isTarget ? importProgress : null,
+            };
+        }),
     );
 
     const selectedStaleActionItems = $derived.by((): OverviewActionItem[] => {
         if (!selectedRegistry || selectedRegistry.status !== "stale") return [];
+        const isTarget = importTargetsRow(
+            selectedRegistry.slug,
+            selectedRegistry.repo_path,
+        );
         return [
             {
                 id: `stale-selected-${selectedRegistry.slug}`,
@@ -335,8 +385,11 @@
                               selectedRegistry.slug,
                           )
                     : undefined,
-                disabled: initBusy || !onInitializeProject,
-                busy: initBusy,
+                disabled: importBusy || !onInitializeProject,
+                disabledHint:
+                    importBusy && !isTarget ? importBlockedHint : undefined,
+                busy: isTarget,
+                progressNote: isTarget ? importProgress : null,
             },
         ];
     });
@@ -564,10 +617,7 @@
                 </p>
             </header>
 
-            <OverviewActionBanner
-                items={selectedStaleActionItems}
-                progressNote={initBusy ? initProgress : null}
-            />
+            <OverviewActionBanner items={selectedStaleActionItems} />
 
             {#if selectedRegistry.repo_path && onOpenPath}
                 <div class="flex items-center gap-3 pt-1">
@@ -609,7 +659,6 @@
                     </h3>
                     <OverviewActionBanner
                         items={staleActionItems}
-                        progressNote={initBusy ? initProgress : null}
                         collapseSecondary={false}
                     />
                 </section>
@@ -733,13 +782,7 @@
             </header>
 
             {#if actionItems.length > 0}
-                <OverviewActionBanner
-                    items={actionItems}
-                    progressNote={initBusy &&
-                    !actionItems.some((i) => i.id === "init")
-                        ? initProgress
-                        : null}
-                />
+                <OverviewActionBanner items={actionItems} />
             {/if}
 
             <!-- 状态一览：就绪度 + 新鲜度 -->

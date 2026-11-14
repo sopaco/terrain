@@ -72,6 +72,7 @@ export default {
     envConfigure: "Configure",
     reinit: "Reinitialize",
     reinitializing: "Reinitializing…",
+    importBlocked: "Another project is being imported — try again when it finishes",
     dataLostTitle: "Knowledge base data lost",
     browse: "Browse",
     scanProject: "Scan Project",

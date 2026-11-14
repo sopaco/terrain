@@ -71,6 +71,7 @@ export default {
     envConfigure: "前往配置",
     reinit: "重新初始化",
     reinitializing: "重新初始化中…",
+    importBlocked: "另一个项目正在导入，完成后再试",
     dataLostTitle: "知识库数据丢失",
     browse: "浏览",
     scanProject: "扫描项目",

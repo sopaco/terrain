@@ -20,6 +20,7 @@
     import UsageMonitor from "./lib/components/UsageMonitor.svelte";
     import StatusBanner from "./lib/components/StatusBanner.svelte";
     import TaskProgressBar from "./lib/components/TaskProgressBar.svelte";
+    import type { ProgressStep } from "./lib/components/TaskProgressBar.svelte";
     import type { StatusKind } from "./lib/components/StatusBanner.svelte";
     import {
         checkAcp,
@@ -74,11 +75,18 @@
         updateChat,
     } from "./lib/stores/chat.svelte";
     import {
+        applyImportProgress,
+        backgroundLithoTask,
+        beginImport,
+        clearProjectTask,
         currentTask,
+        finishImport,
+        isKnownProjectSlug,
         project,
         selectedRegistryProject,
         hasAnySelectableProject,
         setProjectTask,
+        updateImportJob,
     } from "./lib/stores/project.svelte";
     import type {
         ChatMessage,
@@ -92,8 +100,10 @@
     import {
         countRegistryByStatus,
         findRegistryProject,
+        importDisplayName,
         preferredRegistryProject,
         registryDisplayName,
+        registryDisplayNameForSlug,
         selectedProjectDisplayName,
     } from "./lib/projectRegistry";
 
@@ -128,9 +138,206 @@
             : null,
     );
     let knowledgeSourceLoadId = 0;
+    // Per-view request tokens: a slow reply for project A must never paint over
+    // project B after the user switched. Kept per slug so a background request
+    // for another project cannot invalidate the visible one.
+    let docLoadSeq = 0;
+    const overviewLoadSeq = new Map<string, number>();
+    const humanDocsLoadSeq = new Map<string, number>();
+
+    function nextLoadSeq(seq: Map<string, number>, slug: string): number {
+        const next = (seq.get(slug) ?? 0) + 1;
+        seq.set(slug, next);
+        return next;
+    }
     const repackBusy = $derived(currentTaskDerived.repackBusy);
     const lithoBusy = $derived(currentTaskDerived.lithoBusy);
-    const lithoProgress = $derived(currentTaskDerived.lithoProgress);
+    const agentContextBusy = $derived(currentTaskDerived.agentContextBusy);
+    const quickRefreshBusy = $derived(currentTaskDerived.quickRefreshBusy);
+    const freshnessLoading = $derived(
+        project.freshnessLoadingSlug === project.selectedSlug,
+    );
+
+    // ── Import / background task model ──────────────────────────────────────
+    // The import target is its own entity: a freshly picked repository has no
+    // slug and is not selected, so the progress UI must never borrow the
+    // selected project's identity.
+    const importBusy = $derived(Boolean(project.importJob));
+    const importTargetSlug = $derived(project.importJob?.slug ?? null);
+    const importTargetRepoPath = $derived(project.importJob?.repoPath ?? null);
+    const importProgressMessage = $derived(project.importJob?.message ?? null);
+    const importProjectName = $derived(
+        project.importJob
+            ? importDisplayName(
+                  project.importJob.slug,
+                  project.importJob.repoPath,
+                  project.registryProjects,
+              )
+            : "",
+    );
+
+    const IMPORT_STAGES = ["scan", "human_docs", "agent_context"] as const;
+
+    function importStageIndex(stage: string | null): number {
+        if (stage === "done") return IMPORT_STAGES.length;
+        const idx = IMPORT_STAGES.indexOf(
+            stage as (typeof IMPORT_STAGES)[number],
+        );
+        return idx < 0 ? 0 : idx;
+    }
+
+    function importStageLabel(stage: string | null): string | null {
+        switch (stage) {
+            case "scan":
+                return tr("misc.progress.stageScan");
+            case "human_docs":
+                return tr("misc.progress.stageHumanDocs", {
+                    term: tr("terms.humanKnowledge"),
+                });
+            case "agent_context":
+                return tr("misc.progress.stageAgentContext", {
+                    term: tr("terms.agentKnowledge"),
+                });
+            case "done":
+                return tr("misc.progress.stageDone");
+            default:
+                return null;
+        }
+    }
+
+    function buildImportSteps(
+        stage: string | null,
+        seen: string[],
+    ): ProgressStep[] {
+        const idx = importStageIndex(stage);
+        const skippedTitle = tr("misc.progress.stepSkippedTitle");
+        return IMPORT_STAGES.map((key, i) => {
+            const ran = seen.includes(key);
+            const passed = stage === "done" || i < idx;
+            const state = passed
+                ? ran
+                    ? ("done" as const)
+                    : ("skipped" as const)
+                : i === idx
+                  ? ("active" as const)
+                  : ("pending" as const);
+            return {
+                key,
+                label: importStageLabel(key) ?? key,
+                state,
+                title: state === "skipped" ? skippedTitle : undefined,
+            };
+        });
+    }
+
+    function importPercent(stage: string | null): number {
+        if (stage === "done") return 100;
+        return [15, 55, 85][Math.min(importStageIndex(stage), 2)] ?? 15;
+    }
+
+    /** Human label for a slug, including the repo of an import not yet registered. */
+    function projectLabelForSlug(slug: string): string {
+        const job = project.importJob;
+        if (job && job.slug === slug) {
+            return importDisplayName(
+                slug,
+                job.repoPath,
+                project.registryProjects,
+            );
+        }
+        return registryDisplayNameForSlug(slug, project.registryProjects);
+    }
+
+    type TaskBarModel = {
+        kind: "import" | "litho" | "background";
+        slug: string | null;
+        repoPath: string | null;
+        title: string;
+        projectName: string;
+        stage: string | null;
+        message: string;
+        steps: ProgressStep[];
+        percent: number | null;
+        note: string | null;
+        onswitch: (() => void) | null;
+    };
+
+    const taskBar = $derived.by((): TaskBarModel | null => {
+        const job = project.importJob;
+        if (job) {
+            const name = importDisplayName(
+                job.slug,
+                job.repoPath,
+                project.registryProjects,
+            );
+            const focused =
+                job.slug != null && job.slug === project.selectedSlug;
+            let note: string | null = null;
+            if (!focused) {
+                note =
+                    job.selectionAtStart === project.selectedSlug
+                        ? tr("misc.progress.importWillFocus", { name })
+                        : tr("misc.progress.importNoFocus", { name });
+            }
+            return {
+                kind: "import",
+                slug: job.slug,
+                repoPath: job.repoPath,
+                title: tr("misc.progress.importTitle"),
+                projectName: name,
+                stage: importStageLabel(job.stage),
+                message: job.message ?? tr("app.status.scanningRepo"),
+                steps: buildImportSteps(job.stage, job.seenStages),
+                percent: importPercent(job.stage),
+                note,
+                onswitch: null,
+            };
+        }
+
+        const selectedSlug = project.selectedSlug;
+        if (selectedSlug && currentTaskDerived.lithoProgress) {
+            const parsed = parseProgressLabel(
+                currentTaskDerived.lithoProgress,
+            );
+            return {
+                kind: "litho",
+                slug: selectedSlug,
+                repoPath: project.selectedRepoPath,
+                title: tr("misc.progress.generating"),
+                projectName: selectedProjectLabel,
+                stage: parsed.stage,
+                message: parsed.message,
+                steps: [],
+                percent: null,
+                note: null,
+                onswitch: null,
+            };
+        }
+
+        const background = backgroundLithoTask();
+        if (background) {
+            const parsed = parseProgressLabel(background.progress);
+            const name = registryDisplayNameForSlug(
+                background.slug,
+                project.registryProjects,
+            );
+            return {
+                kind: "background",
+                slug: background.slug,
+                repoPath: null,
+                title: tr("misc.progress.backgroundTitle"),
+                projectName: name,
+                stage: parsed.stage,
+                message: parsed.message,
+                steps: [],
+                percent: null,
+                note: tr("misc.progress.backgroundNote", { name }),
+                onswitch: () => focusProjectBySlug(background.slug),
+            };
+        }
+
+        return null;
+    });
 
     type SddPanel = typeof import("./lib/components/SddWorkflowPanel.svelte").default;
     type EnvPanel = typeof import("./lib/components/EnvIntegratePanel.svelte").default;
@@ -210,15 +417,19 @@
             project.knowledgeRoot = "";
             return;
         }
+        // Never paint a path that belongs to a project the user already left.
+        if (project.selectedSlug !== target) return;
         try {
-            project.knowledgeRoot = await getKnowledgeRoot(target);
+            const root = await getKnowledgeRoot(target);
+            if (project.selectedSlug === target) project.knowledgeRoot = root;
         } catch {
-            project.knowledgeRoot = "";
+            if (project.selectedSlug === target) project.knowledgeRoot = "";
         }
     }
 
     async function refresh(options?: { force?: boolean }) {
         setStatus(t("app.status.refreshingProjects"), "loading");
+        const selectionAtRequest = project.selectedSlug;
         try {
             const boot = await loadAppBootstrap(options);
             applyLocale(boot.model_settings.language);
@@ -230,13 +441,17 @@
             project.acpOk = boot.acp_ok;
 
             const slug = project.selectedSlug;
+            // A selection made while this refresh was in flight is newer than the
+            // snapshot we just received — never discard it.
+            const selectionChangedDuringLoad =
+                slug !== selectionAtRequest;
             if (slug) {
                 const entry = findRegistryProject(slug, project.registryProjects);
                 if (entry) {
                     project.selectedRepoPath = entry.repo_path;
                     if (entry.status === "stale") {
                         project.projectOverview = null;
-                        project.freshnessLoading = false;
+                        project.freshnessLoadingSlug = null;
                         await refreshKnowledgeRoot(slug);
                     } else {
                         await refreshKnowledgeRoot(slug);
@@ -244,7 +459,7 @@
                             void loadProjectOverview(slug);
                         }
                     }
-                } else {
+                } else if (!selectionChangedDuringLoad) {
                     project.selectedSlug = null;
                     project.selectedRepoPath = null;
                     project.projectOverview = null;
@@ -328,7 +543,7 @@
 
     async function runFreshnessCompute(slug: string, repoPath: string) {
         const requestSlug = slug;
-        project.freshnessLoading = true;
+        project.freshnessLoadingSlug = requestSlug;
         try {
             const freshness = await computeFreshness(slug, repoPath);
             if (
@@ -343,8 +558,8 @@
         } catch {
             /* keep cached freshness */
         } finally {
-            if (project.selectedSlug === requestSlug) {
-                project.freshnessLoading = false;
+            if (project.freshnessLoadingSlug === requestSlug) {
+                project.freshnessLoadingSlug = null;
             }
         }
     }
@@ -362,7 +577,7 @@
         const slug = project.selectedSlug;
         const repoPath = project.projectOverview?.repo_path;
         if (!slug || !repoPath) return;
-        if (project.freshnessLoading) return;
+        if (freshnessLoading) return;
         if (project.projectOverview?.freshness?.overall_score != null) return;
         void runFreshnessCompute(slug, repoPath);
     }
@@ -372,11 +587,14 @@
         repoPath: string | null | undefined,
     ) {
         if (!repoPath) {
-            project.freshnessLoading = false;
+            if (project.freshnessLoadingSlug === slug) {
+                project.freshnessLoadingSlug = null;
+            }
             return;
         }
         freshnessComputeSlug = null;
         await applyCachedFreshness(slug);
+        if (project.selectedSlug !== slug) return;
         scheduleFreshnessCompute(slug, repoPath);
     }
 
@@ -384,33 +602,60 @@
         slug: string,
         opts?: { skipFreshness?: boolean },
     ) {
-        project.overviewLoading = true;
+        const seq = nextLoadSeq(overviewLoadSeq, slug);
+        const visible = project.selectedSlug === slug;
+        if (visible) project.overviewLoading = true;
         try {
-            project.projectOverview = await getProjectOverview(slug);
-            if (project.projectOverview?.repo_path && !opts?.skipFreshness) {
-                void loadProjectOverviewFreshness(
-                    slug,
-                    project.projectOverview.repo_path,
-                );
-            } else {
-                project.freshnessLoading = false;
+            const overview = await getProjectOverview(slug);
+            // A slower reply for this project, or a reply for a project the user
+            // already left, must not repaint the view.
+            if (overviewLoadSeq.get(slug) !== seq) return;
+            if (project.selectedSlug !== slug) return;
+            project.projectOverview = overview;
+            if (overview?.repo_path && !opts?.skipFreshness) {
+                void loadProjectOverviewFreshness(slug, overview.repo_path);
+            } else if (project.freshnessLoadingSlug === slug) {
+                project.freshnessLoadingSlug = null;
             }
         } catch {
+            if (overviewLoadSeq.get(slug) !== seq) return;
+            if (project.selectedSlug !== slug) return;
             project.projectOverview = null;
-            project.freshnessLoading = false;
+            if (project.freshnessLoadingSlug === slug) {
+                project.freshnessLoadingSlug = null;
+            }
         } finally {
-            project.overviewLoading = false;
+            if (
+                visible &&
+                overviewLoadSeq.get(slug) === seq &&
+                project.selectedSlug === slug
+            ) {
+                project.overviewLoading = false;
+            }
         }
     }
 
     async function loadHumanDocs(slug: string) {
-        project.humanDocsLoading = true;
+        const seq = nextLoadSeq(humanDocsLoadSeq, slug);
+        const visible = project.selectedSlug === slug;
+        if (visible) project.humanDocsLoading = true;
         try {
-            project.humanDocs = await listHumanDocs(slug);
+            const docs = await listHumanDocs(slug);
+            if (humanDocsLoadSeq.get(slug) !== seq) return;
+            if (project.selectedSlug !== slug) return;
+            project.humanDocs = docs;
         } catch {
+            if (humanDocsLoadSeq.get(slug) !== seq) return;
+            if (project.selectedSlug !== slug) return;
             project.humanDocs = [];
         } finally {
-            project.humanDocsLoading = false;
+            if (
+                visible &&
+                humanDocsLoadSeq.get(slug) === seq &&
+                project.selectedSlug === slug
+            ) {
+                project.humanDocsLoading = false;
+            }
         }
     }
 
@@ -428,7 +673,15 @@
 
     async function addProject() {
         project.pickerOpen = false;
-        if (project.initBusy) return;
+        if (project.importJob) {
+            setStatus(
+                t("app.status.importBusy", { name: importProjectName }),
+                "idle",
+                null,
+                STATUS_AUTO_DISMISS_MS,
+            );
+            return;
+        }
         let picked: string | null;
         try {
             picked = await open({ directory: true, multiple: false });
@@ -445,8 +698,26 @@
 
     async function removeRegistryProject(entry: ProjectRegistryEntry) {
         project.pickerOpen = false;
+        // A running import re-registers the project at the end, so removal in
+        // that window would silently undo itself.
+        if (
+            project.importJob &&
+            (project.importJob.slug === entry.slug ||
+                project.importJob.repoPath === entry.repo_path)
+        ) {
+            setStatus(
+                t("app.status.removeWhileImporting", {
+                    name: registryDisplayName(entry),
+                }),
+                "idle",
+                null,
+                STATUS_AUTO_DISMISS_MS,
+            );
+            return;
+        }
         try {
             await removeProject(entry.slug);
+            clearProjectTask(entry.slug);
             if (project.selectedSlug === entry.slug) {
                 project.selectedSlug = null;
                 project.selectedRepoPath = null;
@@ -455,6 +726,7 @@
                 project.activeHumanPath = null;
                 project.humanDocs = [];
                 project.hits = [];
+                project.knowledgeRoot = "";
             }
             await refresh({ force: true });
             setStatus(
@@ -475,6 +747,9 @@
             project.activeHumanPath = null;
             project.hits = [];
             project.deepWikiInitialQuestion = null;
+            project.overviewLoading = false;
+            project.humanDocsLoading = false;
+            project.docLoading = false;
         }
         project.selectedSlug = entry.slug;
         project.selectedRepoPath = entry.repo_path;
@@ -482,7 +757,7 @@
 
         if (entry.status === "stale") {
             project.projectOverview = null;
-            project.freshnessLoading = false;
+            project.freshnessLoadingSlug = null;
             project.humanDocs = [];
             setStatus(
                 t("app.status.projectNeedsRepair", {
@@ -530,19 +805,20 @@
         return { stage: match[1], message: match[2] || label };
     }
 
-    const lithoProgressParts = $derived(parseProgressLabel(lithoProgress));
-
-    const showTaskProgressBar = $derived(
-        Boolean(
-            project.selectedSlug &&
-            (lithoProgress || (project.initBusy && project.initProgress)),
-        ),
-    );
-
     const showStatusBar = $derived(
-        !showTaskProgressBar &&
-            (status.kind !== "idle" || !isIdleStatusMessage(status.message)),
+        (status.kind !== "idle" || !isIdleStatusMessage(status.message)) &&
+            // A bar already narrates the running task; keep errors/success visible.
+            !(
+                taskBar &&
+                (status.kind === "progress" || status.kind === "loading")
+            ),
     );
+
+    /** Switch to a project by slug (the background-task bar offers this). */
+    function focusProjectBySlug(slug: string) {
+        const entry = findRegistryProject(slug, project.registryProjects);
+        if (entry) selectRegistryProject(entry);
+    }
 
     function openArchitectureDoc() {
         const slug = project.selectedSlug;
@@ -550,15 +826,19 @@
         if (!docPath || !slug) return;
         void (async () => {
             project.activeTab = "knowledge";
+            const seq = ++docLoadSeq;
             project.docLoading = true;
             try {
                 await loadHumanDocs(slug);
-                project.activeDoc = await readDocument(docPath);
+                if (project.selectedSlug !== slug) return;
+                const doc = await readDocument(docPath);
+                if (project.selectedSlug !== slug) return;
+                project.activeDoc = doc;
                 project.activeHumanPath = docPath;
             } catch (e) {
-                setErrorStatus(e);
+                if (project.selectedSlug === slug) setErrorStatus(e);
             } finally {
-                project.docLoading = false;
+                if (seq === docLoadSeq) project.docLoading = false;
             }
         })();
     }
@@ -567,23 +847,95 @@
         repoPath: string,
         slug?: string,
     ) {
-        if (project.initBusy) return;
-        project.initBusy = true;
-        project.initProgress = t("app.status.scanningRepo");
-        const targetSlug = slug ?? null;
-        if (targetSlug) {
-            project.selectedSlug = targetSlug;
-            project.selectedRepoPath = repoPath;
-            setProjectTask(targetSlug, {
+        // Imports are serialized: one scan + Litho + context run at a time.
+        if (project.importJob) {
+            setStatus(
+                t("app.status.importBusy", { name: importProjectName }),
+                "idle",
+                null,
+                STATUS_AUTO_DISMISS_MS,
+            );
+            return;
+        }
+
+        const focusSlug = slug ?? null;
+        if (focusSlug && project.selectedSlug !== focusSlug) {
+            // Re-initializing an existing project focuses it, so progress is
+            // anchored to that project instead of the previously viewed one.
+            const entry = findRegistryProject(
+                focusSlug,
+                project.registryProjects,
+            );
+            if (entry) {
+                selectRegistryProject(entry);
+            } else {
+                project.selectedSlug = focusSlug;
+                project.selectedRepoPath = repoPath;
+                project.activeTab = "overview";
+            }
+        }
+
+        const job = beginImport(repoPath, focusSlug);
+        if (focusSlug) {
+            setProjectTask(focusSlug, {
                 repackBusy: true,
                 lithoBusy: false,
                 lithoProgress: "",
             });
         }
+
         try {
             const result = await initializeProject(repoPath, slug);
-            project.selectedSlug = result.project_slug;
-            project.selectedRepoPath = result.repo_path;
+            updateImportJob(job.id, {
+                slug: result.project_slug,
+                stage: "done",
+                message: t("misc.progress.stageDone"),
+            });
+
+            // Only steal focus when the user did not navigate away meanwhile.
+            // Re-checked after `refresh` because that can also move the selection.
+            const focusWanted =
+                project.selectedSlug === job.selectionAtStart;
+            await refresh({ force: true });
+
+            const name = importDisplayName(
+                result.project_slug,
+                result.repo_path,
+                project.registryProjects,
+            );
+
+            const viewingTarget =
+                project.selectedSlug === result.project_slug;
+            if (viewingTarget) {
+                // Already looking at the imported project (re-init, or the
+                // refresh auto-selected it). Reload its data in place instead of
+                // re-selecting, so the current tab and view are preserved.
+                void Promise.all([
+                    loadHumanDocs(result.project_slug),
+                    loadProjectOverview(result.project_slug),
+                    refreshKnowledgeRoot(result.project_slug),
+                ]);
+            } else if (
+                focusWanted &&
+                project.selectedSlug === job.selectionAtStart
+            ) {
+                const entry = findRegistryProject(
+                    result.project_slug,
+                    project.registryProjects,
+                );
+                if (entry) {
+                    selectRegistryProject(entry);
+                } else {
+                    project.selectedSlug = result.project_slug;
+                    project.selectedRepoPath = result.repo_path;
+                    await Promise.all([
+                        loadHumanDocs(result.project_slug),
+                        loadProjectOverview(result.project_slug),
+                        refreshKnowledgeRoot(result.project_slug),
+                    ]);
+                }
+            }
+
             const note = result.notes.length
                 ? ` · ${result.notes.join("；")}`
                 : "";
@@ -593,6 +945,7 @@
                     : "";
             setStatus(
                 t("app.status.initComplete", {
+                    name,
                     scan: result.scan_files_written,
                     term: t("terms.humanKnowledge"),
                     count: result.human_doc_count,
@@ -602,25 +955,16 @@
                 result.notes.length || lithoNote ? "idle" : "success",
                 result.project_slug,
             );
-            await refresh({ force: true });
-            await Promise.all([
-                loadHumanDocs(result.project_slug),
-                loadProjectOverview(result.project_slug),
-                refreshKnowledgeRoot(result.project_slug),
-            ]);
         } catch (e) {
             setErrorStatus(e);
         } finally {
-            project.initBusy = false;
-            project.initProgress = null;
-            if (targetSlug) {
-                setProjectTask(targetSlug, {
-                    repackBusy: false,
-                    lithoBusy: false,
-                    lithoProgress: "",
-                });
-            } else if (project.selectedSlug) {
-                setProjectTask(project.selectedSlug, {
+            // Clear by the slug this run owns — never by the current selection,
+            // which may belong to an unrelated project by now. `finishImport`
+            // returns the live job, including the slug adopted from events.
+            const cleared = finishImport(job.id);
+            const clearedSlug = cleared?.slug ?? focusSlug;
+            if (clearedSlug) {
+                setProjectTask(clearedSlug, {
                     repackBusy: false,
                     lithoBusy: false,
                     lithoProgress: "",
@@ -634,43 +978,45 @@
             setStatus(t("terms.msg.selectProjectWithRepo"), "error");
             return;
         }
-        if (project.quickRefreshBusy) return;
         const slug = project.selectedSlug;
-        project.quickRefreshBusy = true;
+        const repoPath = project.selectedRepoPath;
+        if (project.projectTasks[slug]?.quickRefreshBusy) return;
+        setProjectTask(slug, { quickRefreshBusy: true });
         setStatus(
             t("app.status.quickRefreshing"),
             "progress",
             slug,
         );
         try {
-            const result = await runQuickRefresh(
-                project.selectedRepoPath,
-                slug,
-            );
+            const result = await runQuickRefresh(repoPath, slug);
             const note = result.notes.length
                 ? ` · ${result.notes.join("；")}`
                 : "";
-            setStatus(
-                t("app.status.refreshDone", {
-                    score: result.freshness.overall_score,
-                    note,
-                }),
-                result.freshness.overall_stale ? "idle" : "success",
-                slug,
-            );
+            if (project.selectedSlug === slug) {
+                setStatus(
+                    t("app.status.refreshDone", {
+                        score: result.freshness.overall_score,
+                        note,
+                    }),
+                    result.freshness.overall_stale ? "idle" : "success",
+                    slug,
+                );
+            }
             await loadProjectOverview(slug, { skipFreshness: true });
             if (project.selectedSlug === slug && project.projectOverview) {
                 project.projectOverview = mergeFreshnessIntoOverview(
                     project.projectOverview,
                     result.freshness,
                 );
+                if (project.freshnessLoadingSlug === slug) {
+                    project.freshnessLoadingSlug = null;
+                }
             }
-            project.freshnessLoading = false;
             await refreshRegistryStatus();
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            project.quickRefreshBusy = false;
+            setProjectTask(slug, { quickRefreshBusy: false });
             // Quick refresh may emit litho-progress (incremental human-doc update) without a
             // litho-done event, so clear the label here rather than leaving it stuck.
             setProjectTask(slug, { lithoProgress: "" });
@@ -682,7 +1028,9 @@
             setStatus(t("terms.msg.selectProjectWithRepo"), "error");
             return;
         }
-        if (project.agentContextBusy) return;
+        const slug = project.selectedSlug;
+        const repoPath = project.selectedRepoPath;
+        if (project.projectTasks[slug]?.agentContextBusy) return;
         if (!project.acpOk && !hybridNativeLlm) {
             setStatus(t("app.configureAcp"), "error");
             return;
@@ -691,30 +1039,34 @@
             setStatus(t("app.configureLlm"), "error");
             return;
         }
-        const slug = project.selectedSlug;
-        project.agentContextBusy = true;
+        setProjectTask(slug, { agentContextBusy: true });
         setStatus(t("terms.msg.agentContextGenerating"), "progress", slug);
         try {
             // Overview 「生成」/「重新生成」 are explicit rebuild requests — never incremental.
-            await runAgentContextGeneration(project.selectedRepoPath, slug, true);
-            setStatus(t("terms.msg.agentContextReady"), "success");
+            await runAgentContextGeneration(repoPath, slug, true);
+            if (project.selectedSlug === slug) {
+                setStatus(t("terms.msg.agentContextReady"), "success");
+            }
             await Promise.all([
                 loadProjectOverview(slug),
                 loadHumanDocs(slug),
                 refreshRegistryStatus(),
             ]);
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            project.agentContextBusy = false;
+            setProjectTask(slug, { agentContextBusy: false });
         }
     }
 
     function openOverviewHumanDoc() {
-        if (!project.selectedSlug) return;
-        const humanDir = project.projectOverview?.slug ?? project.selectedSlug;
+        const slug = project.selectedSlug;
+        if (!slug) return;
+        const humanDir = project.projectOverview?.slug ?? slug;
         void (async () => {
             const docs = await listHumanDocs(humanDir);
+            // Bail if the user moved on while the list was loading.
+            if (project.selectedSlug !== slug) return;
             const overview = findHumanOverviewDoc(docs);
             if (overview) {
                 project.activeTab = "knowledge";
@@ -736,9 +1088,11 @@
         if (!slug) return;
         void (async () => {
             project.activeTab = "knowledge";
+            const seq = ++docLoadSeq;
             project.docLoading = true;
             try {
                 const docs = await listHumanDocs(slug);
+                if (project.selectedSlug !== slug) return;
                 project.humanDocs = docs;
                 const agentMeta = docs.find(
                     (d) =>
@@ -760,64 +1114,74 @@
                     );
                 }
             } catch (e) {
-                setErrorStatus(e);
+                if (project.selectedSlug === slug) setErrorStatus(e);
             } finally {
-                project.docLoading = false;
+                if (seq === docLoadSeq) project.docLoading = false;
             }
         })();
     }
 
     async function openHumanDoc(doc: HumanDocEntry) {
+        const slug = project.selectedSlug;
         project.activeHumanPath = doc.path;
+        const seq = ++docLoadSeq;
         project.docLoading = true;
         setStatus(t("app.status.openingDoc", { title: doc.title }), "loading");
         try {
-            project.activeDoc = await readDocument(doc.path);
+            const loaded = await readDocument(doc.path);
+            if (project.selectedSlug !== slug) return;
+            project.activeDoc = loaded;
             setStatus(t("app.status.viewingDoc", { title: doc.title }), "idle");
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            project.docLoading = false;
+            if (seq === docLoadSeq) project.docLoading = false;
         }
     }
 
     async function openDocPath(path: string) {
+        const slug = project.selectedSlug;
+        const seq = ++docLoadSeq;
         project.docLoading = true;
         try {
-            project.activeDoc = await readDocument(path);
+            const loaded = await readDocument(path);
+            if (project.selectedSlug !== slug) return;
+            project.activeDoc = loaded;
             project.activeHumanPath = path;
             project.deepWikiOpen = false;
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            project.docLoading = false;
+            if (seq === docLoadSeq) project.docLoading = false;
         }
     }
 
     async function packAgentForSelected() {
-        if (!project.selectedRepoPath || !project.selectedSlug) return;
-        setProjectTask(project.selectedSlug, { repackBusy: true });
-        setStatus(t("app.status.rebuildingIndex"), "progress", project.selectedSlug);
+        const slug = project.selectedSlug;
+        const repoPath = project.selectedRepoPath;
+        if (!repoPath || !slug) return;
+        if (project.projectTasks[slug]?.repackBusy) return;
+        setProjectTask(slug, { repackBusy: true });
+        setStatus(t("app.status.rebuildingIndex"), "progress", slug);
         try {
-            const pack = await packAgentAssets(
-                project.selectedRepoPath,
-                project.selectedSlug,
-            );
-            setStatus(
-                t("app.status.indexUpdated", {
-                    files: pack.total_files,
-                    tokens: pack.total_tokens,
-                }),
-                "success",
-            );
-            if (project.selectedSlug)
-                await loadProjectOverview(project.selectedSlug);
+            const pack = await packAgentAssets(repoPath, slug);
+            if (project.selectedSlug === slug) {
+                setStatus(
+                    t("app.status.indexUpdated", {
+                        files: pack.total_files,
+                        tokens: pack.total_tokens,
+                    }),
+                    "success",
+                );
+            }
+            await loadProjectOverview(slug);
             await refreshRegistryStatus();
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            if (project.selectedSlug)
-                setProjectTask(project.selectedSlug, { repackBusy: false });
+            // Always release the project this run belongs to — even if the user
+            // navigated away while it was running.
+            setProjectTask(slug, { repackBusy: false });
         }
     }
 
@@ -835,6 +1199,8 @@
             return;
         }
         const slug = project.selectedSlug;
+        const repoPath = project.selectedRepoPath;
+        if (project.projectTasks[slug]?.lithoBusy) return;
         const force =
             typeof forceRefresh === "boolean"
                 ? forceRefresh
@@ -851,7 +1217,7 @@
                   }),
         });
         try {
-            await runLithoGeneration(project.selectedRepoPath, slug, force);
+            await runLithoGeneration(repoPath, slug, force);
         } catch (e) {
             setErrorStatus(e);
             setProjectTask(slug, { lithoBusy: false, lithoProgress: "" });
@@ -962,34 +1328,39 @@
             project.hits = [];
             return;
         }
+        const slug = project.selectedSlug;
+        const seq = ++docLoadSeq;
         project.docLoading = true;
         setStatus(t("app.status.searchingFor", { query: q }), "loading");
         try {
-            project.hits = await searchKnowledge(
-                q,
-                project.selectedSlug ?? undefined,
-            );
+            const hits = await searchKnowledge(q, slug ?? undefined);
+            if (project.selectedSlug !== slug) return;
+            project.hits = hits;
             project.activeDoc = null;
             setStatus(
-                `${project.hits.length} result(s)`,
-                project.hits.length ? "success" : "idle",
+                `${hits.length} result(s)`,
+                hits.length ? "success" : "idle",
             );
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            project.docLoading = false;
+            if (seq === docLoadSeq) project.docLoading = false;
         }
     }
 
     async function openHit(hit: SearchHit) {
+        const slug = project.selectedSlug;
+        const seq = ++docLoadSeq;
         project.docLoading = true;
         try {
-            project.activeDoc = await readDocument(hit.path);
+            const loaded = await readDocument(hit.path);
+            if (project.selectedSlug !== slug) return;
+            project.activeDoc = loaded;
             project.hits = [];
         } catch (e) {
-            setErrorStatus(e);
+            if (project.selectedSlug === slug) setErrorStatus(e);
         } finally {
-            project.docLoading = false;
+            if (seq === docLoadSeq) project.docLoading = false;
         }
     }
 
@@ -1023,16 +1394,18 @@
                 stage: string;
                 message: string;
             }>("project-init-progress", (ev) => {
-                const { project_slug, message } = ev.payload;
-                project.initProgress = message;
-                if (ev.payload.stage === "human_docs") {
+                const { project_slug, stage, message } = ev.payload;
+                // Feeds the import job itself — that is what names the project in
+                // the progress bar, independent of the current selection.
+                applyImportProgress(project_slug, stage, message);
+                if (stage === "human_docs") {
                     setProjectTask(project_slug, {
                         lithoBusy: true,
                         lithoProgress: message,
                     });
-                } else if (ev.payload.stage === "scan") {
+                } else if (stage === "scan") {
                     setProjectTask(project_slug, { repackBusy: true });
-                } else if (ev.payload.stage === "done") {
+                } else if (stage === "done") {
                     setProjectTask(project_slug, {
                         lithoBusy: false,
                         lithoProgress: "",
@@ -1046,6 +1419,8 @@
                 message: string;
             }>("litho-progress", (ev) => {
                 const { project_slug, stage, message } = ev.payload;
+                // Ignore progress for projects that were removed from the list.
+                if (!isKnownProjectSlug(project_slug)) return;
                 const label = `[${stage}] ${message}`;
                 setProjectTask(project_slug, { lithoProgress: label });
             });
@@ -1063,27 +1438,32 @@
                 });
                 const count = result.human_doc_count;
                 const complete = result.human_docs_complete;
+                // Name the project, not its raw slug — this event may belong to a
+                // project other than the selected one.
+                const name = projectLabelForSlug(project_slug);
                 const msg = !complete
                     ? count === 0
                         ? t("app.status.lithoDoneNoDocs", {
                               term: t("terms.humanKnowledge"),
-                              slug: project_slug,
+                              name,
                           })
                         : t("app.status.lithoIncompleteWithCount", {
                               term: t("terms.humanKnowledge"),
-                              slug: project_slug,
+                              name,
                               count,
                           })
                     : t("app.status.lithoReady", {
                           term: t("terms.humanKnowledge"),
-                          slug: project_slug,
+                          name,
                           count,
                       });
+                // The message names the project, so it stays accurate even when
+                // the run belongs to a project the user is not viewing.
+                setStatus(
+                    msg,
+                    complete ? "success" : count === 0 ? "error" : "idle",
+                );
                 if (project.selectedSlug === project_slug) {
-                    setStatus(
-                        msg,
-                        complete ? "success" : count === 0 ? "error" : "idle",
-                    );
                     await loadHumanDocs(project_slug);
                     await loadProjectOverview(project_slug);
                 }
@@ -1167,7 +1547,10 @@
                 registryProjects={project.registryProjects}
                 selectedSlug={project.selectedSlug}
                 open={project.pickerOpen}
-                addBusy={project.initBusy}
+                addBusy={importBusy}
+                importingName={importProjectName || null}
+                importingPath={importTargetRepoPath}
+                importingSlug={importTargetSlug}
                 ontoggle={toggleProjectPicker}
                 onselect={selectRegistryProject}
                 onadd={addProject}
@@ -1187,13 +1570,20 @@
             </div>
         </header>
 
-        {#if showTaskProgressBar && project.selectedSlug}
+        {#if taskBar}
             <TaskProgressBar
-                projectSlug={project.selectedSlug}
-                stage={project.initBusy ? tr("app.initializing") : lithoProgressParts.stage}
-                message={project.initBusy && project.initProgress
-                    ? project.initProgress
-                    : lithoProgressParts.message}
+                title={taskBar.title}
+                projectName={taskBar.projectName}
+                projectPath={taskBar.repoPath}
+                stage={taskBar.stage}
+                message={taskBar.message}
+                steps={taskBar.steps}
+                percent={taskBar.percent}
+                note={taskBar.note}
+                onswitch={taskBar.onswitch}
+                switchLabel={taskBar.onswitch
+                    ? tr("misc.progress.switchToProject")
+                    : null}
             />
         {/if}
 
@@ -1207,11 +1597,13 @@
             acpOk={project.acpOk}
             llmReady={project.llmStatus?.ready ?? false}
             {hybridNativeLlm}
-            agentContextBusy={project.agentContextBusy}
+            {agentContextBusy}
             {lithoBusy}
             {repackBusy}
-            initBusy={project.initBusy}
-            initProgress={project.initProgress}
+            {importBusy}
+            {importTargetSlug}
+            {importTargetRepoPath}
+            importProgress={importProgressMessage}
             registryProjects={project.registryProjects}
             selectedRegistry={selectedRegistryDerived}
             onOpenKnowledge={() => (project.activeTab = "knowledge")}
@@ -1230,17 +1622,16 @@
                 ? openOverviewHumanDoc
                 : undefined}
             onOpenStructured={openStructuredDocs}
-            quickRefreshBusy={project.quickRefreshBusy}
-            freshnessLoading={project.freshnessLoading}
+            {quickRefreshBusy}
+            freshnessLoading={freshnessLoading}
             onQuickRefresh={triggerQuickRefresh}
             onRequestFreshnessCompute={requestFreshnessCompute}
             onSaveProjectRemark={async (remark) => {
-                if (!project.selectedSlug) return;
+                const slug = project.selectedSlug;
+                if (!slug) return;
                 const prevFreshness = project.projectOverview?.freshness;
-                const updated = await saveProjectRemark(
-                    project.selectedSlug,
-                    remark,
-                );
+                const updated = await saveProjectRemark(slug, remark);
+                if (project.selectedSlug !== slug) return;
                 project.projectOverview =
                     prevFreshness && !updated.freshness
                         ? mergeFreshnessIntoOverview(updated, prevFreshness)

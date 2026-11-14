@@ -33,7 +33,9 @@ export default {
     scanningRepo: "Scanning repository…",
     lithoIncomplete: "Litho docs incomplete",
     initComplete:
-      "Initialization complete: {scan} index entries, {term} {count} docs{lithoNote}{note}",
+      "Initialization complete — {name}: {scan} index entries, {term} {count} docs{lithoNote}{note}",
+    importBusy: "Another project is being imported ({name}); wait for it to finish",
+    removeWhileImporting: "“{name}” is being imported — remove it after it finishes",
     quickRefreshing:
       "Quick refresh in progress (scan + index + agent knowledge assets)…",
     refreshDone: "Refresh complete: freshness {score}/100{note}",
@@ -47,8 +49,8 @@ export default {
     generatingHuman: "Generating {term} (Litho)…",
     regeneratingHuman: "Regenerating {term} (Litho)…",
     newChatCreated: "New conversation started",
-    lithoDoneNoDocs: "Litho finished, but no {term} were written ({slug})",
-    lithoIncompleteWithCount: "{term} incomplete ({slug}, {count} docs)",
-    lithoReady: "{term} ready ({slug}, {count} docs)",
+    lithoDoneNoDocs: "Litho finished, but no {term} were written ({name})",
+    lithoIncompleteWithCount: "{term} incomplete ({name}, {count} docs)",
+    lithoReady: "{term} ready ({name}, {count} docs)",
   },
 } as const;
