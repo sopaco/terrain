@@ -28,5 +28,13 @@ sys-locale.workspace = true
 repomix-core = { workspace = true, optional = true }
 ts-rs = { workspace = true, optional = true }
 
+[target.'cfg(windows)'.dependencies]
+# Hidden console for the packaged GUI app (see `process::ensure_hidden_console`).
+windows-sys = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [dev-dependencies]
 tempfile = "3"

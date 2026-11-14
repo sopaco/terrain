@@ -328,7 +328,6 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::Path;
-    use std::process::Command;
 
     fn opts(enabled: bool, max: u32) -> IncrementalOptions {
         IncrementalOptions {
@@ -338,7 +337,7 @@ mod tests {
     }
 
     fn git(repo: &Path, args: &[&str]) {
-        Command::new("git")
+        crate::process::command("git")
             .args(args)
             .current_dir(repo)
             .output()
@@ -347,7 +346,7 @@ mod tests {
 
     fn head(repo: &Path) -> String {
         String::from_utf8(
-            Command::new("git")
+            crate::process::command("git")
                 .args(["rev-parse", "HEAD"])
                 .current_dir(repo)
                 .output()

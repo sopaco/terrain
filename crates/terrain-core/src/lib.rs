@@ -2,6 +2,7 @@ pub mod assets;
 pub mod citations;
 pub mod doc;
 pub mod error;
+pub mod fingerprint;
 pub mod freshness;
 pub mod git_policy;
 pub mod human;
@@ -38,8 +39,10 @@ mod ts_ipc;
 pub use assets::{
     agent_context_baseline_head, agent_context_fresh, agent_context_ready,
     agent_context_recorded_baseline_head, agent_context_synced_with_head, build_agent_context_prompt,
-    build_agent_context_update_prompt, build_context_overview, build_litho_update_prompt,
-    build_generation_plan, collect_knowledge_dir_inputs, collect_project_meta,
+    build_agent_context_update_prompt, build_context_overview,
+    build_litho_composition_prompt_with_progress, build_litho_generation_prompt_with_progress,
+    build_litho_update_prompt, build_generation_plan, collect_knowledge_dir_inputs,
+    collect_project_meta,
     context_body_ready, count_knowledge_markdown_files, count_markdown_in_dir, default_agent_arch_skill_dir,
     default_litho_skill_dir, default_sdd_skill_dir, discover_meta_files, enforce_context_max_size,
     extract_context_section, grep_file, grep_repomix_pack, grep_text, has_litho_research_artifacts,
@@ -54,7 +57,10 @@ pub use assets::{
     IncrementalOutputMode,
     IncrementalPlan, KnowledgeUpdateMode, META_FILENAME, AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS,
     AGENT_CONTEXT_SAVE_MAX_CHARS, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS, LITHO_CORE_RESEARCH_FILES,
-    LITHO_REQUIRED_HUMAN_FILES,
+    LITHO_REQUIRED_HUMAN_FILES, begin_litho_run, complete_litho_run, is_litho_run_resumable,
+    litho_completed_names, litho_run_still_valid, load_litho_run_state, record_litho_docs,
+    reset_litho_run_state, LithoRunState, LITHO_RUN_STATE_SCHEMA, STATUS_COMPLETE,
+    STATUS_IN_PROGRESS,
 };
 #[cfg(feature = "repomix")]
 pub use assets::{
@@ -160,5 +166,8 @@ pub use search::{
 pub use shell_path::{
     augment_path_from_login_shell, command_on_path, resolve_command, resolve_executable,
 };
-pub use process::{async_command, command as process_command, hide_console, hide_console_async};
+pub use process::{
+    async_command, command as process_command, ensure_hidden_console, hide_console,
+    hide_console_async,
+};
 pub use source::{read_source_slice, resolve_source_citation};

@@ -12,6 +12,7 @@ use super::status::{
 };
 use crate::bundled_tools::{bundled_codegraph, bundled_rtk, run_bundled_check};
 use crate::error::{CoreError, Result};
+use crate::fingerprint::fingerprint;
 use crate::path_portable::REPO_AGENT_TOOLS_MANIFEST;
 
 /// Skill deployment targets: ACP/OpenCode convention + Claude Code discovery dir.
@@ -89,7 +90,7 @@ pub async fn apply_env_integration(
         ));
 
         let result = match def.kind.as_str() {
-            "skill" => apply_skill(repo, def),
+            "skill" => apply_skill(repo, def, reinstall_ids.contains(&def.id)),
             "tool" => apply_tool(repo, def).await,
             "agents_md" => patch_agents_md(repo).map(|p| {
                 lang.tr(&format!("已更新 {p}"), &format!("Updated {p}"))
@@ -128,7 +129,11 @@ pub async fn apply_env_integration(
     })
 }
 
-fn apply_skill(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<String> {
+fn apply_skill(
+    repo: &Path,
+    def: &super::catalog::IntegrationDef,
+    force: bool,
+) -> Result<String> {
     let source = skill_source_path(def);
     if !source.is_dir() {
         return Err(CoreError::InvalidDoc(format!(
@@ -143,16 +148,149 @@ fn apply_skill(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<Stri
         .unwrap_or(&def.id);
     // `.agents/skills` is the ACP/OpenCode convention; `.claude/skills` is what
     // Claude Code actually scans for Skill discovery. Deploy to both.
+    let mut preserved = 0usize;
     for base in SKILL_DEPLOY_DIRS {
         let dest = repo.join(base).join(target_name);
-        if dest.exists() {
-            fs::remove_dir_all(&dest)?;
-        }
-        copy_dir_recursive(&source, &dest)?;
+        preserved += sync_skill_dir(&source, &dest, force)?.preserved;
     }
+
+    let lang = crate::language::current_language();
+    let note = if preserved > 0 {
+        format!(
+            " {}",
+            lang.tr(
+                &format!("（保留 {preserved} 个自定义文件，未覆盖）"),
+                &format!("({preserved} customized file(s) preserved)"),
+            )
+        )
+    } else {
+        String::new()
+    };
     Ok(format!(
-        "→ .agents/skills/{target_name} + .claude/skills/{target_name}"
+        "→ .agents/skills/{target_name} + .claude/skills/{target_name}{note}"
     ))
+}
+
+/// Manifest stored inside each deployed skill directory. It records the fingerprint of the
+/// content Terrain last wrote, which is what lets us tell an outdated managed file from a
+/// user's own edit.
+const SKILL_MANIFEST_NAME: &str = ".terrain-skill.json";
+const SKILL_MANIFEST_SCHEMA: u32 = 1;
+
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+struct SkillDeployManifest {
+    schema_version: u32,
+    files: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Default)]
+struct SkillSyncReport {
+    preserved: usize,
+}
+
+/// Upsert one skill directory without deleting it.
+///
+/// Rules, in order:
+/// - a file Terrain wrote last time and the user has not touched → update to the new version;
+/// - a file whose on-disk content differs from what Terrain last wrote → user edit, keep it;
+/// - a file that exists only in the target (user added it) → keep it;
+/// - a managed file removed from the source → delete it, but only if still untouched.
+///
+/// `force` (the UI's "reinstall") overrides the user-edit protection for managed files, but
+/// still never removes user-added files or the directory itself.
+fn sync_skill_dir(source: &Path, dest: &Path, force: bool) -> Result<SkillSyncReport> {
+    let mut source_files = std::collections::BTreeMap::new();
+    collect_skill_files(source, Path::new(""), &mut source_files)?;
+
+    let manifest_path = dest.join(SKILL_MANIFEST_NAME);
+    let previous: SkillDeployManifest = crate::doc::read_json::<SkillDeployManifest>(&manifest_path)
+        .ok()
+        .filter(|m| m.schema_version == SKILL_MANIFEST_SCHEMA)
+        .unwrap_or_default();
+
+    fs::create_dir_all(dest)?;
+    let mut next = SkillDeployManifest {
+        schema_version: SKILL_MANIFEST_SCHEMA,
+        files: std::collections::BTreeMap::new(),
+    };
+    let mut report = SkillSyncReport::default();
+
+    for (relative, src_bytes) in &source_files {
+        let src_fp = fingerprint(src_bytes);
+        let target = dest.join(relative);
+        let current = fs::read(&target).ok();
+
+        match current {
+            None => {
+                write_skill_file(&target, src_bytes)?;
+                next.files.insert(relative.clone(), src_fp);
+            }
+            Some(existing) => {
+                let existing_fp = fingerprint(&existing);
+                let managed_before = previous.files.get(relative) == Some(&existing_fp);
+                let user_edited = existing_fp != src_fp && !managed_before && !force;
+
+                if user_edited {
+                    // Keep both the user's content and the old marker, so later upgrades keep
+                    // protecting this file instead of silently claiming ownership again.
+                    if let Some(old) = previous.files.get(relative) {
+                        next.files.insert(relative.clone(), old.clone());
+                    }
+                    report.preserved += 1;
+                } else {
+                    if existing_fp != src_fp {
+                        write_skill_file(&target, src_bytes)?;
+                    }
+                    next.files.insert(relative.clone(), src_fp);
+                }
+            }
+        }
+    }
+
+    // Managed files that disappeared from the source: remove only untouched copies.
+    for (relative, last_fp) in &previous.files {
+        if next.files.contains_key(relative) || relative == SKILL_MANIFEST_NAME {
+            continue;
+        }
+        if let Ok(existing) = fs::read(dest.join(relative))
+            && fingerprint(&existing).as_str() == last_fp.as_str()
+        {
+            let _ = fs::remove_file(dest.join(relative));
+        }
+    }
+
+    crate::doc::write_json(&manifest_path, &next)?;
+    Ok(report)
+}
+
+fn write_skill_file(path: &Path, bytes: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, bytes)?;
+    Ok(())
+}
+
+fn collect_skill_files(
+    dir: &Path,
+    prefix: &Path,
+    out: &mut std::collections::BTreeMap<String, Vec<u8>>,
+) -> Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let relative = prefix.join(&name);
+        if entry.file_type()?.is_dir() {
+            collect_skill_files(&entry.path(), &relative, out)?;
+            continue;
+        }
+        let key = relative.to_string_lossy().replace('\\', "/");
+        if key == SKILL_MANIFEST_NAME {
+            continue;
+        }
+        out.insert(key, fs::read(entry.path())?);
+    }
+    Ok(())
 }
 
 async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<String> {
@@ -419,18 +557,88 @@ fn write_manifest(repo: &Path, applied: &[String], catalog_version: &u32) -> Res
     Ok(path.display().to_string())
 }
 
-fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
-    fs::create_dir_all(dest)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let from = entry.path();
-        let to = dest.join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_recursive(&from, &to)?;
-        } else {
-            fs::copy(&from, &to)?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write(path: &Path, body: &str) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
         }
+        fs::write(path, body).unwrap();
     }
-    Ok(())
+
+    #[test]
+    fn keeps_user_edits_and_user_files_while_upgrading_managed_ones() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let dest = tmp.path().join("dest");
+        write(&source.join("SKILL.md"), "v1");
+        write(&source.join("references/phase1.md"), "ref-v1");
+
+        sync_skill_dir(&source, &dest, false).unwrap();
+        assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "v1");
+
+        // User edits one managed file and adds a file of their own.
+        write(&dest.join("SKILL.md"), "my custom skill");
+        write(&dest.join("notes.md"), "my notes");
+        // Terrain ships a new version of both managed files.
+        write(&source.join("SKILL.md"), "v2");
+        write(&source.join("references/phase1.md"), "ref-v2");
+
+        let report = sync_skill_dir(&source, &dest, false).unwrap();
+        assert_eq!(report.preserved, 1);
+        assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "my custom skill");
+        assert_eq!(
+            fs::read_to_string(dest.join("references/phase1.md")).unwrap(),
+            "ref-v2"
+        );
+        assert_eq!(fs::read_to_string(dest.join("notes.md")).unwrap(), "my notes");
+    }
+
+    #[test]
+    fn reinstall_overrides_edits_but_still_keeps_user_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let dest = tmp.path().join("dest");
+        write(&source.join("SKILL.md"), "v1");
+        sync_skill_dir(&source, &dest, false).unwrap();
+        write(&dest.join("SKILL.md"), "my custom skill");
+        write(&dest.join("notes.md"), "my notes");
+        write(&source.join("SKILL.md"), "v2");
+
+        sync_skill_dir(&source, &dest, true).unwrap();
+        assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "v2");
+        assert_eq!(fs::read_to_string(dest.join("notes.md")).unwrap(), "my notes");
+    }
+
+    #[test]
+    fn removes_only_untouched_managed_files_dropped_from_source() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let dest = tmp.path().join("dest");
+        write(&source.join("a.md"), "a");
+        write(&source.join("b.md"), "b");
+        sync_skill_dir(&source, &dest, false).unwrap();
+
+        fs::remove_file(source.join("a.md")).unwrap();
+        sync_skill_dir(&source, &dest, false).unwrap();
+        assert!(!dest.join("a.md").exists());
+        assert_eq!(fs::read_to_string(dest.join("b.md")).unwrap(), "b");
+    }
+
+    #[test]
+    fn first_deploy_into_an_existing_directory_does_not_clobber_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let dest = tmp.path().join("dest");
+        write(&source.join("SKILL.md"), "from terrain");
+        // Pre-existing directory from before the manifest existed.
+        write(&dest.join("SKILL.md"), "hand written");
+        write(&dest.join("extra.md"), "keep me");
+
+        sync_skill_dir(&source, &dest, false).unwrap();
+        assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "hand written");
+        assert_eq!(fs::read_to_string(dest.join("extra.md")).unwrap(), "keep me");
+    }
 }

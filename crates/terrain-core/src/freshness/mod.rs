@@ -50,12 +50,11 @@ mod tests {
     #[test]
     fn git_drift_ignores_knowledge_only_commits() {
         use std::fs;
-        use std::process::Command;
 
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         let git = |args: &[&str]| {
-            Command::new("git")
+            crate::process::command("git")
                 .args(args)
                 .current_dir(repo)
                 .output()
@@ -68,7 +67,7 @@ mod tests {
         git(&["add", "."]);
         git(&["commit", "-m", "init"]);
         let baseline = String::from_utf8(
-            Command::new("git")
+            crate::process::command("git")
                 .args(["rev-parse", "HEAD"])
                 .current_dir(repo)
                 .output()
@@ -127,10 +126,9 @@ mod tests {
 
     fn init_local_repo(repo: &std::path::Path) {
         use std::fs;
-        use std::process::Command;
 
         let git = |args: &[&str]| {
-            Command::new("git")
+            crate::process::command("git")
                 .args(args)
                 .current_dir(repo)
                 .output()
@@ -163,12 +161,11 @@ mod tests {
     #[test]
     fn rewritten_baseline_is_not_scored_as_fresh() {
         use std::fs;
-        use std::process::Command;
 
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         let git = |args: &[&str]| {
-            let out = Command::new("git")
+            let out = crate::process::command("git")
                 .args(args)
                 .current_dir(repo)
                 .output()

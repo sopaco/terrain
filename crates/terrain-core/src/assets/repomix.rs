@@ -254,37 +254,36 @@ mod tests {
     use crate::schema::TokenHeavyFile;
     use std::fs;
     use std::path::Path;
-    use std::process::Command;
 
     fn init_git_repo(repo: &Path) -> String {
-        Command::new("git")
+        crate::process::command("git")
             .args(["init"])
             .current_dir(repo)
             .output()
             .expect("git init");
-        Command::new("git")
+        crate::process::command("git")
             .args(["config", "user.email", "t@test.com"])
             .current_dir(repo)
             .output()
             .unwrap();
-        Command::new("git")
+        crate::process::command("git")
             .args(["config", "user.name", "t"])
             .current_dir(repo)
             .output()
             .unwrap();
         fs::write(repo.join("src.rs"), "fn main() {}\n").unwrap();
-        Command::new("git")
+        crate::process::command("git")
             .args(["add", "."])
             .current_dir(repo)
             .output()
             .unwrap();
-        Command::new("git")
+        crate::process::command("git")
             .args(["commit", "-m", "init"])
             .current_dir(repo)
             .output()
             .unwrap();
         String::from_utf8(
-            Command::new("git")
+            crate::process::command("git")
                 .args(["rev-parse", "HEAD"])
                 .current_dir(repo)
                 .output()
@@ -371,12 +370,12 @@ mod tests {
         );
 
         fs::write(repo.join("next.rs"), "y").unwrap();
-        Command::new("git")
+        crate::process::command("git")
             .args(["add", "."])
             .current_dir(repo)
             .output()
             .unwrap();
-        Command::new("git")
+        crate::process::command("git")
             .args(["commit", "-m", "next"])
             .current_dir(repo)
             .output()

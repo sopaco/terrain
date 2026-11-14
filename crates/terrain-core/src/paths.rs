@@ -115,6 +115,13 @@ impl KnowledgePaths {
         self.project_dir(project_slug).join(".meta/human.json")
     }
 
+    /// Local, non-versioned checkpoint for an in-flight Litho run (resume after interruption).
+    /// Lives under `.meta/` so `clear_litho_outputs` never deletes it.
+    pub fn litho_run_state_path(&self, project_slug: &str) -> PathBuf {
+        self.project_dir(project_slug)
+            .join(".meta/litho-run.json")
+    }
+
     /// Human-editable project remark (versioned with the repo).
     pub fn project_note_path(&self, project_slug: &str) -> PathBuf {
         self.project_dir(project_slug).join("project-note.md")

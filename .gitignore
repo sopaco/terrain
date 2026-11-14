@@ -43,3 +43,5 @@ packages/codegraph/darwin-arm64/node
 # 不能整目录忽略（否则新增 skill 会被 `git add .` 静默漏掉）
 .claude/settings.local.json
 .claude/launch.json
+
+.workbuddy

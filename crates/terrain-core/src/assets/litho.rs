@@ -59,6 +59,36 @@ pub fn build_litho_generation_prompt(plan: &LithoPlan) -> String {
     )
 }
 
+/// Full-generation prompt that resumes an interrupted run. Documents already on disk are
+/// explicitly off-limits, so the agent fills the gaps instead of starting over.
+pub fn build_litho_generation_prompt_with_progress(
+    plan: &LithoPlan,
+    completed_docs: &[String],
+) -> String {
+    let base = build_litho_generation_prompt(plan);
+    format!("{base}{}", resume_block(completed_docs))
+}
+
+/// Shared "don't touch these" instruction for a resumed run.
+fn resume_block(completed_docs: &[String]) -> String {
+    if completed_docs.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from(
+        "\n\n## Resume checkpoint (MANDATORY)\n\
+         A previous run was interrupted. The documents below are already complete on disk — \
+         DO NOT rewrite, reformat, truncate, or delete them:\n",
+    );
+    for name in completed_docs {
+        out.push_str(&format!("- {name}\n"));
+    }
+    out.push_str(
+        "Only produce the missing files from the required list above. \
+         Do not restart the pipeline for documents already done.\n",
+    );
+    out
+}
+
 /// Follow-up prompt when research artifacts exist but final human docs were not written.
 pub fn build_litho_composition_prompt(plan: &LithoPlan) -> String {
     let lang = crate::language::current_language();
@@ -87,6 +117,16 @@ pub fn build_litho_composition_prompt(plan: &LithoPlan) -> String {
         repo_path = plan.repo_path,
         file_listing = lang.litho_file_listing(),
     )
+}
+
+/// Composition-only prompt that resumes an interrupted run (see
+/// [`build_litho_generation_prompt_with_progress`]).
+pub fn build_litho_composition_prompt_with_progress(
+    plan: &LithoPlan,
+    completed_docs: &[String],
+) -> String {
+    let base = build_litho_composition_prompt(plan);
+    format!("{base}{}", resume_block(completed_docs))
 }
 
 /// Prompt for an **incremental** update of the Litho `human/` doc set from a Git change set.

@@ -2,12 +2,16 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use terrain_core::{
-    build_litho_composition_prompt, build_litho_generation_prompt, build_litho_update_prompt,
-    count_markdown_in_dir, has_litho_research_artifacts, human_docs_baseline_head,
-    list_human_doc_names, litho_human_complete_with_research, litho_research_ready,
-    plan_incremental_update, plan_litho_generation, write_human_docs_meta, IncrementalOptions,
-    KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode,
-    LithoGenerationJob, LithoGenerationResult, LithoPlan, LithoProgress, ProgressEvent,
+    begin_litho_run, build_litho_composition_prompt_with_progress,
+    build_litho_generation_prompt, build_litho_generation_prompt_with_progress,
+    build_litho_update_prompt, complete_litho_run, count_markdown_in_dir, git_snapshot,
+    has_litho_research_artifacts, human_docs_baseline_head, is_litho_run_resumable,
+    list_human_doc_names, litho_completed_names, litho_human_complete_with_research,
+    litho_research_ready, litho_run_still_valid, load_litho_run_state, plan_incremental_update,
+    plan_litho_generation, record_litho_docs, reset_litho_run_state, write_human_docs_meta,
+    IncrementalOptions, KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings,
+    KnowledgeUpdateMode, LithoGenerationJob, LithoGenerationResult, LithoPlan, LithoProgress,
+    ProgressEvent,
 };
 
 use crate::acp::{acp_spawn_command, build_acp_config};
@@ -632,6 +636,7 @@ async fn run_composition_phase(
     job: &LithoGenerationJob,
     human_dir: PathBuf,
     litho_workspace: PathBuf,
+    completed_docs: &[String],
     on_progress: &mut impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
     let lang = terrain_core::current_language();
@@ -642,7 +647,8 @@ async fn run_composition_phase(
             "Composing research results into a human-friendly knowledge base…",
         ),
     ));
-    let composition_prompt = build_litho_composition_prompt(&job.plan);
+    let composition_prompt =
+        build_litho_composition_prompt_with_progress(&job.plan, completed_docs);
     litho_turn_doc_poll(
         transport,
         composition_prompt,
@@ -666,11 +672,15 @@ async fn run_composition_with_retries(
     job: &LithoGenerationJob,
     human_dir: PathBuf,
     litho_workspace: PathBuf,
+    state_path: &Path,
     on_progress: &mut impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
     let lang = terrain_core::current_language();
     let mut last_excerpt = String::new();
     for attempt in 1..=MAX_COMPOSITION_ATTEMPTS {
+        // Read the checkpoint afresh each attempt: the previous turn may have written more
+        // documents, and those must not be rewritten on this retry.
+        let completed_docs = litho_completed_names(load_litho_run_state(state_path).as_ref());
         if attempt > 1 {
             on_progress(ProgressEvent::litho(
                 "composing",
@@ -690,6 +700,7 @@ async fn run_composition_with_retries(
             job,
             human_dir.clone(),
             litho_workspace.clone(),
+            &completed_docs,
             on_progress,
         )
         .await?;
@@ -737,18 +748,63 @@ pub async fn run_litho_generation(
     let lang = terrain_core::current_language();
     let human_dir = paths.human_docs_dir(project_slug);
     let litho_workspace = PathBuf::from(&job.plan.litho_workspace_dir);
+    let state_path = paths.litho_run_state_path(project_slug);
+    let git = git_snapshot(repo_path);
+    let previous_state = load_litho_run_state(&state_path);
+
+    // A finished run whose documents are untouched needs no model call at all.
+    if mode != LithoRunMode::FullRebuild
+        && !git.dirty
+        && previous_state
+            .as_ref()
+            .is_some_and(|state| litho_run_still_valid(state, git.head.as_deref(), &human_dir))
+        && human_complete(&human_dir, &litho_workspace)
+    {
+        on_progress(ProgressEvent::litho(
+            "done",
+            lang.tr(
+                "知识库与上次运行结果一致，已跳过生成",
+                "Knowledge base matches the last completed run; generation skipped",
+            )
+            .to_string(),
+        ));
+        return Ok(build_result(
+            job,
+            String::new(),
+            &human_dir,
+            &litho_workspace,
+            KnowledgeRefreshMode::Skipped,
+            Some("run_checkpoint_up_to_date"),
+        ));
+    }
+
+    // An interrupted run left good documents behind. Keep them and fill only the gaps.
+    let resumable = is_litho_run_resumable(previous_state.as_ref(), git.head.as_deref());
 
     if mode == LithoRunMode::FullRebuild {
-        on_progress(ProgressEvent::litho(
-            "starting",
-            lang.tr(
-                "正在清理旧的人类友好知识库以便重新生成…",
-                "Clearing the old human-friendly knowledge base for regeneration…",
-            ),
-        ));
-        clear_litho_outputs(&human_dir, &litho_workspace)?;
+        if resumable {
+            on_progress(ProgressEvent::litho(
+                "starting",
+                lang.tr(
+                    "检测到上次未完成的生成，保留已有文档并继续…",
+                    "Resuming the interrupted run; keeping documents already written…",
+                )
+                .to_string(),
+            ));
+        } else {
+            on_progress(ProgressEvent::litho(
+                "starting",
+                lang.tr(
+                    "正在清理旧的人类友好知识库以便重新生成…",
+                    "Clearing the old human-friendly knowledge base for regeneration…",
+                )
+                .to_string(),
+            ));
+            clear_litho_outputs(&human_dir, &litho_workspace)?;
+            reset_litho_run_state(&state_path);
+        }
     } else if human_complete(&human_dir, &litho_workspace) {
-        return run_litho_incremental_or_skip(
+        let result = run_litho_incremental_or_skip(
             paths,
             project_slug,
             repo_path,
@@ -760,6 +816,17 @@ pub async fn run_litho_generation(
             &mut on_progress,
         )
         .await;
+        if result.is_ok() {
+            begin_litho_run(
+                &state_path,
+                project_slug,
+                git.head.as_deref(),
+                "auto",
+                &human_dir,
+            );
+            complete_litho_run(&state_path, &human_dir);
+        }
+        return result;
     }
 
     on_progress(ProgressEvent::litho(
@@ -770,6 +837,29 @@ pub async fn run_litho_generation(
     std::fs::create_dir_all(&job.plan.human_output_dir)?;
     std::fs::create_dir_all(&job.plan.litho_workspace_dir)?;
 
+    let mode_label = if mode == LithoRunMode::FullRebuild {
+        "full"
+    } else {
+        "auto"
+    };
+    let run_state = begin_litho_run(
+        &state_path,
+        project_slug,
+        git.head.as_deref(),
+        mode_label,
+        &human_dir,
+    );
+    let completed_docs = litho_completed_names(Some(&run_state));
+
+    // Every progress tick is also a checkpoint: files written so far survive an interruption.
+    let mut inner_progress = on_progress;
+    let ticks_state = state_path.clone();
+    let ticks_human = human_dir.clone();
+    let mut on_progress = |event: LithoProgress| {
+        record_litho_docs(&ticks_state, &ticks_human);
+        inner_progress(event);
+    };
+
     let research_ready = litho_research_ready(&litho_workspace);
 
     let response_excerpt = if research_ready {
@@ -778,6 +868,7 @@ pub async fn run_litho_generation(
             &job,
             human_dir.clone(),
             litho_workspace.clone(),
+            &state_path,
             &mut on_progress,
         )
         .await?
@@ -790,7 +881,8 @@ pub async fn run_litho_generation(
             ),
         ));
 
-        let prompt = build_litho_generation_prompt(&job.plan);
+        let prompt =
+            build_litho_generation_prompt_with_progress(&job.plan, &completed_docs);
         let response = litho_turn_doc_poll(
             &transport,
             prompt,
@@ -816,6 +908,7 @@ pub async fn run_litho_generation(
                 &job,
                 human_dir.clone(),
                 litho_workspace.clone(),
+                &state_path,
                 &mut on_progress,
             )
             .await?;
@@ -844,6 +937,7 @@ pub async fn run_litho_generation(
     }
 
     let _ = write_human_docs_meta(paths, project_slug, repo_path, "full");
+    complete_litho_run(&state_path, &human_dir);
 
     on_progress(ProgressEvent::litho(
         "done",

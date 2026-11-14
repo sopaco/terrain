@@ -1,6 +1,6 @@
 use terrain_core::{
-    list_human_docs, read_doc_at, read_source_slice, resolve_source_citation, HumanDocEntry,
-    KnowledgeDoc, KnowledgeSearch, SearchHit, SearchOptions, SourceSlice,
+    list_human_docs, process_command, read_doc_at, read_source_slice, resolve_source_citation,
+    HumanDocEntry, KnowledgeDoc, KnowledgeSearch, SearchHit, SearchOptions, SourceSlice,
 };
 use tauri::State;
 
@@ -73,26 +73,18 @@ pub fn resolve_source_citation_cmd(
 #[tauri::command]
 pub fn open_repo_folder_cmd(path: String) -> Result<(), String> {
     validate_repo(&path)?;
+    // Spawned through `terrain_core::process_command` (not `std::process::Command`): Windows
+    // builds are GUI-subsystem, so an unflagged console child flashes a terminal window.
     #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open")
-            .arg(&path)
-            .status()
-            .map_err(|e| e.to_string())?;
-    }
+    let launcher = "open";
     #[cfg(target_os = "windows")]
-    {
-        std::process::Command::new("explorer")
-            .arg(&path)
-            .status()
-            .map_err(|e| e.to_string())?;
-    }
+    let launcher = "explorer";
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(&path)
-            .status()
-            .map_err(|e| e.to_string())?;
-    }
+    let launcher = "xdg-open";
+
+    process_command(launcher)
+        .arg(&path)
+        .status()
+        .map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -4,6 +4,7 @@ mod context_layers;
 mod env;
 mod incremental;
 mod litho;
+mod litho_run_state;
 mod pack_read;
 mod project_meta;
 mod query;
@@ -38,7 +39,9 @@ pub use incremental::{
     IncrementalOutputMode, IncrementalPlan, KnowledgeUpdateMode,
 };
 pub use litho::{
-    build_litho_composition_prompt, build_litho_generation_prompt, build_litho_update_prompt,
+    build_litho_composition_prompt, build_litho_composition_prompt_with_progress,
+    build_litho_generation_prompt, build_litho_generation_prompt_with_progress,
+    build_litho_update_prompt,
     count_deep_exploration_modules, count_litho_research_modules, count_markdown_in_dir,
     has_litho_research_artifacts, human_docs_baseline_head, list_human_doc_names,
     litho_human_complete, litho_human_complete_with_research, litho_research_ready,
@@ -46,6 +49,13 @@ pub use litho::{
     LITHO_REQUIRED_HUMAN_FILES,
 };
 pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
+pub use litho_run_state::{
+    begin as begin_litho_run, complete as complete_litho_run,
+    completed_names as litho_completed_names, is_resumable as is_litho_run_resumable,
+    load as load_litho_run_state, record as record_litho_docs, reset as reset_litho_run_state,
+    still_valid as litho_run_still_valid, LithoRunState, LITHO_RUN_STATE_SCHEMA,
+    STATUS_COMPLETE, STATUS_IN_PROGRESS,
+};
 pub use pack_read::{
     agent_pack_ready, read_agent_pack_file, read_pack_text_cached, AgentPackFileContent,
 };

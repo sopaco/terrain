@@ -15,10 +15,10 @@
 
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use terrain_core::freshness::{compute_freshness, format_freshness_trust_block};
 use terrain_core::paths::KnowledgePaths;
+use terrain_core::process_command;
 use terrain_core::schema::FreshnessSummary;
 use terrain_core::{FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD};
 
@@ -27,7 +27,7 @@ use terrain_core::{FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD};
 const UNREACHABLE: &str = "0000000000000000000000000000000000000000";
 
 fn git(repo: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = process_command("git")
         .args(args)
         .current_dir(repo)
         .output()

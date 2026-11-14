@@ -48,6 +48,16 @@ pub struct MyPayload { /* ... */ }
 
 feature 定义见各 crate 的 `Cargo.toml`（`terrain-core`、`terrain-agent` 的 `ts-export`）。
 
+## 子进程（Windows 控制台窗口）
+
+Windows 打包版是 GUI 子系统（`windows_subsystem = "windows"`，无控制台）。此时拉起 `git`、`powershell`、`where.exe`、`bun`/`npx` 等控制台程序，若不带 `CREATE_NO_WINDOW`，每调用一次就闪一个黑色终端窗口 —— 知识生成、freshness、env 探测这类高频调用尤其明显。
+
+### 必须遵守
+
+- **只用** `terrain_core::process::{command, async_command}` 创建子进程，它们已在 Windows 上设好 `CREATE_NO_WINDOW`（非 Windows 为零成本）。
+- 已有 `ShellCommand`/`Path` 的构造入口时（如打开文件管理器），优先复用 `open_path_in_file_manager` 这类已封装的函数，不要在命令层重写 `std::process::Command`。
+- `crates/terrain-core/tests/process_convention.rs` 会扫描 `crates/` 与 `src-tauri/src`，发现 `process.rs` 之外的裸 `Command::new` 即失败；这是防止该问题回归的唯一可靠手段。
+
 <!-- terrain:begin env-overview v4 -->
 ## AI 工程环境（Terrain）
 
