@@ -1,31 +1,43 @@
-# 命令行工具（CLI）领域
+# CLI 领域
 
-**模块路径**：`crates/terrain-cli/src/`（cli.rs、main.rs、commands/*、util.rs）
-**生成日期**：2026-09-21
+**模块路径**：`crates/terrain-cli/`（`src/main.rs`、`src/cli.rs`、`src/commands/`、`src/util.rs`）
+**生成日期**：2026-11-14
 
 ---
 
-## 概述
+## 这个模块在做什么
 
-`terrain-cli` 是 Terrain 的命令行形态——桌面 GUI 的"孪生兄弟"。它不引入任何自己的业务逻辑，而是把 `terrain-agent` 的工作流与 `terrain-core` 的离线能力重新暴露成 15 个子命令。这意味着 CLI 与 GUI 永远行为一致：同一个 `run_project_initialization`/`ask_knowledge`，前端点按钮调 IPC，终端打 `terrain init`——底层是同一份代码，只是外壳不同。
+CLI 是 Terrain 的**后门钥匙**：桌面应用能做的事，它基本都能做，只是没有图形界面。更重要的是，它是**外部 Agent 的接口层**——`terrain tools *` 系列命令的存在，让 Claude Code、OpenCode 这类编码 Agent 不必理解 Terrain 的内部结构，只要会跑命令、读 JSON 就能使用知识库。
 
-把它想成**同一座图书馆的两扇门**：GUI 是装修豪华的阅览室（有目录卡片检索），CLI 是直通书库的密道（`terrain read-doc path` 一纸检索单直达）。CLI 的价值在自动化：CI/CD 里合入后刷知识、脚本里批量查 pack、外部 Agent 通过 `terrain tools` 九个 JSON 命令消费同一份知识资产——这些场景没有窗口、没有鼠标，只有 stdout。整个 CLI 的气质从 `SddPhaseArg` 的 `--phase`/`--project` 参数就能感受：**一切可自动化，一切可 JSON**。
+它有三个身份，对应三种使用方式：
+
+| 身份 | 典型命令 | 输出 |
+|------|---------|------|
+| 人类运维工具 | `terrain init` / `refresh` / `search` | 可读文本 + 进度 |
+| 脚本数据源 | `terrain usage snapshot --json` 类 | 结构化 JSON |
+| ACP 工具契约 | `terrain tools grep-pack` | JSON（stdout，稳定字段） |
+
+第三种身份是设计上最特殊的：它要求输出格式**长期稳定**，因为消费方是别人写的 Agent 提示词，而不是我们自己的代码。
 
 ---
 
 ## 核心功能点
 
-1. **参数解析与分派（`cli.rs`）**：clap 定义 `Cli`/`Commands` 枚举；`commands/mod.rs` 提供 `dispatch()` 把枚举 → 实际执行函数。子命令按三个领域组织：**资产**（copy-skill、init、refresh、scan、agent-context、litho）、**工具**（tools、pack-meta、grep-pack、read-pack-file、read-context、search、read-doc、freshness、codegraph-drift）、**问答与管理**（ask、processes、sessions、sdd、env、settings、probe）。
+1. **单入口分发**——`main.rs` 只做四件事：加载 `.env`、初始化随包资源（bundled tools / env catalog / preset skills）、后台线程把 env catalog 部署到 `~/.terrain/`、`commands::run(Cli::parse())`。分发本身是一张 `match` 表（`commands/mod.rs:19`），每个分支对应一个命令模块。
 
-2. **会话上下文（`context.rs`）**：范式的核心——命令之间通过 `init_context`（Tauri 桌面）或 `init_cli_context`（终端）共享 `SessionContext`（项目、回传库、可用性）。`UsageWindow ↔ App` 都复用同一个 context 骨架。
+2. **15 个一级子命令**——`Commands`（`cli.rs:26`）列出全部入口：`list`、`scan`、`init`、`refresh`、`search`、`read`、`project`、`settings`、`ask`、`sdd`、`usage`、`source`、`tools`、`assets`、`env`。其中 8 个还有二级子命令枚举（`ProjectCommands`、`SettingsCommands`、`AskCommands`、`SddCommands`、`UsageCommands`、`SourceCommands`、`ToolsCommands`、`AssetCommands`、`EnvCommands`）。
 
-3. **工具套件（`commands/tools.rs`）**：**九个 JSON 命令**构成完整的 Agent API——`tools list-projects`、`tools pack-meta`、`tools grep-pack`、`tools read-pack-file`、`tools read-context`、`tools search`、`tools read-doc`、`tools freshness`、`tools codegraph-drift`，全部输出结构化 JSON。
+3. **仓库定位**——`--repo-path` 是全局参数，可放在任何位置。`util::paths`（`util.rs:8`）优先用它，否则 `KnowledgePaths::from_workspace()`（`TERRAIN_REPO_PATH` 或最近 Git 根）。`require_repo_path` 在两者都缺失时给出明确错误，而不是默默用当前目录。
 
-4. **资产导入（`commands/assets.rs`）**：`copy-skill` 把 `.claude/` / `.agents/` skill 拷进项目的 `.terrain/` 知识结构；`import` 从磁盘/URL 导入资产库。
+4. **目录预置**——`commands::run` 在分发前调用 `paths.ensure_layout()`。任何命令（包括只读的 `list`）都保证 `.terrain/` 骨架存在，避免下游代码到处写"目录不存在就创建"。
 
-5. **SDD（`commands/sdd.rs`）**：`sdd` 子命令带 `SddPhaseArg`（`--phase requirement/design/implementation/code-review`）+ `--project` + `--input`。`commands/sdd.rs` 校验 `phase` 是否在枚举内。
+5. **Slug 规则**——`slug_from`（`util.rs:23`）用仓库目录名做 `slugify`，`--slug` 可覆盖。所有命令共享同一规则，所以 `scan` 建的项目与 `search --project` 查的项目一定是同一个 key。
 
-6. **Settings 与健康检查（`commands/settings.rs`）**：`settings` 子命令带 `--json` 输出；`check-acp` / `probe-llm` 做环境探活。
+6. **ACP 工具契约**——`commands/tools.rs` 的 9 个子命令全部只输出 JSON：`list-projects`、`pack-meta`、`grep-pack`、`read-pack-file`、`read-context`、`search`、`read-doc`、`freshness`、`codegraph-drift`。它们直接对应 Agent 工具集的 CLI 镜像——同一份能力，两种调用方式（进程内工具 / 子进程命令）。
+
+7. **流式问答**——`terrain ask query --stream` 输出 NDJSON 事件（`chunk` / `tool_calls` / `phase` / `usage` / `done`），每行一个 JSON 对象。这让 shell 管道可以边收边处理，而不必等整段回答结束。
+
+8. **素材与环境的批处理**——`assets` 子命令覆盖 `pack-agent`、`plan-litho`、`prepare-litho`、`plan`、`run-litho`、`list-human`、`grep-pack`、`agent-context`、`register`、`repair-context`；`env` 覆盖 `status` / `plan` / `apply`，`--ids` 与 `--reinstall` 支持逗号分隔的批量操作。
 
 ---
 
@@ -33,78 +45,99 @@
 
 | 组件/类型 | 文件路径 | 核心职责 |
 |---------|---------|---------|
-| `Cli` / `Commands` 枚举 | `crates/terrain-cli/src/cli.rs` | clap 定义的参数模型与子命令枚举 |
-| `dispatch` | `crates/terrain-cli/src/commands/mod.rs` | 枚举 → 执行函数分派 |
-| `init_cli_context` | `crates/terrain-cli/src/context.rs` | 终端会话上下文（项目、回传库、可用性） |
-| `init_context` | `crates/terrain-cli/src/context.rs` | Tauri 桌面会话上下文 |
-| `tools` 九连 JSON 命令 | `crates/terrain-cli/src/commands/tools.rs` | Agent API：list-projects/pack-meta/grep-pack/read-pack-file/read-context/search/read-doc/freshness/codegraph-drift |
-| `SddPhaseArg` | `crates/terrain-cli/src/cli.rs` | `--phase` 枚举（requirement/design/implementation/code-review） |
-| `CopySkillArgs` / `ImportArgs` | `crates/terrain-cli/src/cli.rs` | 资产导入的参数模型 |
+| `main` | `crates/terrain-cli/src/main.rs` | 初始化 + 分发 |
+| `Cli` / `Commands` | `crates/terrain-cli/src/cli.rs:16,26` | clap 入口与 15 个子命令 |
+| `SddPhaseArg` | `crates/terrain-cli/src/cli.rs:186` | 四个 SDD 阶段的 CLI 映射 |
+| `run` | `crates/terrain-cli/src/commands/mod.rs:11` | 统一分发 + `ensure_layout` |
+| `knowledge.rs` | `crates/terrain-cli/src/commands/knowledge.rs` | `list` / `scan` / `search` / `read` |
+| `init.rs` | `crates/terrain-cli/src/commands/init.rs` | `init` / `refresh` |
+| `tools.rs` | `crates/terrain-cli/src/commands/tools.rs` | ACP JSON 工具集 |
+| `ask.rs` | `crates/terrain-cli/src/commands/ask.rs` | 问答与 NDJSON 流 |
+| `assets.rs` | `crates/terrain-cli/src/commands/assets.rs` | 知识资产生成与打包 |
+| `env.rs` | `crates/terrain-cli/src/commands/env.rs` | 环境集成三态 |
+| `print_json` | `crates/terrain-cli/src/util.rs:48` | 统一 pretty JSON 输出 |
+| `paths` / `slug_from` | `crates/terrain-cli/src/util.rs:8,23` | 仓库定位与 slug 规则 |
 
 ---
 
 ## 内部数据流
 
-CLI 的生命周期是一条清晰的命令管线：解析 → 建上下文 → 分派 → 执行 → 序列化输出。`--json` 开关在前两层（参数解析与输出）影响行为，中间的执行路径完全复用。
-
 ```mermaid
-flowchart LR
-    A["stdin: terrain <子命令> [参数]"] --> B["cli.rs 解析<br/>clap → Commands 枚举"]
-    B --> C["context.rs<br/>init_cli_context 建会话上下文"]
-    C --> D["commands/mod.rs<br/>dispatch 分派"]
-    D --> E["对应执行函数<br/>init / refresh / ask / tools / sdd ..."]
-    E --> F["复用 terrain-agent 工作流<br/>run_project_initialization 等"]
-    F --> G["输出<br/>--json / 人类可读 / 错误码"]
+flowchart TD
+    A["terrain <subcommand>"] --> B["Cli::parse()<br/>clap derive"]
+    B --> C["paths(cli)<br/>--repo-path 或 from_workspace"]
+    C --> D["ensure_layout()<br/>创建 .terrain/ 骨架"]
+    D --> E{"Commands 匹配"}
+    E -->|list/scan/search/read| F["commands/knowledge.rs"]
+    E -->|init/refresh| G["commands/init.rs"]
+    E -->|project/settings| H["commands/project.rs / settings.rs"]
+    E -->|ask| I["commands/ask.rs<br/>ChatEngine → NDJSON"]
+    E -->|sdd| J["commands/sdd.rs"]
+    E -->|usage/source| K["commands/usage.rs / source.rs"]
+    E -->|tools| L["commands/tools.rs<br/>print_json"]
+    E -->|assets| M["commands/assets.rs"]
+    E -->|env| N["commands/env.rs"]
+    F --> O["stdout"]
+    G --> O
+    I --> O
+    L --> O
 ```
 
 **关键步骤说明**：
-1. 解析（cli.rs）：`Cli::parse()` 把 argv 变成强类型枚举，非法参数在进入任何业务逻辑前被 clap 拒绝。
-2. 上下文（context.rs）：`init_cli_context` 需要 `--project`（slug）定位知识目录，工具子命令借此复用完整项目状态。
-3. 分派（commands/mod.rs）：`dispatch` 用可读的 `match` 语句把一个 `SubCommandInput` 分到什么 `Box<dyn Execute>`。
-4. 复用（指向 `terrain-cli` 依赖）：四个后台子命令（scan/context/litho）与 GUI 走完全相同的 agent 工作流函数。
-5. 输出：`status!` 宏统一生成人类可读状态块，`--json` 走结构化序列化。
+
+1. `load_dotenv` 在最早执行，让 `.env` 里的 API key 能影响后续所有配置解析。
+2. `ensure_bundled_tools_initialized` 等三个初始化函数把"随包资源"注册进全局单例，命令层随后可以无参访问。
+3. `ensure_layout` 放在分发之前，意味着即使是 `terrain list` 这种纯读命令也可能创建 `.terrain/`。这是有意的取舍：一致性 > 严格只读。
+4. `tools` 分支与其它分支的差别在于**只输出 JSON**。人类可读的提示一律走 stderr 或完全省略，避免污染 stdout 的机器可读契约。
+5. `ask --stream` 不经过 `print_json`，而是逐行写 stdout 并 flush，保证管道消费者能实时收到事件。
 
 ---
 
 ## 关键接口与扩展点
 
-- **`terrain <cmd> --json` 输出** 与 **`terrain tools` JSON API**：两类结构化接口是"脚本/Agent 消费"的入口，任何新命令都可复用 `--json` 约定。
-- **扩展「新子命令」**：① `cli.rs` `Commands` 枚举加变体；② `commands/mod.rs` `dispatch` 加分支；③ 新 `commands/xxx.rs` 实现执行。三处即可，无需触碰外层。
-- **`terrain` 15 个命令的 `--help`**：clap 自动生成，作为命令能力的自描述文档。
-- **可脚本化**：`SddPhaseArg` 的 `--project`/`--input` 让 SDD 的某个阶段也能脱离 GUI 单独执行，支持 pipeline 式调用。
+- **新增一级命令**：在 `Commands` 加变体 → 在 `commands/` 加模块 → 在 `run()` 加一条 `match` 分支。三处，编译器会提醒你漏了哪处。
+- **新增 ACP 工具**：在 `ToolsCommands` 加子命令 → `tools.rs` 里实现 → 同步更新 `preset_skills` 里给 Agent 的 CLI 提示词。契约是双向的，只改一边会让 Agent 调不到。
+- **`SddPhaseArg`**：CLI 的 `kebab-case` 阶段名与核心 `SddPhase` 之间有一层显式 `From` 映射，新增阶段时两处都要改。
+- **`--repo-path` 全局参数**：子命令内的位置参数（如 `scan [repo_path]`）优先于全局参数，`require_repo_path` 里顺序明确。
 
 ---
 
 ## 与其他模块的交互
 
 | 交互模块 | 方向 | 接口/协议 | 说明 |
-|---------|------|---------|------|
-| `terrain-agent` | 依赖 | `run_project_initialization` / `run_quick_refresh` | 四个后台命令复用同一套工作流 |
-| `terrain-core` | 依赖 | `ProjectScanner` / `KnowledgePaths` | 扫描、路径解析、会话/models 等离线能力 |
-| `runtime` | 依赖 | `ask_knowledge` / 模型探测 | CLI ask 走与 GUI 相同的引擎 |
-| 其他 crate | 依赖 | sch 域 / ipc / questions | 配置、启示模块与问题解析 |
+|---------|------|---------|---------|
+| `terrain-core` | 依赖 | `KnowledgePaths`、检索、资产、新鲜度 | 几乎所有命令的底座 |
+| `terrain-agent` | 依赖 | `Runtime`、`ChatEngine` | `ask` / `sdd` 命令 |
+| `terrain-core/assets/env` | 依赖 | `get_env_status`、`plan/apply` | `env` 命令 |
+| 外部编码 Agent | 被依赖 | `terrain tools *` JSON | ACP 工具契约 |
+| `src-tauri` | 平行 | `.terrain/` 文件格式 | 两个前端共享同一套磁盘契约 |
+| `preset_skills` | 被依赖 | 工具调用提示词 | Agent 通过命令名发现能力 |
 
 ---
 
 ## 跨模块协作场景
 
-**在「自动化刷新一个仓库」中**：CI 里执行 `terrain refresh --project org/repo`——先在 context.rs 初始化项目上下文，然后 dispatch 到 refresh，refresh 内部调用 `run_quick_refresh`，后者复用 `ProjectScanner`、`agent_context`、`freshness`、可选 `litho` 的完整能力。这条链与 GUI 的"快速刷新"按钮完全重叠：**同一座文档工厂，两扇进厂的门**。
+**在「CI 流水线」中**：`terrain init <repo> --slug myproj` → `terrain assets plan-litho` → `terrain assets run-litho`。全部走 CLI，不需要图形界面。`--force` 控制是否重跑已完成的文档。
 
-**在「外部 Agent 消费知识」中**：Agent 在工具调用里跑 `terrain tools search --project <slug> --query "..." --json`，得到 JSON 命中集合，再 `terrain tools read-pack-file --project <slug> --path src/lib/mod.ts --json` 取源码切片——与桌面 Ask 中模型用内建 Rust 工具做检索走的是**不同的外壳、相同的索引**。
+**在「外部 Agent 集成」中**：Claude Code 通过 `terrain tools read-context --project x --section 架构` 拿到宏观上下文，通过 `terrain tools grep-pack` 找符号，通过 `terrain tools read-pack-file` 取行区间。这三条命令就是 DeepWiki 工具集的 CLI 版本。
+
+**在「开发调试」中**：`terrain tools freshness --project x` 与 `terrain tools codegraph-drift --project x` 是两个诊断入口——前者检查知识资产是否落后于代码，后者独立验证 CodeGraph 索引是否过期。它们不修改任何东西，适合放进脚本定期跑。
 
 ---
 
 ## 性能考量
 
-- **worker 池**：`main.rs` 用 `tokio` 的 worker 池调度异步命令，CLI 起步不会因默认 8 线程配置浪费。
-- **数据即服务**：工具子命令的输出直接采核心库的既有查询结果（raw/已解析的输入/事件），不重复实现检索，因此 CLI 的存储开销与 GUI 一致。
-- **子进程考虑**：CLI 本身是轻壳，重活全在 crate 调用内——不需要跨进程传递，省去序列化与 IPC 成本（GUI shell 与 core 通过 invoke 交互，CLI 直接内存调用）。
+- **单二进制**：CLI 与桌面端共享 `terrain-core`，没有运行时解释器开销；`tokio` 只在需要异步（问答、SDD）时启用多线程 runtime。
+- **按需初始化**：随包资源初始化是惰性的，`terrain --version` 这类命令不会去扫目录。
+- **JSON 直出**：`print_json` 用 `to_string_pretty` 一次成型，不做流式拼装（除 `ask --stream`）。
+- **批量参数**：`--ids a,b,c` 让环境集成一次进程启动完成多项安装，避免 N 次冷启动。
 
 ---
 
 ## 实现亮点
 
-1. **同源双形态**：CLI 与 GUI 共享 `terrain-agent` 工作流，是"一份代码两个操控入口"的最直接证据；`SessionContext` 在两种形态间复用，连桌面窗口都能用一个 context 骨架初始化。
-2. **`terrain tools` 是完整的 Agent API**：九个 JSON 命令把内部知识检索能力按协议化对外开放，让"外部 Agent + Terrain 共享同一份索引"成为可脚本化的现实。
-3. **clap 强类型参数天花板**：`SddPhaseArg` 枚举 + `--project` 强制校验，减少了 shell 拼错参数导致的隐性错误；`--json` 统一开关让所有命令天然可融入流水线。
-4. **水平依赖隔离**：CLI 不直接 import GUI 的 tauri 代码，只面向 `terrain-agent`/`terrain-core` 公共接口——Future 上桌面与终端形态可自由演进互不干扰。
+**亮点一：把"给 Agent 用的命令"单独分组。** `tools` 不是把内部命令换个名字，而是重新设计了一套**只读、只输出 JSON、参数显式**的接口。它不提供 `init` 这种有副作用的操作，因为 Agent 不该在用户不知情时改仓库。
+
+**亮点二：分发前统一 `ensure_layout`。** 这个决定让所有下游代码可以假设目录存在。代价是"只读命令也可能写磁盘"，但换来的是几十处 `create_dir_all` 的消失——对可维护性来说很划算。
+
+**亮点三：`ask --stream` 用 NDJSON 而不是 SSE。** 命令行场景下，一行一个 JSON 对象最容易被 `jq`、`while read` 处理；SSE 需要额外的解析器。选择标准是"消费方用什么工具"，而不是"协议是否时髦"。
