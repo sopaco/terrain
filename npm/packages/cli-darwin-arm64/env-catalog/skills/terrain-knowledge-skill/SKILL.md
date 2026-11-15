@@ -16,12 +16,15 @@ version: 2.0.0
 
 ## 保鲜结论怎么用
 
+按下表**从上到下取第一条命中**：
+
 | freshness 输出 | 动作 |
 |----------------|------|
-| `overall_score ≥ 80` | `context.md` 可作架构依据 |
-| `< 70` 或 `macro_preload_allowed: false` | 架构结论须用源码交叉验证 |
+| `context_baseline_short` ≠ `pack_baseline_short` | 快照与索引不同源，`context.md` 只能作背景，架构结论用源码交叉验证 |
 | 因子 `index_missing_new_sources` | **跳过 repomix**，直接 Grep/Read 活仓库；detail 列出缺失路径，建议重建源码索引 |
 | `< 50` | 宏观上下文不可信 |
+| `< 70` 或 `macro_preload_allowed: false` | 架构结论须用源码交叉验证 |
+| `overall_score ≥ 80` | `context.md` 可作架构依据 |
 
 冲突优先级：**活仓库源码 > repomix 切片 > codegraph > `context.md` > `human/`**。
 

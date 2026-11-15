@@ -12,8 +12,10 @@
 | 冗长 shell 输出（git / test / build） | `rtk-skill` | 其余三份 |
 | 拿不准 | `terrain-knowledge-skill`（单份 fallback） | 其余三份 |
 
+**复合任务**（一题同时涉及多类）：按主问题选一份；确需第二份时先说明理由再加载，仍不得预读全部。
+
 **失效短路**（依据已有输出，不额外跑探测命令）：
 
 - freshness 含 `index_missing_new_sources`，或 `macro_preload_allowed: false` → 索引缺新增源码，**跳过 repomix 查询**，直接 Grep/Read 活仓库；`agent/context.md` 仅作背景。
-- codegraph 非零退出 / 空输出，或 `terrain tools codegraph-drift --project <slug>` 报 `likely_stale: true` → **跳过 codegraph**，改用 Grep 活仓库，不要重试。
+- `terrain tools codegraph-drift --project <slug>` 报 `likely_stale: true` → `sync` 一次再查；`sync` 失败，或查询非零退出 / 空输出 → **跳过 codegraph**，改用 Grep 活仓库，不要重试。
 - rtk 前缀执行失败 → 直接跑原命令，不要为它加载 `rtk-skill`。

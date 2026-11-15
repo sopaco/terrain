@@ -25,6 +25,32 @@ pub const FRESH_THRESHOLD: u8 = 80;
 /// Warn band — verify with repomix before architecture claims.
 pub const VERIFY_THRESHOLD: u8 = 70;
 
+/// Source paths that both the agent pack and the CodeGraph index are expected to cover.
+///
+/// Mirrors the directory exclusions in `assets::repomix::architecture_ignore_patterns`, so a
+/// newly added test or generated file is not reported as a missing index slice — neither index
+/// ever contained those paths. Docs, Skills and README are deliberately excluded: they produce
+/// no code symbols, so a docs-only commit must not mark the CodeGraph index stale.
+///
+/// `.toml` is kept because a new crate manifest changes which sources exist and how symbols
+/// resolve; it is not a docs-only change.
+pub(crate) fn is_indexed_source_path(path: &str) -> bool {
+    const SOURCE_ROOTS: [&str; 3] = ["crates/", "src/", "src-tauri/src/"];
+    const SOURCE_EXTENSIONS: [&str; 6] = [".rs", ".ts", ".tsx", ".svelte", ".js", ".toml"];
+    const NON_INDEXED_SEGMENTS: [&str; 6] =
+        ["tests", "test", "generated", "gen", "fixtures", "migrations"];
+    SOURCE_ROOTS.iter().any(|root| path.starts_with(root))
+        && SOURCE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
+        && !path
+            .split('/')
+            .any(|segment| NON_INDEXED_SEGMENTS.contains(&segment))
+}
+
+/// Serializes tests that shell out to `git`. `git init` / `git commit` touch process-wide
+/// config and index locks, so two temporary repos created in parallel can fail spuriously.
+#[cfg(test)]
+pub(crate) static GIT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::git::{count_source_commits_in_log, working_tree_dirty_excluding_knowledge};

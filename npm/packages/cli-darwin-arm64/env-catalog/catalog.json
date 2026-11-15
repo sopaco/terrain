@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "integrations": [
     {
       "id": "skill-terrain-knowledge",
@@ -82,12 +82,12 @@
     },
     {
       "id": "knowledge-guide",
-      "version": 6,
+      "version": 7,
       "fragment": "agents-md/knowledge-guide.fragment"
     },
     {
       "id": "skills",
-      "version": 3,
+      "version": 4,
       "fragment": "agents-md/skills.fragment"
     },
     {

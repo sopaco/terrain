@@ -359,6 +359,9 @@ mod tests {
     #[test]
     fn pack_synced_with_head_ignores_dirty_working_tree() {
         let _lock = crate::registry::registry_test_lock();
+        let _git = crate::freshness::GIT_TEST_LOCK
+            .lock()
+            .expect("git test lock");
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         let head = init_git_repo(repo);
@@ -387,6 +390,9 @@ mod tests {
     #[test]
     fn pack_not_synced_when_head_advanced() {
         let _lock = crate::registry::registry_test_lock();
+        let _git = crate::freshness::GIT_TEST_LOCK
+            .lock()
+            .expect("git test lock");
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         let head = init_git_repo(repo);
@@ -426,6 +432,9 @@ mod tests {
         // Legacy v1 packs are compressed views whose `N:` prefixes are not
         // source-file line numbers — they must be rebuilt even at a matching HEAD.
         let _lock = crate::registry::registry_test_lock();
+        let _git = crate::freshness::GIT_TEST_LOCK
+            .lock()
+            .expect("git test lock");
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         let head = init_git_repo(repo);

@@ -39,7 +39,7 @@ Terrain 是一款 **AI 友好的工程环境管理器**（Rust workspace 版本 
 | 知识资产编排 | Litho 计划/进度、增量 diff 更新、meta 收集、上下文层切分 | `crates/terrain-core/src/assets/`（`litho.rs`、`incremental.rs`、`project_meta.rs`、`context_layers.rs`） |
 | 新鲜度 | Git 漂移、CodeGraph 漂移检测、评分与阈值、账本 | `crates/terrain-core/src/freshness/` |
 | 检索 | 全文检索、pack grep/read、知识文档读取、引用解析 | `src/search.rs`、`src/assets/query.rs`、`src/assets/pack_read.rs`、`src/citations.rs` |
-| 环境集成 | Skills/工具部署到 `~/.terrain/`、AGENTS.md 打补丁、env 探测 | `src/assets/env/`、`src/integrations/`、`src/agent_tools_deploy.rs`、`env-catalog/` |
+| 环境集成 | Skills 部署到项目内 `.agents/skills/` 与 `.claude/skills/`，工具与 env catalog 部署到 `~/.terrain/`；AGENTS.md 打补丁、env 探测 | `src/assets/env/`、`src/integrations/`、`src/agent_tools_deploy.rs`、`env-catalog/` |
 | Agent 运行时 | ChatEngine（native/ACP）、Runtime 缓存、工具注册、schema | `crates/terrain-agent/src/{runtime,acp,chat,tools,tool_schema}.rs` |
 | 工作流 | init、ask、sdd、quick_refresh、Litho 上下文生成 | `crates/terrain-agent/src/workflows/`、`agent_context.rs`、`context_generator.rs` |
 | CLI | 子命令入口、JSON 输出（ACP 契约）、util | `crates/terrain-cli/src/`（`cli.rs`、`commands/`） |
@@ -92,7 +92,7 @@ Terrain 是一款 **AI 友好的工程环境管理器**（Rust workspace 版本 
 | 边界 | 内容 | 说明 |
 |------|------|------|
 | 仓库内资产 | `{repo}/.terrain/{agent,human,knowledge}/`、`.terrain/.meta/` | 入库；生成物 `-merge` 禁自动合并；`repomix*`、`meta.json` 等本机衍生物不入库 |
-| 用户主目录 | `~/.terrain/registry.json`（仅项目指针）、`~/.terrain/bin/`（rtk/codegraph/terrain）、Skills、env catalog | 由环境集成部署，不含知识正文 |
+| 用户主目录 | `~/.terrain/registry.json`（仅项目指针）、`~/.terrain/bin/`（rtk/codegraph/terrain）、env catalog | 由环境集成部署，不含知识正文；Skills 在项目内 `.agents/skills/` 与 `.claude/skills/` |
 | 外部进程 | ACP agent（默认 `opencode`，可用 `TERRAIN_ACP_*` 覆盖）、`git`、`codegraph`、`rtk`、`bun`/`npx` | 必须经 `terrain_core::process` 创建，保证 Windows 无控制台闪窗 |
 | LLM 提供方 | OpenAI 兼容端点、Ollama（经 adk-model） | 配置存本地 model settings；可用 `llm_status` 探测 |
 | 第三方服务 | GitHub（仓库/Release 分发）、npm registry、DeepWiki 上游（Litho 谱系） | 无运行时强依赖，离线可用 |

@@ -28,13 +28,16 @@ const REQUIRED_COPIES: [&str; 1] = ["npm/packages/cli-darwin-arm64/env-catalog"]
 
 /// Build outputs. Tauri / npm packaging refresh them, but a local release tree can still be
 /// read at runtime today, so check them whenever they exist.
-const OPTIONAL_COPIES: [&str; 4] = [
+const OPTIONAL_COPIES: [&str; 5] = [
     // Platform packages other than the host's are staged by npm/scripts/prepare-binaries.mjs
     // on their own build machines, so they are absent from this checkout most of the time.
     "npm/packages/cli-win32-x64/env-catalog",
     "target/debug/env-catalog",
     "target/release/env-catalog",
     "target/release/bundle/macos/Terrain.app/Contents/Resources/env-catalog",
+    // The installed app is what `~/.terrain/bin/terrain` and the home catalog symlink read
+    // from; a stale copy here silently reverts AGENTS.md on the next apply. Absent on CI.
+    "/Applications/Terrain.app/Contents/Resources/env-catalog",
 ];
 
 fn workspace_root() -> Option<PathBuf> {

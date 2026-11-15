@@ -7,6 +7,7 @@ use chrono::{DateTime, Utc};
 use crate::paths::is_knowledge_output_path;
 
 use super::git::git_output;
+use super::is_indexed_source_path;
 
 /// CodeGraph's own `<cg> status` can report "up to date" while the index is
 /// actually behind HEAD. This computes drift purely from `.codegraph/codegraph.db`
@@ -16,7 +17,11 @@ pub struct CodegraphDriftReport {
     pub index_present: bool,
     pub index_synced_at: Option<String>,
     pub commits_after_index: u32,
+    /// All paths changed after the index, for diagnosis. Truncated to 20.
     pub changed_files: Vec<String>,
+    /// The subset that can actually change code symbols. `likely_stale` is derived from this,
+    /// so a docs/Skill-only commit does not send the agent down the Grep fallback.
+    pub source_changed_files: Vec<String>,
     pub likely_stale: bool,
 }
 
@@ -29,6 +34,7 @@ pub fn codegraph_drift(repo_path: &str) -> CodegraphDriftReport {
             index_synced_at: None,
             commits_after_index: 0,
             changed_files: Vec::new(),
+            source_changed_files: Vec::new(),
             likely_stale: false,
         };
     };
@@ -38,6 +44,7 @@ pub fn codegraph_drift(repo_path: &str) -> CodegraphDriftReport {
             index_synced_at: None,
             commits_after_index: 0,
             changed_files: Vec::new(),
+            source_changed_files: Vec::new(),
             likely_stale: false,
         };
     };
@@ -48,7 +55,7 @@ pub fn codegraph_drift(repo_path: &str) -> CodegraphDriftReport {
         .map(|s| s.lines().filter(|l| !l.trim().is_empty()).count() as u32)
         .unwrap_or(0);
 
-    let changed_files: Vec<String> = git_output(
+    let all_changed: Vec<String> = git_output(
         repo,
         &["log", "--since", &since, "--name-only", "--pretty=format:"],
     )
@@ -59,28 +66,37 @@ pub fn codegraph_drift(repo_path: &str) -> CodegraphDriftReport {
             .map(str::to_string)
             .collect::<std::collections::BTreeSet<_>>()
             .into_iter()
-            .take(20)
             .collect()
     })
     .unwrap_or_default();
+
+    // Classify before truncating: if the first 20 paths were all docs, truncating first would
+    // hide the one source file that actually makes the index stale.
+    let source_changed_files: Vec<String> = all_changed
+        .iter()
+        .filter(|path| is_indexed_source_path(path))
+        .take(20)
+        .cloned()
+        .collect();
+    let has_source_changes = !source_changed_files.is_empty();
+    let changed_files: Vec<String> = all_changed.into_iter().take(20).collect();
 
     CodegraphDriftReport {
         index_present: true,
         index_synced_at: Some(since),
         commits_after_index: commit_count,
-        likely_stale: commit_count > 0 && !changed_files.is_empty(),
+        likely_stale: commit_count > 0 && has_source_changes,
         changed_files,
+        source_changed_files,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-    use std::sync::Mutex;
 
     use super::*;
-
-    static GIT_TEST_LOCK: Mutex<()> = Mutex::new(());
+    use crate::freshness::GIT_TEST_LOCK;
 
     fn git_in(repo: &Path, args: &[&str]) {
         let status = crate::process::command("git")
@@ -148,6 +164,7 @@ mod tests {
         assert_eq!(report.commits_after_index, 0);
         assert!(!report.likely_stale);
         assert!(report.changed_files.is_empty());
+        assert!(report.source_changed_files.is_empty());
     }
 
     fn with_git_repo<F>(f: F)
@@ -221,6 +238,54 @@ mod tests {
         assert!(report.commits_after_index > 0);
         assert!(!report.likely_stale);
         assert!(report.changed_files.is_empty());
+        });
+    }
+
+    #[test]
+    fn codegraph_drift_ignores_docs_only_commits() {
+        with_git_repo(|| {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        init_test_repo(repo);
+        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+        let db = repo.join(".codegraph/codegraph.db");
+        std::fs::write(&db, b"sqlite").unwrap();
+        set_file_time_rfc3339(&db, "2020-06-01T00:00:00Z");
+        std::fs::create_dir_all(repo.join(".agents/skills/demo")).unwrap();
+        std::fs::write(repo.join("README.md"), "# demo\n").unwrap();
+        std::fs::write(repo.join(".agents/skills/demo/SKILL.md"), "# skill\n").unwrap();
+        git_in(repo, &["add", "."]);
+        git_commit_at(repo, "docs only", "2020-12-01T00:00:00Z");
+
+        let report = codegraph_drift(&repo.display().to_string());
+        assert!(report.index_present);
+        assert!(report.commits_after_index > 0);
+        // Kept for diagnosis, but must not drive the fallback decision.
+        assert!(report.changed_files.iter().any(|p| p == "README.md"));
+        assert!(report.source_changed_files.is_empty());
+        assert!(!report.likely_stale);
+        });
+    }
+
+    #[test]
+    fn codegraph_drift_mixed_commit_lists_only_source_files() {
+        with_git_repo(|| {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        init_test_repo(repo);
+        std::fs::create_dir_all(repo.join(".codegraph")).unwrap();
+        let db = repo.join(".codegraph/codegraph.db");
+        std::fs::write(&db, b"sqlite").unwrap();
+        set_file_time_rfc3339(&db, "2020-06-01T00:00:00Z");
+        std::fs::write(repo.join("README.md"), "# demo\n").unwrap();
+        std::fs::write(repo.join("src/c.rs"), "fn c() {}\n").unwrap();
+        git_in(repo, &["add", "."]);
+        git_commit_at(repo, "source plus docs", "2020-12-01T00:00:00Z");
+
+        let report = codegraph_drift(&repo.display().to_string());
+        assert!(report.likely_stale);
+        assert_eq!(report.source_changed_files, vec!["src/c.rs".to_string()]);
+        assert!(report.changed_files.iter().any(|p| p == "README.md"));
         });
     }
 }

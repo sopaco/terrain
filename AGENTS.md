@@ -68,7 +68,7 @@ Windows 打包版是 GUI 子系统（`windows_subsystem = "windows"`，无控制
 - **工作流**：架构问题先查知识层，实现细节直接查源码；仅冗长 shell 输出加 RTK 前缀
 <!-- terrain:end env-overview -->
 
-<!-- terrain:begin knowledge-guide v6 -->
+<!-- terrain:begin knowledge-guide v7 -->
 ## Terrain 知识资产
 
 按「Skill 路由」按需加载；`.terrain/` 是仓库内路径，不是全局目录。
@@ -86,7 +86,7 @@ Windows 打包版是 GUI 子系统（`windows_subsystem = "windows"`，无控制
 
 架构/实现问题先跑 `~/.terrain/bin/terrain tools freshness --project <slug>`（会按需重算并回写 `.terrain/.meta/freshness.json`；勿只读静态 JSON，它是缓存快照）。`overall_score < 70` 或 `macro_preload_allowed: false` 时架构结论须用源码交叉验证；因子含 `index_missing_new_sources` 时按「Skill 路由」的短路规则跳过索引。分档细节见 `terrain-knowledge-skill`。
 
-做 impact / callers 前跑 `~/.terrain/bin/terrain tools codegraph-drift --project <slug>`；`likely_stale: true` 先同步再查，查不到就降级 Grep。`knowledge/` 由人维护，`refs` 指向已删除路径时降权。
+做 impact / callers 前跑 `~/.terrain/bin/terrain tools codegraph-drift --project <slug>`：`likely_stale: true` → `sync` 一次再查；`sync` 失败，或查询非零退出 / 空输出 → 降级 Grep，不要重试。`knowledge/` 由人维护，`refs` 指向已删除路径时降权。
 
 ## Git 协作规则
 
@@ -97,7 +97,7 @@ Windows 打包版是 GUI 子系统（`windows_subsystem = "windows"`，无控制
 - 建议只在主干刷新知识资产；feature 分支不提交 `.terrain/agent/`、`.terrain/human/`，落后程度由 freshness 表达
 <!-- terrain:end knowledge-guide -->
 
-<!-- terrain:begin skills v3 -->
+<!-- terrain:begin skills v4 -->
 ### Skill 路由（按需，最多一份）
 
 架构、实现细节、影响面任务先跑一次保鲜检查：
@@ -112,10 +112,12 @@ Windows 打包版是 GUI 子系统（`windows_subsystem = "windows"`，无控制
 | 冗长 shell 输出（git / test / build） | `rtk-skill` | 其余三份 |
 | 拿不准 | `terrain-knowledge-skill`（单份 fallback） | 其余三份 |
 
+**复合任务**（一题同时涉及多类）：按主问题选一份；确需第二份时先说明理由再加载，仍不得预读全部。
+
 **失效短路**（依据已有输出，不额外跑探测命令）：
 
 - freshness 含 `index_missing_new_sources`，或 `macro_preload_allowed: false` → 索引缺新增源码，**跳过 repomix 查询**，直接 Grep/Read 活仓库；`agent/context.md` 仅作背景。
-- codegraph 非零退出 / 空输出，或 `terrain tools codegraph-drift --project <slug>` 报 `likely_stale: true` → **跳过 codegraph**，改用 Grep 活仓库，不要重试。
+- `terrain tools codegraph-drift --project <slug>` 报 `likely_stale: true` → `sync` 一次再查；`sync` 失败，或查询非零退出 / 空输出 → **跳过 codegraph**，改用 Grep 活仓库，不要重试。
 - rtk 前缀执行失败 → 直接跑原命令，不要为它加载 `rtk-skill`。
 <!-- terrain:end skills -->
 

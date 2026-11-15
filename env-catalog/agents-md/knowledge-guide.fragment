@@ -15,7 +15,7 @@
 
 架构/实现问题先跑 `~/.terrain/bin/terrain tools freshness --project <slug>`（会按需重算并回写 `.terrain/.meta/freshness.json`；勿只读静态 JSON，它是缓存快照）。`overall_score < 70` 或 `macro_preload_allowed: false` 时架构结论须用源码交叉验证；因子含 `index_missing_new_sources` 时按「Skill 路由」的短路规则跳过索引。分档细节见 `terrain-knowledge-skill`。
 
-做 impact / callers 前跑 `~/.terrain/bin/terrain tools codegraph-drift --project <slug>`；`likely_stale: true` 先同步再查，查不到就降级 Grep。`knowledge/` 由人维护，`refs` 指向已删除路径时降权。
+做 impact / callers 前跑 `~/.terrain/bin/terrain tools codegraph-drift --project <slug>`：`likely_stale: true` → `sync` 一次再查；`sync` 失败，或查询非零退出 / 空输出 → 降级 Grep，不要重试。`knowledge/` 由人维护，`refs` 指向已删除路径时降权。
 
 ## Git 协作规则
 

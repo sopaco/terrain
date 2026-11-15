@@ -26,7 +26,7 @@ use super::scoring::{
     context_score_from_raw, days_since_rfc3339, overall_freshness_score, score_layer,
     short_git_ref, stale_reason_for,
 };
-use super::{FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD};
+use super::{is_indexed_source_path, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD};
 
 /// Drift for one asset layer, resolving how — or whether — it can be measured.
 ///
@@ -72,23 +72,6 @@ fn index_missing_new_sources(repo_path: &str, pack_baseline: Option<&str>) -> Ve
     missing.sort();
     missing.dedup();
     missing
-}
-
-/// Only paths the agent pack indexes: source files under the shipped source roots.
-///
-/// Mirrors the directory exclusions in `assets::repomix::architecture_ignore_patterns` so a
-/// newly added test or generated file is not reported as a missing index slice — the pack
-/// never contained those paths in the first place.
-fn is_indexed_source_path(path: &str) -> bool {
-    const SOURCE_ROOTS: [&str; 3] = ["crates/", "src/", "src-tauri/src/"];
-    const SOURCE_EXTENSIONS: [&str; 6] = [".rs", ".ts", ".tsx", ".svelte", ".js", ".toml"];
-    const NON_INDEXED_SEGMENTS: [&str; 6] =
-        ["tests", "test", "generated", "gen", "fixtures", "migrations"];
-    SOURCE_ROOTS.iter().any(|root| path.starts_with(root))
-        && SOURCE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
-        && !path
-            .split('/')
-            .any(|segment| NON_INDEXED_SEGMENTS.contains(&segment))
 }
 
 /// Compute freshness for all knowledge assets and persist `freshness.json`.

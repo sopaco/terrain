@@ -12,7 +12,7 @@ version: 2.0.0
 
 1. 做 impact / callers 前跑 `~/.terrain/bin/terrain tools codegraph-drift --project <slug>`：`<cg> status` 可能误报「最新」，这个基于 git 的独立检测才可信。
 2. `likely_stale: true` → `<cg> sync` 一次再查。
-3. 命令非零退出、空输出、`query` 查不到刚新增的符号 → **判定 unhealthy，立即跳过 CodeGraph**，改用 Grep 活仓库。不要重试、不要反复 sync。
+3. `sync` 失败、命令非零退出、空输出、`query` 查不到刚新增的符号 → **判定 unhealthy，立即跳过 CodeGraph**，改用 Grep 活仓库。不要重试、不要反复 sync。
 
 ## 命令
 
