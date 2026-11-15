@@ -5,17 +5,15 @@ mod prompt;
 mod tracker;
 mod types;
 
-pub use types::{
-    ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord,
-};
+pub use types::{ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord};
 
 use std::time::Duration;
 
 use anyhow::Result;
 use terrain_core::{
-    agent_context_synced_with_head, agent_pack_synced_with_head, normalize_repo_hint,
+    KnowledgePaths, KnowledgeSearch, SearchOptions, SourceCitation, agent_context_synced_with_head,
+    agent_pack_synced_with_head, normalize_repo_hint, prepare_chat_markdown,
     resolve_project_repo_path,
-    KnowledgePaths, KnowledgeSearch, SearchOptions, SourceCitation, prepare_chat_markdown,
 };
 
 use crate::acp::{
@@ -26,7 +24,7 @@ use crate::agent_assets::prepare_agent_assets_for_ask;
 use crate::model::ModelConfig;
 use crate::settings::{AcpSettings, AgentExecution};
 
-use native::{build_native_backend, NativeBackend};
+use native::{NativeBackend, build_native_backend};
 
 pub(crate) const CHAT_APP_NAME: &str = "terrain";
 pub(crate) const CHAT_USER_ID: &str = "terrain-user";
@@ -125,12 +123,8 @@ impl ChatEngine {
         on_usage: impl FnMut(&ChatTokenUsage),
     ) -> Result<ChatReply> {
         if let Some(slug) = project {
-            let repo = resolve_project_repo_path(
-                &self.paths,
-                slug,
-                normalize_repo_hint(repo_path),
-            )
-            .unwrap_or_default();
+            let repo = resolve_project_repo_path(&self.paths, slug, normalize_repo_hint(repo_path))
+                .unwrap_or_default();
             if !agent_pack_synced_with_head(&self.paths, slug, &repo)
                 || !agent_context_synced_with_head(&self.paths, slug, &repo)
             {

@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use chrono::Utc;
 use crate::freshness::{baseline_matches_head, git_snapshot};
+use chrono::Utc;
 
 use crate::assets::project_meta::{
     collect_project_meta, format_meta_bundle_for_prompt, persist_meta_inputs,
@@ -49,10 +49,7 @@ pub fn agent_context_recorded_baseline_head(
 ///
 /// Prefer [`agent_context_recorded_baseline_head`] for regeneration decisions; keep this
 /// fallback for freshness scoring when older projects lack a context baseline field.
-pub fn agent_context_baseline_head(
-    paths: &KnowledgePaths,
-    project_slug: &str,
-) -> Option<String> {
+pub fn agent_context_baseline_head(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {
     context_baseline_head(paths, project_slug)
 }
 
@@ -64,10 +61,7 @@ pub fn read_agent_context_body(paths: &KnowledgePaths, project_slug: &str) -> Op
         .filter(|body| !body.trim().is_empty())
 }
 
-fn context_baseline_head(
-    paths: &KnowledgePaths,
-    project_slug: &str,
-) -> Option<String> {
+fn context_baseline_head(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {
     let ctx_meta =
         crate::doc::read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug)).ok();
     let pack_meta =
@@ -98,11 +92,7 @@ pub fn agent_context_synced_with_head(
 }
 
 /// True when context matches current HEAD and the working tree is clean (excluding `.terrain/`).
-pub fn agent_context_fresh(
-    paths: &KnowledgePaths,
-    project_slug: &str,
-    repo_path: &str,
-) -> bool {
+pub fn agent_context_fresh(paths: &KnowledgePaths, project_slug: &str, repo_path: &str) -> bool {
     if !agent_context_synced_with_head(paths, project_slug, repo_path) {
         return false;
     }
@@ -387,10 +377,8 @@ pub fn write_agent_context(
     std::fs::create_dir_all(paths.agent_pack_dir(project_slug))?;
     let path = paths.agent_context_main(project_slug);
     let body = normalize_context_headings(&prepare_model_markdown(body));
-    let (body, _size_capped) = crate::assets::enforce_context_max_size(
-        &body,
-        crate::assets::AGENT_CONTEXT_SAVE_MAX_CHARS,
-    );
+    let (body, _size_capped) =
+        crate::assets::enforce_context_max_size(&body, crate::assets::AGENT_CONTEXT_SAVE_MAX_CHARS);
 
     if body.trim().is_empty() {
         return Err(crate::error::CoreError::InvalidDoc(

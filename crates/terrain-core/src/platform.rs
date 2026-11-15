@@ -24,7 +24,9 @@ pub fn platform_key_for_target(target: &str) -> &'static str {
     match target {
         "aarch64-apple-darwin" => "darwin-arm64",
         "x86_64-apple-darwin" => "darwin-x64",
-        "x86_64-pc-windows-msvc" | "x86_64-pc-windows-gnu" | "x86_64-pc-windows-gnullvm" => "win32-x64",
+        "x86_64-pc-windows-msvc" | "x86_64-pc-windows-gnu" | "x86_64-pc-windows-gnullvm" => {
+            "win32-x64"
+        }
         "aarch64-pc-windows-msvc" => "win32-arm64",
         "x86_64-unknown-linux-gnu" => "linux-x64",
         "aarch64-unknown-linux-gnu" => "linux-arm64",
@@ -79,13 +81,15 @@ pub fn expand_user_path(path: &Path) -> PathBuf {
     if let Some(rest) = path
         .to_str()
         .and_then(|s| s.strip_prefix("~/").or_else(|| s.strip_prefix("~\\")))
-        && let Some(home) = user_home() {
-            return home.join(rest);
-        }
+        && let Some(home) = user_home()
+    {
+        return home.join(rest);
+    }
     if let Some(s) = path.to_str()
-        && let Some(expanded) = expand_windows_env_prefix(s) {
-            return PathBuf::from(expanded);
-        }
+        && let Some(expanded) = expand_windows_env_prefix(s)
+    {
+        return PathBuf::from(expanded);
+    }
     path.to_path_buf()
 }
 

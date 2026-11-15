@@ -159,9 +159,7 @@ fn is_true(v: &bool) -> bool {
 }
 
 fn normalize_path(path: &str) -> String {
-    path.trim()
-        .trim_start_matches("./")
-        .replace('\\', "/")
+    path.trim().trim_start_matches("./").replace('\\', "/")
 }
 
 fn path_suffix_segments_match(requested: &str, header: &str) -> bool {
@@ -195,11 +193,11 @@ fn path_matches(requested: &str, header: &str) -> bool {
 fn strip_line_number_prefix(line: &str) -> &str {
     if let Some((prefix, rest)) = line.split_once(':')
         && !prefix.is_empty()
-            && prefix.chars().all(|c| c.is_ascii_digit())
-            && rest.starts_with(' ')
-        {
-            return &rest[1..];
-        }
+        && prefix.chars().all(|c| c.is_ascii_digit())
+        && rest.starts_with(' ')
+    {
+        return &rest[1..];
+    }
     line
 }
 
@@ -211,9 +209,10 @@ fn strip_line_number_prefix(line: &str) -> &str {
 /// requires a space after the colon and would return the whole `42:` verbatim.
 fn parse_numbered_line(line: &str) -> Option<(u32, &str)> {
     if let Some((prefix, rest)) = line.split_once(':')
-        && let Ok(num) = prefix.parse::<u32>() {
-            return Some((num, rest.strip_prefix(' ').unwrap_or(rest)));
-        }
+        && let Ok(num) = prefix.parse::<u32>()
+    {
+        return Some((num, rest.strip_prefix(' ').unwrap_or(rest)));
+    }
     None
 }
 
@@ -260,14 +259,24 @@ fn read_agent_pack_file_from_text(
     )
 }
 
-/// First section whose header path matches the request, as the linear scan did.
+/// Locate a section: exact path first, then the looser segment-suffix match.
+///
+/// `path_matches` accepts a shared trailing segment, so with several `mod.rs` /
+/// `settings.rs` sections in one pack the first such section wins even when the
+/// caller passed a full, unambiguous path — reading an unrelated file. Exact
+/// hits therefore have to be settled before the fuzzy pass.
 fn find_section<'a>(sections: &'a [Section], file_path: &str) -> Result<&'a Section> {
+    let requested = normalize_path(file_path);
+    if let Some(exact) = sections
+        .iter()
+        .find(|s| normalize_path(&s.path) == requested)
+    {
+        return Ok(exact);
+    }
     sections
         .iter()
-        .find(|s| path_matches(file_path, &s.path))
-        .ok_or_else(|| {
-            CoreError::InvalidDoc(format!("file not found in agent pack: {file_path}"))
-        })
+        .find(|s| path_matches(&requested, &s.path))
+        .ok_or_else(|| CoreError::InvalidDoc(format!("file not found in agent pack: {file_path}")))
 }
 
 /// Extract the fenced body of a single pack section and apply the line range.
@@ -443,7 +452,8 @@ mod tests {
 
     #[test]
     fn clamps_out_of_range_line_request() {
-        let got = read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", Some(190), Some(260)).unwrap();
+        let got =
+            read_agent_pack_file_from_text(SAMPLE, "src/lib.rs", Some(190), Some(260)).unwrap();
         assert_eq!(got.total_lines, 3);
         assert!(got.range_clamped);
         assert_eq!(got.start_line, 1);
@@ -453,13 +463,8 @@ mod tests {
 
     #[test]
     fn matches_prefixed_pack_path() {
-        let got = read_agent_pack_file_from_text(
-            SAMPLE,
-            "android-au/src/lib.rs",
-            None,
-            None,
-        )
-        .unwrap();
+        let got =
+            read_agent_pack_file_from_text(SAMPLE, "android-au/src/lib.rs", None, None).unwrap();
         assert_eq!(got.matched_path, "src/lib.rs");
     }
 
@@ -593,6 +598,37 @@ gamma
         for s in &sections {
             assert!(SAMPLE[s.start..s.end].starts_with("### "));
         }
+    }
+
+    #[test]
+    fn exact_path_wins_over_shared_basename() {
+        // Two `mod.rs` sections: the looser segment match would return the first
+        // one for a full path pointing at the second, serving an unrelated file.
+        const DUP: &str = "\
+## Files
+
+### crates/chat/src/mod.rs (1 lines)
+
+```rust
+1: pub fn chat() {}
+```
+
+### crates/core/src/mod.rs (2 lines)
+
+```rust
+1: pub fn core() {}
+2: pub fn other() {}
+```
+";
+        let got =
+            read_agent_pack_file_from_text(DUP, "crates/core/src/mod.rs", None, None).unwrap();
+        assert_eq!(got.matched_path, "crates/core/src/mod.rs");
+        assert_eq!(got.total_lines, 2);
+        assert!(got.content.contains("pub fn core()"));
+
+        // A bare basename is still ambiguous and keeps the old first-hit behavior.
+        let loose = read_agent_pack_file_from_text(DUP, "mod.rs", None, None).unwrap();
+        assert_eq!(loose.matched_path, "crates/chat/src/mod.rs");
     }
 
     #[test]

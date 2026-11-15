@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use terrain_core::{get_env_status, KnowledgePaths};
+use terrain_core::{KnowledgePaths, get_env_status};
 
 use crate::cli::Cli;
 
@@ -21,7 +21,9 @@ pub fn require_repo_path(global: Option<PathBuf>, explicit: Option<PathBuf>) -> 
     explicit
         .or(global)
         .or_else(KnowledgePaths::resolve_workspace_repo)
-        .context("repository path is required; pass a path, --repo-path, or run inside a Git workspace")
+        .context(
+            "repository path is required; pass a path, --repo-path, or run inside a Git workspace",
+        )
 }
 
 pub fn slug_from(repo_path: &Path, slug: Option<String>) -> String {

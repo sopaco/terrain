@@ -2,16 +2,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::builder::opencode_available;
-use crate::model::{llm_status, ModelConfig};
+use crate::model::{ModelConfig, llm_status};
 use crate::settings::{
-    load_model_settings, AcpSettings, AgentExecution, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY,
+    AcpSettings, AgentExecution, DEFAULT_ACP_ARGS, DEFAULT_ACP_BINARY, load_model_settings,
 };
 use terrain_core::{default_agent_arch_skill_dir, default_ask_skill_dir, resolve_executable};
 
 pub fn resolve_acp_settings() -> AcpSettings {
-    load_model_settings()
-        .map(|s| s.acp)
-        .unwrap_or_default()
+    load_model_settings().map(|s| s.acp).unwrap_or_default()
 }
 
 pub fn acp_binary(settings: &AcpSettings) -> String {
@@ -31,17 +29,14 @@ pub fn acp_args(settings: &AcpSettings) -> String {
 }
 
 pub fn acp_spawn_command(settings: &AcpSettings) -> String {
-    if let Some(cmd) = settings
-        .command
-        .as_ref()
-        .filter(|c| !c.trim().is_empty())
-    {
+    if let Some(cmd) = settings.command.as_ref().filter(|c| !c.trim().is_empty()) {
         return cmd.trim().to_string();
     }
     if let Ok(cmd) = std::env::var("TERRAIN_ACP_COMMAND")
-        && !cmd.trim().is_empty() {
-            return cmd.trim().to_string();
-        }
+        && !cmd.trim().is_empty()
+    {
+        return cmd.trim().to_string();
+    }
     format!("{} {}", acp_binary(settings), acp_args(settings))
 }
 

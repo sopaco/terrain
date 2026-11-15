@@ -81,12 +81,15 @@ pub fn load_registry() -> Result<Vec<RegistryEntry>> {
         return Ok(Vec::new());
     }
 
-    let mtime = std::fs::metadata(&path).ok().and_then(|m| m.modified().ok());
+    let mtime = std::fs::metadata(&path)
+        .ok()
+        .and_then(|m| m.modified().ok());
     if let Ok(guard) = REGISTRY_CACHE.lock()
         && let Some(cache) = guard.as_ref()
-            && cache.mtime == mtime {
-                return Ok(cache.entries.clone());
-            }
+        && cache.mtime == mtime
+    {
+        return Ok(cache.entries.clone());
+    }
 
     let raw = std::fs::read_to_string(&path)?;
     let file: RegistryFile = serde_json::from_str(&raw)?;
@@ -214,11 +217,7 @@ pub fn list_all_registry_projects(
             &reg.repo_path,
         )?);
     }
-    entries.sort_by(|a, b| {
-        a.name
-            .cmp(&b.name)
-            .then_with(|| a.slug.cmp(&b.slug))
-    });
+    entries.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.slug.cmp(&b.slug)));
     Ok(entries)
 }
 

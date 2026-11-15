@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_synced_with_head, agent_pack_synced_with_head, maybe_pack_agent_assets,
-    resolve_project_repo_path, KnowledgePaths,
+    KnowledgePaths, agent_context_synced_with_head, agent_pack_synced_with_head,
+    maybe_pack_agent_assets, resolve_project_repo_path,
 };
 
 use crate::acp::{execution_uses_native_llm, resolve_acp_settings};
-use crate::settings::resolve_knowledge_settings;
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::{ChatEngine, ChatPhase};
 use crate::model::ModelConfig;
+use crate::settings::resolve_knowledge_settings;
 
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct AgentAssetsEnsureReport {
@@ -52,7 +52,10 @@ pub async fn generate_agent_context_if_missing(
     );
     let acp = resolve_acp_settings();
     let engine = if execution_uses_native_llm(&acp) {
-        Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?))
+        Some(Arc::new(ChatEngine::new_native(
+            paths.clone(),
+            model_config.clone(),
+        )?))
     } else {
         None
     };

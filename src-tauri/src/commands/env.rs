@@ -1,8 +1,8 @@
-use terrain_core::{
-    apply_env_integration, get_env_status, plan_env_integration, EnvApplyProgress, EnvApplyResult,
-    EnvPlan, EnvStatus,
-};
 use tauri::{AppHandle, Emitter};
+use terrain_core::{
+    EnvApplyProgress, EnvApplyResult, EnvPlan, EnvStatus, apply_env_integration, get_env_status,
+    plan_env_integration,
+};
 
 use super::payloads::{EnvOptDonePayload, EnvOptProgressPayload};
 use super::util::{map_core_err, validate_repo};

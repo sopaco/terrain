@@ -71,7 +71,10 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
             } else {
                 lang.tr(
                     &format!("缺少 {}/{name}（重新集成以补齐）", missing.join(", ")),
-                    &format!("Missing {}/{name} (re-integrate to restore)", missing.join(", ")),
+                    &format!(
+                        "Missing {}/{name} (re-integrate to restore)",
+                        missing.join(", ")
+                    ),
                 )
                 .to_string()
             }
@@ -99,7 +102,8 @@ pub(crate) fn check_integration(repo: &Path, def: &IntegrationDef) -> Result<Env
                 )
                 .into()
             } else {
-                lang.tr("未配置或版本过旧", "Not configured or outdated").into()
+                lang.tr("未配置或版本过旧", "Not configured or outdated")
+                    .into()
             }
         }
         "gitignore" => {
@@ -204,7 +208,8 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
     }
     if !ok {
         return if def.id == "tool-bun" {
-            lang.tr("可选：bun 未检测到", "Optional: bun not detected").into()
+            lang.tr("可选：bun 未检测到", "Optional: bun not detected")
+                .into()
         } else {
             lang.tr("未安装", "Not installed").into()
         };
@@ -216,11 +221,13 @@ fn tool_status_detail(def: &IntegrationDef, repo: &Path, ok: bool, locked: bool)
                 .as_ref()
                 .is_some_and(|p| run_bundled_check(p, &["gain"], repo))
             {
-                lang.tr("已安装（Terrain bundled）", "Installed (Terrain bundled)").into()
+                lang.tr("已安装（Terrain bundled）", "Installed (Terrain bundled)")
+                    .into()
             } else if command_succeeds("rtk", &["gain"], repo) {
                 lang.tr("已安装（PATH）", "Installed (PATH)").into()
             } else {
-                lang.tr("已安装（项目本地）", "Installed (project-local)").into()
+                lang.tr("已安装（项目本地）", "Installed (project-local)")
+                    .into()
             }
         }
         "tool-codegraph" => {

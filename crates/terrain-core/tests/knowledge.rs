@@ -1,11 +1,8 @@
 mod common;
 
 use common::TestKnowledgeSetup;
-use terrain_core::{
-    parse_markdown, parse_markdown_at, read_doc,
-    write_doc,
-};
 use terrain_core::schema::{DocFrontmatter, DocType};
+use terrain_core::{parse_markdown, parse_markdown_at, read_doc, write_doc};
 
 #[test]
 fn parse_bare_human_markdown_without_frontmatter() {

@@ -254,9 +254,7 @@ pub fn is_macro_context_section(title: &str) -> bool {
             }
         }
     }
-    ["modules", "module"]
-        .iter()
-        .any(|k| t.contains(k))
+    ["modules", "module"].iter().any(|k| t.contains(k))
 }
 
 /// Resolve the *current* effective language: settings file → system locale.
@@ -286,7 +284,10 @@ mod tests {
 
     #[test]
     fn parses_user_input() {
-        assert_eq!(LanguageSetting::parse("system"), Some(LanguageSetting::System));
+        assert_eq!(
+            LanguageSetting::parse("system"),
+            Some(LanguageSetting::System)
+        );
         assert_eq!(LanguageSetting::parse("zh-CN"), Some(LanguageSetting::ZhCn));
         assert_eq!(LanguageSetting::parse("zh"), Some(LanguageSetting::ZhCn));
         assert_eq!(LanguageSetting::parse("EN_us"), Some(LanguageSetting::En));

@@ -1,7 +1,7 @@
 //! Resolve bundled tool paths from Tauri sidecars and resource dir.
 
-use terrain_core::{find_codegraph_wrapper_under, init_bundled_tools, resolve_sidecar_next_to_exe};
 use tauri::{AppHandle, Manager};
+use terrain_core::{find_codegraph_wrapper_under, init_bundled_tools, resolve_sidecar_next_to_exe};
 
 /// Merge Tauri-bundled paths with `packages/` fallbacks (dev / `tauri dev`).
 pub fn init_app_bundled_tools(app: &AppHandle) {
@@ -19,8 +19,7 @@ pub fn init_app_bundled_tools(app: &AppHandle) {
     }
 
     if let Ok(resource_dir) = app.path().resource_dir()
-        && let Some(codegraph) =
-            find_codegraph_wrapper_under(&resource_dir.join("tools/codegraph"))
+        && let Some(codegraph) = find_codegraph_wrapper_under(&resource_dir.join("tools/codegraph"))
     {
         tools.codegraph = Some(codegraph);
     }

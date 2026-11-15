@@ -37,17 +37,19 @@ fn recurse_subschemas(schema: &mut Value, visit: fn(&mut Value)) {
     };
 
     if let Some(props) = obj.get_mut("properties")
-        && let Some(props_obj) = props.as_object_mut() {
-            for value in props_obj.values_mut() {
-                visit(value);
-            }
+        && let Some(props_obj) = props.as_object_mut()
+    {
+        for value in props_obj.values_mut() {
+            visit(value);
         }
+    }
 
     for keyword in ["items", "additionalProperties", "not"] {
         if let Some(sub) = obj.get_mut(keyword)
-            && sub.is_object() {
-                visit(sub);
-            }
+            && sub.is_object()
+        {
+            visit(sub);
+        }
     }
 
     for keyword in ["allOf", "anyOf", "oneOf", "prefixItems"] {

@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
+use tauri::{AppHandle, Emitter, State};
 use terrain_agent::{
+    AgentContextGenerationResult, ChatEngine, LithoGenerationJob, LithoProgress, LithoRunMode,
     agent_execution_ready, execution_uses_native_llm, prepare_litho_generation,
-    run_agent_context_generation, run_litho_generation, AgentContextGenerationResult, ChatEngine,
-    LithoGenerationJob, LithoProgress, LithoRunMode,
+    run_agent_context_generation, run_litho_generation,
 };
 use terrain_core::{
-    build_generation_plan, pack_agent_assets, plan_litho_generation, AgentPackReport,
-    AssetGenerationPlan, LithoPlan,
+    AgentPackReport, AssetGenerationPlan, LithoPlan, build_generation_plan, pack_agent_assets,
+    plan_litho_generation,
 };
-use tauri::{AppHandle, Emitter, State};
 
 use crate::AppState;
 
@@ -40,11 +40,7 @@ pub fn plan_litho_cmd(
 ) -> Result<LithoPlan, String> {
     let path = validate_repo(&repo_path)?;
     let slug = project_slug.unwrap_or_else(|| slugify_repo(&repo_path));
-    Ok(plan_litho_generation(
-        state.paths(),
-        &slug,
-        &path,
-    ))
+    Ok(plan_litho_generation(state.paths(), &slug, &path))
 }
 
 #[tauri::command]
@@ -140,7 +136,8 @@ pub async fn run_agent_context_generation_cmd(
     agent_execution_ready(&acp, &model_config).map_err(|e| e.to_string())?;
     let engine = if execution_uses_native_llm(&acp) {
         Some(Arc::new(
-            ChatEngine::new_native(state.paths().clone(), model_config).map_err(|e| e.to_string())?,
+            ChatEngine::new_native(state.paths().clone(), model_config)
+                .map_err(|e| e.to_string())?,
         ))
     } else {
         None

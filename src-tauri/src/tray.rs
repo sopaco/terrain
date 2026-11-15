@@ -1,7 +1,7 @@
 use tauri::{
+    AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
@@ -63,7 +63,13 @@ fn build_tray_menu<R: tauri::Runtime>(app: &impl Manager<R>) -> tauri::Result<Me
         true,
         None::<&str>,
     )?;
-    let about = MenuItem::with_id(app, MENU_ABOUT, lang.tr("关于", "About"), true, None::<&str>)?;
+    let about = MenuItem::with_id(
+        app,
+        MENU_ABOUT,
+        lang.tr("关于", "About"),
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app, MENU_QUIT, lang.tr("退出", "Quit"), true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
 
@@ -126,9 +132,7 @@ pub fn open_usage_window(app: &AppHandle) {
 fn show_about(app: &AppHandle) {
     let version = &app.package_info().version;
     app.dialog()
-        .message(format!(
-            "Terrain v{version}"
-        ))
+        .message(format!("Terrain v{version}"))
         .title("About Terrain")
         .kind(MessageDialogKind::Info)
         .show(|_| {});

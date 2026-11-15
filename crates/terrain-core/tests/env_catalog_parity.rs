@@ -144,7 +144,8 @@ fn deployed_skills_match_source_and_manifest() {
 
     for skill in SKILL_DIRS {
         let src = root.join("env-catalog/skills").join(skill).join("SKILL.md");
-        let expected = fs::read(&src).unwrap_or_else(|e| panic!("missing source skill {skill}: {e}"));
+        let expected =
+            fs::read(&src).unwrap_or_else(|e| panic!("missing source skill {skill}: {e}"));
         let expected_fp = fingerprint(&expected);
 
         for base in [".agents/skills", ".claude/skills"] {
@@ -152,8 +153,12 @@ fn deployed_skills_match_source_and_manifest() {
             let deployed = dir.join("SKILL.md");
             match fs::read(&deployed) {
                 Ok(bytes) if bytes == expected => {}
-                Ok(_) => problems.push(format!("{base}/{skill}/SKILL.md: content differs from source")),
-                Err(_) => problems.push(format!("{base}/{skill}/SKILL.md: missing (run `terrain env apply`)")),
+                Ok(_) => problems.push(format!(
+                    "{base}/{skill}/SKILL.md: content differs from source"
+                )),
+                Err(_) => problems.push(format!(
+                    "{base}/{skill}/SKILL.md: missing (run `terrain env apply`)"
+                )),
             }
 
             // An absent or stale manifest makes sync_skill_dir treat the next upgrade as a
@@ -165,10 +170,14 @@ fn deployed_skills_match_source_and_manifest() {
             {
                 Some(v) => {
                     if v["files"]["SKILL.md"].as_str() != Some(expected_fp.as_str()) {
-                        problems.push(format!("{base}/{skill}/.terrain-skill.json: fingerprint is stale"));
+                        problems.push(format!(
+                            "{base}/{skill}/.terrain-skill.json: fingerprint is stale"
+                        ));
                     }
                 }
-                None => problems.push(format!("{base}/{skill}/.terrain-skill.json: missing or invalid")),
+                None => problems.push(format!(
+                    "{base}/{skill}/.terrain-skill.json: missing or invalid"
+                )),
             }
         }
     }
@@ -216,7 +225,9 @@ fn catalog_references_resolve_and_agents_md_is_current() {
             let version = block["version"].as_u64().unwrap_or_default();
             let fragment = block["fragment"].as_str().unwrap_or_default();
             if !root.join("env-catalog").join(fragment).is_file() {
-                problems.push(format!("block {id} references missing fragment: {fragment}"));
+                problems.push(format!(
+                    "block {id} references missing fragment: {fragment}"
+                ));
             }
             let marker = format!("<!-- terrain:begin {id} v{version} -->");
             if !agents_md.contains(&marker) {

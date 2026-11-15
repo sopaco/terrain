@@ -1,5 +1,5 @@
 use anyhow::Result;
-use terrain_core::{load_usage_snapshot, probe_usage_sources, UsageDetailLevel};
+use terrain_core::{UsageDetailLevel, load_usage_snapshot, probe_usage_sources};
 
 use crate::cli::UsageCommands;
 use crate::util::print_json;

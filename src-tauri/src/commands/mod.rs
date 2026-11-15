@@ -10,7 +10,7 @@ mod util;
 mod workflows;
 
 use terrain_agent::{
-    knowledge_paths_from_env, load_model_settings, resolve_acp_settings, AcpSettings,
+    AcpSettings, knowledge_paths_from_env, load_model_settings, resolve_acp_settings,
 };
 use terrain_core::KnowledgePaths;
 
@@ -19,8 +19,6 @@ pub(crate) fn resolved_acp_settings() -> AcpSettings {
         .map(|s| s.acp)
         .unwrap_or_else(resolve_acp_settings)
 }
-
-
 
 pub(crate) use terrain_agent::resolve_knowledge_settings as resolved_knowledge_settings;
 

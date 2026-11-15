@@ -7,11 +7,11 @@ use adk_core::Agent;
 use adk_core::Llm;
 use anyhow::{Context, Result};
 
+use crate::acp::{acp_available, acp_command_parts, acp_config_json, acp_spawn_command};
+use crate::settings::AcpSettings;
 #[cfg(feature = "opencode")]
 use adk_acp::AcpAgentTool;
-use crate::settings::AcpSettings;
-use crate::acp::{acp_available, acp_command_parts, acp_config_json, acp_spawn_command};
-use terrain_core::{command_on_path, KnowledgePaths};
+use terrain_core::{KnowledgePaths, command_on_path};
 
 use crate::context_generator::AgentContextGenerator;
 use crate::throttle::{call_cooldown_from_env, wrap_tool};
@@ -258,4 +258,3 @@ pub fn knowledge_paths_from_env() -> KnowledgePaths {
 pub fn knowledge_root_from_env() -> KnowledgePaths {
     knowledge_paths_from_env()
 }
-

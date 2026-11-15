@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use anyhow::Result;
-use terrain_agent::{ask_knowledge, validate_repo_path, Runtime};
-use terrain_core::{list_ask_sessions, KnowledgePaths};
+use terrain_agent::{Runtime, ask_knowledge, validate_repo_path};
+use terrain_core::{KnowledgePaths, list_ask_sessions};
 
 use crate::cli::AskCommands;
 use crate::util::{print_json, workspace_project_slug};
@@ -25,7 +25,8 @@ pub async fn run(
                 .or_else(|| paths.workspace_repo().map(|p| p.to_path_buf()))
                 .map(|p| p.display().to_string());
             if let Some(ref slug) = project {
-                let repo = terrain_core::resolve_project_repo_path(paths, slug, repo_path.as_deref())?;
+                let repo =
+                    terrain_core::resolve_project_repo_path(paths, slug, repo_path.as_deref())?;
                 validate_repo_path(&repo).map_err(|e| anyhow::anyhow!(e))?;
             }
 

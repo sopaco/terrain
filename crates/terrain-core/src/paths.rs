@@ -118,8 +118,7 @@ impl KnowledgePaths {
     /// Local, non-versioned checkpoint for an in-flight Litho run (resume after interruption).
     /// Lives under `.meta/` so `clear_litho_outputs` never deletes it.
     pub fn litho_run_state_path(&self, project_slug: &str) -> PathBuf {
-        self.project_dir(project_slug)
-            .join(".meta/litho-run.json")
+        self.project_dir(project_slug).join(".meta/litho-run.json")
     }
 
     /// Human-editable project remark (versioned with the repo).
@@ -185,7 +184,8 @@ impl KnowledgePaths {
 
     /// SDD phase outputs (`1.requirements.md`, …) for a session.
     pub fn sdd_output_dir(&self, project_slug: &str, session_id: &str) -> PathBuf {
-        self.sdd_workspace_dir(project_slug, session_id).join("outputs")
+        self.sdd_workspace_dir(project_slug, session_id)
+            .join("outputs")
     }
 
     /// Legacy in-repo SDD path (migrated away; kept for gitignore / drift exclusion).
@@ -232,9 +232,10 @@ impl KnowledgePaths {
     /// Knowledge root for Ask/ACP env vars — prefers an explicit project slug.
     pub fn knowledge_root_for(&self, project_slug: Option<&str>) -> Option<PathBuf> {
         if let Some(slug) = project_slug
-            && let Ok(root) = self.try_project_dir(slug) {
-                return Some(root);
-            }
+            && let Ok(root) = self.try_project_dir(slug)
+        {
+            return Some(root);
+        }
         self.workspace_knowledge_root()
     }
 
@@ -259,7 +260,10 @@ impl KnowledgePaths {
 
 /// Normalize a citation path to knowledge-root-relative form (no `.terrain/` prefix).
 pub fn normalize_knowledge_ref(file_path: &str) -> String {
-    let p = file_path.trim().trim_start_matches("./").trim_start_matches('/');
+    let p = file_path
+        .trim()
+        .trim_start_matches("./")
+        .trim_start_matches('/');
     if p == "context.md" {
         return "agent/context.md".into();
     }

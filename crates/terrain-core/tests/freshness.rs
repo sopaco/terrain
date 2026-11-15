@@ -68,7 +68,10 @@ fn context_body() -> String {
 fn write_assets(repo: &Path, slug: &str, baseline: &str, synced_at: &str, generated_at: &str) {
     let paths = KnowledgePaths::for_repo(repo);
     let (pack_meta, pack_main) = (paths.agent_pack_meta(slug), paths.agent_pack_main(slug));
-    let (ctx_meta, ctx_main) = (paths.agent_context_meta(slug), paths.agent_context_main(slug));
+    let (ctx_meta, ctx_main) = (
+        paths.agent_context_meta(slug),
+        paths.agent_context_main(slug),
+    );
     for path in [&pack_meta, &pack_main, &ctx_meta, &ctx_main] {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
     }
@@ -93,7 +96,11 @@ fn write_assets(repo: &Path, slug: &str, baseline: &str, synced_at: &str, genera
         ),
     )
     .unwrap();
-    fs::write(&pack_main, "# Repomix\n\n### main.rs\n\n```rust\nfn main() {}\n```\n").unwrap();
+    fs::write(
+        &pack_main,
+        "# Repomix\n\n### main.rs\n\n```rust\nfn main() {}\n```\n",
+    )
+    .unwrap();
     fs::write(
         &ctx_meta,
         format!(
@@ -114,7 +121,11 @@ fn write_assets(repo: &Path, slug: &str, baseline: &str, synced_at: &str, genera
 }
 
 fn factor_ids(summary: &FreshnessSummary) -> Vec<&str> {
-    summary.drift_factors.iter().map(|f| f.id.as_str()).collect()
+    summary
+        .drift_factors
+        .iter()
+        .map(|f| f.id.as_str())
+        .collect()
 }
 
 /// Build a repo with the given asset state and score it through `compute_freshness`.
@@ -132,7 +143,11 @@ fn run_scenario(
     // Register before touching `paths`, whose accessors resolve through the registry.
     terrain_core::registry::register_project(slug, &repo_s).expect("temporary project registers");
 
-    let baseline = if head_baseline { head.as_str() } else { UNREACHABLE };
+    let baseline = if head_baseline {
+        head.as_str()
+    } else {
+        UNREACHABLE
+    };
     write_assets(repo, slug, baseline, synced_at, generated_at);
 
     let paths = KnowledgePaths::for_repo(repo);
@@ -160,7 +175,10 @@ fn freshness_scoring_is_fail_closed_when_drift_cannot_be_measured() {
         "{unreachable:?}"
     );
     assert!(!unreachable.macro_preload_allowed, "{unreachable:?}");
-    assert!(unreachable.overall_score < FRESH_THRESHOLD, "{unreachable:?}");
+    assert!(
+        unreachable.overall_score < FRESH_THRESHOLD,
+        "{unreachable:?}"
+    );
     assert!(unreachable.overall_stale, "{unreachable:?}");
     assert_eq!(
         unreachable.stale_reason.as_deref(),
@@ -179,7 +197,10 @@ fn freshness_scoring_is_fail_closed_when_drift_cannot_be_measured() {
     );
     // The agent-facing trust block has to carry the same verdict.
     let block = format_freshness_trust_block(&unreachable);
-    assert!(block.contains("stale_reason: baseline_unreachable"), "{block}");
+    assert!(
+        block.contains("stale_reason: baseline_unreachable"),
+        "{block}"
+    );
     assert!(
         block.contains("DO NOT rely on preloaded macro context"),
         "{block}"
@@ -194,7 +215,8 @@ fn freshness_scoring_is_fail_closed_when_drift_cannot_be_measured() {
     assert!(factor_ids(&fresh).contains(&"baseline_match"), "{fresh:?}");
 
     // --- Scenario 3: drift is measurable, but the sync timestamp is unparseable ---
-    let (bad_time, _keep3) = run_scenario("e2e-bad-time", true, "not-a-timestamp", "not-a-timestamp");
+    let (bad_time, _keep3) =
+        run_scenario("e2e-bad-time", true, "not-a-timestamp", "not-a-timestamp");
     // An unknown age is charged the age cap; it must not outscore a genuinely today-fresh sync,
     // which would otherwise let a corrupted timestamp buy the full 90-point ceiling.
     assert!(bad_time.overall_score < 90, "{bad_time:?}");

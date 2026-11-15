@@ -1,4 +1,7 @@
-use terrain_core::{load_usage_snapshot, open_path_in_file_manager, probe_usage_sources, UsageDetailLevel, UsageProbeResult, UsageSnapshot};
+use terrain_core::{
+    UsageDetailLevel, UsageProbeResult, UsageSnapshot, load_usage_snapshot,
+    open_path_in_file_manager, probe_usage_sources,
+};
 
 #[tauri::command]
 pub fn usage_probe_cmd() -> UsageProbeResult {

@@ -143,9 +143,6 @@ mod tests {
             config.openai_base_url.as_deref(),
             Some(crate::settings::DEFAULT_OLLAMA_CLOUD_BASE_URL)
         );
-        assert_eq!(
-            config.model,
-            crate::settings::DEFAULT_OLLAMA_CLOUD_MODEL
-        );
+        assert_eq!(config.model, crate::settings::DEFAULT_OLLAMA_CLOUD_MODEL);
     }
 }

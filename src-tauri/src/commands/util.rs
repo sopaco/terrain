@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use terrain_core::{validate_repo_path, Result as CoreResult};
+use terrain_core::{Result as CoreResult, validate_repo_path};
 
 /// Validate `repo_path` and return it as a `PathBuf` for downstream APIs.
 pub fn validate_repo(path: &str) -> Result<PathBuf, String> {

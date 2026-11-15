@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use chrono::Utc;
 use crate::doc::read_json;
 use crate::freshness::{baseline_matches_head, git_snapshot};
 use crate::path_portable::stored_repo_path;
+use chrono::Utc;
 use repomix_core::{OutputStyle, PackOptions, RepomixConfig, pack_with_options};
 
 use crate::doc::write_json;
@@ -25,7 +25,12 @@ use super::pack_read::{agent_pack_ready, invalidate_pack_text_cache};
 /// only compares this strategy string and the Git baseline — it does not hash the ignore
 /// rules — so bumping is the only way to guarantee that a pack built with the old rule set
 /// is actually replaced instead of being trusted indefinitely.
-pub const AGENT_PACK_STRATEGY: &str = "architecture-context-v3";
+///
+/// v4: repomix-rs 2.1.0 tightened `generic-api-key` so that `api_key: Option<String>` style
+/// type annotations no longer mark a whole source file as a leaked-secret candidate. Packs
+/// built before that silently lack those files (7 of them in this very repo), and the
+/// strategy string is again the only lever that forces a rebuild.
+pub const AGENT_PACK_STRATEGY: &str = "architecture-context-v4";
 
 const AGENT_CONTEXT_HEADER_TEMPLATE: &str = "\
 Terrain Agent Source Pack (repomix-core / {strategy})
@@ -90,8 +95,8 @@ fn architecture_ignore_patterns() -> Vec<String> {
     .collect()
 }
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentPackReport {
     pub project_slug: String,
@@ -202,11 +207,7 @@ pub async fn pack_agent_assets(
         .await
         .map_err(|e| CoreError::Pack(e.to_string()))?;
 
-    let content = result
-        .output_contents
-        .first()
-        .cloned()
-        .unwrap_or_default();
+    let content = result.output_contents.first().cloned().unwrap_or_default();
     if content.is_empty() && output_path.is_file() {
         // repomix wrote directly to disk
     } else if !content.is_empty() {
@@ -280,12 +281,17 @@ mod tests {
         let header = agent_context_header();
         assert!(header.contains(AGENT_PACK_STRATEGY));
         assert!(pack_declares_source_line_numbers(&header));
-        assert!(
-            !pack_declares_source_line_numbers(
-                "Terrain Agent Source Pack (repomix-core / architecture-context-v2)"
-            ),
-            "a pack built before the ignore-rule change must be treated as legacy"
-        );
+        for legacy in [
+            "architecture-context",
+            "architecture-context-v2",
+            "architecture-context-v3",
+        ] {
+            let text = format!("Terrain Agent Source Pack (repomix-core / {legacy})");
+            assert!(
+                !pack_declares_source_line_numbers(&text),
+                "a pack built under {legacy} must be treated as legacy"
+            );
+        }
     }
 
     fn init_git_repo(repo: &Path) -> String {

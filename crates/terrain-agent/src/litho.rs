@@ -2,16 +2,15 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use terrain_core::{
-    begin_litho_run, build_litho_composition_prompt_with_progress,
+    IncrementalOptions, KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings,
+    KnowledgeUpdateMode, LithoGenerationJob, LithoGenerationResult, LithoPlan, LithoProgress,
+    ProgressEvent, begin_litho_run, build_litho_composition_prompt_with_progress,
     build_litho_generation_prompt, build_litho_generation_prompt_with_progress,
     build_litho_update_prompt, complete_litho_run, count_markdown_in_dir, git_snapshot,
     has_litho_research_artifacts, human_docs_baseline_head, is_litho_run_resumable,
     list_human_doc_names, litho_completed_names, litho_human_complete_with_research,
     litho_research_ready, litho_run_still_valid, load_litho_run_state, plan_incremental_update,
     plan_litho_generation, record_litho_docs, reset_litho_run_state, write_human_docs_meta,
-    IncrementalOptions, KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings,
-    KnowledgeUpdateMode, LithoGenerationJob, LithoGenerationResult, LithoPlan, LithoProgress,
-    ProgressEvent,
 };
 
 use crate::acp::{acp_spawn_command, build_acp_config};
@@ -33,11 +32,7 @@ pub enum LithoRunMode {
 impl LithoRunMode {
     /// Legacy `force_refresh` boolean from IPC callers.
     pub fn from_force_refresh(force: bool) -> Self {
-        if force {
-            Self::FullRebuild
-        } else {
-            Self::Auto
-        }
+        if force { Self::FullRebuild } else { Self::Auto }
     }
 }
 
@@ -227,8 +222,7 @@ async fn prompt_native_with_heartbeat(
     waiting_message: String,
     on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
-    let agent_handle =
-        tokio::spawn(async move { run_native_litho_turn(&ctx, prompt).await });
+    let agent_handle = tokio::spawn(async move { run_native_litho_turn(&ctx, prompt).await });
     await_litho_turn_with_heartbeat(agent_handle, stage, waiting_message, on_progress).await
 }
 
@@ -318,8 +312,7 @@ async fn prompt_native_with_doc_poll(
     waiting_message: String,
     on_progress: impl FnMut(LithoProgress),
 ) -> anyhow::Result<String> {
-    let agent_handle =
-        tokio::spawn(async move { run_native_litho_turn(&ctx, prompt).await });
+    let agent_handle = tokio::spawn(async move { run_native_litho_turn(&ctx, prompt).await });
     await_litho_turn_with_doc_poll(
         agent_handle,
         human_dir,
@@ -881,8 +874,7 @@ pub async fn run_litho_generation(
             ),
         ));
 
-        let prompt =
-            build_litho_generation_prompt_with_progress(&job.plan, &completed_docs);
+        let prompt = build_litho_generation_prompt_with_progress(&job.plan, &completed_docs);
         let response = litho_turn_doc_poll(
             &transport,
             prompt,
@@ -901,7 +893,8 @@ pub async fn run_litho_generation(
         let mut excerpt: String = response.chars().take(500).collect();
 
         if !human_complete(&human_dir, &litho_workspace)
-            && (litho_research_ready(&litho_workspace) || has_litho_research_artifacts(&litho_workspace))
+            && (litho_research_ready(&litho_workspace)
+                || has_litho_research_artifacts(&litho_workspace))
         {
             excerpt = run_composition_with_retries(
                 &transport,
@@ -1175,7 +1168,10 @@ mod tests {
     #[test]
     fn pure_acp_is_strict() {
         assert!(matches!(
-            transport_for(AgentExecution::Acp, Some("definitely-not-a-real-binary-xyz")),
+            transport_for(
+                AgentExecution::Acp,
+                Some("definitely-not-a-real-binary-xyz")
+            ),
             LithoTransport::AcpStrict(_)
         ));
     }
@@ -1183,7 +1179,10 @@ mod tests {
     #[test]
     fn hybrid_with_missing_binary_goes_native() {
         assert!(matches!(
-            transport_for(AgentExecution::AcpNative, Some("definitely-not-a-real-binary-xyz")),
+            transport_for(
+                AgentExecution::AcpNative,
+                Some("definitely-not-a-real-binary-xyz")
+            ),
             LithoTransport::Native(_)
         ));
     }

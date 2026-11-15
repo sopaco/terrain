@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use terrain_core::{
-    read_doc_at, KnowledgePaths, KnowledgeSearch, ProjectScanner, SearchOptions,
-};
+use terrain_core::{KnowledgePaths, KnowledgeSearch, ProjectScanner, SearchOptions, read_doc_at};
 
 use crate::util::{print_json, require_repo_path, workspace_project_slug};
 

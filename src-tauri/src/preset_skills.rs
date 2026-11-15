@@ -1,9 +1,9 @@
 //! Resolve bundled preset skills from Tauri resources and deploy to ~/.terrain/.
 
+use tauri::{AppHandle, Manager};
 use terrain_core::{
     deploy_preset_skills_to_home, discover_preset_skills_runtime, init_preset_skills_root,
 };
-use tauri::{AppHandle, Manager};
 
 /// Load preset skills from app resources (or dev tree) and deploy for CLI/agents.
 pub fn init_app_preset_skills(app: &AppHandle) {
@@ -28,10 +28,8 @@ pub fn init_app_preset_skills(app: &AppHandle) {
     init_preset_skills_root(root.clone());
     tracing::info!(root = %root.display(), "initialized Terrain preset skills");
 
-    std::thread::spawn(move || {
-        match deploy_preset_skills_to_home() {
-            Ok(dest) => tracing::info!(dest = %dest.display(), "deployed preset skills to home"),
-            Err(e) => tracing::warn!(error = %e, "preset skills home deploy skipped or failed"),
-        }
+    std::thread::spawn(move || match deploy_preset_skills_to_home() {
+        Ok(dest) => tracing::info!(dest = %dest.display(), "deployed preset skills to home"),
+        Err(e) => tracing::warn!(error = %e, "preset skills home deploy skipped or failed"),
     });
 }

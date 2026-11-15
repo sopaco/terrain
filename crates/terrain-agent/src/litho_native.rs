@@ -21,9 +21,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use walkdir::WalkDir;
 
-use crate::model::{build_llm, ensure_llm, ModelConfig};
+use crate::model::{ModelConfig, build_llm, ensure_llm};
 use crate::tools::{grep_agent_pack_tool, read_agent_pack_file_tool, read_agent_pack_meta_tool};
-use terrain_core::{agent_pack_ready, pack_agent_assets, KnowledgePaths, LithoPlan};
+use terrain_core::{KnowledgePaths, LithoPlan, agent_pack_ready, pack_agent_assets};
 
 const APP_NAME: &str = "terrain-litho";
 const USER_ID: &str = "terrain-litho";
@@ -111,9 +111,10 @@ pub fn read_litho_file_tool(skill_dir: PathBuf, workspace: PathBuf) -> Arc<dyn T
                             .filter_map(|e| e.ok())
                             .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
                             .filter_map(|e| {
-                                e.path().strip_prefix(&path).ok().map(|p| {
-                                    p.to_string_lossy().replace('\\', "/")
-                                })
+                                e.path()
+                                    .strip_prefix(&path)
+                                    .ok()
+                                    .map(|p| p.to_string_lossy().replace('\\', "/"))
                             })
                             .collect();
                         names.sort();

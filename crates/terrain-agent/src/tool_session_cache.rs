@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn store() -> &'static Mutex<HashMap<String, Value>> {
     static CACHE: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
@@ -48,17 +48,16 @@ pub fn duplicate_call_response(cached: Value) -> Value {
 
 fn normalize_section_fingerprint(section: Option<&str>) -> String {
     section
-        .map(|s| {
-            s.trim()
-                .trim_start_matches('#')
-                .trim()
-                .to_lowercase()
-        })
+        .map(|s| s.trim().trim_start_matches('#').trim().to_lowercase())
         .unwrap_or_default()
 }
 
 pub fn context_call_fingerprint(project: &str, section: Option<&str>) -> String {
-    format!("{}:{}", project.trim(), normalize_section_fingerprint(section))
+    format!(
+        "{}:{}",
+        project.trim(),
+        normalize_section_fingerprint(section)
+    )
 }
 
 pub fn pack_file_call_fingerprint(

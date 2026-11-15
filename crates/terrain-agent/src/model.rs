@@ -9,8 +9,8 @@ use anyhow::{Context, Result, bail};
 use futures::StreamExt;
 pub use terrain_core::LlmStatus;
 pub use terrain_core::settings::{
-    DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL,
-    DEFAULT_OLLAMA_HOST, DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL, OpenAiApiMode,
+    DEFAULT_LMSTUDIO_API_KEY, DEFAULT_LMSTUDIO_BASE_URL, DEFAULT_OLLAMA_HOST,
+    DEFAULT_OPENAI_BASE_URL, DEFAULT_OPENAI_MODEL, OpenAiApiMode,
 };
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(12);
@@ -112,7 +112,11 @@ fn apply_env_secret_fallback(config: &mut ModelConfig) {
     if config.provider != LlmProvider::Openai {
         return;
     }
-    if config.openai_api_key.as_ref().is_some_and(|k| !k.is_empty()) {
+    if config
+        .openai_api_key
+        .as_ref()
+        .is_some_and(|k| !k.is_empty())
+    {
         return;
     }
     if let Some(key) = read_api_key() {
@@ -150,7 +154,10 @@ pub fn build_llm(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
         }
         LlmProvider::Openai | LlmProvider::LmStudio => build_openai_llm(config)?,
     };
-    Ok(crate::throttle::wrap_llm(inner, crate::throttle::call_cooldown_from_env()))
+    Ok(crate::throttle::wrap_llm(
+        inner,
+        crate::throttle::call_cooldown_from_env(),
+    ))
 }
 
 fn build_openai_llm(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
@@ -237,8 +244,7 @@ pub fn llm_status(config: &ModelConfig) -> LlmStatus {
                 .openai_api_key
                 .as_ref()
                 .is_some_and(|k| !k.is_empty());
-            let ok = has_key
-                || (config.openai_api_mode == OpenAiApiMode::Responses && third_party);
+            let ok = has_key || (config.openai_api_mode == OpenAiApiMode::Responses && third_party);
             (
                 ok,
                 if ok {
@@ -344,7 +350,10 @@ async fn http_get_json(url: &str, bearer: Option<&str>) -> Result<serde_json::Va
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
     if !status.is_success() {
-        bail!("{url} returned HTTP {status}: {}", text.chars().take(300).collect::<String>());
+        bail!(
+            "{url} returned HTTP {status}: {}",
+            text.chars().take(300).collect::<String>()
+        );
     }
     serde_json::from_str(&text).with_context(|| format!("invalid JSON from {url}"))
 }
@@ -398,9 +407,9 @@ pub async fn probe_llm(config: &ModelConfig) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use terrain_core::settings::{ModelSettings, ProviderProfile, save_model_settings};
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
+    use terrain_core::settings::{ModelSettings, ProviderProfile, save_model_settings};
 
     fn env_lock() -> &'static Mutex<()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();

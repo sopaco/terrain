@@ -52,15 +52,16 @@ pub async fn apply_env_integration(
 
     let selected: std::collections::HashSet<_> = selected_ids.iter().cloned().collect();
 
-    let needs_agent_deploy = catalog.integrations.iter().any(|def| {
-        def.bundled && selected.contains(&def.id)
-    });
+    let needs_agent_deploy = catalog
+        .integrations
+        .iter()
+        .any(|def| def.bundled && selected.contains(&def.id));
     if needs_agent_deploy {
-        let force_bundled = reinstall_ids.iter().any(|id| {
-            matches!(id.as_str(), "tool-rtk" | "tool-codegraph")
-        });
-        let toolchain_ready = super::status::rtk_runtime_ready()
-            && bundled_codegraph().is_some_and(|p| p.is_file());
+        let force_bundled = reinstall_ids
+            .iter()
+            .any(|id| matches!(id.as_str(), "tool-rtk" | "tool-codegraph"));
+        let toolchain_ready =
+            super::status::rtk_runtime_ready() && bundled_codegraph().is_some_and(|p| p.is_file());
         if force_bundled || !toolchain_ready {
             let opts = crate::agent_tools_deploy::DeployOptions {
                 force: force_bundled,
@@ -129,11 +130,7 @@ pub async fn apply_env_integration(
     })
 }
 
-fn apply_skill(
-    repo: &Path,
-    def: &super::catalog::IntegrationDef,
-    force: bool,
-) -> Result<String> {
+fn apply_skill(repo: &Path, def: &super::catalog::IntegrationDef, force: bool) -> Result<String> {
     let source = skill_source_path(def);
     if !source.is_dir() {
         return Err(CoreError::InvalidDoc(format!(
@@ -203,10 +200,11 @@ fn sync_skill_dir(source: &Path, dest: &Path, force: bool) -> Result<SkillSyncRe
     collect_skill_files(source, Path::new(""), &mut source_files)?;
 
     let manifest_path = dest.join(SKILL_MANIFEST_NAME);
-    let previous: SkillDeployManifest = crate::doc::read_json::<SkillDeployManifest>(&manifest_path)
-        .ok()
-        .filter(|m| m.schema_version == SKILL_MANIFEST_SCHEMA)
-        .unwrap_or_default();
+    let previous: SkillDeployManifest =
+        crate::doc::read_json::<SkillDeployManifest>(&manifest_path)
+            .ok()
+            .filter(|m| m.schema_version == SKILL_MANIFEST_SCHEMA)
+            .unwrap_or_default();
 
     fs::create_dir_all(dest)?;
     let mut next = SkillDeployManifest {
@@ -336,10 +334,7 @@ async fn apply_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result
     Ok(messages.join("; "))
 }
 
-async fn apply_bundled_tool(
-    repo: &Path,
-    def: &super::catalog::IntegrationDef,
-) -> Result<String> {
+async fn apply_bundled_tool(repo: &Path, def: &super::catalog::IntegrationDef) -> Result<String> {
     let _ = repo;
     let lang = crate::language::current_language();
     let manifest = REPO_AGENT_TOOLS_MANIFEST;
@@ -348,8 +343,11 @@ async fn apply_bundled_tool(
         "tool-rtk" => {
             let rtk = bundled_rtk().ok_or_else(|| {
                 CoreError::InvalidDoc(
-                    lang.tr("Terrain 内置 RTK 不可用", "Terrain-bundled RTK is unavailable")
-                        .into(),
+                    lang.tr(
+                        "Terrain 内置 RTK 不可用",
+                        "Terrain-bundled RTK is unavailable",
+                    )
+                    .into(),
                 )
             })?;
             if !run_bundled_check(&rtk, &["gain"], repo) {
@@ -415,12 +413,7 @@ async fn run_binary(cwd: &Path, program: &Path, args: &[&str]) -> Result<()> {
         .current_dir(cwd)
         .output()
         .await
-        .map_err(|e| {
-            CoreError::InvalidDoc(format!(
-                "failed to run {}: {e}",
-                program.display()
-            ))
-        })?;
+        .map_err(|e| CoreError::InvalidDoc(format!("failed to run {}: {e}", program.display())))?;
 
     if output.status.success() {
         return Ok(());
@@ -458,7 +451,7 @@ async fn run_command(cwd: &Path, cmd: &str, args: &[String]) -> Result<()> {
 /// Write `.terrain/.gitignore` + `.terrain/.gitattributes`. Normally already done
 /// when `.terrain/` was scaffolded; this path exists to repair or upgrade them.
 fn apply_terrain_git_policy(repo: &Path) -> Result<String> {
-    use crate::git_policy::{ensure_git_policy, PolicyOutcome};
+    use crate::git_policy::{PolicyOutcome, ensure_git_policy};
 
     let lang = crate::language::current_language();
     let root = crate::registry::knowledge_root_for_repo(repo);
@@ -588,12 +581,18 @@ mod tests {
 
         let report = sync_skill_dir(&source, &dest, false).unwrap();
         assert_eq!(report.preserved, 1);
-        assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "my custom skill");
+        assert_eq!(
+            fs::read_to_string(dest.join("SKILL.md")).unwrap(),
+            "my custom skill"
+        );
         assert_eq!(
             fs::read_to_string(dest.join("references/phase1.md")).unwrap(),
             "ref-v2"
         );
-        assert_eq!(fs::read_to_string(dest.join("notes.md")).unwrap(), "my notes");
+        assert_eq!(
+            fs::read_to_string(dest.join("notes.md")).unwrap(),
+            "my notes"
+        );
     }
 
     #[test]
@@ -609,7 +608,10 @@ mod tests {
 
         sync_skill_dir(&source, &dest, true).unwrap();
         assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "v2");
-        assert_eq!(fs::read_to_string(dest.join("notes.md")).unwrap(), "my notes");
+        assert_eq!(
+            fs::read_to_string(dest.join("notes.md")).unwrap(),
+            "my notes"
+        );
     }
 
     #[test]
@@ -638,7 +640,13 @@ mod tests {
         write(&dest.join("extra.md"), "keep me");
 
         sync_skill_dir(&source, &dest, false).unwrap();
-        assert_eq!(fs::read_to_string(dest.join("SKILL.md")).unwrap(), "hand written");
-        assert_eq!(fs::read_to_string(dest.join("extra.md")).unwrap(), "keep me");
+        assert_eq!(
+            fs::read_to_string(dest.join("SKILL.md")).unwrap(),
+            "hand written"
+        );
+        assert_eq!(
+            fs::read_to_string(dest.join("extra.md")).unwrap(),
+            "keep me"
+        );
     }
 }

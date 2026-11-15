@@ -14,8 +14,8 @@ use crate::paths::KnowledgePaths;
 use crate::registry;
 use crate::schema::SyncMeta;
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ScanReport {
     pub project_slug: String,
@@ -25,8 +25,8 @@ pub struct ScanReport {
     pub agent_pack: Option<AgentPackSummary>,
 }
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentPackSummary {
     pub total_files: usize,
@@ -49,7 +49,11 @@ impl ProjectScanner {
         &self.paths
     }
 
-    pub async fn scan_repo(&self, repo_path: &str, project_slug: Option<&str>) -> Result<ScanReport> {
+    pub async fn scan_repo(
+        &self,
+        repo_path: &str,
+        project_slug: Option<&str>,
+    ) -> Result<ScanReport> {
         let slug = project_slug
             .map(str::to_string)
             .unwrap_or_else(|| slug::slugify(repo_path.rsplit('/').next().unwrap_or("project")));
@@ -67,14 +71,16 @@ impl ProjectScanner {
         collectors.push("git".into());
 
         if let Some(count) = OpenApiImporter::new(&self.paths, &slug).import_repo(repo_path)?
-            && count > 0 {
-                files_written += count;
-                collectors.push("openapi".into());
-            }
+            && count > 0
+        {
+            files_written += count;
+            collectors.push("openapi".into());
+        }
 
         #[cfg(feature = "repomix")]
         let agent_pack = {
-            let pack = crate::assets::maybe_pack_agent_assets(&self.paths, &slug, repo_path).await?;
+            let pack =
+                crate::assets::maybe_pack_agent_assets(&self.paths, &slug, repo_path).await?;
             if !pack.skipped {
                 collectors.push("repomix".into());
             }

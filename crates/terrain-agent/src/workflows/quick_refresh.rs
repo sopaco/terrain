@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_ready, agent_context_synced_with_head, compute_freshness,
-    litho_human_complete_with_research, KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings,
-    LithoProgress, ProjectScanner, QuickRefreshResult,
+    KnowledgePaths, KnowledgeRefreshMode, KnowledgeSettings, LithoProgress, ProjectScanner,
+    QuickRefreshResult, agent_context_ready, agent_context_synced_with_head, compute_freshness,
+    litho_human_complete_with_research,
 };
 
-use crate::acp::{acp_available, agent_execution_ready, execution_pure_acp, execution_uses_native_llm};
+use crate::acp::{
+    acp_available, agent_execution_ready, execution_pure_acp, execution_uses_native_llm,
+};
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::ChatEngine;
 use crate::litho::LithoRunMode;
@@ -32,9 +34,7 @@ pub async fn run_quick_refresh(
     let mut notes = Vec::new();
 
     let scanner = ProjectScanner::new(paths.clone());
-    let scan = scanner
-        .scan_repo(repo_path, Some(project_slug))
-        .await?;
+    let scan = scanner.scan_repo(repo_path, Some(project_slug)).await?;
 
     let pack_tokens = scan.agent_pack.as_ref().map(|pack| pack.total_tokens);
     if scan.agent_pack.as_ref().is_some_and(|p| p.pack_skipped) {
@@ -59,7 +59,10 @@ pub async fn run_quick_refresh(
     if agent_execution_ready(acp, model_config).is_ok() {
         if !agent_context_synced_with_head(paths, project_slug, repo_path) {
             let engine = if execution_uses_native_llm(acp) {
-                Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?))
+                Some(Arc::new(ChatEngine::new_native(
+                    paths.clone(),
+                    model_config.clone(),
+                )?))
             } else {
                 None
             };

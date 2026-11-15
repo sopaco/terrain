@@ -1,7 +1,7 @@
 use anyhow::Result;
 use terrain_core::{
-    get_project_overview, list_all_registry_projects, read_freshness_ledger, unregister_project,
-    write_project_remark, KnowledgePaths,
+    KnowledgePaths, get_project_overview, list_all_registry_projects, read_freshness_ledger,
+    unregister_project, write_project_remark,
 };
 
 use crate::cli::ProjectCommands;

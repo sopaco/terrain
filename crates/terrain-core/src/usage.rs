@@ -149,10 +149,9 @@ pub fn probe_usage_sources() -> UsageProbeResult {
 /// Load usage snapshot (summary or full). Uses in-memory cache unless `force_refresh`.
 pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> UsageSnapshot {
     let lang = crate::language::current_language();
-    if !force_refresh
-        && let Some(cached) = read_cache(detail) {
-            return cached;
-        }
+    if !force_refresh && let Some(cached) = read_cache(detail) {
+        return cached;
+    }
 
     let probe = probe_usage_sources();
     let generated_at = now_ms();
@@ -233,35 +232,31 @@ fn build_snapshot(
     let daily_report: CcusageDailyReport = serde_json::from_value(daily_json)
         .map_err(|e| CoreError::Other(format!("ccusage daily JSON: {e}")))?;
 
-    let daily: Vec<UsagePeriodEntry> = daily_report
-        .daily
-        .into_iter()
-        .map(map_entry)
-        .collect();
+    let daily: Vec<UsagePeriodEntry> = daily_report.daily.into_iter().map(map_entry).collect();
 
     let today_str = Local::now().format("%Y-%m-%d").to_string();
     let week_start = Local::now().date_naive() - chrono::Duration::days(6);
-    let month_start = NaiveDate::from_ymd_opt(
-        Local::now().year(),
-        Local::now().month(),
-        1,
-    )
-    .unwrap_or_else(|| Local::now().date_naive());
+    let month_start = NaiveDate::from_ymd_opt(Local::now().year(), Local::now().month(), 1)
+        .unwrap_or_else(|| Local::now().date_naive());
 
     let today = sum_entries(daily.iter().filter(|e| e.period == today_str));
-    let week = sum_entries(daily.iter().filter(|e| parse_period_date(&e.period) >= week_start));
-    let month = sum_entries(daily.iter().filter(|e| parse_period_date(&e.period) >= month_start));
+    let week = sum_entries(
+        daily
+            .iter()
+            .filter(|e| parse_period_date(&e.period) >= week_start),
+    );
+    let month = sum_entries(
+        daily
+            .iter()
+            .filter(|e| parse_period_date(&e.period) >= month_start),
+    );
 
     let monthly = if detail == UsageDetailLevel::Full {
         let monthly_since = since_days_ago(365 * 3);
         let monthly_json = run_ccusage_json(&["monthly", "--since", &monthly_since])?;
         let monthly_report: CcusageMonthlyReport = serde_json::from_value(monthly_json)
             .map_err(|e| CoreError::Other(format!("ccusage monthly JSON: {e}")))?;
-        monthly_report
-            .monthly
-            .into_iter()
-            .map(map_entry)
-            .collect()
+        monthly_report.monthly.into_iter().map(map_entry).collect()
     } else {
         Vec::new()
     };
@@ -345,7 +340,9 @@ fn resolve_ccusage_launch() -> Option<CcusageLaunch> {
         return Some(CcusageLaunch::Direct(bin));
     }
     if let Some(home) = user_home() {
-        let deployed = home.join(".terrain/bin").join(agent_tool_filename("ccusage"));
+        let deployed = home
+            .join(".terrain/bin")
+            .join(agent_tool_filename("ccusage"));
         if is_executable_file(&deployed) {
             return Some(CcusageLaunch::Direct(deployed));
         }
@@ -452,12 +449,7 @@ fn run_ccusage_json(args: &[&str]) -> Result<serde_json::Value> {
 
 fn detect_local_sources() -> Vec<UsageSourceStatus> {
     vec![
-        probe_source_dir(
-            "claude",
-            "Claude Code",
-            claude_data_dirs(),
-            &["jsonl"],
-        ),
+        probe_source_dir("claude", "Claude Code", claude_data_dirs(), &["jsonl"]),
         probe_source_dir(
             "opencode",
             "OpenCode",
@@ -539,12 +531,7 @@ fn count_matching_files(dir: &Path, extensions: &[&str], max_depth: u32) -> u32 
     count_matching_files_inner(dir, extensions, max_depth, 0)
 }
 
-fn count_matching_files_inner(
-    dir: &Path,
-    extensions: &[&str],
-    max_depth: u32,
-    depth: u32,
-) -> u32 {
+fn count_matching_files_inner(dir: &Path, extensions: &[&str], max_depth: u32, depth: u32) -> u32 {
     if depth > max_depth {
         return 0;
     }
@@ -556,9 +543,10 @@ fn count_matching_files_inner(
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|e| e.to_str())
-                && extensions.iter().any(|e| ext.eq_ignore_ascii_case(e)) {
-                    count = count.saturating_add(1);
-                }
+                && extensions.iter().any(|e| ext.eq_ignore_ascii_case(e))
+            {
+                count = count.saturating_add(1);
+            }
         } else if path.is_dir() && depth < max_depth {
             count = count.saturating_add(count_matching_files_inner(
                 &path,
@@ -572,10 +560,7 @@ fn count_matching_files_inner(
 }
 
 fn map_entry(entry: CcusageEntry) -> UsagePeriodEntry {
-    let agents = entry
-        .metadata
-        .and_then(|m| m.agents)
-        .unwrap_or_default();
+    let agents = entry.metadata.and_then(|m| m.agents).unwrap_or_default();
     UsagePeriodEntry {
         period: entry.period.unwrap_or_default(),
         agent: entry.agent,

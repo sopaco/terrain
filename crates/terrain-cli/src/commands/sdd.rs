@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use terrain_agent::{execution_pure_acp, run_sdd_phase, validate_repo_path, Runtime};
-use terrain_core::{get_sdd_status, resolve_sdd_session_id, KnowledgePaths, SddPhase};
+use terrain_agent::{Runtime, execution_pure_acp, run_sdd_phase, validate_repo_path};
+use terrain_core::{KnowledgePaths, SddPhase, get_sdd_status, resolve_sdd_session_id};
 
 use crate::cli::SddCommands;
 use crate::util::{print_json, require_repo_path};

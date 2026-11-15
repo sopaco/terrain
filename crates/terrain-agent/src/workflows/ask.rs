@@ -1,11 +1,11 @@
 use std::sync::Mutex;
 
 use terrain_core::{
-    extract_source_citations, merge_citations, AskStreamEvent, ChatReply, ChatTokenUsage,
-    CitationKind, KnowledgePaths, KnowledgeSearch, SearchOptions, SourceCitation,
+    AskStreamEvent, ChatReply, ChatTokenUsage, CitationKind, KnowledgePaths, KnowledgeSearch,
+    SearchOptions, SourceCitation, extract_source_citations, merge_citations,
 };
 
-use crate::model::{llm_status, ModelConfig};
+use crate::model::{ModelConfig, llm_status};
 use crate::runtime::Runtime;
 
 pub async fn ask_knowledge(
@@ -24,7 +24,9 @@ pub async fn ask_knowledge(
             let reply =
                 fallback_search_reply(&runtime.paths, query, project, repo_path, &err.to_string());
             if let Ok(mut guard) = on_event.lock() {
-                guard(AskStreamEvent::Done { reply: reply.clone() });
+                guard(AskStreamEvent::Done {
+                    reply: reply.clone(),
+                });
             }
             return Ok(reply);
         }
@@ -38,7 +40,9 @@ pub async fn ask_knowledge(
             repo_path,
             |chunk| {
                 if let Ok(mut guard) = on_event.lock() {
-                    guard(AskStreamEvent::Chunk { text: chunk.to_string() });
+                    guard(AskStreamEvent::Chunk {
+                        text: chunk.to_string(),
+                    });
                 }
             },
             |chunk| {
@@ -71,7 +75,9 @@ pub async fn ask_knowledge(
         .await?;
 
     if let Ok(mut guard) = on_event.lock() {
-        guard(AskStreamEvent::Done { reply: reply.clone() });
+        guard(AskStreamEvent::Done {
+            reply: reply.clone(),
+        });
     }
     Ok(reply)
 }
@@ -122,7 +128,10 @@ pub fn fallback_search_reply(
         .to_string()
     } else {
         lang.tr(
-            &format!("LLM 不可用（{llm_error}）。通过搜索找到 {} 条文档引用。", citations.len()),
+            &format!(
+                "LLM 不可用（{llm_error}）。通过搜索找到 {} 条文档引用。",
+                citations.len()
+            ),
             &format!(
                 "LLM unavailable ({llm_error}). Found {} document references via search.",
                 citations.len()

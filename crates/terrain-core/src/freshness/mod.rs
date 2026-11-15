@@ -7,11 +7,11 @@ mod git;
 mod ledger;
 mod scoring;
 
-pub use codegraph::{codegraph_drift, CodegraphDriftReport};
+pub use codegraph::{CodegraphDriftReport, codegraph_drift};
 pub use compute::{compute_freshness, format_freshness_trust_block, resolve_freshness_summary};
 pub use git::{
-    baseline_matches_head, git_change_set, git_commit_exists, git_drift_since, git_snapshot,
-    DriftBasis, GitChangeSet, GitChangedFile, GitDrift, GitSnapshot,
+    DriftBasis, GitChangeSet, GitChangedFile, GitDrift, GitSnapshot, baseline_matches_head,
+    git_change_set, git_commit_exists, git_drift_since, git_snapshot,
 };
 pub use ledger::{freshness_meta_path, read_freshness_ledger, write_freshness_ledger};
 pub use scoring::score_asset;
@@ -37,8 +37,14 @@ pub const VERIFY_THRESHOLD: u8 = 70;
 pub(crate) fn is_indexed_source_path(path: &str) -> bool {
     const SOURCE_ROOTS: [&str; 3] = ["crates/", "src/", "src-tauri/src/"];
     const SOURCE_EXTENSIONS: [&str; 6] = [".rs", ".ts", ".tsx", ".svelte", ".js", ".toml"];
-    const NON_INDEXED_SEGMENTS: [&str; 6] =
-        ["tests", "test", "generated", "gen", "fixtures", "migrations"];
+    const NON_INDEXED_SEGMENTS: [&str; 6] = [
+        "tests",
+        "test",
+        "generated",
+        "gen",
+        "fixtures",
+        "migrations",
+    ];
     SOURCE_ROOTS.iter().any(|root| path.starts_with(root))
         && SOURCE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
         && !path
@@ -64,7 +70,8 @@ mod tests {
             "\0ff69643\n\n.terrain/.meta/freshness.json\n.terrain/agent/context.md\n";
         assert_eq!(count_source_commits_in_log(knowledge_only), 0);
 
-        let mixed = "\0aaa\n\n.terrain/agent/context.md\nsrc/main.rs\n\0bbb\n\n.terrain/human/1.md\n";
+        let mixed =
+            "\0aaa\n\n.terrain/agent/context.md\nsrc/main.rs\n\0bbb\n\n.terrain/human/1.md\n";
         assert_eq!(count_source_commits_in_log(mixed), 1);
 
         let source_only = "\0aaa\n\nsrc/a.rs\nsrc/b.rs\n\0bbb\n\nCargo.toml\n";
@@ -147,7 +154,9 @@ mod tests {
 
         // Regression: git_output must not trim() porcelain — first line loses leading status space.
         let corrupted_first_line = "M .terrain/agent/context.md\n";
-        assert!(!working_tree_dirty_excluding_knowledge(corrupted_first_line));
+        assert!(!working_tree_dirty_excluding_knowledge(
+            corrupted_first_line
+        ));
     }
 
     fn init_local_repo(repo: &std::path::Path) {

@@ -2,15 +2,15 @@ use std::sync::Arc;
 
 use adk_core::{ErrorComponent, Tool};
 use adk_tool::FunctionTool;
-use terrain_core::{
-    agent_context_ready, agent_pack_ready, build_context_overview, resolve_freshness_summary,
-    extract_context_section, split_context_sections, AgentPackMeta, FRESH_THRESHOLD,
-    KnowledgePaths, KnowledgeSearch, SearchOptions, grep_repomix_pack, list_human_docs,
-    read_agent_pack_file, read_json, resolve_project_repo_path, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
-};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::json;
+use terrain_core::{
+    AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS, AgentPackMeta, FRESH_THRESHOLD, KnowledgePaths,
+    KnowledgeSearch, SearchOptions, agent_context_ready, agent_pack_ready, build_context_overview,
+    extract_context_section, grep_repomix_pack, list_human_docs, read_agent_pack_file, read_json,
+    resolve_freshness_summary, resolve_project_repo_path, split_context_sections,
+};
 
 use crate::context_generator::AgentContextGenerator;
 use crate::tool_session_cache::{
@@ -72,120 +72,113 @@ pub fn read_agent_context_tool(
         s[3], s[5],
     );
     Arc::new(
-        FunctionTool::new(
-            "read_agent_context",
-            description,
-            move |ctx, args| {
-                let paths = paths.clone();
-                let generator = generator.clone();
-                async move {
-                    let params: ReadAgentContextArgs = serde_json::from_value(args).map_err(|e| {
-                        adk_core::AdkError::new(
-                            ErrorComponent::Tool,
-                            adk_core::ErrorCategory::InvalidInput,
-                            "tool.invalid_args",
-                            e.to_string(),
-                        )
-                    })?;
+        FunctionTool::new("read_agent_context", description, move |ctx, args| {
+            let paths = paths.clone();
+            let generator = generator.clone();
+            async move {
+                let params: ReadAgentContextArgs = serde_json::from_value(args).map_err(|e| {
+                    adk_core::AdkError::new(
+                        ErrorComponent::Tool,
+                        adk_core::ErrorCategory::InvalidInput,
+                        "tool.invalid_args",
+                        e.to_string(),
+                    )
+                })?;
 
-                    let session_id = ctx.session_id().to_string();
-                    let fingerprint =
-                        context_call_fingerprint(&params.project, params.section.as_deref());
-                    if let Some(cached) =
-                        get_cached(&session_id, "read_agent_context", &fingerprint)
-                    {
-                        return Ok(duplicate_call_response(cached));
-                    }
+                let session_id = ctx.session_id().to_string();
+                let fingerprint =
+                    context_call_fingerprint(&params.project, params.section.as_deref());
+                if let Some(cached) = get_cached(&session_id, "read_agent_context", &fingerprint) {
+                    return Ok(duplicate_call_response(cached));
+                }
 
-                    let section_query = params
-                        .section
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|s| !s.is_empty());
-                    if section_query.is_none() && agent_context_ready(&paths, &params.project) {
-                        return Err(adk_core::AdkError::tool(format!(
-                            "Macro overview is already preloaded in the user message. \
+                let section_query = params
+                    .section
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty());
+                if section_query.is_none() && agent_context_ready(&paths, &params.project) {
+                    return Err(adk_core::AdkError::tool(format!(
+                        "Macro overview is already preloaded in the user message. \
                              Do not call read_agent_context without section. \
                              For a specific heading use section=\"{}\" (etc.). \
                              For code use grep_agent_pack → read_agent_pack_file.",
-                            s[3],
-                        )));
-                    }
-
-                    let was_pack_ready = agent_pack_ready(&paths, &params.project);
-                    let was_context_ready = agent_context_ready(&paths, &params.project);
-
-                    let report = generator
-                        .ensure_ready(&params.project, None)
-                        .await
-                        .map_err(|e| adk_core::AdkError::tool(e.to_string()))?;
-
-                    let doc = terrain_core::read_doc_at_in_project(
-                        &paths,
-                        "agent/context.md",
-                        Some(&params.project),
-                    )
-                    .map_err(map_core_err)?;
-
-                    let sections = split_context_sections(&doc.body);
-                    let (body, mode, section_title) =
-                        if let Some(query) = section_query {
-                            let section = extract_context_section(&sections, query).ok_or_else(|| {
-                                adk_core::AdkError::tool(format!(
-                                    "section not found: {query}. Available: {}",
-                                    sections
-                                        .iter()
-                                        .map(|s| s.title.as_str())
-                                        .filter(|t| !t.is_empty())
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                ))
-                            })?;
-                            let (part, _truncated) = truncate_with_notice(
-                                &render_context_section(&section.title, &section.body),
-                                AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
-                            );
-                            (part, "section", Some(section.title.clone()))
-                        } else {
-                            let overview =
-                                build_context_overview(&doc.body, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS);
-                            (overview.macro_markdown, "overview", None)
-                        };
-
-                    let truncated = body.contains("...[truncated");
-
-                    let freshness_warning = resolve_project_repo_path(&paths, &params.project, None)
-                        .ok()
-                        .and_then(|repo| resolve_freshness_summary(&paths, &params.project, &repo).ok())
-                        .filter(|f| f.agent_context_score < FRESH_THRESHOLD)
-                        .map(|f| {
-                            format!(
-                                "freshness_score={}/100; commits_since_baseline={}; \
-                                 verify architecture claims with grep_agent_pack",
-                                f.agent_context_score, f.commits_since_baseline
-                            )
-                        });
-
-                    let response = json!({
-                        "path": doc.path,
-                        "mode": mode,
-                        "section": section_title,
-                        "body": body,
-                        "truncated": truncated,
-                        "auto_packed": !was_pack_ready && report.packed,
-                        "auto_generated": !was_context_ready && report.context_generated,
-                        "freshness_warning": freshness_warning,
-                    });
-                    store_cached(
-                        &session_id,
-                        "read_agent_context",
-                        &fingerprint,
-                        response.clone(),
-                    );
-                    Ok(response)
+                        s[3],
+                    )));
                 }
-            },
-        )
+
+                let was_pack_ready = agent_pack_ready(&paths, &params.project);
+                let was_context_ready = agent_context_ready(&paths, &params.project);
+
+                let report = generator
+                    .ensure_ready(&params.project, None)
+                    .await
+                    .map_err(|e| adk_core::AdkError::tool(e.to_string()))?;
+
+                let doc = terrain_core::read_doc_at_in_project(
+                    &paths,
+                    "agent/context.md",
+                    Some(&params.project),
+                )
+                .map_err(map_core_err)?;
+
+                let sections = split_context_sections(&doc.body);
+                let (body, mode, section_title) = if let Some(query) = section_query {
+                    let section = extract_context_section(&sections, query).ok_or_else(|| {
+                        adk_core::AdkError::tool(format!(
+                            "section not found: {query}. Available: {}",
+                            sections
+                                .iter()
+                                .map(|s| s.title.as_str())
+                                .filter(|t| !t.is_empty())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ))
+                    })?;
+                    let (part, _truncated) = truncate_with_notice(
+                        &render_context_section(&section.title, &section.body),
+                        AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
+                    );
+                    (part, "section", Some(section.title.clone()))
+                } else {
+                    let overview =
+                        build_context_overview(&doc.body, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS);
+                    (overview.macro_markdown, "overview", None)
+                };
+
+                let truncated = body.contains("...[truncated");
+
+                let freshness_warning = resolve_project_repo_path(&paths, &params.project, None)
+                    .ok()
+                    .and_then(|repo| resolve_freshness_summary(&paths, &params.project, &repo).ok())
+                    .filter(|f| f.agent_context_score < FRESH_THRESHOLD)
+                    .map(|f| {
+                        format!(
+                            "freshness_score={}/100; commits_since_baseline={}; \
+                                 verify architecture claims with grep_agent_pack",
+                            f.agent_context_score, f.commits_since_baseline
+                        )
+                    });
+
+                let response = json!({
+                    "path": doc.path,
+                    "mode": mode,
+                    "section": section_title,
+                    "body": body,
+                    "truncated": truncated,
+                    "auto_packed": !was_pack_ready && report.packed,
+                    "auto_generated": !was_context_ready && report.context_generated,
+                    "freshness_warning": freshness_warning,
+                });
+                store_cached(
+                    &session_id,
+                    "read_agent_context",
+                    &fingerprint,
+                    response.clone(),
+                );
+                Ok(response)
+            }
+        })
         .with_parameters_schema::<ReadAgentContextArgs>(),
     )
 }
@@ -476,7 +469,6 @@ pub fn read_agent_pack_file_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
         .with_parameters_schema::<ReadPackFileArgs>(),
     )
 }
-
 
 pub fn read_doc_tool(paths: KnowledgePaths) -> Arc<dyn Tool> {
     let overview_doc = terrain_core::current_language().litho_overview_filename();

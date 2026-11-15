@@ -68,15 +68,9 @@ pub struct MetaInputSpec {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MetaInputSource {
-    File {
-        path: String,
-    },
-    Glob {
-        pattern: String,
-    },
-    Inline {
-        content: String,
-    },
+    File { path: String },
+    Glob { pattern: String },
+    Inline { content: String },
 }
 
 fn default_input_max_chars() -> usize {
@@ -346,7 +340,9 @@ fn truncate_chars(text: &str, max: usize) -> (String, bool) {
 
 /// Format collected inputs for injection into the agent-context LLM prompt.
 pub fn format_meta_bundle_for_prompt(bundle: &ProjectMetaBundle) -> String {
-    if bundle.inputs.is_empty() && bundle.hints.notes.is_empty() && bundle.hints.module_roots.is_empty()
+    if bundle.inputs.is_empty()
+        && bundle.hints.notes.is_empty()
+        && bundle.hints.module_roots.is_empty()
     {
         return String::new();
     }
@@ -480,7 +476,8 @@ pub fn meta_inputs_status(paths: &KnowledgePaths, project_slug: &str) -> (bool, 
     if let Ok(m) = crate::doc::read_json::<MetaInputsManifest>(&manifest_path) {
         let lang = crate::language::current_language();
         let summary = if m.meta_files.is_empty() {
-            lang.tr("无 terrain-meta.json", "No terrain-meta.json").into()
+            lang.tr("无 terrain-meta.json", "No terrain-meta.json")
+                .into()
         } else if m.input_count == 0 {
             lang.tr(
                 &format!("{} meta 文件 · 0 inputs", m.meta_files.len()),
@@ -489,8 +486,16 @@ pub fn meta_inputs_status(paths: &KnowledgePaths, project_slug: &str) -> (bool, 
             .to_string()
         } else {
             lang.tr(
-                &format!("{} inputs · {} meta 文件", m.input_count, m.meta_files.len()),
-                &format!("{} inputs · {} meta files", m.input_count, m.meta_files.len()),
+                &format!(
+                    "{} inputs · {} meta 文件",
+                    m.input_count,
+                    m.meta_files.len()
+                ),
+                &format!(
+                    "{} inputs · {} meta files",
+                    m.input_count,
+                    m.meta_files.len()
+                ),
             )
             .to_string()
         };
@@ -499,7 +504,10 @@ pub fn meta_inputs_status(paths: &KnowledgePaths, project_slug: &str) -> (bool, 
     (
         false,
         crate::language::current_language()
-            .tr("未收集（生成 Agent 上下文时写入）", "Not collected (written when the Agent context is generated)")
+            .tr(
+                "未收集（生成 Agent 上下文时写入）",
+                "Not collected (written when the Agent context is generated)",
+            )
             .into(),
     )
 }
@@ -515,11 +523,7 @@ mod tests {
         let repo = tmp.path();
 
         fs::create_dir_all(repo.join("docs")).unwrap();
-        fs::write(
-            repo.join("docs/module.md"),
-            "# Core\n\nHandles packing.",
-        )
-        .unwrap();
+        fs::write(repo.join("docs/module.md"), "# Core\n\nHandles packing.").unwrap();
         fs::write(
             repo.join(META_FILENAME),
             r#"{

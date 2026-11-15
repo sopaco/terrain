@@ -6,23 +6,19 @@ use adk_runner::Runner;
 use adk_session::{CreateRequest, GetRequest, InMemorySessionService, SessionService};
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use terrain_core::{
-    extract_source_citations, merge_citations, KnowledgePaths,
-};
-use tokio::time::{timeout, Instant};
+use terrain_core::{KnowledgePaths, extract_source_citations, merge_citations};
+use tokio::time::{Instant, timeout};
 
 use crate::acp::resolve_acp_settings;
-use crate::agent_assets::{ensure_agent_assets, AgentAssetsEnsureReport};
-use crate::builder::{build_agent, AgentConfig};
+use crate::agent_assets::{AgentAssetsEnsureReport, ensure_agent_assets};
+use crate::builder::{AgentConfig, build_agent};
 use crate::context_generator::AgentContextGenerator;
-use crate::model::{build_llm, ensure_llm, ModelConfig};
+use crate::model::{ModelConfig, build_llm, ensure_llm};
 
-use super::{
-    finalize_usage, sanitize_answer_text, CHAT_APP_NAME, CHAT_USER_ID, ASK_TIMEOUT,
-};
 use super::prompt::build_ask_prompt;
-use super::tracker::{now_ms, ToolCallTracker};
+use super::tracker::{ToolCallTracker, now_ms};
 use super::types::{ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord};
+use super::{ASK_TIMEOUT, CHAT_APP_NAME, CHAT_USER_ID, finalize_usage, sanitize_answer_text};
 
 pub(crate) struct ChatContextGenerator {
     paths: KnowledgePaths,
@@ -247,11 +243,12 @@ impl super::ChatEngine {
             on_tool_calls(tool_tracker.records());
         }
 
-        let mut citations = if tool_tracker
-            .records()
-            .iter()
-            .any(|r| matches!(r.name.as_str(), "grep_agent_pack" | "read_agent_pack_file" | "read_agent_context"))
-        {
+        let mut citations = if tool_tracker.records().iter().any(|r| {
+            matches!(
+                r.name.as_str(),
+                "grep_agent_pack" | "read_agent_pack_file" | "read_agent_context"
+            )
+        }) {
             extract_source_citations(&answer, repo_path)
         } else {
             self.search_citations(query, project, repo_path)
@@ -304,9 +301,10 @@ fn extract_event_text(event: &adk_core::Event) -> EventText {
                 visible.push_str(text);
             }
         } else if let Some(text) = part.thinking_text()
-            && !text.is_empty() {
-                thinking.push_str(text);
-            }
+            && !text.is_empty()
+        {
+            thinking.push_str(text);
+        }
     }
     EventText { visible, thinking }
 }
@@ -389,19 +387,13 @@ mod tests {
             String::new(),
             "Here is the answer.".into(),
         ];
-        assert_eq!(
-            select_model_answer(&segments, true),
-            "Here is the answer."
-        );
+        assert_eq!(select_model_answer(&segments, true), "Here is the answer.");
     }
 
     #[test]
     fn select_model_answer_falls_back_to_earlier_segment_when_last_empty() {
         let segments = vec!["Draft before tools.".into(), String::new()];
-        assert_eq!(
-            select_model_answer(&segments, true),
-            "Draft before tools."
-        );
+        assert_eq!(select_model_answer(&segments, true), "Draft before tools.");
     }
 
     #[test]

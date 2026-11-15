@@ -15,7 +15,14 @@ use std::path::{Path, PathBuf};
 
 const PATH_PREFIXES: [&str; 4] = ["crates/", "src/", "src-tauri/", "env-catalog/"];
 const SOURCE_EXTENSIONS: [&str; 6] = ["rs", "ts", "tsx", "svelte", "md", "json"];
-const SKIP_DIRS: [&str; 6] = ["target", "node_modules", ".git", "dist", ".codegraph", ".workbuddy"];
+const SKIP_DIRS: [&str; 6] = [
+    "target",
+    "node_modules",
+    ".git",
+    "dist",
+    ".codegraph",
+    ".workbuddy",
+];
 
 fn workspace_root() -> Option<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).ancestors().nth(2)?;
@@ -68,7 +75,11 @@ fn repo_paths(text: &str) -> Vec<String> {
     backticked(text)
         .into_iter()
         .filter(|token| PATH_PREFIXES.iter().any(|p| token.starts_with(p)))
-        .filter(|token| ![' ', '*', '~', '<', '>', '…', '\\'].iter().any(|c| token.contains(*c)))
+        .filter(|token| {
+            ![' ', '*', '~', '<', '>', '…', '\\']
+                .iter()
+                .any(|c| token.contains(*c))
+        })
         .collect()
 }
 

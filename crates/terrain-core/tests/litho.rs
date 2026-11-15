@@ -2,8 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use terrain_core::{
-    count_human_docs, litho_human_complete, litho_human_complete_with_research, litho_research_ready,
-    KnowledgePaths, LITHO_CORE_RESEARCH_FILES,
+    KnowledgePaths, LITHO_CORE_RESEARCH_FILES, count_human_docs, litho_human_complete,
+    litho_human_complete_with_research, litho_research_ready,
 };
 
 fn write_human_fixture(base: &Path, module_count: usize) {

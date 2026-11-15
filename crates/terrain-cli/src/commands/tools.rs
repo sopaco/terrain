@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use terrain_core::{
-    build_context_overview, codegraph_drift, extract_context_section, grep_file,
+    AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS, AgentPackMeta, KnowledgePaths, KnowledgeSearch,
+    SearchOptions, build_context_overview, codegraph_drift, extract_context_section, grep_file,
     read_agent_pack_file, read_doc_at_in_project, resolve_freshness_summary,
-    resolve_project_repo_path, split_context_sections, AgentPackMeta, KnowledgePaths,
-    KnowledgeSearch, SearchOptions, AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
+    resolve_project_repo_path, split_context_sections,
 };
 
 use crate::cli::ToolsCommands;

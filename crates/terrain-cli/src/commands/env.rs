@@ -32,12 +32,9 @@ pub async fn run(cli_repo: Option<PathBuf>, command: EnvCommands) -> Result<()> 
             let repo_path = require_repo_path(cli_repo, repo_path)?;
             let selected = resolve_selected_ids(&repo_path, ids)?;
             let reinstall = reinstall.unwrap_or_default();
-            let result = apply_env_integration(
-                &repo_path,
-                &selected,
-                &reinstall,
-                |p| eprintln!("[{}] {}", p.stage, p.message),
-            )
+            let result = apply_env_integration(&repo_path, &selected, &reinstall, |p| {
+                eprintln!("[{}] {}", p.stage, p.message)
+            })
             .await?;
             print_json(&result)
         }

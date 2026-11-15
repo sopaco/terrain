@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_ready, count_human_docs, litho_human_complete_with_research, pack_agent_assets,
-    KnowledgePaths, KnowledgeSettings, ProgressEvent, ProjectInitResult, ProjectScanner, ScanReport,
+    KnowledgePaths, KnowledgeSettings, ProgressEvent, ProjectInitResult, ProjectScanner,
+    ScanReport, agent_context_ready, count_human_docs, litho_human_complete_with_research,
+    pack_agent_assets,
 };
 
 use crate::acp::{acp_available, execution_pure_acp, execution_uses_native_llm};
 use crate::agent_context::run_agent_context_generation;
 use crate::chat::ChatEngine;
 use crate::litho::LithoRunMode;
-use crate::model::{llm_status, ModelConfig};
+use crate::model::{ModelConfig, llm_status};
 use crate::settings::AcpSettings;
 
 #[allow(clippy::too_many_arguments)]
@@ -74,7 +75,10 @@ async fn run_agent_context_if_needed(
         pack_agent_assets(paths, project_slug, repo_path).await?;
     }
     let engine = if execution_uses_native_llm(acp) {
-        Some(Arc::new(ChatEngine::new_native(paths.clone(), model_config.clone())?))
+        Some(Arc::new(ChatEngine::new_native(
+            paths.clone(),
+            model_config.clone(),
+        )?))
     } else {
         None
     };
@@ -122,9 +126,7 @@ pub async fn run_project_initialization(
         files_written,
         agent_pack,
         ..
-    } = scanner
-        .scan_repo(repo_path, project_slug)
-        .await?;
+    } = scanner.scan_repo(repo_path, project_slug).await?;
 
     let repack_tokens = agent_pack.as_ref().map(|p| p.total_tokens);
 

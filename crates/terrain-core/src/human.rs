@@ -142,7 +142,11 @@ fn list_agent_docs(paths: &KnowledgePaths, project_slug: &str) -> Result<Vec<Hum
     Ok(entries)
 }
 
-pub fn read_human_doc(paths: &KnowledgePaths, project_slug: &str, relative_path: &str) -> Result<String> {
+pub fn read_human_doc(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    relative_path: &str,
+) -> Result<String> {
     let project_root = paths.project_dir(project_slug);
     let target = sanitize_relative(&project_root, relative_path)?;
     let human_dir = paths.human_docs_dir(project_slug);

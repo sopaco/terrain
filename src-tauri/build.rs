@@ -17,7 +17,12 @@ fn main() {
     println!("cargo:rerun-if-changed=../preset_skills");
     println!("cargo:rerun-if-changed=../env-catalog");
 
-    stage_sidecar(&target, platform, "rtk", &format!("../packages/rtk/{platform}/rtk"));
+    stage_sidecar(
+        &target,
+        platform,
+        "rtk",
+        &format!("../packages/rtk/{platform}/rtk"),
+    );
     stage_sidecar(
         &target,
         platform,
@@ -33,7 +38,9 @@ fn platform_key_for_target(target: &str) -> &'static str {
     match target {
         "aarch64-apple-darwin" => "darwin-arm64",
         "x86_64-apple-darwin" => "darwin-x64",
-        "x86_64-pc-windows-msvc" | "x86_64-pc-windows-gnu" | "x86_64-pc-windows-gnullvm" => "win32-x64",
+        "x86_64-pc-windows-msvc" | "x86_64-pc-windows-gnu" | "x86_64-pc-windows-gnullvm" => {
+            "win32-x64"
+        }
         "aarch64-pc-windows-msvc" => "win32-arm64",
         "x86_64-unknown-linux-gnu" => "linux-x64",
         "aarch64-unknown-linux-gnu" => "linux-arm64",
@@ -172,7 +179,10 @@ fn download_sidecar_from_npm_mirror(dest: &Path, npm_pkg: &str) -> Result<(), St
     let bytes = http_get_bytes(&url)?;
 
     let parent = dest.parent().unwrap_or(dest);
-    let tmp_dir = parent.join(format!(".sidecar-download-{npm_pkg}-{}", std::process::id()));
+    let tmp_dir = parent.join(format!(
+        ".sidecar-download-{npm_pkg}-{}",
+        std::process::id()
+    ));
     let _ = fs::remove_dir_all(&tmp_dir);
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("failed to create temp dir: {e}"))?;
 
@@ -194,9 +204,14 @@ fn download_sidecar_from_npm_mirror(dest: &Path, npm_pkg: &str) -> Result<(), St
             ));
         }
 
-        fs::create_dir_all(parent).map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
         copy_file_fresh(&extracted_bin, dest).map_err(|e| {
-            format!("failed to copy {} -> {}: {e}", extracted_bin.display(), dest.display())
+            format!(
+                "failed to copy {} -> {}: {e}",
+                extracted_bin.display(),
+                dest.display()
+            )
         })?;
 
         #[cfg(unix)]
@@ -206,7 +221,8 @@ fn download_sidecar_from_npm_mirror(dest: &Path, npm_pkg: &str) -> Result<(), St
                 .map_err(|e| format!("stat {}: {e}", dest.display()))?
                 .permissions();
             perms.set_mode(0o755);
-            fs::set_permissions(dest, perms).map_err(|e| format!("chmod {}: {e}", dest.display()))?;
+            fs::set_permissions(dest, perms)
+                .map_err(|e| format!("chmod {}: {e}", dest.display()))?;
         }
         Ok(())
     })();
@@ -214,7 +230,10 @@ fn download_sidecar_from_npm_mirror(dest: &Path, npm_pkg: &str) -> Result<(), St
     let _ = fs::remove_dir_all(&tmp_dir);
     result?;
 
-    println!("cargo:warning=downloaded {npm_pkg}@{version} from npm and vendored it as {}", dest.display());
+    println!(
+        "cargo:warning=downloaded {npm_pkg}@{version} from npm and vendored it as {}",
+        dest.display()
+    );
     Ok(())
 }
 
@@ -283,9 +302,8 @@ fn stage_sidecar(target: &str, platform: &str, name: &str, base_rel: &str) {
 
     fs::create_dir_all(&dest_dir).expect("create binaries dir");
 
-    let source_bytes = fs::read(&source).unwrap_or_else(|e| {
-        panic!("failed to read sidecar {}: {e}", source.display())
-    });
+    let source_bytes = fs::read(&source)
+        .unwrap_or_else(|e| panic!("failed to read sidecar {}: {e}", source.display()));
     if fs::read(&dest).ok().as_deref() == Some(source_bytes.as_slice()) {
         return;
     }
@@ -447,8 +465,13 @@ fn download_codegraph_bundle(dir: &Path, platform: &str) -> Result<(), String> {
         }
 
         fs::create_dir_all(dir).map_err(|e| format!("failed to create {}: {e}", dir.display()))?;
-        copy_dir_recursive(&extracted, dir)
-            .map_err(|e| format!("failed to copy {} -> {}: {e}", extracted.display(), dir.display()))
+        copy_dir_recursive(&extracted, dir).map_err(|e| {
+            format!(
+                "failed to copy {} -> {}: {e}",
+                extracted.display(),
+                dir.display()
+            )
+        })
     })();
 
     let _ = fs::remove_dir_all(&tmp_dir);

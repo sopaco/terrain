@@ -2,8 +2,8 @@ use std::fs;
 
 use anyhow::{Context, Result};
 use terrain_agent::{
-    acp_available, acp_spawn_command, llm_status, load_model_settings, model_settings_from_config,
-    resolve_model_config, save_model_settings, ModelSettings,
+    ModelSettings, acp_available, acp_spawn_command, llm_status, load_model_settings,
+    model_settings_from_config, resolve_model_config, save_model_settings,
 };
 use terrain_core::settings::settings_path;
 
@@ -18,8 +18,8 @@ pub fn run(command: SettingsCommands) -> Result<()> {
             print_json(&settings)
         }
         SettingsCommands::Set { file } => {
-            let raw = fs::read_to_string(&file)
-                .with_context(|| format!("read {}", file.display()))?;
+            let raw =
+                fs::read_to_string(&file).with_context(|| format!("read {}", file.display()))?;
             let settings: ModelSettings = serde_json::from_str(&raw)?;
             save_model_settings(&settings)?;
             let status = llm_status(&resolve_model_config());
@@ -35,9 +35,7 @@ pub fn run(command: SettingsCommands) -> Result<()> {
                 .unwrap_or_else(|| model_settings_from_config(&resolve_model_config()));
             if let Some(raw) = value {
                 let parsed = LanguageSetting::parse(&raw).ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "unsupported language: {raw} (expected system | zh-CN | en)"
-                    )
+                    anyhow::anyhow!("unsupported language: {raw} (expected system | zh-CN | en)")
                 })?;
                 settings.language = parsed;
                 save_model_settings(&settings)?;

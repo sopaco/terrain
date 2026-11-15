@@ -4,7 +4,7 @@ use crate::assets::read_agent_pack_file;
 use crate::doc::read_json;
 use crate::error::{CoreError, Result};
 use crate::human::read_human_doc;
-use crate::paths::{is_terrain_knowledge_asset_path, KnowledgePaths, normalize_knowledge_ref};
+use crate::paths::{KnowledgePaths, is_terrain_knowledge_asset_path, normalize_knowledge_ref};
 use crate::project::resolve_project_repo_path;
 use crate::schema::{AgentPackMeta, SourceSlice};
 use crate::search::read_doc_at_in_project;
@@ -24,9 +24,10 @@ fn is_path_within_repo(file: &Path, repo: &Path) -> bool {
     }
     // macOS: /var → /private/var while repo may be under /Users/...
     if let Ok(stripped) = file.strip_prefix("/private")
-        && stripped.starts_with(&repo) {
-            return true;
-        }
+        && stripped.starts_with(&repo)
+    {
+        return true;
+    }
     false
 }
 
@@ -164,19 +165,8 @@ fn try_resolve_knowledge_markdown(
     if project_rel == "agent/context.md" {
         let context_path = paths.agent_context_main(project_slug);
         if context_path.is_file()
-            && let Ok(body) = std::fs::read_to_string(&context_path) {
-                return Some(Ok(SourceSlice {
-                    repo_path: repo_path.unwrap_or("").to_string(),
-                    file_path: project_rel,
-                    start_line: 0,
-                    end_line: 0,
-                    content: body,
-                }));
-            }
-    }
-
-    if (project_rel.starts_with("human/") || project_rel == "agent/context.md")
-        && let Ok(body) = read_human_doc(paths, project_slug, &project_rel) {
+            && let Ok(body) = std::fs::read_to_string(&context_path)
+        {
             return Some(Ok(SourceSlice {
                 repo_path: repo_path.unwrap_or("").to_string(),
                 file_path: project_rel,
@@ -185,6 +175,19 @@ fn try_resolve_knowledge_markdown(
                 content: body,
             }));
         }
+    }
+
+    if (project_rel.starts_with("human/") || project_rel == "agent/context.md")
+        && let Ok(body) = read_human_doc(paths, project_slug, &project_rel)
+    {
+        return Some(Ok(SourceSlice {
+            repo_path: repo_path.unwrap_or("").to_string(),
+            file_path: project_rel,
+            start_line: 0,
+            end_line: 0,
+            content: body,
+        }));
+    }
 
     for rel in knowledge_doc_relative_candidates(project_slug, file_path) {
         if let Ok(doc) = read_doc_at_in_project(paths, &rel, Some(project_slug)) {
@@ -237,7 +240,11 @@ fn try_resolve_knowledge_asset(
     }))
 }
 
-fn agent_pack_index_slice(paths: &KnowledgePaths, project_slug: &str, repo_path: Option<&str>) -> Result<SourceSlice> {
+fn agent_pack_index_slice(
+    paths: &KnowledgePaths,
+    project_slug: &str,
+    repo_path: Option<&str>,
+) -> Result<SourceSlice> {
     let meta_path = paths.agent_pack_meta(project_slug);
     let meta: AgentPackMeta = read_json(&meta_path)?;
     let top_files = meta
@@ -361,7 +368,11 @@ fn try_agent_pack_slice(
     start_line: u32,
     end_line: u32,
 ) -> Result<crate::assets::AgentPackFileContent> {
-    let start = if start_line == 0 { None } else { Some(start_line) };
+    let start = if start_line == 0 {
+        None
+    } else {
+        Some(start_line)
+    };
     let end = if end_line == 0 { None } else { Some(end_line) };
     let mut last_err = None;
     for path in candidates {
@@ -401,10 +412,11 @@ pub fn resolve_source_citation(
     }
 
     if !is_source_code_path(file_path)
-        && let Some(result) = try_resolve_knowledge_markdown(paths, project_slug, file_path, repo_path)
-        {
-            return result;
-        }
+        && let Some(result) =
+            try_resolve_knowledge_markdown(paths, project_slug, file_path, repo_path)
+    {
+        return result;
+    }
 
     if let Some(result) = try_resolve_knowledge_asset(paths, project_slug, file_path, repo_path) {
         return result;
@@ -473,13 +485,7 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(&file, "line1\nline2\nline3\n").unwrap();
 
-        let slice = read_source_slice(
-            dir.path().to_str().unwrap(),
-            "src/lib.rs",
-            2,
-            3,
-        )
-        .unwrap();
+        let slice = read_source_slice(dir.path().to_str().unwrap(), "src/lib.rs", 2, 3).unwrap();
         assert_eq!(slice.content, "line2\nline3");
     }
 
@@ -488,7 +494,14 @@ mod tests {
         _registry_dir: tempfile::TempDir,
     }
 
-    fn test_setup(slug: &str) -> (KnowledgePaths, String, std::path::PathBuf, RegistryTestGuard) {
+    fn test_setup(
+        slug: &str,
+    ) -> (
+        KnowledgePaths,
+        String,
+        std::path::PathBuf,
+        RegistryTestGuard,
+    ) {
         let lock = registry_test_lock();
         let registry_dir = tempfile::tempdir().unwrap();
         let registry_file = registry_dir.path().join("registry.json");
@@ -529,15 +542,8 @@ mod tests {
         )
         .unwrap();
 
-        let slice = resolve_source_citation(
-            &paths,
-            &slug,
-            None,
-            ".meta/freshness.json",
-            0,
-            0,
-        )
-        .unwrap();
+        let slice =
+            resolve_source_citation(&paths, &slug, None, ".meta/freshness.json", 0, 0).unwrap();
         assert_eq!(slice.file_path, ".meta/freshness.json");
         assert!(slice.content.contains("freshness_score"));
     }
@@ -651,15 +657,9 @@ mod tests {
         )
         .unwrap();
 
-        let slice = resolve_source_citation(
-            &paths,
-            &slug,
-            Some(repo.to_str().unwrap()),
-            "lib.rs",
-            0,
-            0,
-        )
-        .unwrap();
+        let slice =
+            resolve_source_citation(&paths, &slug, Some(repo.to_str().unwrap()), "lib.rs", 0, 0)
+                .unwrap();
         assert!(slice.content.contains("live via alias"));
         assert!(!slice.content.contains("pack line"));
     }

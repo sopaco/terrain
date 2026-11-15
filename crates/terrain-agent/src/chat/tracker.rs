@@ -40,15 +40,16 @@ impl ToolCallTracker {
                     if event.llm_response.partial
                         && let Some(idx) = self.records.iter().rposition(|r| {
                             r.name == *name && matches!(r.status, ChatToolCallStatus::Running)
-                        }) {
-                            self.records[idx].arguments = args.clone();
-                            if let Some(call_id) = id {
-                                self.records[idx].id = call_id.clone();
-                                self.by_id.insert(call_id.clone(), idx);
-                            }
-                            changed = true;
-                            continue;
+                        })
+                    {
+                        self.records[idx].arguments = args.clone();
+                        if let Some(call_id) = id {
+                            self.records[idx].id = call_id.clone();
+                            self.by_id.insert(call_id.clone(), idx);
                         }
+                        changed = true;
+                        continue;
+                    }
 
                     let call_id = id.clone().unwrap_or_else(|| {
                         if let Some(idx) = self.records.iter().rposition(|r| {
@@ -90,19 +91,21 @@ impl ToolCallTracker {
                 } => {
                     let mut matched = false;
                     if let Some(call_id) = id
-                        && let Some(&idx) = self.by_id.get(call_id) {
+                        && let Some(&idx) = self.by_id.get(call_id)
+                    {
+                        apply_tool_result(self, idx, &function_response.response);
+                        matched = true;
+                        changed = true;
+                    }
+                    if !matched {
+                        let call_id = function_response.name.clone();
+                        if let Some(&idx) = self.by_id.get(&call_id)
+                            && matches!(self.records[idx].status, ChatToolCallStatus::Running)
+                        {
                             apply_tool_result(self, idx, &function_response.response);
                             matched = true;
                             changed = true;
                         }
-                    if !matched {
-                        let call_id = function_response.name.clone();
-                        if let Some(&idx) = self.by_id.get(&call_id)
-                            && matches!(self.records[idx].status, ChatToolCallStatus::Running) {
-                                apply_tool_result(self, idx, &function_response.response);
-                                matched = true;
-                                changed = true;
-                            }
                     }
                     if !matched {
                         if let Some(idx) = self.records.iter().position(|r| {

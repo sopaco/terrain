@@ -1,8 +1,8 @@
-use terrain_agent::{ask_knowledge, execution_pure_acp, run_sdd_phase, ChatReply};
+use tauri::{AppHandle, Emitter, State, ipc::Channel};
+use terrain_agent::{ChatReply, ask_knowledge, execution_pure_acp, run_sdd_phase};
 use terrain_core::{
-    ipc_string, resolve_sdd_session_id, AskStreamEvent, SddPhase, SddPhaseResult, SddStatus,
+    AskStreamEvent, SddPhase, SddPhaseResult, SddStatus, ipc_string, resolve_sdd_session_id,
 };
-use tauri::{ipc::Channel, AppHandle, Emitter, State};
 
 use crate::AppState;
 
@@ -64,12 +64,7 @@ pub async fn run_sdd_phase_cmd(
     let engine = if execution_pure_acp(&acp) || phase == SddPhase::CodeGen {
         None
     } else {
-        Some(
-            state
-                .runtime
-                .chat_engine()
-                .map_err(ipc_string)?,
-        )
+        Some(state.runtime.chat_engine().map_err(ipc_string)?)
     };
 
     let app_emit = app.clone();
@@ -111,6 +106,9 @@ pub async fn run_sdd_phase_cmd(
 }
 
 #[tauri::command]
-pub fn get_sdd_status_cmd(state: State<'_, AppState>, project_slug: String) -> Result<SddStatus, String> {
+pub fn get_sdd_status_cmd(
+    state: State<'_, AppState>,
+    project_slug: String,
+) -> Result<SddStatus, String> {
     Ok(terrain_core::get_sdd_status(state.paths(), &project_slug))
 }

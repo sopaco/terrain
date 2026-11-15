@@ -1,9 +1,9 @@
-use terrain_agent::{
-    acp_available, acp_spawn_command, llm_status, load_model_settings, model_settings_from_config,
-    resolve_model_config, save_model_settings, ModelSettings,
-};
-use terrain_core::{list_all_registry_projects, AppBootstrap};
 use tauri::State;
+use terrain_agent::{
+    ModelSettings, acp_available, acp_spawn_command, llm_status, load_model_settings,
+    model_settings_from_config, resolve_model_config, save_model_settings,
+};
+use terrain_core::{AppBootstrap, list_all_registry_projects};
 
 use crate::AppState;
 
@@ -170,7 +170,9 @@ pub fn save_png_files(
             .to_string());
     }
     if pngs_base64.is_empty() {
-        return Err(lang.tr("没有可导出的图片", "No images to export").to_string());
+        return Err(lang
+            .tr("没有可导出的图片", "No images to export")
+            .to_string());
     }
 
     let stem = sanitize_file_stem(&base_name);

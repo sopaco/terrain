@@ -7,12 +7,10 @@ use terrain_core::{
     extract_source_citations, merge_citations, normalize_repo_hint, resolve_project_repo_path,
 };
 
-use super::{finalize_usage, sanitize_answer_text};
 use super::prompt::build_ask_acp_prompt;
 use super::tracker::now_ms;
-use super::types::{
-    ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus,
-};
+use super::types::{ChatPhase, ChatReply, ChatTokenUsage, ChatToolCallRecord, ChatToolCallStatus};
+use super::{finalize_usage, sanitize_answer_text};
 
 impl super::ChatEngine {
     #[allow(clippy::too_many_arguments)]
@@ -58,10 +56,7 @@ impl super::ChatEngine {
 
         let skill_dir = default_ask_acp_skill_dir();
         let mut env = HashMap::new();
-        env.insert(
-            "TERRAIN_ASK_SKILL".into(),
-            skill_dir.display().to_string(),
-        );
+        env.insert("TERRAIN_ASK_SKILL".into(), skill_dir.display().to_string());
         env.insert(
             "TERRAIN_KNOWLEDGE_ROOT".into(),
             self.paths
@@ -114,10 +109,7 @@ impl super::ChatEngine {
         let mut citations = self
             .search_citations(query, project, repo_path)
             .unwrap_or_default();
-        citations = merge_citations(
-            citations,
-            extract_source_citations(&answer, repo_path),
-        );
+        citations = merge_citations(citations, extract_source_citations(&answer, repo_path));
 
         let answer = if answer.trim().is_empty() {
             "ACP agent returned empty text.".into()

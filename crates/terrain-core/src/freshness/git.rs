@@ -198,7 +198,11 @@ pub fn git_commit_exists(repo_path: &str, commitish: &str) -> bool {
     if commitish.is_empty() || !repo.join(".git").exists() {
         return false;
     }
-    git_output(repo, &["rev-parse", "--verify", &format!("{commitish}^{{commit}}")]).is_some()
+    git_output(
+        repo,
+        &["rev-parse", "--verify", &format!("{commitish}^{{commit}}")],
+    )
+    .is_some()
 }
 
 /// Collect committed and uncommitted changes since `baseline` (knowledge outputs filtered out).
@@ -258,15 +262,18 @@ pub fn git_change_set(repo_path: &str, baseline: &str) -> Option<GitChangeSet> {
     )
     .unwrap_or_default();
 
-    let dirty_paths = git_output(repo, &["-c", "core.quotepath=false", "status", "--porcelain"])
-        .map(|out| {
-            out.lines()
-                .map(porcelain_entry_path)
-                .filter(|p| !p.is_empty() && !is_knowledge_output_path(p))
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default();
+    let dirty_paths = git_output(
+        repo,
+        &["-c", "core.quotepath=false", "status", "--porcelain"],
+    )
+    .map(|out| {
+        out.lines()
+            .map(porcelain_entry_path)
+            .filter(|p| !p.is_empty() && !is_knowledge_output_path(p))
+            .map(str::to_string)
+            .collect()
+    })
+    .unwrap_or_default();
 
     Some(GitChangeSet {
         changed,

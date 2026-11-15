@@ -1,14 +1,13 @@
+use tauri::{AppHandle, Emitter, State};
 use terrain_agent::{
-    run_project_initialization, run_quick_refresh, LithoGenerationResult, LithoProgress,
-    ProjectInitProgress,
+    LithoGenerationResult, LithoProgress, ProjectInitProgress, run_project_initialization,
+    run_quick_refresh,
 };
 use terrain_core::{
-    compute_freshness, get_project_overview, list_all_registry_projects, plan_litho_generation,
-    read_freshness_ledger, write_project_remark, FreshnessSummary, ProjectOverview,
-    ProjectRegistryEntry, ProjectSummary, QuickRefreshResult, ScanReport, ProjectScanner,
-    ProjectInitResult,
+    FreshnessSummary, ProjectInitResult, ProjectOverview, ProjectRegistryEntry, ProjectScanner,
+    ProjectSummary, QuickRefreshResult, ScanReport, compute_freshness, get_project_overview,
+    list_all_registry_projects, plan_litho_generation, read_freshness_ledger, write_project_remark,
 };
-use tauri::{AppHandle, Emitter, State};
 
 use crate::AppState;
 
@@ -163,12 +162,9 @@ pub fn compute_freshness_cmd(
     project_slug: String,
     repo_path: Option<String>,
 ) -> Result<FreshnessSummary, String> {
-    let repo = terrain_core::resolve_project_repo_path(
-        state.paths(),
-        &project_slug,
-        repo_path.as_deref(),
-    )
-    .map_err(|e| e.to_string())?;
+    let repo =
+        terrain_core::resolve_project_repo_path(state.paths(), &project_slug, repo_path.as_deref())
+            .map_err(|e| e.to_string())?;
     map_core_err(compute_freshness(state.paths(), &project_slug, &repo))
 }
 

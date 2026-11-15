@@ -1,8 +1,8 @@
-use terrain_core::{
-    list_human_docs, process_command, read_doc_at, read_source_slice, resolve_source_citation,
-    HumanDocEntry, KnowledgeDoc, KnowledgeSearch, SearchHit, SearchOptions, SourceSlice,
-};
 use tauri::State;
+use terrain_core::{
+    HumanDocEntry, KnowledgeDoc, KnowledgeSearch, SearchHit, SearchOptions, SourceSlice,
+    list_human_docs, process_command, read_doc_at, read_source_slice, resolve_source_citation,
+};
 
 use crate::AppState;
 
@@ -47,7 +47,9 @@ pub fn read_source_slice_cmd(
     start_line: u32,
     end_line: u32,
 ) -> Result<SourceSlice, String> {
-    map_core_err(read_source_slice(&repo_path, &file_path, start_line, end_line))
+    map_core_err(read_source_slice(
+        &repo_path, &file_path, start_line, end_line,
+    ))
 }
 
 #[tauri::command]

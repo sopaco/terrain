@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use terrain_core::{
-    agent_context_ready, agent_context_recorded_baseline_head, agent_pack_ready,
-    build_agent_context_prompt, build_agent_context_update_prompt, context_body_ready,
-    pack_agent_assets, plan_incremental_update, prepare_model_markdown, read_agent_context_body,
-    refresh_agent_context_baseline, reject_incremental_document, write_agent_context,
     AgentContextGenerationResult, IncrementalOptions, IncrementalPlan, KnowledgePaths,
-    KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode,
+    KnowledgeRefreshMode, KnowledgeSettings, KnowledgeUpdateMode, agent_context_ready,
+    agent_context_recorded_baseline_head, agent_pack_ready, build_agent_context_prompt,
+    build_agent_context_update_prompt, context_body_ready, pack_agent_assets,
+    plan_incremental_update, prepare_model_markdown, read_agent_context_body,
+    refresh_agent_context_baseline, reject_incremental_document, write_agent_context,
 };
 
 use crate::acp::{
@@ -193,9 +193,8 @@ pub async fn run_agent_context_generation(
                 "agent context: recovered document from disk (ACP wrote file; reply was summary only)"
             );
             body = on_disk;
-            refresh_reason = refresh_reason.or_else(|| {
-                Some("recovered_from_disk_after_summary_reply".into())
-            });
+            refresh_reason =
+                refresh_reason.or_else(|| Some("recovered_from_disk_after_summary_reply".into()));
         }
     }
 
@@ -233,8 +232,9 @@ async fn run_agent_context_turn(
     if execution_pure_acp(acp_settings) {
         run_agent_context_acp(paths, acp_settings, project_slug, repo_path, update).await
     } else {
-        let engine = engine
-            .ok_or_else(|| anyhow::anyhow!("native agent context generation requires ChatEngine"))?;
+        let engine = engine.ok_or_else(|| {
+            anyhow::anyhow!("native agent context generation requires ChatEngine")
+        })?;
         run_agent_context_native(paths, engine, project_slug, repo_path, update).await
     }
 }

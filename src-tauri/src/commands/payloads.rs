@@ -1,6 +1,6 @@
+use serde::Serialize;
 use terrain_agent::{LithoGenerationResult, ProjectInitResult};
 use terrain_core::{EnvApplyResult, SddPhase, SddPhaseResult};
-use serde::Serialize;
 
 #[derive(Clone, Serialize)]
 pub(crate) struct LithoProgressPayload {

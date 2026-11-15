@@ -8,8 +8,8 @@ use crate::error::Result;
 use crate::paths::KnowledgePaths;
 use crate::schema::DocType;
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchHit {
     pub path: String,
@@ -44,7 +44,11 @@ impl<'a> KnowledgeSearch<'a> {
             return Ok(Vec::new());
         }
 
-        let limit = if options.limit == 0 { 20 } else { options.limit };
+        let limit = if options.limit == 0 {
+            20
+        } else {
+            options.limit
+        };
         let mut hits = Vec::new();
         let project_roots = self.paths.indexed_project_roots();
 
@@ -143,8 +147,8 @@ impl<'a> KnowledgeSearch<'a> {
     }
 }
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectSummary {
     pub slug: String,
@@ -169,10 +173,12 @@ fn search_includes_markdown(path: &Path) -> bool {
     if path.file_name().is_some_and(|n| n == "repomix.md") {
         return false;
     }
-    if path
-        .components()
-        .any(|c| matches!(c.as_os_str().to_str(), Some("agent" | ".litho-agent" | ".sdd-agent")))
-    {
+    if path.components().any(|c| {
+        matches!(
+            c.as_os_str().to_str(),
+            Some("agent" | ".litho-agent" | ".sdd-agent")
+        )
+    }) {
         return path.file_name().is_some_and(|n| n == "context.md");
     }
     true
@@ -378,9 +384,10 @@ pub fn read_doc_at_in_project(
 
     let mut search_roots: Vec<(Option<String>, PathBuf)> = Vec::new();
     if let Some(slug) = project_slug
-        && let Ok(root) = paths.try_project_dir(slug) {
-            search_roots.push((Some(slug.to_string()), root));
-        }
+        && let Ok(root) = paths.try_project_dir(slug)
+    {
+        search_roots.push((Some(slug.to_string()), root));
+    }
 
     if let Some(root) = paths.workspace_knowledge_root() {
         search_roots.push((project_slug.map(str::to_string), root));
@@ -510,8 +517,7 @@ mod read_doc_tests {
         std::fs::create_dir_all(context_path.parent().unwrap()).unwrap();
         std::fs::write(&context_path, "# Agent context\n\nModules overview.").unwrap();
 
-        let doc =
-            read_doc_at_in_project(&paths, ".terrain/agent/context.md", Some(&slug)).unwrap();
+        let doc = read_doc_at_in_project(&paths, ".terrain/agent/context.md", Some(&slug)).unwrap();
         assert!(doc.body.contains("Modules overview"));
     }
 

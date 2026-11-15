@@ -64,7 +64,10 @@ fn context_body() -> String {
 fn write_assets(repo: &Path, slug: &str, baseline: &str, now: &str) {
     let paths = KnowledgePaths::for_repo(repo);
     let (pack_meta, pack_main) = (paths.agent_pack_meta(slug), paths.agent_pack_main(slug));
-    let (ctx_meta, ctx_main) = (paths.agent_context_meta(slug), paths.agent_context_main(slug));
+    let (ctx_meta, ctx_main) = (
+        paths.agent_context_meta(slug),
+        paths.agent_context_main(slug),
+    );
     for path in [&pack_meta, &pack_main, &ctx_meta, &ctx_main] {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
     }
@@ -76,7 +79,7 @@ fn write_assets(repo: &Path, slug: &str, baseline: &str, now: &str) {
   "project": "{slug}",
   "repo_path": ".",
   "generator": "repomix-core",
-  "pack_strategy": "architecture-context-v3",
+  "pack_strategy": "architecture-context-v4",
   "output_file": "repomix.md",
   "total_files": 24,
   "total_tokens": 1000,
@@ -89,7 +92,11 @@ fn write_assets(repo: &Path, slug: &str, baseline: &str, now: &str) {
         ),
     )
     .unwrap();
-    fs::write(&pack_main, "# Repomix\n\n### main.rs\n\n```rust\nfn main() {}\n```\n").unwrap();
+    fs::write(
+        &pack_main,
+        "# Repomix\n\n### main.rs\n\n```rust\nfn main() {}\n```\n",
+    )
+    .unwrap();
     fs::write(
         &ctx_meta,
         format!(
@@ -110,7 +117,11 @@ fn write_assets(repo: &Path, slug: &str, baseline: &str, now: &str) {
 }
 
 fn factor_ids(summary: &FreshnessSummary) -> Vec<&str> {
-    summary.drift_factors.iter().map(|f| f.id.as_str()).collect()
+    summary
+        .drift_factors
+        .iter()
+        .map(|f| f.id.as_str())
+        .collect()
 }
 
 /// `mode`: `NewSource` commits a source file after the pack baseline, `Clean` leaves HEAD at
@@ -222,15 +233,14 @@ fn index_gate_names_missing_sources_and_fails_closed_on_unreachable_baselines() 
     ledger.version = 1; // produced by the previous binary
     ledger.summary.overall_score = 0; // sentinel: a cached verdict would return 0
     write_freshness_ledger(&paths, slug, &ledger).unwrap();
-    let recomputed = resolve_freshness_summary(
-        &paths,
-        slug,
-        &keep4.path().display().to_string(),
-    )
-    .expect("freshness recomputes");
+    let recomputed = resolve_freshness_summary(&paths, slug, &keep4.path().display().to_string())
+        .expect("freshness recomputes");
     assert_ne!(
         recomputed.overall_score, 0,
         "a stale-version ledger must not be served from cache"
     );
-    assert!(recomputed.overall_score >= FRESH_THRESHOLD, "{recomputed:?}");
+    assert!(
+        recomputed.overall_score >= FRESH_THRESHOLD,
+        "{recomputed:?}"
+    );
 }

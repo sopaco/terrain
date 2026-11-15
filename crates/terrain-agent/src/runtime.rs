@@ -2,10 +2,10 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use terrain_core::KnowledgePaths;
 
+use crate::acp::resolve_acp_settings;
 use crate::chat::ChatEngine;
 use crate::model::{ModelConfig, resolve_model_config};
-use crate::acp::resolve_acp_settings;
-use crate::settings::{load_model_settings, AcpSettings};
+use crate::settings::{AcpSettings, load_model_settings};
 
 /// Shared runtime for GUI and CLI — caches [`ChatEngine`] and model settings.
 pub struct Runtime {
@@ -31,9 +31,7 @@ impl Runtime {
     }
 
     pub fn set_model_config(&self, config: ModelConfig) {
-        *self.model_config
-            .write()
-            .unwrap_or_else(|e| e.into_inner()) = config;
+        *self.model_config.write().unwrap_or_else(|e| e.into_inner()) = config;
         *self.chat.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
 

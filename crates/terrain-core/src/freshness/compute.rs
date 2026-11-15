@@ -7,26 +7,26 @@ use chrono::Utc;
 use crate::assets::{agent_context_ready, agent_pack_ready};
 use crate::doc::read_json;
 use crate::error::Result;
-use crate::paths::KnowledgePaths;
 use crate::path_portable::stored_repo_path;
+use crate::paths::KnowledgePaths;
 use crate::project::resolve_project_repo_path;
 use crate::schema::{
     AgentContextMeta, AgentPackMeta, AssetFreshness, FreshnessLedger, FreshnessSummary, SyncMeta,
 };
 
-use super::drift_factors::{build_drift_factors, DriftExplainInput};
+use super::drift_factors::{DriftExplainInput, build_drift_factors};
 use super::git::{
-    git_change_set, git_drift_since, git_snapshot, DriftBasis, GitDrift, GitSnapshot,
+    DriftBasis, GitDrift, GitSnapshot, git_change_set, git_drift_since, git_snapshot,
 };
 use super::ledger::{
-    freshness_ledger_still_valid, read_freshness_ledger, write_freshness_ledger,
-    LEDGER_VERSION_CONST,
+    LEDGER_VERSION_CONST, freshness_ledger_still_valid, read_freshness_ledger,
+    write_freshness_ledger,
 };
 use super::scoring::{
     context_score_from_raw, days_since_rfc3339, overall_freshness_score, score_layer,
     short_git_ref, stale_reason_for,
 };
-use super::{is_indexed_source_path, FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD};
+use super::{FRESH_THRESHOLD, MACRO_PRELOAD_THRESHOLD, VERIFY_THRESHOLD, is_indexed_source_path};
 
 /// Drift for one asset layer, resolving how — or whether — it can be measured.
 ///
@@ -90,15 +90,20 @@ pub fn compute_freshness(
     let pack_ready = agent_pack_ready(paths, project_slug);
     let ctx_ready = agent_context_ready(paths, project_slug);
 
-    let pack_baseline = pack_meta
-        .as_ref()
-        .and_then(|m| m.baseline_git_head.clone());
+    let pack_baseline = pack_meta.as_ref().and_then(|m| m.baseline_git_head.clone());
     let pack_drift = layer_drift(&repo_path, pack_baseline.as_deref(), &git);
     let pack_days = pack_meta
         .as_ref()
         .and_then(|m| days_since_rfc3339(&m.synced_at))
-        .or_else(|| sync_meta.as_ref().and_then(|m| days_since_rfc3339(&m.synced_at)));
-    let pack_total_files = pack_meta.as_ref().map(|m| m.total_files as u32).unwrap_or(0);
+        .or_else(|| {
+            sync_meta
+                .as_ref()
+                .and_then(|m| days_since_rfc3339(&m.synced_at))
+        });
+    let pack_total_files = pack_meta
+        .as_ref()
+        .map(|m| m.total_files as u32)
+        .unwrap_or(0);
     let pack_score = if pack_ready {
         score_layer(&pack_drift, pack_days, pack_total_files.max(1), git.dirty)
     } else {
@@ -133,7 +138,11 @@ pub fn compute_freshness(
     let human_days = human_meta
         .as_ref()
         .and_then(|m| days_since_rfc3339(&m.generated_at))
-        .or_else(|| sync_meta.as_ref().and_then(|m| days_since_rfc3339(&m.synced_at)))
+        .or_else(|| {
+            sync_meta
+                .as_ref()
+                .and_then(|m| days_since_rfc3339(&m.synced_at))
+        })
         .or(pack_days);
     let human_drift = layer_drift(&repo_path, human_baseline.as_deref(), &git);
     let human_score = score_layer(&human_drift, human_days, pack_total_files.max(1), git.dirty);
@@ -162,7 +171,10 @@ pub fn compute_freshness(
     let commits_since = pack_drift
         .commits_since_baseline
         .max(ctx_drift.commits_since_baseline);
-    let changed_files_count = pack_drift.changed_files.len().max(ctx_drift.changed_files.len()) as u32;
+    let changed_files_count = pack_drift
+        .changed_files
+        .len()
+        .max(ctx_drift.changed_files.len()) as u32;
 
     // The first layer whose drift could not be measured explains the overall verdict.
     let unmeasured_basis = [pack_drift.basis, ctx_drift.basis, human_drift.basis]
@@ -176,7 +188,13 @@ pub fn compute_freshness(
     } else if !pack_ready || !ctx_ready {
         Some("asset_not_ready".into())
     } else {
-        stale_reason_for(overall_score, commits_since, git.dirty, true, unmeasured_basis)
+        stale_reason_for(
+            overall_score,
+            commits_since,
+            git.dirty,
+            true,
+            unmeasured_basis,
+        )
     };
 
     let now = Utc::now().to_rfc3339();
@@ -200,12 +218,8 @@ pub fn compute_freshness(
         missing_new_sources: &missing_new_sources,
     });
 
-    let sample_changed_files: Vec<String> = pack_drift
-        .changed_files
-        .iter()
-        .take(12)
-        .cloned()
-        .collect();
+    let sample_changed_files: Vec<String> =
+        pack_drift.changed_files.iter().take(12).cloned().collect();
 
     let summary = FreshnessSummary {
         overall_score,
@@ -259,9 +273,7 @@ pub fn compute_freshness(
             agent_context: AssetFreshness {
                 path: "agent/context.md".into(),
                 synced_at: ctx_meta.as_ref().map(|m| m.generated_at.clone()),
-                baseline_git_head: ctx_meta
-                    .as_ref()
-                    .and_then(|m| m.baseline_git_head.clone()),
+                baseline_git_head: ctx_meta.as_ref().and_then(|m| m.baseline_git_head.clone()),
                 stale: agent_context_score < FRESH_THRESHOLD,
                 stale_reason: stale_reason_for(
                     agent_context_score,
@@ -316,9 +328,10 @@ pub fn resolve_freshness_summary(
         .unwrap_or_else(|_| repo_path.to_string());
 
     if let Some(ledger) = read_freshness_ledger(paths, project_slug)
-        && freshness_ledger_still_valid(paths, project_slug, &ledger, &repo_path) {
-            return Ok(ledger.summary);
-        }
+        && freshness_ledger_still_valid(paths, project_slug, &ledger, &repo_path)
+    {
+        return Ok(ledger.summary);
+    }
 
     compute_freshness(paths, project_slug, &repo_path)
 }
@@ -346,10 +359,7 @@ pub fn format_freshness_trust_block(summary: &FreshnessSummary) -> String {
         summary.human_docs_score,
         summary.commits_since_baseline,
         summary.changed_files_count,
-        summary
-            .current_git_head
-            .as_deref()
-            .unwrap_or("(unknown)"),
+        summary.current_git_head.as_deref().unwrap_or("(unknown)"),
         summary.working_tree_dirty,
         summary.is_git_repo,
         stale_line = summary
