@@ -129,9 +129,7 @@ pub fn deploy_preset_skills_to_home() -> Result<PathBuf> {
         .cloned()
         .or_else(discover_preset_skills_runtime)
         .ok_or_else(|| {
-            CoreError::InvalidDoc(
-                "Terrain preset skills not found (bundle or dev tree)".into(),
-            )
+            CoreError::InvalidDoc("Terrain preset skills not found (bundle or dev tree)".into())
         })?;
 
     let dest = user_preset_skills_dir();
@@ -201,9 +199,8 @@ fn discover_dev_preset_skills() -> Option<PathBuf> {
 }
 
 fn fallback_dev_preset_skills_root() -> PathBuf {
-    discover_dev_preset_skills().unwrap_or_else(|| {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills")
-    })
+    discover_dev_preset_skills()
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../preset_skills"))
 }
 
 fn symlink_replace(link: &Path, target: &Path) -> Result<()> {

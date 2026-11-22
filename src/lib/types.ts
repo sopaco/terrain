@@ -8,6 +8,12 @@ export * from "./generated";
 export {
   type AppTab,
   type AskExecution,
+  type GraphifyCommunity,
+  type GraphifyStatus,
+  type GraphifyViewPayload,
+  type GeneratedCommitMessage,
+  type UaStatus,
+  type UaViewerInfo,
   type AskKnowledgeReplyUi,
   type AskStreamEvent,
   type AssistantStep,

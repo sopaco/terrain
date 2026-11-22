@@ -14,11 +14,11 @@ use std::path::{Path, PathBuf};
 #[cfg(any(test, not(unix)))]
 use std::time::UNIX_EPOCH;
 
-use serde::Serialize;
 #[cfg(any(test, not(unix)))]
 use serde::Deserialize;
+use serde::Serialize;
 
-use crate::bundled_tools::{bundled_terrain_cli, bundled_rtk, ensure_bundled_tools_initialized};
+use crate::bundled_tools::{bundled_rtk, bundled_terrain_cli, ensure_bundled_tools_initialized};
 use crate::error::{CoreError, Result};
 use crate::path_portable::to_tilde_path;
 use crate::platform::agent_tool_filename;
@@ -100,11 +100,7 @@ pub fn deploy_agent_toolchain_with_options(opts: DeployOptions) -> Result<AgentT
 
     if let Some(runtime_src) = bundled_codegraph_runtime() {
         let runtime_dest = agent_tools_runtime_dir().join(CODEGRAPH_RUNTIME_NAME);
-        fs::create_dir_all(
-            runtime_dest
-                .parent()
-                .unwrap_or(Path::new(".")),
-        )?;
+        fs::create_dir_all(runtime_dest.parent().unwrap_or(Path::new(".")))?;
         materialize_ensure("codegraph-runtime", &runtime_dest, &runtime_src, opts.force)?;
 
         let codegraph_bin = find_codegraph_bin(&runtime_dest);
@@ -280,9 +276,7 @@ fn deployment_is_current(_key: &str, dest: &Path, source: &Path) -> Result<bool>
     let resolved = if actual.is_absolute() {
         actual
     } else {
-        dest.parent()
-            .map(|p| p.join(&actual))
-            .unwrap_or(actual)
+        dest.parent().map(|p| p.join(&actual)).unwrap_or(actual)
     };
     Ok(paths_equal(&resolved, source))
 }
@@ -389,10 +383,7 @@ fn paths_equal(a: &Path, b: &Path) -> bool {
 
 #[cfg(not(unix))]
 fn temp_sibling_path(dest: &Path) -> PathBuf {
-    let name = dest
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("tool");
+    let name = dest.file_name().and_then(|n| n.to_str()).unwrap_or("tool");
     dest.with_file_name(format!("{name}.deploy-tmp"))
 }
 
@@ -439,9 +430,12 @@ fn source_fingerprint(path: &Path) -> Result<SourceFingerprint> {
 
 #[cfg(any(test, not(unix)))]
 fn file_fingerprint(path: &Path) -> Result<FileFingerprint> {
-    let meta = path
-        .metadata()
-        .map_err(|e| CoreError::InvalidDoc(format!("read bundled tool metadata {}: {e}", path.display())))?;
+    let meta = path.metadata().map_err(|e| {
+        CoreError::InvalidDoc(format!(
+            "read bundled tool metadata {}: {e}",
+            path.display()
+        ))
+    })?;
     Ok(FileFingerprint {
         size: meta.len(),
         modified_ms: file_modified_ms(&meta)?,
@@ -488,9 +482,8 @@ fn read_deploy_marker(key: &str, dest: &Path) -> Result<Option<SourceFingerprint
         return Ok(None);
     }
     let raw = fs::read_to_string(&path).map_err(|e| io_error("read deploy marker", &path, e))?;
-    serde_json::from_str(&raw).map_err(|e| {
-        CoreError::InvalidDoc(format!("parse deploy marker {}: {e}", path.display()))
-    })
+    serde_json::from_str(&raw)
+        .map_err(|e| CoreError::InvalidDoc(format!("parse deploy marker {}: {e}", path.display())))
 }
 
 #[cfg(not(unix))]
@@ -500,9 +493,8 @@ fn record_deploy_state(key: &str, dest: &Path, source: &Path) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
     let fp = source_fingerprint(source)?;
-    fs::write(&path, serde_json::to_string_pretty(&fp)?).map_err(|e| {
-        io_error("write deploy marker", &path, e)
-    })
+    fs::write(&path, serde_json::to_string_pretty(&fp)?)
+        .map_err(|e| io_error("write deploy marker", &path, e))
 }
 
 #[cfg(not(unix))]
@@ -560,8 +552,8 @@ mod tests {
 
     #[test]
     fn codegraph_runtime_detects_node_exe() {
-        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../packages/codegraph/win32-x64");
+        let runtime =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/codegraph/win32-x64");
         let codegraph_cmd = runtime.join("bin/codegraph.cmd");
         if !codegraph_cmd.is_file() {
             return;

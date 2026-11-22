@@ -20,79 +20,74 @@ source: .
 
 ## Structure
 
+  - Cargo.toml
+  - svelte.config.js
+  - crates/
+    - terrain-dashboard/
+    - terrain-ts-export/
+    - terrain-core/
+    - terrain-agent/
+    - terrain-cli/
+  - index.html
+  - LICENSE
   - preset_skills/
-    - terrain-ask-skill/
+    - litho-documents-skill/
     - sdd-workflow-skill/
+    - terrain-ask-skill/
     - agent-architecture-skill/
     - agent-context-skill/
-    - litho-documents-skill/
-  - assets/
-    - app_icon_re.png
-    - screenshots/
-    - intro/
-    - app-icon.png
-    - banner.webp
-    - graph_knowledge_factory.webp
-  - CLAUDE.md
   - env-catalog/
-    - catalog.json
-    - agents-md/
-    - skills/
     - agent-tools.template.json
-  - LICENSE
-  - Cargo.toml
-  - .agents/
-    - skills/
-  - vite.config.ts
-  - README.md
-  - .claude/
-    - skills/
-  - .codegraph/
-    - codegraph.db
-    - .gitignore
-  - npm/
-    - README.md
-    - packages/
+    - agents-md/
     - scripts/
-    - package.json
-    - .gitignore
-    - package-lock.json
+    - skills/
+    - catalog.json
+  - Cargo.lock
+  - bun.lock
+  - docs/
+    - CLONE_SPEC-git-panel.md
+  - NOTICE
+  - README.md
+  - package.json
+  - README_zh.md
+  - scripts/
+    - cross-windows-terrain.sh
+    - check-i18n-parity.ts
   - packages/
     - codegraph/
     - terrain/
     - rtk/
-  - scripts/
-    - check-i18n-parity.ts
-    - cross-windows-terrain.sh
-  - index.html
   - src-tauri/
     - Cargo.toml
+    - tauri.conf.json
+    - capabilities/
+    - build.rs
+    - gen/
     - binaries/
     - icons/
-    - bundled-resources/
-    - tauri.conf.json
-    - build.rs
-    - capabilities/
-    - gen/
     - src/
+  - tsconfig.json
   - rust-toolchain.toml
-  - README_zh.md
-  - package.json
   - AGENTS.md
-  - crates/
-    - terrain-cli/
-    - terrain-ts-export/
-    - terrain-core/
-    - terrain-agent/
-  - .gitignore
+  - vite.config.ts
+  - assets/
+    - app_icon_re.png
+    - screenshots/
+    - graph_knowledge_factory.webp
+    - intro/
+    - app-icon.png
+    - banner.webp
+  - npm/
+    - README.md
+    - package-lock.json
+    - package.json
+    - scripts/
+    - packages/
+  - CLAUDE.md
   - src/
     - main.ts
-    - UsageWindow.svelte
+    - app.css
+    - App.svelte
     - vite-env.d.ts
     - lib/
-    - App.svelte
-    - app.css
-  - svelte.config.js
-  - Cargo.lock
-  - bun.lock
-  - tsconfig.json
+    - UsageWindow.svelte

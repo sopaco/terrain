@@ -37,11 +37,7 @@ pub fn module_body(name: &str, repo_path: &str) -> String {
     )
 }
 
-pub fn module_frontmatter(
-    project_slug: &str,
-    name: &str,
-    repo_path: &str,
-) -> DocFrontmatter {
+pub fn module_frontmatter(project_slug: &str, name: &str, repo_path: &str) -> DocFrontmatter {
     DocFrontmatter {
         doc_type: DocType::Module,
         project: project_slug.to_string(),

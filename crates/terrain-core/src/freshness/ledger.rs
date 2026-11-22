@@ -66,13 +66,15 @@ pub(crate) fn freshness_ledger_still_valid(
 
     let ledger_at = &ledger.last_computed_at;
     if let Ok(pack_meta) = read_json::<AgentPackMeta>(paths.agent_pack_meta(project_slug))
-        && pack_meta.synced_at.as_str() > ledger_at.as_str() {
-            return false;
-        }
+        && pack_meta.synced_at.as_str() > ledger_at.as_str()
+    {
+        return false;
+    }
     if let Ok(ctx_meta) = read_json::<AgentContextMeta>(paths.agent_context_meta(project_slug))
-        && ctx_meta.generated_at.as_str() > ledger_at.as_str() {
-            return false;
-        }
+        && ctx_meta.generated_at.as_str() > ledger_at.as_str()
+    {
+        return false;
+    }
 
     let ctx_path = paths.agent_context_main(project_slug);
     if ctx_path.is_file()
@@ -87,12 +89,8 @@ pub(crate) fn freshness_ledger_still_valid(
 
     // `context-meta.json` can lag behind a restored or hand-edited `context.md`.
     let ctx_ready_now = agent_context_ready(paths, project_slug);
-    let ctx_cached_not_ready = ledger
-        .assets
-        .agent_context
-        .stale_reason
-        .as_deref()
-        == Some("asset_not_ready");
+    let ctx_cached_not_ready =
+        ledger.assets.agent_context.stale_reason.as_deref() == Some("asset_not_ready");
     if ctx_ready_now != !ctx_cached_not_ready {
         return false;
     }

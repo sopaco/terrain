@@ -22,6 +22,7 @@ fn is_terrain_knowledge_markdown_path(file_path: &str) -> bool {
     }
     p.starts_with("human/")
         || p.starts_with("knowledge/")
+        || p.starts_with("understand/")
         || p.starts_with("modules/")
         || p.starts_with("interfaces/")
         || p.starts_with("routes/")
@@ -56,10 +57,7 @@ pub fn extract_source_citations(text: &str, repo_path: Option<&str>) -> Vec<Sour
             continue;
         }
         let start = cap.get(2).and_then(|m| m.as_str().parse().ok());
-        let end = cap
-            .get(3)
-            .and_then(|m| m.as_str().parse().ok())
-            .or(start);
+        let end = cap.get(3).and_then(|m| m.as_str().parse().ok()).or(start);
 
         let key = format!("{path}:{start:?}:{end:?}");
         if !seen.insert(key) {
@@ -90,9 +88,15 @@ pub fn extract_source_citations(text: &str, repo_path: Option<&str>) -> Vec<Sour
     out
 }
 
-pub fn merge_citations(mut base: Vec<SourceCitation>, extra: Vec<SourceCitation>) -> Vec<SourceCitation> {
+pub fn merge_citations(
+    mut base: Vec<SourceCitation>,
+    extra: Vec<SourceCitation>,
+) -> Vec<SourceCitation> {
     for c in extra {
-        if !base.iter().any(|b| b.kind == c.kind && b.path == c.path && b.start_line == c.start_line) {
+        if !base
+            .iter()
+            .any(|b| b.kind == c.kind && b.path == c.path && b.start_line == c.start_line)
+        {
             base.push(c);
         }
     }
@@ -126,10 +130,8 @@ mod tests {
 
     #[test]
     fn parses_json_path_without_js_prefix_match() {
-        let refs = extract_source_citations(
-            "See `.meta/freshness.json` for the ledger.",
-            Some("/repo"),
-        );
+        let refs =
+            extract_source_citations("See `.meta/freshness.json` for the ledger.", Some("/repo"));
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].path, ".meta/freshness.json");
         assert_eq!(refs[0].kind, CitationKind::StructuredDoc);
@@ -137,10 +139,8 @@ mod tests {
 
     #[test]
     fn classifies_terrain_meta_json_as_structured_doc() {
-        let refs = extract_source_citations(
-            "Freshness lives in .terrain/.meta/freshness.json",
-            None,
-        );
+        let refs =
+            extract_source_citations("Freshness lives in .terrain/.meta/freshness.json", None);
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].path, ".terrain/.meta/freshness.json");
         assert_eq!(refs[0].kind, CitationKind::StructuredDoc);

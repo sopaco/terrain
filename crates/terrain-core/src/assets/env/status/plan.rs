@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use super::super::catalog::{load_catalog, IntegrationDef};
+use super::super::catalog::{IntegrationDef, load_catalog};
 use super::cache::{env_cache_fingerprint, env_cache_get, env_cache_key, env_cache_put};
 use super::probe::{
     bundled_tool_runtime_ready, check_integration, dependency_ready, integration_is_ready,
@@ -77,7 +77,10 @@ pub fn summarize_agent_env_light(repo: &Path, knowledge_count: usize) -> AgentEn
                 total_count: 0,
                 summary: lang.tr("未检测", "Not detected").into(),
                 detail: lang
-                    .tr("打开工程环境页以配置", "Open the project environment page to configure")
+                    .tr(
+                        "打开工程环境页以配置",
+                        "Open the project environment page to configure",
+                    )
                     .into(),
             };
         }
@@ -240,6 +243,17 @@ pub fn plan_env_integration(
                     )
                     .into(),
             }),
+            "user_env" => steps.push(EnvPlanStep {
+                id: def.id.clone(),
+                label: def.label.clone(),
+                kind: def.kind.clone(),
+                action: lang
+                    .tr(
+                        "创建 vault、安装 autosave 脚本、注册 SessionEnd hook、添加每日 sync cron、链接 graphify 图谱",
+                        "Create the vault, install autosave scripts, register the SessionEnd hook, add the daily sync cron, link graphify graphs",
+                    )
+                    .into(),
+            }),
             "gitignore" => steps.push(EnvPlanStep {
                 id: def.id.clone(),
                 label: def.label.clone(),
@@ -307,10 +321,7 @@ fn plan_bundled_tool(
                     label: def.label.clone(),
                     kind: def.kind.clone(),
                     action: lang
-                        .tr(
-                            "重新部署 ~/.terrain/bin/rtk",
-                            "Redeploy ~/.terrain/bin/rtk",
-                        )
+                        .tr("重新部署 ~/.terrain/bin/rtk", "Redeploy ~/.terrain/bin/rtk")
                         .into(),
                 });
             }
@@ -442,11 +453,9 @@ mod tests {
         let full = get_env_status(&repo).expect("env status");
         let light = summarize_agent_env_light(&repo, 0);
         assert_eq!(
-            light.integrated_count,
-            full.ready_count,
+            light.integrated_count, full.ready_count,
             "overview ({}) and env page ({}) should match",
-            light.summary,
-            full.summary,
+            light.summary, full.summary,
         );
     }
 
@@ -457,11 +466,7 @@ mod tests {
         let selected = vec!["tool-rtk".into(), "tool-codegraph".into()];
         let reinstall = vec!["tool-rtk".into(), "tool-codegraph".into()];
         let plan = plan_env_integration(&repo, &selected, &reinstall).expect("plan");
-        let rtk_steps: Vec<_> = plan
-            .steps
-            .iter()
-            .filter(|s| s.id == "tool-rtk")
-            .collect();
+        let rtk_steps: Vec<_> = plan.steps.iter().filter(|s| s.id == "tool-rtk").collect();
         let cg_steps: Vec<_> = plan
             .steps
             .iter()

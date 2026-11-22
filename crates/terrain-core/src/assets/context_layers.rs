@@ -241,7 +241,10 @@ pub fn enforce_context_max_size(body: &str, max_chars: usize) -> (String, bool) 
         (result, false)
     };
 
-    (result, any_trimmed || hard_trim || body.chars().count() > max_chars)
+    (
+        result,
+        any_trimmed || hard_trim || body.chars().count() > max_chars,
+    )
 }
 
 #[cfg(test)]

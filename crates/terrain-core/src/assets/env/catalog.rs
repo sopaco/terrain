@@ -58,9 +58,8 @@ fn load_catalog_from_disk() -> Result<EnvCatalog> {
     let raw = fs::read_to_string(&path).map_err(|e| {
         CoreError::InvalidDoc(format!("cannot read env catalog {}: {e}", path.display()))
     })?;
-    serde_json::from_str(&raw).map_err(|e| {
-        CoreError::InvalidDoc(format!("invalid env catalog {}: {e}", path.display()))
-    })
+    serde_json::from_str(&raw)
+        .map_err(|e| CoreError::InvalidDoc(format!("invalid env catalog {}: {e}", path.display())))
 }
 
 pub fn load_catalog() -> Result<EnvCatalog> {
@@ -232,9 +231,8 @@ fn discover_dev_env_catalog() -> Option<PathBuf> {
 }
 
 fn fallback_dev_env_catalog_root() -> PathBuf {
-    discover_dev_env_catalog().unwrap_or_else(|| {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../env-catalog")
-    })
+    discover_dev_env_catalog()
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../env-catalog"))
 }
 
 pub fn resolve_skill_source(catalog_root: &Path, item: &IntegrationDef) -> PathBuf {

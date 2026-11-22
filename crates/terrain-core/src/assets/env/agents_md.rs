@@ -2,7 +2,7 @@ use std::path::Path;
 
 use regex::Regex;
 
-use super::catalog::{load_catalog, resolve_fragment_path, env_catalog_root};
+use super::catalog::{env_catalog_root, load_catalog, resolve_fragment_path};
 use crate::error::{CoreError, Result};
 
 const BEGIN_RE: &str = r"<!-- terrain:begin (\S+) v(\d+) -->";
@@ -42,7 +42,10 @@ pub fn patch_agents_md(repo: &Path) -> Result<String> {
         })?;
         let wrapped = format!(
             "<!-- terrain:begin {} v{} -->\n{}\n<!-- terrain:end {} -->",
-            block.id, block.version, fragment.trim(), block.id
+            block.id,
+            block.version,
+            fragment.trim(),
+            block.id
         );
         content = replace_or_append_block(&content, &block.id, block.version, &wrapped);
     }

@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use chrono::Utc;
 use crate::doc::read_json;
 use crate::freshness::{baseline_matches_head, git_snapshot};
 use crate::path_portable::stored_repo_path;
+use chrono::Utc;
 use repomix_core::{OutputStyle, PackOptions, RepomixConfig, pack_with_options};
 
 use crate::doc::write_json;
@@ -82,8 +82,8 @@ fn architecture_ignore_patterns() -> Vec<String> {
     .collect()
 }
 
-    #[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
-    #[cfg_attr(feature = "ts-export", ts(export))]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts-export", ts(export))]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentPackReport {
     pub project_slug: String,
@@ -194,11 +194,7 @@ pub async fn pack_agent_assets(
         .await
         .map_err(|e| CoreError::Pack(e.to_string()))?;
 
-    let content = result
-        .output_contents
-        .first()
-        .cloned()
-        .unwrap_or_default();
+    let content = result.output_contents.first().cloned().unwrap_or_default();
     if content.is_empty() && output_path.is_file() {
         // repomix wrote directly to disk
     } else if !content.is_empty() {

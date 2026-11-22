@@ -1,0 +1,6 @@
+Terrain third-party components
+==============================
+
+- env-catalog/scripts/{session_autosave.py,claude_to_obsidian.py,sync_claude_obsidian.sh}
+  adapted from https://github.com/lucasrosati/claude-code-memory-setup (MIT License,
+  (c) Lucas Rosati and contributors). See LICENSE-MIT if present in that project.

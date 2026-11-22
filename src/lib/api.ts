@@ -8,12 +8,28 @@ import type {
   EnvApplyResult,
   EnvPlan,
   EnvStatus,
+  AddProjectsResult,
+  BatchUpdateResult,
+  DashboardSummary,
   FreshnessSummary,
+  GeneratedCommitMessage,
+  GitBranches,
+  GitCommit,
+  GitDiff,
+  GitFileEntry,
+  GitMergePreview,
+  GitOpResult,
+  GitStatus,
+  GraphifyCommunity,
+  GraphifyStatus,
+  GraphifyViewPayload,
   HumanDocEntry,
   KnowledgeDoc,
   LithoGenerationJob,
   LithoPlan,
   LlmStatus,
+  UaStatus,
+  UaViewerInfo,
   ModelSettings,
   ProjectInitResult,
   ProjectOverview,
@@ -281,6 +297,49 @@ export const runEnvIntegration = (
 ) =>
   invoke<EnvApplyResult>("run_env_integration_cmd", { repoPath, selectedIds, reinstallIds });
 
+export const getDashboardSummary = () =>
+  invoke<DashboardSummary>("get_dashboard_summary_cmd");
+
+export const runDashboardBatch = (
+  projectSlugs: string[] | null,
+  concurrency?: number,
+) =>
+  invoke<BatchUpdateResult>("run_dashboard_batch_cmd", {
+    projectSlugs,
+    concurrency: concurrency ?? null,
+  });
+
+export const addProjects = (repoPaths: string[]) =>
+  invoke<AddProjectsResult>("add_projects_cmd", { repoPaths });
+
+export const getGraphifyStatus = (repoPath: string) =>
+  invoke<GraphifyStatus>("graphify_status_cmd", { repoPath });
+
+export const runGraphify = (
+  repoPath: string,
+  projectSlug: string | null,
+  action: "extract" | "update",
+) =>
+  invoke<void>("run_graphify_cmd", { repoPath, projectSlug, action });
+
+export const getGraphifyView = (repoPath: string) =>
+  invoke<GraphifyViewPayload>("get_graphify_view_cmd", { repoPath });
+
+export const getUaStatus = (repoPath: string) =>
+  invoke<UaStatus>("ua_status_cmd", { repoPath });
+
+export const startUaViewer = (repoPath: string) =>
+  invoke<UaViewerInfo>("ua_viewer_cmd", { repoPath });
+
+export const openUaWindow = (repoPath: string) =>
+  invoke<UaViewerInfo>("open_ua_window_cmd", { repoPath });
+
+export const runUa = (
+  repoPath: string,
+  projectSlug: string | null,
+  action: "analyze" | "update",
+) => invoke<void>("run_ua_cmd", { repoPath, projectSlug, action });
+
 export const probeUsage = () => invoke<UsageProbeResult>("usage_probe_cmd");
 
 export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefresh = false) =>
@@ -288,3 +347,85 @@ export const getUsageSnapshot = (detail: UsageDetailLevel = "summary", forceRefr
 
 export const openLocalPath = (path: string) =>
   invoke<void>("open_local_path_cmd", { path });
+
+export const getGitStatus = (repoPath: string) =>
+  invoke<GitStatus>("git_status_cmd", { repoPath });
+
+export const getGitBranches = (repoPath: string) =>
+  invoke<GitBranches>("git_branches_cmd", { repoPath });
+
+export const gitStage = (
+  repoPath: string,
+  paths: string[] | null,
+  all: boolean,
+) => invoke<GitOpResult>("git_stage_cmd", { repoPath, paths, all });
+
+export const gitUnstage = (
+  repoPath: string,
+  paths: string[] | null,
+  all: boolean,
+) => invoke<GitOpResult>("git_unstage_cmd", { repoPath, paths, all });
+
+export const gitCommit = (repoPath: string, message: string) =>
+  invoke<GitOpResult>("git_commit_cmd", { repoPath, message });
+
+export const gitMerge = (repoPath: string, branch: string) =>
+  invoke<GitOpResult>("git_merge_cmd", { repoPath, branch });
+
+export const getGitMergePreview = (repoPath: string, branch: string) =>
+  invoke<GitMergePreview>("git_merge_preview_cmd", { repoPath, branch });
+
+export const gitPush = (repoPath: string) =>
+  invoke<GitOpResult>("git_push_cmd", { repoPath });
+
+export const gitPull = (repoPath: string) =>
+  invoke<GitOpResult>("git_pull_cmd", { repoPath });
+
+export const getGitDiffFile = (repoPath: string, path: string, staged?: boolean) =>
+  invoke<GitDiff>("git_diff_file_cmd", { repoPath, path, staged: staged ?? false });
+
+export const getGitHistory = (repoPath: string, limit?: number) =>
+  invoke<GitCommit[]>("git_history_cmd", { repoPath, limit: limit ?? null });
+
+export const getGitCommitFilesList = (repoPath: string, hash: string) =>
+  invoke<GitFileEntry[]>("git_commit_files_list_cmd", { repoPath, hash });
+
+export const getGitCommitDiff = (repoPath: string, hash: string, path: string | null) =>
+  invoke<GitDiff>("git_commit_diff_cmd", { repoPath, hash, path });
+
+export const gitCommitFiles = (
+  repoPath: string,
+  summary: string,
+  description: string | null,
+  files: string[],
+) =>
+  invoke<GitOpResult>("git_commit_files_cmd", {
+    repoPath,
+    summary,
+    description,
+    files,
+  });
+
+export const gitFetch = (repoPath: string) =>
+  invoke<GitOpResult>("git_fetch_cmd", { repoPath });
+
+export const gitCheckout = (repoPath: string, branch: string) =>
+  invoke<GitOpResult>("git_checkout_cmd", { repoPath, branch });
+
+export const gitGenerateCommitMessage = (repoPath: string, files: string[]) =>
+  invoke<GeneratedCommitMessage>("git_generate_commit_message_cmd", { repoPath, files });
+
+export const gitDiscardFile = (repoPath: string, path: string) =>
+  invoke<GitOpResult>("git_discard_file_cmd", { repoPath, path });
+
+export const gitUndoLastCommit = (repoPath: string) =>
+  invoke<GitOpResult>("git_undo_last_commit_cmd", { repoPath });
+
+export const gitStashPush = (repoPath: string) =>
+  invoke<GitOpResult>("git_stash_push_cmd", { repoPath });
+
+export const gitStashPop = (repoPath: string) =>
+  invoke<GitOpResult>("git_stash_pop_cmd", { repoPath });
+
+export const gitCreateBranch = (repoPath: string, name: string) =>
+  invoke<GitOpResult>("git_create_branch_cmd", { repoPath, name });

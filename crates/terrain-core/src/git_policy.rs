@@ -26,7 +26,7 @@
 use std::path::{Path, PathBuf};
 
 /// Bumped whenever the managed bodies below change; older managed copies get rewritten.
-pub const GIT_POLICY_VERSION: u32 = 2;
+pub const GIT_POLICY_VERSION: u32 = 3;
 
 /// Marker that identifies a Terrain-managed file. Removing it opts the file out of updates.
 const MARKER_PREFIX: &str = "terrain-git-policy: v";
@@ -51,6 +51,10 @@ env/
 # 生成过程的中间态工作区
 .litho-agent/
 .sdd-agent/
+
+# Understand-Anything 的语义图谱（本机重生成物，raw JSON 不入库 —
+# 记忆库只跟踪 .terrain/understand/*.md；raw .ua/ 由仓库根 gitignore 处理）
+understand/
 
 # OS 噪音
 .DS_Store
@@ -231,7 +235,11 @@ mod tests {
         assert!(ignore.contains("!.meta/human.json"));
         // Committed documents' provenance must not be ignored — otherwise another
         // clone pairs fresh content with a stale local baseline.
-        assert!(!ignore.lines().any(|l| l.trim() == "agent/context-meta.json"));
+        assert!(
+            !ignore
+                .lines()
+                .any(|l| l.trim() == "agent/context-meta.json")
+        );
         assert!(!ignore.lines().any(|l| l.trim() == ".meta/"));
         // knowledge/ must stay committable.
         assert!(!ignore.lines().any(|l| l.trim() == "knowledge/"));
@@ -273,7 +281,11 @@ mod tests {
 
         let ignore_out = std::fs::read_to_string(root.join(".gitignore")).unwrap();
         assert!(ignore_out.contains("agent/meta.json"));
-        assert!(!ignore_out.lines().any(|l| l.trim() == "agent/context-meta.json"));
+        assert!(
+            !ignore_out
+                .lines()
+                .any(|l| l.trim() == "agent/context-meta.json")
+        );
         assert!(!ignore_out.lines().any(|l| l.trim() == ".meta/"));
         assert!(ignore_out.contains("!.meta/human.json"));
         let _ = std::fs::remove_dir_all(&root);

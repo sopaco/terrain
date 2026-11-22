@@ -1,10 +1,14 @@
 mod assets;
+mod dashboard;
 mod env;
+mod git;
+mod graphify;
 mod knowledge;
 mod payloads;
 mod project;
 mod sessions;
 mod settings;
+mod ua;
 mod usage;
 mod util;
 mod workflows;
@@ -40,10 +44,14 @@ pub fn init_paths() -> KnowledgePaths {
 }
 
 pub use assets::*;
+pub use dashboard::*;
 pub use env::*;
+pub use git::*;
+pub use graphify::*;
 pub use knowledge::*;
 pub use project::*;
 pub use sessions::*;
 pub use settings::*;
+pub use ua::*;
 pub use usage::*;
 pub use workflows::*;

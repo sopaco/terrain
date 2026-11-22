@@ -11,14 +11,11 @@ pub use probe::gitignore_has_patterns;
 pub use types::{EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus};
 
 pub(crate) use plan::dependencies_satisfied;
-pub(crate) use probe::{
-    dependency_ready, rtk_runtime_ready,
-    tool_check_passes,
-};
+pub(crate) use probe::{dependency_ready, rtk_runtime_ready, tool_check_passes};
 
 use std::path::{Path, PathBuf};
 
-use super::catalog::{env_catalog_root, resolve_skill_source, IntegrationDef};
+use super::catalog::{IntegrationDef, env_catalog_root, resolve_skill_source};
 
 pub(crate) fn skill_source_path(def: &IntegrationDef) -> PathBuf {
     resolve_skill_source(&env_catalog_root(), def)

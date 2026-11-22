@@ -31,9 +31,10 @@ pub fn invalidate_env_status_cache_for_repo(repo: &Path) {
         return;
     };
     if let Ok(mut guard) = ENV_STATUS_CACHE.lock()
-        && let Some(map) = guard.as_mut() {
-            map.remove(&key);
-        }
+        && let Some(map) = guard.as_mut()
+    {
+        map.remove(&key);
+    }
 }
 
 pub(crate) fn env_cache_key(repo: &Path) -> Result<String> {

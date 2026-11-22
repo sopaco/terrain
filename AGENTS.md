@@ -154,3 +154,35 @@ Windows 上工具部署在 `%USERPROFILE%\.terrain\bin\`（Git Bash / PowerShell
 
 **注意**：不要运行 `codegraph install` 或 `rtk init`（已由 Terrain + Skills 配置）。
 <!-- terrain:end tools -->
+## 构建与安装（正确流程 — 必须遵守）
+
+**任何**安装/更新目标机上的 Terrain.app：使用官方构建路径，绝不用裸 `cargo build` 换二进制。
+
+### 正确安装步骤
+
+```bash
+bun run build:app          # tauri build：先 vite build 再运行 build.rs（tauri-codegen 正确重新嵌入 dist）
+ls -la target/release/bundle/macos/Terrain.app   # 确认产物
+rm -rf /Applications/Terrain.app                # 需先退出运行中的 Terrain（DMG 打包步骤会因此失败）
+ditto target/release/bundle/macos/Terrain.app /Applications/Terrain.app
+open -a Terrain
+```
+
+### 为什么（已知陷阱）
+
+`src-tauri/build.rs` 的**执行**（而非编译）负责把 `dist/` 嵌入应用（`target/release/build/terrain-*/out/tauri-codegen-assets/`）。裸 `cargo build` 在 `dist/` 变化后可能复用旧指纹 → 跳过 build script 运行 → 当前 build-hash 目录的 `out/` 为空 → 应用启动后 WebView 一片 **空白**（标题仍是 "Terrain"，无任何 JS 错误，因为脚本根本没加载）。
+
+### 症状排查
+
+- 启动即白屏 + 窗口标题未变 + 无 JS 错误 → 检查 `ls target/release/build/terrain-*/out`：当前 hash 目录里 `out/` 必须有文件；空 = fingerprint 过期，改用 `bun run build:app`。
+- 更新二进制前必须先退出 Terrain（`osascript -e 'tell application "Terrain" to quit'`），否则 DMG 打包与文件替换可能失败。
+
+### 验证门（每次改动后按层跑）
+
+| 层 | 命令 |
+|----|------|
+| Rust | `cargo check -p terrain-core -p terrain -p terrain-cli` + `cargo test -p terrain-core` |
+| Lints | `cargo clippy -p <crate>`（edition 2024，不要 `--fix` 盲改出 let-chains 兼容问题之外的新 lint） |
+| 前端 | `bun run check`（svelte-check） |
+| i18n | `bun run check:i18n`（en/zh-CN 全等校验） |
+| 安装 | `bun run build:app` + `ditto`(见上) — 永远走官方路径 |

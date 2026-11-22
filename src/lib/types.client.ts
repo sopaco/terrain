@@ -60,7 +60,81 @@ export interface ChatMessage {
   usage?: TokenUsage;
 }
 
-export type AppTab = "overview" | "knowledge" | "sdd" | "env";
+export type AppTab =
+  | "dashboard"
+  | "overview"
+  | "knowledge"
+  | "graph"
+  | "git"
+  | "sdd"
+  | "env";
+
+/** Mirror of the Rust `GraphifyStatus` command payload (src-tauri commands/graphify.rs). */
+export interface GraphifyCommunity {
+  name: string;
+  size: number;
+}
+
+export interface GraphifyStatus {
+  binary_available: boolean;
+  binary_path: string;
+  out_dir: string;
+  graph_present: boolean;
+  report_present: boolean;
+  html_present: boolean;
+  wiki_present: boolean;
+  graph_mtime_secs: number | null;
+  nodes: number | null;
+  links: number | null;
+  communities: GraphifyCommunity[] | null;
+  built_at_commit: string | null;
+  head_commit: string | null;
+  staleness: "fresh" | "stale" | "unknown";
+}
+
+/** AI-generated commit message (Rust GeneratedCommitMessage). */
+export interface GeneratedCommitMessage {
+  summary: string;
+  description: string;
+}
+
+export interface GraphifyViewPayload {
+  html: string | null;
+  html_too_large: boolean;
+}
+
+/** Mirror of the Rust `UaStatus` command payload (terrain-dashboard/src/ua.rs). */
+export interface UaStatus {
+  data_dir: "" | "ua" | "legacy" | "terrain";
+  data_dir_path: string;
+  graph_present: boolean;
+  meta_present: boolean;
+  fingerprints_present: boolean;
+  nodes: number | null;
+  links: number | null;
+  analyzed_at: string | null;
+  built_at_commit: string | null;
+  head_commit: string | null;
+  staleness: "fresh" | "stale" | "unknown";
+  plugin_available: boolean;
+  node_available: boolean;
+  node_major: number | null;
+  viewer_available: boolean;
+  viewer_path: string;
+  /** UA config.json autoUpdate flag — terrain's update auto-chain gate. */
+  auto_update: boolean;
+  /** Uncommitted/untracked repo files — matches UA's dirty-window banner. */
+  worktree_dirty: boolean;
+  install_steps_hint: string;
+}
+
+/** Mirror of the Rust `UaViewerInfo` command payload (src-tauri commands/ua.rs). */
+export interface UaViewerInfo {
+  running: boolean;
+  url: string;
+  port: number;
+  message: string;
+}
 
 /** Normalize IPC reply timestamps for UI code expecting `number`. */
 export type AskKnowledgeReplyUi = Omit<AskKnowledgeReply, "completed_at"> & {

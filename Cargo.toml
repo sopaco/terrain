@@ -5,6 +5,7 @@ members = [
     "crates/terrain-agent",
     "crates/terrain-cli",
     "crates/terrain-ts-export",
+    "crates/terrain-dashboard",
     "src-tauri",
 ]
 
@@ -44,6 +45,7 @@ adk-tool = "2.2.0"
 
 terrain-core = { path = "crates/terrain-core" }
 terrain-agent = { path = "crates/terrain-agent" }
+terrain-dashboard = { path = "crates/terrain-dashboard" }
 repomix-core = "2.0"
 ts-rs = { version = "10", features = ["serde-compat", "no-serde-warnings"] }
 # Avoid time 0.3.48 (E0119 with Tauri/cookie blanket From impls; see time-rs/time#783).

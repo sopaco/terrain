@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "integrations": [
     {
       "id": "skill-terrain-knowledge",
@@ -16,7 +16,9 @@
       "label": "Repomix 查询 Skill",
       "description": "按需 grep 本地 repomix 索引（不入库）",
       "skill_dir": "repomix-context-skill",
-      "depends_on": ["skill-terrain-knowledge"]
+      "depends_on": [
+        "skill-terrain-knowledge"
+      ]
     },
     {
       "id": "skill-codegraph",
@@ -24,7 +26,21 @@
       "label": "CodeGraph Skill",
       "description": "通过 CLI 查询符号关系与影响面",
       "skill_dir": "codegraph-skill",
-      "depends_on": ["tool-codegraph", "skill-terrain-knowledge"]
+      "depends_on": [
+        "tool-codegraph",
+        "skill-terrain-knowledge"
+      ]
+    },
+    {
+      "id": "skill-graphify",
+      "kind": "skill",
+      "label": "Graphify Skill",
+      "description": "代码知识图谱：先读 .terrain/graphify-out/ 报告与 wiki，代码变更后增量更新（AST-only，无 API 成本）",
+      "skill_dir": "graphify-skill",
+      "depends_on": [
+        "tool-graphify",
+        "skill-terrain-knowledge"
+      ]
     },
     {
       "id": "skill-rtk",
@@ -32,7 +48,9 @@
       "label": "RTK Token 优化 Skill",
       "description": "压缩 shell 命令输出，降低 token 消耗",
       "skill_dir": "rtk-skill",
-      "depends_on": ["tool-rtk"]
+      "depends_on": [
+        "tool-rtk"
+      ]
     },
     {
       "id": "tool-bun",
@@ -40,7 +58,10 @@
       "label": "Bun 运行时",
       "description": "其它 npm 工具的统一运行时（可选，若已安装则跳过）",
       "optional": true,
-      "check": ["bun", "--version"],
+      "check": [
+        "bun",
+        "--version"
+      ],
       "depends_on": []
     },
     {
@@ -60,11 +81,73 @@
       "depends_on": []
     },
     {
+      "id": "tool-cccost",
+      "kind": "tool",
+      "label": "cccost Cost Tracker",
+      "description": "成本追踪（claude-code-cli-cost-tracker，MIT）— Terrain 使用它作为首选本地成本来源；install 安装 statusline + hook + /cccost",
+      "optional": true,
+      "check": [
+        "bash",
+        "-lc",
+        "test -f \"$HOME/.claude/cccost.py\""
+      ],
+      "install_steps": [
+        {
+          "cmd": "git",
+          "args": [
+            "clone",
+            "--depth",
+            "1",
+            "https://github.com/Facta-Dev/claude-code-cli-cost-tracker",
+            "/tmp/cccost-install-terrain"
+          ]
+        },
+        {
+          "cmd": "bash",
+          "args": [
+            "/tmp/cccost-install-terrain/install.sh"
+          ]
+        }
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "tool-graphify",
+      "kind": "tool",
+      "label": "Graphify CLI",
+      "description": "代码知识图谱构建 — 本地 tree-sitter AST 抽取，写入 .terrain/graphify-out/（代码路径无 LLM）",
+      "optional": true,
+      "check": [
+        "graphify",
+        "--version"
+      ],
+      "install_steps": [
+        {
+          "cmd": "uv",
+          "args": [
+            "tool",
+            "install",
+            "graphifyy"
+          ]
+        },
+        {
+          "cmd": "pipx",
+          "args": [
+            "install",
+            "graphifyy"
+          ]
+        }
+      ],
+      "depends_on": []
+    },
+    {
       "id": "agents-md",
       "kind": "agents_md",
       "label": "AGENTS.md 工作指南",
       "description": "注入 Terrain 托管片段，指引 Agent 使用知识 Skill 与工具链",
-      "depends_on": ["skill-terrain-knowledge"]
+      "depends_on": [
+        "skill-terrain-knowledge"
+      ]
     },
     {
       "id": "terrain-git-policy",
@@ -72,6 +155,57 @@
       "label": ".terrain/ Git 跟随策略",
       "description": "写入 .terrain/.gitignore 与 .terrain/.gitattributes：本机衍生物不入库，生成文档禁用自动合并（冲突时重生成）",
       "depends_on": []
+    },
+    {
+      "id": "vault-memory",
+      "kind": "user_env",
+      "label": "Persistent Memory (Vault + Autosave)",
+      "description": "配置 Obsidian vault：创建 ~/vault 结构、安装 autosave 脚本、注册 SessionEnd hook、添加每日 sync cron、链接所有 graphify 图谱（作用于本机，不写入仓库）",
+      "check": [
+        "bash",
+        "-lc",
+        "grep -q session_autosave \"$HOME/.claude/settings.json\" 2>/dev/null"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "tool-understand",
+      "kind": "tool",
+      "label": "Understand-Anything Toolchain",
+      "description": "代码语义知识图谱（LLM 辅助，Claude Code 插件）+ 纯 Node 查看服务器；输出归档 .ua/，记忆库入 .terrain/understand/",
+      "optional": true,
+      "check": [
+        "node",
+        "--version"
+      ],
+      "install_steps": [
+        {
+          "cmd": "sh",
+          "args": [
+            "-c",
+            "test -d \"$HOME/.terrain/understand-anything/repo/.git\" || git clone --depth 1 https://github.com/Egonex-AI/Understand-Anything \"$HOME/.terrain/understand-anything/repo\""
+          ]
+        },
+        {
+          "cmd": "sh",
+          "args": [
+            "-c",
+            "cd \"$HOME/.terrain/understand-anything/repo/understand-anything-plugin\" && (corepack pnpm --version 2>/dev/null || npm install -g pnpm@10) && pnpm install --frozen-lockfile && pnpm --filter understand-anything-viewer build"
+          ]
+        }
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "skill-understand",
+      "kind": "skill",
+      "label": "Understand Skill",
+      "description": "代码语义知识图谱：运行 UA /understand 管线（agent 驱动），输出入 .ua/，索引入 .terrain/understand/index.md；语义级问题先读它，架构级问题仍读 graphify-out",
+      "skill_dir": "understand-skill",
+      "depends_on": [
+        "tool-understand",
+        "skill-terrain-knowledge"
+      ]
     }
   ],
   "agents_md_blocks": [
@@ -87,12 +221,12 @@
     },
     {
       "id": "skills",
-      "version": 2,
+      "version": 4,
       "fragment": "agents-md/skills.fragment"
     },
     {
       "id": "tools",
-      "version": 3,
+      "version": 5,
       "fragment": "agents-md/tools.fragment"
     }
   ]

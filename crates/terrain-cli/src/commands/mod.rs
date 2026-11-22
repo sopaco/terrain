@@ -1,5 +1,6 @@
 mod assets;
 mod ask;
+mod dashboard;
 mod env;
 mod init;
 mod knowledge;
@@ -34,6 +35,7 @@ pub async fn run(cli: Cli) -> Result<()> {
             limit,
         } => knowledge::search(&paths, &query, project, limit),
         Commands::Read { path } => knowledge::read(&paths, &path),
+        Commands::Dashboard { command } => dashboard::run(&paths, command).await,
         Commands::Project { command } => project::run(&paths, command),
         Commands::Settings { command } => settings::run(command),
         Commands::Ask { command } => ask::run(&paths, cli_repo, command).await,

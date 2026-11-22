@@ -113,6 +113,9 @@ pub struct UsageProbeResult {
     pub ccusage_available: bool,
     pub ccusage_version: Option<String>,
     pub ccusage_path: Option<String>,
+    /// cccost (claude-code-cli-cost-tracker) present — preferred local source.
+    pub cccost_available: bool,
+    pub cccost_path: Option<String>,
     pub sources: Vec<UsageSourceStatus>,
 }
 
@@ -138,21 +141,43 @@ pub fn probe_usage_sources() -> UsageProbeResult {
     let launch = resolve_ccusage_launch();
     let available = launch.is_some();
     let version = launch.as_ref().and_then(read_ccusage_version);
+    let mut sources = detect_local_sources();
+    if let Some(cccost) = resolve_cccost_launch() {
+        sources.insert(
+            0,
+            UsageSourceStatus {
+                id: "cccost".to_owned(),
+                label: "cccost (claude-code-cli-cost-tracker)".to_owned(),
+                path: Some(cccost.script.display().to_string()),
+                detected: true,
+                file_count: 0,
+            },
+        );
+        return UsageProbeResult {
+            ccusage_available: true,
+            ccusage_version: version,
+            ccusage_path: launch.map(|l| l.label()),
+            cccost_available: true,
+            cccost_path: Some(cccost.label()),
+            sources,
+        };
+    }
     UsageProbeResult {
         ccusage_available: available,
         ccusage_version: version,
         ccusage_path: launch.map(|l| l.label()),
-        sources: detect_local_sources(),
+        cccost_available: false,
+        cccost_path: None,
+        sources,
     }
 }
 
 /// Load usage snapshot (summary or full). Uses in-memory cache unless `force_refresh`.
 pub fn load_usage_snapshot(detail: UsageDetailLevel, force_refresh: bool) -> UsageSnapshot {
     let lang = crate::language::current_language();
-    if !force_refresh
-        && let Some(cached) = read_cache(detail) {
-            return cached;
-        }
+    if !force_refresh && let Some(cached) = read_cache(detail) {
+        return cached;
+    }
 
     let probe = probe_usage_sources();
     let generated_at = now_ms();
@@ -224,6 +249,13 @@ fn build_snapshot(
     detail: UsageDetailLevel,
     generated_at: u64,
 ) -> Result<UsageSnapshot> {
+    // cccost (the user's own tracker) wins when installed; fall back to the
+    // bundled ccusage chain otherwise or on any cccost failure.
+    if let Some(launch) = resolve_cccost_launch()
+        && let Ok(snapshot) = build_cccost_snapshot(&launch, probe, detail, generated_at)
+    {
+        return Ok(snapshot);
+    }
     let daily_since_days = match detail {
         UsageDetailLevel::Summary => 30,
         UsageDetailLevel::Full => 400,
@@ -233,35 +265,31 @@ fn build_snapshot(
     let daily_report: CcusageDailyReport = serde_json::from_value(daily_json)
         .map_err(|e| CoreError::Other(format!("ccusage daily JSON: {e}")))?;
 
-    let daily: Vec<UsagePeriodEntry> = daily_report
-        .daily
-        .into_iter()
-        .map(map_entry)
-        .collect();
+    let daily: Vec<UsagePeriodEntry> = daily_report.daily.into_iter().map(map_entry).collect();
 
     let today_str = Local::now().format("%Y-%m-%d").to_string();
     let week_start = Local::now().date_naive() - chrono::Duration::days(6);
-    let month_start = NaiveDate::from_ymd_opt(
-        Local::now().year(),
-        Local::now().month(),
-        1,
-    )
-    .unwrap_or_else(|| Local::now().date_naive());
+    let month_start = NaiveDate::from_ymd_opt(Local::now().year(), Local::now().month(), 1)
+        .unwrap_or_else(|| Local::now().date_naive());
 
     let today = sum_entries(daily.iter().filter(|e| e.period == today_str));
-    let week = sum_entries(daily.iter().filter(|e| parse_period_date(&e.period) >= week_start));
-    let month = sum_entries(daily.iter().filter(|e| parse_period_date(&e.period) >= month_start));
+    let week = sum_entries(
+        daily
+            .iter()
+            .filter(|e| parse_period_date(&e.period) >= week_start),
+    );
+    let month = sum_entries(
+        daily
+            .iter()
+            .filter(|e| parse_period_date(&e.period) >= month_start),
+    );
 
     let monthly = if detail == UsageDetailLevel::Full {
         let monthly_since = since_days_ago(365 * 3);
         let monthly_json = run_ccusage_json(&["monthly", "--since", &monthly_since])?;
         let monthly_report: CcusageMonthlyReport = serde_json::from_value(monthly_json)
             .map_err(|e| CoreError::Other(format!("ccusage monthly JSON: {e}")))?;
-        monthly_report
-            .monthly
-            .into_iter()
-            .map(map_entry)
-            .collect()
+        monthly_report.monthly.into_iter().map(map_entry).collect()
     } else {
         Vec::new()
     };
@@ -345,7 +373,9 @@ fn resolve_ccusage_launch() -> Option<CcusageLaunch> {
         return Some(CcusageLaunch::Direct(bin));
     }
     if let Some(home) = user_home() {
-        let deployed = home.join(".terrain/bin").join(agent_tool_filename("ccusage"));
+        let deployed = home
+            .join(".terrain/bin")
+            .join(agent_tool_filename("ccusage"));
         if is_executable_file(&deployed) {
             return Some(CcusageLaunch::Direct(deployed));
         }
@@ -452,12 +482,7 @@ fn run_ccusage_json(args: &[&str]) -> Result<serde_json::Value> {
 
 fn detect_local_sources() -> Vec<UsageSourceStatus> {
     vec![
-        probe_source_dir(
-            "claude",
-            "Claude Code",
-            claude_data_dirs(),
-            &["jsonl"],
-        ),
+        probe_source_dir("claude", "Claude Code", claude_data_dirs(), &["jsonl"]),
         probe_source_dir(
             "opencode",
             "OpenCode",
@@ -539,12 +564,7 @@ fn count_matching_files(dir: &Path, extensions: &[&str], max_depth: u32) -> u32 
     count_matching_files_inner(dir, extensions, max_depth, 0)
 }
 
-fn count_matching_files_inner(
-    dir: &Path,
-    extensions: &[&str],
-    max_depth: u32,
-    depth: u32,
-) -> u32 {
+fn count_matching_files_inner(dir: &Path, extensions: &[&str], max_depth: u32, depth: u32) -> u32 {
     if depth > max_depth {
         return 0;
     }
@@ -556,9 +576,10 @@ fn count_matching_files_inner(
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|e| e.to_str())
-                && extensions.iter().any(|e| ext.eq_ignore_ascii_case(e)) {
-                    count = count.saturating_add(1);
-                }
+                && extensions.iter().any(|e| ext.eq_ignore_ascii_case(e))
+            {
+                count = count.saturating_add(1);
+            }
         } else if path.is_dir() && depth < max_depth {
             count = count.saturating_add(count_matching_files_inner(
                 &path,
@@ -572,10 +593,7 @@ fn count_matching_files_inner(
 }
 
 fn map_entry(entry: CcusageEntry) -> UsagePeriodEntry {
-    let agents = entry
-        .metadata
-        .and_then(|m| m.agents)
-        .unwrap_or_default();
+    let agents = entry.metadata.and_then(|m| m.agents).unwrap_or_default();
     UsagePeriodEntry {
         period: entry.period.unwrap_or_default(),
         agent: entry.agent,
@@ -823,7 +841,10 @@ mod tests {
     #[test]
     fn probe_sources_returns_known_agents() {
         let probe = probe_usage_sources();
-        assert_eq!(probe.sources.len(), 3);
+        // 3 known agent sources; a cccost tracker entry comes first when the
+        // standard install (~/.claude/cccost.py) exists on this machine.
+        let expected = if probe.cccost_available { 4 } else { 3 };
+        assert_eq!(probe.sources.len(), expected);
         assert!(probe.sources.iter().any(|s| s.id == "claude"));
     }
 
@@ -868,4 +889,215 @@ mod tests {
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// cccost — preferred local cost source (claude-code-cli-cost-tracker, MIT).
+// stdlib-only Python CLI over the same local transcripts; preferred over the
+// bundled ccusage because it is the user's own tracker and bills alternative
+// backends (Ollama Cloud) that ccusage cannot price.
+
+struct CccostLaunch {
+    python: String,
+    script: PathBuf,
+}
+
+impl CccostLaunch {
+    fn label(&self) -> String {
+        format!("cccost ({})", self.script.display())
+    }
+}
+
+fn cccost_python() -> String {
+    resolve_executable("python3")
+        .or_else(|| resolve_executable("python"))
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| "python3".to_owned())
+}
+
+fn resolve_cccost_launch() -> Option<CccostLaunch> {
+    if let Ok(explicit) = std::env::var("CC_COST_CLI") {
+        let is_script = explicit
+            .rsplit('/')
+            .next()
+            .is_some_and(|f| f.ends_with(".py"));
+        if is_script && std::path::Path::new(&explicit).is_file() {
+            return Some(CccostLaunch {
+                python: cccost_python(),
+                script: PathBuf::from(explicit),
+            });
+        }
+    }
+    if let Some(home) = user_home() {
+        let standard = home.join(".claude").join("cccost.py");
+        if standard.is_file() {
+            return Some(CccostLaunch {
+                python: cccost_python(),
+                script: standard,
+            });
+        }
+    }
+    None
+}
+
+fn run_cccost_json(launch: &CccostLaunch, args: &[&str]) -> Result<serde_json::Value> {
+    let mut all: Vec<&str> = args.to_vec();
+    all.push("--json");
+    let output = hidden_command(&launch.python)
+        .arg(&launch.script)
+        .args(&all)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .map_err(|e| CoreError::Other(format!("launch cccost: {e}")))?;
+    if !output.status.success() {
+        return Err(CoreError::Other(format!(
+            "cccost failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    serde_json::from_slice(&output.stdout)
+        .map_err(|e| CoreError::Other(format!("cccost JSON parse: {e}")))
+}
+
+fn cccost_rows(value: &serde_json::Value) -> Result<serde_json::Value> {
+    value
+        .get("rows")
+        .cloned()
+        .ok_or_else(|| CoreError::Other("cccost output has no rows".to_owned()))
+}
+
+#[derive(Debug, Deserialize)]
+struct CccostDailyRow {
+    #[serde(default)]
+    #[allow(dead_code)]
+    turns: u32,
+    #[serde(default)]
+    input_tokens: u64,
+    #[serde(default)]
+    output_tokens: u64,
+    #[serde(default)]
+    cache_read_tokens: u64,
+    #[serde(default)]
+    cache_write_tokens: u64,
+    #[serde(default)]
+    cost_usd: f64,
+    #[serde(default)]
+    key: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CccostSessionRow {
+    #[serde(default)]
+    session_id: String,
+    #[serde(default)]
+    repo: Option<String>,
+    #[serde(default)]
+    models: Option<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    turns: u32,
+    #[serde(default)]
+    cost_usd: f64,
+}
+
+fn map_cccost_daily(row: CccostDailyRow) -> UsagePeriodEntry {
+    let total =
+        row.input_tokens + row.output_tokens + row.cache_read_tokens + row.cache_write_tokens;
+    UsagePeriodEntry {
+        period: row.key,
+        agent: None,
+        agents: Vec::new(),
+        input_tokens: row.input_tokens,
+        output_tokens: row.output_tokens,
+        cache_creation_tokens: row.cache_write_tokens,
+        cache_read_tokens: row.cache_read_tokens,
+        total_tokens: total,
+        total_cost_usd: row.cost_usd,
+        models_used: Vec::new(),
+        model_breakdowns: Vec::new(),
+        source_path: None,
+    }
+}
+
+fn build_cccost_snapshot(
+    launch: &CccostLaunch,
+    probe: &UsageProbeResult,
+    detail: UsageDetailLevel,
+    generated_at: u64,
+) -> Result<UsageSnapshot> {
+    let days = match detail {
+        UsageDetailLevel::Summary => 30,
+        UsageDetailLevel::Full => 400,
+    };
+    let daily_rows: Vec<CccostDailyRow> = serde_json::from_value(cccost_rows(&run_cccost_json(
+        launch,
+        &["daily", "--last", &days.to_string()],
+    )?)?)
+    .map_err(|e| CoreError::Other(format!("cccost daily rows: {e}")))?;
+    let daily: Vec<UsagePeriodEntry> = daily_rows.into_iter().map(map_cccost_daily).collect();
+
+    let today_str = Local::now().format("%Y-%m-%d").to_string();
+    let week_start = Local::now().date_naive() - chrono::Duration::days(6);
+    let month_start = NaiveDate::from_ymd_opt(Local::now().year(), Local::now().month(), 1)
+        .unwrap_or_else(|| Local::now().date_naive());
+    let today = sum_entries(daily.iter().filter(|e| e.period == today_str));
+    let week = sum_entries(
+        daily
+            .iter()
+            .filter(|e| parse_period_date(&e.period) >= week_start),
+    );
+    let month = sum_entries(
+        daily
+            .iter()
+            .filter(|e| parse_period_date(&e.period) >= month_start),
+    );
+
+    let sessions = if detail == UsageDetailLevel::Full {
+        let session_rows: Vec<CccostSessionRow> =
+            serde_json::from_value(cccost_rows(&run_cccost_json(launch, &["session"])?)?)
+                .map_err(|e| CoreError::Other(format!("cccost session rows: {e}")))?;
+        session_rows
+            .into_iter()
+            .map(|row| UsagePeriodEntry {
+                period: row.session_id.clone(),
+                agent: row.repo.clone(),
+                agents: row.repo.clone().into_iter().collect(),
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_creation_tokens: 0,
+                cache_read_tokens: 0,
+                total_tokens: 0,
+                total_cost_usd: row.cost_usd,
+                models_used: row.models.map(|m| vec![m]).unwrap_or_default(),
+                model_breakdowns: Vec::new(),
+                source_path: resolve_usage_session_path(None, &row.session_id)
+                    .map(|p| p.display().to_string()),
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    Ok(UsageSnapshot {
+        probe: probe.clone(),
+        today,
+        week,
+        month,
+        daily,
+        monthly: Vec::new(),
+        sessions,
+        generated_at,
+        cached: false,
+        error: None,
+    })
+}
+
+/// Today's spend for one transcript repo name (fleet dashboard cost column).
+pub fn read_cost_today(repo_name: &str) -> Option<f64> {
+    let launch = resolve_cccost_launch()?;
+    let report = run_cccost_json(&launch, &["daily", "--repo", repo_name, "--last", "1"]).ok()?;
+    let rows: Vec<CccostDailyRow> = serde_json::from_value(cccost_rows(&report).ok()?).ok()?;
+    let total: f64 = rows.iter().map(|r| r.cost_usd).sum();
+    (total > 0.0).then_some(total)
 }

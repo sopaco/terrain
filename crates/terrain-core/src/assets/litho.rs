@@ -25,7 +25,10 @@ pub fn plan_litho_generation(
         repo_path: repo_path.as_ref().display().to_string(),
         skill_dir: skill_dir.display().to_string(),
         human_output_dir: paths.human_docs_dir(project_slug).display().to_string(),
-        litho_workspace_dir: paths.litho_workspace_dir(project_slug).display().to_string(),
+        litho_workspace_dir: paths
+            .litho_workspace_dir(project_slug)
+            .display()
+            .to_string(),
         skill_ready: resolve_litho_skill_dir().is_some(),
     }
 }
@@ -141,8 +144,8 @@ pub fn build_litho_update_prompt(
         skill = plan.skill_dir,
         repo = plan.repo_path,
         out = plan.human_output_dir,
-        rules = incremental
-            .update_rules_block(crate::assets::IncrementalOutputMode::EditFilesInPlace),
+        rules =
+            incremental.update_rules_block(crate::assets::IncrementalOutputMode::EditFilesInPlace),
         evidence = incremental.evidence_block(),
         doc_list = doc_list,
     )
@@ -170,10 +173,7 @@ pub fn list_human_doc_names(human_dir: impl AsRef<Path>) -> Vec<String> {
 }
 
 /// Recorded baseline commit for the `human/` doc set, if a previous run wrote one.
-pub fn human_docs_baseline_head(
-    paths: &KnowledgePaths,
-    project_slug: &str,
-) -> Option<String> {
+pub fn human_docs_baseline_head(paths: &KnowledgePaths, project_slug: &str) -> Option<String> {
     crate::doc::read_json::<crate::schema::HumanDocsMeta>(paths.human_docs_meta_path(project_slug))
         .ok()
         .and_then(|meta| meta.baseline_git_head)

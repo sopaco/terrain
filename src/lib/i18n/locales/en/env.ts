@@ -19,6 +19,7 @@ export default {
   clearSelection: "Clear Selection",
   applying: "Integrating…",
   applySelected: "Integrate Selected ({count})",
+  applyAllAuto: "Auto-configure everything",
   planHelpTitle: "View execution plan details",
   planHelpAria: "Execution plan help",
   badge: {

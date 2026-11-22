@@ -54,3 +54,38 @@ pub(crate) struct EnvOptDonePayload {
     pub repo_path: String,
     pub result: EnvApplyResult,
 }
+
+#[derive(Clone, Serialize)]
+pub(crate) struct GraphifyProgressPayload {
+    pub project_slug: String,
+    pub stage: String,
+    pub message: String,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct GraphifyDonePayload {
+    pub project_slug: String,
+    pub ok: bool,
+    pub message: String,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct UaViewerReadyPayload {
+    pub project_slug: String,
+    pub url: String,
+    pub port: u16,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct UaProgressPayload {
+    pub project_slug: String,
+    pub stage: String,
+    pub message: String,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct UaDonePayload {
+    pub project_slug: String,
+    pub ok: bool,
+    pub message: String,
+}

@@ -6,8 +6,8 @@ use crate::doc::write_doc;
 use crate::error::Result;
 use crate::path_portable::path_in_repo;
 use crate::paths::KnowledgePaths;
-use crate::repo_walk::repo_file_walk;
 use crate::render::{interface_body, interface_frontmatter, route_body, route_frontmatter};
+use crate::repo_walk::repo_file_walk;
 use crate::schema::{InterfaceMeta, RouteMeta};
 
 pub struct OpenApiImporter<'a> {
@@ -60,7 +60,10 @@ impl<'a> OpenApiImporter<'a> {
 
     fn import_file(&self, repo: &Path, spec_path: &Path) -> Result<usize> {
         let content = std::fs::read_to_string(spec_path)?;
-        let value: serde_json::Value = if spec_path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
+        let value: serde_json::Value = if spec_path
+            .extension()
+            .is_some_and(|e| e == "yaml" || e == "yml")
+        {
             let yaml: serde_yaml::Value = serde_yaml::from_str(&content)?;
             serde_json::to_value(yaml)?
         } else {
@@ -109,8 +112,11 @@ impl<'a> OpenApiImporter<'a> {
                 let fm = interface_frontmatter(self.project_slug, None, &iface, &source);
                 let body = interface_body(&iface, description);
                 write_doc(
-                    self.paths
-                        .doc_path(self.project_slug, crate::schema::DocType::Interface, &slug),
+                    self.paths.doc_path(
+                        self.project_slug,
+                        crate::schema::DocType::Interface,
+                        &slug,
+                    ),
                     &fm,
                     &body,
                 )?;
@@ -125,17 +131,18 @@ impl<'a> OpenApiImporter<'a> {
                         .get("operationId")
                         .and_then(|v| v.as_str())
                         .map(str::to_string)
-                        .unwrap_or_else(|| {
-                            format!("{} {}", method_l.to_uppercase(), path)
-                        }),
+                        .unwrap_or_else(|| format!("{} {}", method_l.to_uppercase(), path)),
                     middleware: Vec::new(),
                 };
                 let route_slug = route_slug(&path, &method_l);
                 let rfm = route_frontmatter(self.project_slug, &route, &source);
                 let rbody = route_body(&route);
                 write_doc(
-                    self.paths
-                        .doc_path(self.project_slug, crate::schema::DocType::Route, &route_slug),
+                    self.paths.doc_path(
+                        self.project_slug,
+                        crate::schema::DocType::Route,
+                        &route_slug,
+                    ),
                     &rfm,
                     &rbody,
                 )?;

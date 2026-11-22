@@ -20,14 +20,23 @@ pub struct GrepMatch {
     pub file_line: Option<u32>,
 }
 
-pub fn grep_file(path: &Path, pattern: &str, context: usize, limit: usize) -> Result<Vec<GrepMatch>> {
-    let content = std::fs::read_to_string(path).map_err(|e| {
-        CoreError::InvalidDoc(format!("cannot read {}: {e}", path.display()))
-    })?;
+pub fn grep_file(
+    path: &Path,
+    pattern: &str,
+    context: usize,
+    limit: usize,
+) -> Result<Vec<GrepMatch>> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CoreError::InvalidDoc(format!("cannot read {}: {e}", path.display())))?;
     grep_text(&content, pattern, context, limit)
 }
 
-pub fn grep_text(content: &str, pattern: &str, context: usize, limit: usize) -> Result<Vec<GrepMatch>> {
+pub fn grep_text(
+    content: &str,
+    pattern: &str,
+    context: usize,
+    limit: usize,
+) -> Result<Vec<GrepMatch>> {
     let re = Regex::new(pattern)
         .map_err(|e| CoreError::InvalidDoc(format!("invalid grep pattern: {e}")))?;
     let lines: Vec<&str> = content.lines().collect();
@@ -43,7 +52,10 @@ pub fn grep_text(content: &str, pattern: &str, context: usize, limit: usize) -> 
             line_number: idx + 1,
             line: (*line).to_string(),
             context_before: lines[start..idx].iter().map(|s| (*s).to_string()).collect(),
-            context_after: lines[idx + 1..end].iter().map(|s| (*s).to_string()).collect(),
+            context_after: lines[idx + 1..end]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
             file_path: None,
             file_line: None,
         });
@@ -158,7 +170,10 @@ pub fn grep_repomix_pack(
             line_number: idx + 1,
             line: (*line).to_string(),
             context_before: lines[start..idx].iter().map(|s| (*s).to_string()).collect(),
-            context_after: lines[idx + 1..end].iter().map(|s| (*s).to_string()).collect(),
+            context_after: lines[idx + 1..end]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
             file_path: current_file.clone(),
             file_line,
         });

@@ -71,6 +71,21 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     terrain_core::LlmStatus::export_all_to(&out)?;
     terrain_core::AgentContextGenerationResult::export_all_to(&out)?;
 
+    terrain_dashboard::DashboardSummary::export_all_to(&out)?;
+    terrain_dashboard::BatchUpdateResult::export_all_to(&out)?;
+    terrain_dashboard::BatchProgressEvent::export_all_to(&out)?;
+    terrain_dashboard::AddProjectsResult::export_all_to(&out)?;
+    terrain_dashboard::GraphifyGraphInfo::export_all_to(&out)?;
+    terrain_dashboard::ProjectActivity::export_all_to(&out)?;
+    terrain_dashboard::DocsCoverage::export_all_to(&out)?;
+    terrain_dashboard::ProjectCollaboration::export_all_to(&out)?;
+    terrain_core::GitStatus::export_all_to(&out)?;
+    terrain_core::GitBranches::export_all_to(&out)?;
+    terrain_core::GitOpResult::export_all_to(&out)?;
+    terrain_core::GitCommit::export_all_to(&out)?;
+    terrain_core::GitDiff::export_all_to(&out)?;
+    terrain_core::GitMergePreview::export_all_to(&out)?;
+
     terrain_core::UsageSnapshot::export_all_to(&out)?;
     terrain_core::UsageProbeResult::export_all_to(&out)?;
     terrain_core::UsageDetailLevel::export_all_to(&out)?;

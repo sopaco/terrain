@@ -12,68 +12,66 @@ mod sdd;
 #[cfg(feature = "repomix")]
 mod repomix;
 
+pub use crate::preset_skills::default_agent_arch_skill_dir;
+pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
+pub use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 pub use agent_context::{
     agent_context_baseline_head, agent_context_fresh, agent_context_ready,
-    agent_context_recorded_baseline_head, agent_context_synced_with_head, build_agent_context_prompt,
-    build_agent_context_update_prompt, context_body_ready, read_agent_context_body,
-    read_agent_context_status, refresh_agent_context_baseline, write_agent_context,
+    agent_context_recorded_baseline_head, agent_context_synced_with_head,
+    build_agent_context_prompt, build_agent_context_update_prompt, context_body_ready,
+    read_agent_context_body, read_agent_context_status, refresh_agent_context_baseline,
+    write_agent_context,
 };
-pub use crate::preset_skills::default_agent_arch_skill_dir;
-pub use env::{
-    agents_md_ready, apply_env_integration, deploy_env_catalog_to_home,
-    discover_env_catalog_runtime, ensure_env_catalog_initialized, env_catalog_root,
-    get_env_status, init_env_catalog_root, load_catalog, user_env_catalog_dir,
-    invalidate_env_status_cache, invalidate_env_status_cache_for_repo, patch_agents_md,
-    plan_env_integration, summarize_agent_env_light, EnvApplyProgress, EnvApplyResult,
-    EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
-};
-pub use context_layers::{
-    build_context_overview, enforce_context_max_size, extract_context_section,
-    split_context_sections, ContextOverview, ContextSection,
-    AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS, AGENT_CONTEXT_SAVE_MAX_CHARS,
-    AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS,
-};
-pub use incremental::{
-    plan_incremental_update, reject_incremental_document, IncrementalOptions,
-    IncrementalOutputMode, IncrementalPlan, KnowledgeUpdateMode,
-};
-pub use litho::{
-    build_litho_composition_prompt, build_litho_generation_prompt, build_litho_update_prompt,
-    count_deep_exploration_modules, count_litho_research_modules, count_markdown_in_dir,
-    has_litho_research_artifacts, human_docs_baseline_head, list_human_doc_names,
-    litho_human_complete, litho_human_complete_with_research, litho_research_ready,
-    plan_litho_generation, write_human_docs_meta, LITHO_CORE_RESEARCH_FILES,
-    LITHO_REQUIRED_HUMAN_FILES,
-};
-pub use crate::preset_skills::{default_litho_skill_dir, resolve_litho_skill_dir};
-pub use pack_read::{
-    agent_pack_ready, read_agent_pack_file, read_pack_text_cached, AgentPackFileContent,
-};
-pub use project_meta::{
-    collect_knowledge_dir_inputs, collect_project_meta, count_knowledge_markdown_files,
-    discover_meta_files,
-    format_meta_bundle_for_prompt, has_repo_meta_configured, meta_inputs_ready,
-    meta_inputs_status, persist_meta_inputs, CollectedMetaInput, MetaInputSpec,
-    MetaInputsManifest, ProjectMetaBundle, ProjectMetaFile, META_FILENAME,
-};
-pub use query::{grep_file, grep_repomix_pack, grep_text, GrepMatch};
 pub use ask::{
     clear_active_ask_session, create_ask_session, delete_ask_session, discard_ask_session,
-    get_active_ask_session, list_ask_sessions,
-    load_ask_messages, resolve_ask_session_id, save_ask_messages, set_active_ask_session,
-    title_from_question,
+    get_active_ask_session, list_ask_sessions, load_ask_messages, resolve_ask_session_id,
+    save_ask_messages, set_active_ask_session, title_from_question,
 };
+pub use context_layers::{
+    AGENT_CONTEXT_ASK_OVERVIEW_MAX_CHARS, AGENT_CONTEXT_SAVE_MAX_CHARS,
+    AGENT_CONTEXT_TOOL_SECTION_MAX_CHARS, ContextOverview, ContextSection, build_context_overview,
+    enforce_context_max_size, extract_context_section, split_context_sections,
+};
+pub use env::{
+    EnvApplyProgress, EnvApplyResult, EnvIntegrationStatus, EnvPlan, EnvPlanStep, EnvStatus,
+    agents_md_ready, apply_env_integration, deploy_env_catalog_to_home,
+    discover_env_catalog_runtime, ensure_env_catalog_initialized, env_catalog_root, get_env_status,
+    init_env_catalog_root, invalidate_env_status_cache, invalidate_env_status_cache_for_repo,
+    load_catalog, patch_agents_md, plan_env_integration, summarize_agent_env_light,
+    user_env_catalog_dir,
+};
+pub use incremental::{
+    IncrementalOptions, IncrementalOutputMode, IncrementalPlan, KnowledgeUpdateMode,
+    plan_incremental_update, reject_incremental_document,
+};
+pub use litho::{
+    LITHO_CORE_RESEARCH_FILES, LITHO_REQUIRED_HUMAN_FILES, build_litho_composition_prompt,
+    build_litho_generation_prompt, build_litho_update_prompt, count_deep_exploration_modules,
+    count_litho_research_modules, count_markdown_in_dir, has_litho_research_artifacts,
+    human_docs_baseline_head, list_human_doc_names, litho_human_complete,
+    litho_human_complete_with_research, litho_research_ready, plan_litho_generation,
+    write_human_docs_meta,
+};
+pub use pack_read::{
+    AgentPackFileContent, agent_pack_ready, read_agent_pack_file, read_pack_text_cached,
+};
+pub use project_meta::{
+    CollectedMetaInput, META_FILENAME, MetaInputSpec, MetaInputsManifest, ProjectMetaBundle,
+    ProjectMetaFile, collect_knowledge_dir_inputs, collect_project_meta,
+    count_knowledge_markdown_files, discover_meta_files, format_meta_bundle_for_prompt,
+    has_repo_meta_configured, meta_inputs_ready, meta_inputs_status, persist_meta_inputs,
+};
+pub use query::{GrepMatch, grep_file, grep_repomix_pack, grep_text};
 pub use sdd::{
     build_sdd_llm_prompt, build_sdd_phase_prompt, create_sdd_session, delete_sdd_session,
     get_active_sdd_session, get_sdd_status, list_sdd_sessions, new_session_id, plan_sdd_workflow,
     resolve_sdd_session_id, save_sdd_output, sdd_phase_output_path, set_active_sdd_session,
 };
-pub use crate::preset_skills::{default_sdd_skill_dir, resolve_sdd_skill_dir};
 
 #[cfg(feature = "repomix")]
 pub use repomix::{
-    agent_pack_fresh, agent_pack_synced_with_head, maybe_pack_agent_assets, pack_agent_assets,
-    AgentPackReport,
+    AgentPackReport, agent_pack_fresh, agent_pack_synced_with_head, maybe_pack_agent_assets,
+    pack_agent_assets,
 };
 
 use crate::paths::KnowledgePaths;

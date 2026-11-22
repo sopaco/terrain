@@ -99,6 +99,29 @@ pub enum Commands {
         #[command(subcommand)]
         command: EnvCommands,
     },
+    /// Fleet dashboard — cross-project graph metrics, batch updates, multi-add
+    Dashboard {
+        #[command(subcommand)]
+        command: DashboardCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DashboardCommands {
+    /// Per-project graph metrics for every registered repository (JSON)
+    Summary,
+    /// Update (or first-build) graphs for projects; defaults to all
+    Batch {
+        #[arg(long = "project")]
+        projects: Vec<String>,
+        #[arg(long, default_value_t = 3)]
+        concurrency: usize,
+    },
+    /// Register several repositories at once
+    Add {
+        #[arg(value_name = "REPO_PATH")]
+        repo_paths: Vec<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -287,6 +310,11 @@ pub enum ToolsCommands {
         project: String,
     },
     CodegraphDrift {
+        #[arg(long)]
+        project: String,
+    },
+    /// Graphify graph + vault status for one project (JSON)
+    GraphifyStatus {
         #[arg(long)]
         project: String,
     },

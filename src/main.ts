@@ -6,6 +6,7 @@ import UsageWindow from "./UsageWindow.svelte";
 import { loadAppBootstrap } from "./lib/appBootstrap";
 import { applyLocale } from "./lib/i18n";
 
+
 const target = document.getElementById("app")!;
 
 async function bootstrap() {

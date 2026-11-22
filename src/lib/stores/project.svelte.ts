@@ -14,6 +14,10 @@ export type ProjectTaskState = {
   repackBusy: boolean;
   lithoBusy: boolean;
   lithoProgress: string;
+  graphifyBusy: boolean;
+  graphifyProgress: string;
+  uaBusy: boolean;
+  uaProgress: string;
 };
 
 export const project = $state({
@@ -45,6 +49,8 @@ export const project = $state({
   helpOpen: false,
   deepWikiOpen: false,
   deepWikiInitialQuestion: null as string | null,
+  /** Set by the Overview graph card's Regenerate — one-shot Graphify+UA refresh. */
+  pendingGraphRefresh: false,
 });
 
 export function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {
@@ -52,21 +58,26 @@ export function setProjectTask(slug: string, patch: Partial<ProjectTaskState>) {
     repackBusy: false,
     lithoBusy: false,
     lithoProgress: "",
+    graphifyBusy: false,
+    graphifyProgress: "",
+    uaBusy: false,
+    uaProgress: "",
   };
   project.projectTasks[slug] = { ...prev, ...patch };
 }
 
 export function currentTask(): ProjectTaskState {
-  if (!project.selectedSlug) {
-    return { repackBusy: false, lithoBusy: false, lithoProgress: "" };
-  }
-  return (
-    project.projectTasks[project.selectedSlug] ?? {
-      repackBusy: false,
-      lithoBusy: false,
-      lithoProgress: "",
-    }
-  );
+  const empty: ProjectTaskState = {
+    repackBusy: false,
+    lithoBusy: false,
+    lithoProgress: "",
+    graphifyBusy: false,
+    graphifyProgress: "",
+    uaBusy: false,
+    uaProgress: "",
+  };
+  if (!project.selectedSlug) return empty;
+  return project.projectTasks[project.selectedSlug] ?? empty;
 }
 
 export function selectedRegistryProject() {

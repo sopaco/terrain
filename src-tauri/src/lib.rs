@@ -9,12 +9,14 @@ use terrain_core::KnowledgePaths;
 
 pub struct AppState {
     pub runtime: Runtime,
+    pub ua_viewers: commands::UaViewerMap,
 }
 
 impl AppState {
     pub fn new(paths: KnowledgePaths) -> Self {
         Self {
             runtime: Runtime::new(paths),
+            ua_viewers: commands::UaViewerMap::default(),
         }
     }
 
@@ -110,7 +112,39 @@ pub fn run() {
             commands::run_env_integration_cmd,
             commands::usage_probe_cmd,
             commands::usage_snapshot_cmd,
+            commands::graphify_status_cmd,
+            commands::run_graphify_cmd,
+            commands::get_graphify_view_cmd,
+            commands::get_dashboard_summary_cmd,
+            commands::run_dashboard_batch_cmd,
+            commands::add_projects_cmd,
+            commands::git_status_cmd,
+            commands::git_branches_cmd,
+            commands::git_stage_cmd,
+            commands::git_unstage_cmd,
+            commands::git_commit_cmd,
+            commands::git_merge_cmd,
+            commands::git_merge_preview_cmd,
+            commands::git_push_cmd,
+            commands::git_pull_cmd,
+            commands::git_checkout_cmd,
+            commands::git_discard_file_cmd,
+            commands::git_undo_last_commit_cmd,
+            commands::git_stash_push_cmd,
+            commands::git_stash_pop_cmd,
+            commands::git_create_branch_cmd,
+            commands::git_generate_commit_message_cmd,
+            commands::git_commit_files_cmd,
+            commands::git_diff_file_cmd,
+            commands::git_history_cmd,
+            commands::git_commit_files_list_cmd,
+            commands::git_commit_diff_cmd,
+            commands::git_fetch_cmd,
             commands::open_local_path_cmd,
+            commands::ua_status_cmd,
+            commands::ua_viewer_cmd,
+            commands::open_ua_window_cmd,
+            commands::run_ua_cmd,
         ])
         .build(tauri::generate_context!())
         .expect("error while running Terrain")

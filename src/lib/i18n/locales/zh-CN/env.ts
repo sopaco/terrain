@@ -19,6 +19,7 @@ export default {
   clearSelection: "清空可选",
   applying: "集成中…",
   applySelected: "集成所选 ({count})",
+  applyAllAuto: "自动配置全部",
   planHelpTitle: "查看执行计划详情",
   planHelpAria: "执行计划说明",
   badge: {

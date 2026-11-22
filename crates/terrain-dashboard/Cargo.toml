@@ -1,0 +1,21 @@
+[package]
+name = "terrain-dashboard"
+description = "Fleet-level dashboard: cross-project metrics, batch graph updates, multi-project registration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+terrain-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true }
+
+[features]
+ts-export = ["dep:ts-rs"]
+
+[dependencies.ts-rs]
+workspace = true
+optional = true
